@@ -55,7 +55,9 @@ class BridgeWebPage(AbstractInterface):
             websocket_url: WebSocket server URL
         """
         self.websocket_url = websocket_url
-        self.websocket: Optional[websockets.WebSocketServerProtocol] = None
+        # Concrete type differs between the legacy and asyncio websockets APIs
+        # (WebSocketServerProtocol vs ServerConnection).
+        self.websocket: Optional[Any] = None
         self._server = None
         self._command_id = 0
         self._response_futures: Dict[int, asyncio.Future] = {}

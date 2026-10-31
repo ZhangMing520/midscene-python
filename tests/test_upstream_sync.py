@@ -4,6 +4,7 @@ System One / Jev, custom planners (UI-TARS / Auto-GLM), DeepLocate,
 YAML runner, dump structure, connectivity, model fallback.
 """
 
+import asyncio
 import json
 from typing import Any, Dict, List
 from unittest.mock import AsyncMock, patch
@@ -1276,6 +1277,68 @@ tasks:
         device.swipe = swipe
         await device.drag_and_drop((10, 20), (30, 40))
         assert calls == [(10, 20, 30, 40, 1000)]
+
+    @pytest.mark.asyncio
+    async def test_selenium_drag_and_drop_uses_relative_offsets(self):
+        from midscene.web.selenium_page import SeleniumWebPage
+
+        class FakeChains:
+            def __init__(self):
+                self.calls = []
+
+            def move_by_offset(self, x, y):
+                self.calls.append(("move_by_offset", x, y))
+                return self
+
+            def click_and_hold(self):
+                self.calls.append(("click_and_hold",))
+                return self
+
+            def release(self):
+                self.calls.append(("release",))
+                return self
+
+            def perform(self):
+                self.calls.append(("perform",))
+                return self
+
+            def reset_actions(self):
+                self.calls.append(("reset_actions",))
+
+        page = SeleniumWebPage.__new__(SeleniumWebPage)
+        page._action_chains = FakeChains()
+
+        await page.drag_and_drop((100, 200), (300, 400))
+
+        assert page._action_chains.calls == [
+            ("move_by_offset", 100, 200),
+            ("click_and_hold",),
+            ("move_by_offset", 200, 200),
+            ("release",),
+            ("perform",),
+            ("reset_actions",),
+        ]
+
+    @pytest.mark.asyncio
+    async def test_bridge_handler_accepts_asyncio_websockets_api(self):
+        import websockets
+
+        from midscene.web.bridge import BridgeWebPage
+
+        bridge = BridgeWebPage("ws://localhost:0")
+        server = await websockets.serve(bridge._handle_connection, "localhost", 0)
+        port = server.sockets[0].getsockname()[1]
+        try:
+            async with websockets.connect(f"ws://localhost:{port}") as client:
+                await client.send('{"hello": 1}')
+                for _ in range(100):
+                    if bridge.websocket is not None:
+                        break
+                    await asyncio.sleep(0.01)
+                assert bridge.websocket is not None
+        finally:
+            server.close()
+            await server.wait_closed()
 
     def test_action_space_ignores_unimplemented_stubs(self):
         from midscene.core.types import AbstractInterface, InterfaceType
