@@ -1616,7 +1616,7 @@ class TestLocateCache:
         )
 
 
-class TestExecutionReport:
+class TestAiActExecutionDump:
     MODEL_CONFIG = {
         "MIDSCENE_MODEL_NAME": "mock-model",
         "MIDSCENE_MODEL_API_KEY": "sk-test",
@@ -1676,7 +1676,7 @@ class TestExecutionReport:
         assert planning["type"] == "Planning"
         assert planning["status"] == "finished"
         assert planning["output"] == "finished"
-        assert planning["cache"] == {"hit": False}
+        assert "cache" not in planning  # not an upstream field
         assert action["type"] == "Action Space"
         assert action["subType"] == "Tap"
         assert action["status"] == "finished"
@@ -1755,7 +1755,8 @@ class TestExecutionReport:
         planning, action = dump["executions"][0]["tasks"]
         assert planning["status"] == "finished"
         assert planning["subType"] == "LoadYaml"
-        assert planning["cache"] == {"hit": True}
+        assert "cache" not in planning
+        assert planning["hitBy"]["from"] == "Cache"
         assert planning["hitBy"]["from"] == "Cache"
         assert planning["hitBy"]["context"]["yamlString"] == yaml_workflow
         assert planning["output"]["yamlString"] == yaml_workflow

@@ -1429,3 +1429,80 @@ class TestYamlExtras:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestDeepLocatePlanHint:
+    """deepLocate must not let plan coordinates shortcut the two-stage locate
+    (upstream task-builder: elementFromPlan = deepLocate ? undefined : ...)."""
+
+    @pytest.mark.asyncio
+    async def test_plan_coords_become_search_hint(self, mock_interface):
+        from midscene.core.agent import Agent
+        from midscene.core.types import AgentOptions
+
+        agent = Agent(
+            mock_interface,
+            AgentOptions(
+                model_config={
+                    "MIDSCENE_MODEL_NAME": "m",
+                    "MIDSCENE_MODEL_API_KEY": "k",
+                    "MIDSCENE_MODEL_BASE_URL": "https://example.com/v1",
+                    "MIDSCENE_MODEL_FAMILY": "gpt-5",
+                }
+            ),
+        )
+
+        captured: Dict[str, Any] = {}
+
+        async def fake_locate_service(**kwargs):
+            captured.update(kwargs)
+            return {
+                "element": {"center": (123, 45), "rect": None, "description": "x"},
+                "errors": [],
+                "raw_response": "",
+                "usage": None,
+            }
+
+        locate_param = {
+            "prompt": "the button",
+            "locatedPixelResult": {"center": (160, 120)},
+            "deepLocate": True,
+        }
+        with patch(
+            "midscene.core.agent.locate_service", new=fake_locate_service
+        ):
+            element = await agent._locate_for_action(locate_param)
+
+        # The plan coordinates were NOT returned directly; they were forwarded
+        # as the search-area hint for the two-stage locate.
+        assert element["center"] == (123, 45)
+        assert captured["deep_locate"] is True
+        assert captured["plan_located_element"] == {"center": (160, 120)}
+
+    @pytest.mark.asyncio
+    async def test_plan_coords_direct_hit_without_deep_locate(self, mock_interface):
+        from midscene.core.agent import Agent
+        from midscene.core.types import AgentOptions
+
+        agent = Agent(
+            mock_interface,
+            AgentOptions(
+                model_config={
+                    "MIDSCENE_MODEL_NAME": "m",
+                    "MIDSCENE_MODEL_API_KEY": "k",
+                    "MIDSCENE_MODEL_BASE_URL": "https://example.com/v1",
+                    "MIDSCENE_MODEL_FAMILY": "gpt-5",
+                }
+            ),
+        )
+
+        async def fail_if_called(**kwargs):
+            raise AssertionError("locate_service should not run for a plan direct hit")
+
+        locate_param = {
+            "prompt": "the button",
+            "locatedPixelResult": {"center": (160, 120)},
+        }
+        with patch("midscene.core.agent.locate_service", new=fail_if_called):
+            element = await agent._locate_for_action(locate_param)
+        assert element["center"] == (160, 120)

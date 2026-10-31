@@ -1010,9 +1010,13 @@ class Agent:
         prompt_str = user_prompt_to_string(prompt)
         cacheable = locate_param.get("cacheable", True)
         cache = self._get_task_cache()
+        deep_locate = bool(locate_param.get("deepLocate"))
 
         cached_pixel = locate_param.get("locatedPixelResult")
-        if cached_pixel and cached_pixel.get("center"):
+        # Upstream task-builder: elementFromPlan = locateParam.deepLocate
+        # ? undefined : planLocatedElement. With deepLocate the plan
+        # coordinates are only a search-area hint for the two-stage locate.
+        if cached_pixel and cached_pixel.get("center") and not deep_locate:
             # Fresh plan coordinates take precedence over the cache. Record the
             # feature once for future runs, unless an entry already exists.
             if not (cache is not None and cache.has_locate_cache(prompt_str)):
@@ -1048,7 +1052,8 @@ class Agent:
         element = await self._run_locate(
             prompt,
             context,
-            deep_locate=bool(locate_param.get("deepLocate")),
+            deep_locate=deep_locate,
+            plan_located_element=cached_pixel if deep_locate else None,
         )
         await self._write_locate_cache(
             prompt_str, element, cache, cacheable, replace_index
@@ -1107,6 +1112,7 @@ class Agent:
         prompt: TUserPrompt,
         context: UIContext,
         deep_locate: bool = False,
+        plan_located_element: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         runtime = self._resolve_runtime(TASK_TYPE_LOCATE)
         if runtime.adapter.locate_kind == "custom" and runtime.adapter.locate_fn is not None:
@@ -1136,6 +1142,7 @@ class Agent:
             context=context,
             model_runtime=self._resolve_runtime(TASK_TYPE_LOCATE),
             deep_locate=deep_locate,
+            plan_located_element=plan_located_element,
         )
         element = response.get("element")
         if not element or not element.get("center"):
@@ -1246,7 +1253,6 @@ class Agent:
                         "log": "",
                         "yamlString": cache_yaml,
                     },
-                    cache={"hit": True},
                     hitBy={"from": "Cache", "context": {"yamlString": cache_yaml}},
                 )
             else:
@@ -1256,7 +1262,6 @@ class Agent:
                     {"userInstruction": prompt_str},
                     status="failed" if error is not None else "finished",
                     output=output,
-                    cache={"hit": False},
                 )
                 if error is not None:
                     planning_task["errorMessage"] = str(error)
