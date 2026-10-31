@@ -1,13 +1,8 @@
 """
-Shared utilities and tools for Midscene Python
+Shared utilities for Midscene Python
 """
 
-from .cache import TaskCache
-from .logger import setup_logger
-from .report import ReportGenerator
+from ..core.task_cache import TaskCache
+from .logger import get_logger, setup_logger
 
-__all__ = [
-    "TaskCache",
-    "setup_logger", 
-    "ReportGenerator",
-]
+__all__ = ["TaskCache", "setup_logger", "get_logger"]

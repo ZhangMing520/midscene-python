@@ -1044,6 +1044,36 @@ class TestAgent:
         assert "could not find it" in str(exc.value)
 
     @pytest.mark.asyncio
+    async def test_ai_act_passes_context_to_planning(self, mock_interface):
+        from midscene.core.agent import Agent
+
+        prompts: List[str] = []
+
+        async def planning_handler(messages, *args, **kwargs):
+            prompts.append(str(messages))
+            return {
+                "content": '<complete success="true">done</complete>',
+                "usage": None,
+            }
+
+        with patch_model_call(
+            "midscene.core.ai_model.workflows.planning", planning_handler
+        ):
+            agent = Agent(mock_interface, AgentOptions(model_config={
+                "MIDSCENE_MODEL_NAME": "mock-model",
+                "MIDSCENE_MODEL_API_KEY": "sk-test",
+                "MIDSCENE_MODEL_BASE_URL": "https://example.com/v1",
+                "MIDSCENE_MODEL_FAMILY": "gpt-5",
+            }))
+            result = await agent.ai_act(
+                "do it", {"context": "PREMIUM-ACCOUNT-CONTEXT"}
+            )
+
+        assert result == "done"
+        assert prompts
+        assert "PREMIUM-ACCOUNT-CONTEXT" in prompts[0]
+
+    @pytest.mark.asyncio
     async def test_ai_action_retries_after_execution_error(self, mock_interface):
         """A failed locate does not abort the task; agent reports error feedback
         to the planner and continues."""
@@ -1256,6 +1286,12 @@ class TestAgent:
 
 
 class TestTaskCache:
+    def test_shared_package_reexports_task_cache(self):
+        from midscene.core.task_cache import TaskCache
+        from midscene.shared import TaskCache as SharedTaskCache
+
+        assert SharedTaskCache is TaskCache
+
     def test_plan_cache_roundtrip(self, tmp_path, monkeypatch):
         from midscene.core.task_cache import TaskCache
 

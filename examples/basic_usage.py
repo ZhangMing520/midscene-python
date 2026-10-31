@@ -21,13 +21,13 @@ async def web_automation_example():
         await page.navigate_to("https://example.com")
         
         # Use AI to interact with the page
-        await agent.ai_action("点击登录按钮")
-        await agent.ai_action("在用户名输入框输入 'demo@example.com'")
-        await agent.ai_action("在密码输入框输入 'password123'")
-        await agent.ai_action("点击提交按钮")
+        await agent.ai_act("点击登录按钮")
+        await agent.ai_act("在用户名输入框输入 'demo@example.com'")
+        await agent.ai_act("在密码输入框输入 'password123'")
+        await agent.ai_act("点击提交按钮")
         
         # Extract data using AI
-        user_info = await agent.ai_extract({
+        user_info = await agent.ai_query({
             "username": "用户名",
             "email": "邮箱地址",
             "last_login": "最后登录时间"
@@ -52,11 +52,11 @@ async def android_automation_example():
         await agent.launch_app("com.android.settings")
         
         # Use AI to navigate
-        await agent.ai_action("点击WLAN设置")
-        await agent.ai_action("滑动到底部")
+        await agent.ai_act("点击WLAN设置")
+        await agent.ai_act("滑动到底部")
         
         # Extract information
-        wifi_list = await agent.ai_extract({
+        wifi_list = await agent.ai_query({
             "available_networks": [
                 {"name": "网络名称", "security": "安全类型", "signal": "信号强度"}
             ]
@@ -86,11 +86,11 @@ async def playwright_example():
         await page.navigate_to("https://playwright.dev")
         
         # Use AI for navigation
-        await agent.ai_action("点击文档链接")
-        await agent.ai_action("搜索 'getting started'")
+        await agent.ai_act("点击文档链接")
+        await agent.ai_act("搜索 'getting started'")
         
         # Extract page information
-        page_info = await agent.ai_extract({
+        page_info = await agent.ai_query({
             "title": "页面标题",
             "description": "页面描述",
             "sections": ["主要章节列表"]

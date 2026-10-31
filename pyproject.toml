@@ -4,12 +4,9 @@ build-backend = "hatchling.build"
 
 [project]
 name = "midscene-python"
-description = "基于AI的Web和Android自动化框架，支持自然语言驱动的UI操作"
+description = "Python SDK for Midscene: natural-language UI automation and E2E testing for Web and Android"
 readme = "README.md"
 license = "MIT"
-authors = [
-    { name = "Midscene Team" },
-]
 keywords = ["automation", "AI", "web", "android", "testing", "ui", "selenium", "playwright"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -35,7 +32,6 @@ dependencies = [
     "aiohttp>=3.9.0,<4.0",
     "loguru>=0.7.0,<1.0",
     "typer>=0.9.0,<1.0",
-    "jinja2>=3.1.0,<4.0",
     "pyyaml>=6.0,<7.0",
     "httpx[socks]>=0.25.0,<1.0",
     "asyncio-mqtt",
@@ -66,10 +62,10 @@ docs = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Python51888/midscene-python.git"
-Repository = "https://github.com/Python51888/midscene-python.git"
-Documentation = "https://github.com/Python51888/Midscene-Python/blob/master/README.md"
-"Bug Tracker" = "https://github.com/Python51888/midscene-python.git/issues"
+Homepage = "https://github.com/ZhangMing520/midscene-python"
+Repository = "https://github.com/ZhangMing520/midscene-python"
+Documentation = "https://github.com/ZhangMing520/midscene-python/blob/master/docs/quickstart.md"
+"Bug Tracker" = "https://github.com/ZhangMing520/midscene-python/issues"
 
 [project.scripts]
 midscene = "midscene.cli:main"

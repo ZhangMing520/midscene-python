@@ -7,7 +7,6 @@ scripts; `midscene model siwc login` performs ChatGPT (SIWC) sign-in;
 """
 
 import asyncio
-import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
@@ -58,14 +57,14 @@ async def _create_agent_for_script(
 
     chrome_options = {}
     if web_section.get("viewportWidth") and web_section.get("viewportHeight"):
-        chrome_options["window_size"] = (
+        chrome_options["viewport_size"] = (
             int(web_section["viewportWidth"]),
             int(web_section["viewportHeight"]),
         )
     if web_section.get("userAgent"):
-        chrome_options["user-agent"] = web_section["userAgent"]
-    for extra_arg in web_section.get("chromeArgs") or []:
-        chrome_options[extra_arg.lstrip("-")] = True
+        chrome_options["user_agent"] = web_section["userAgent"]
+    if web_section.get("chromeArgs"):
+        chrome_options["args"] = [str(arg) for arg in web_section["chromeArgs"]]
 
     async def _create():
         headless = not headed and bool(web_section.get("headless", True))
@@ -115,7 +114,9 @@ def run(
     from midscene.core.yaml_runner import ScriptPlayer, parse_yaml_script
 
     if verbose:
-        os.environ.setdefault("MIDSCENE_DEBUG_MODE", "1")
+        from midscene.shared.logger import setup_logger
+
+        setup_logger(level="DEBUG")
 
     path = Path(script_path)
     if not path.exists():
@@ -127,22 +128,29 @@ def run(
 
     async def _run():
         created = await _create_agent_for_script(script, headed, device_id)
+        page = None
         if isinstance(created, tuple):
             page, options = created
             agent = Agent(page, options)
         else:
             agent = created
         player = ScriptPlayer(script, agent)
-        await player.run()
+        try:
+            await player.run()
+        finally:
+            await agent.destroy()
+            if page is not None:
+                await page.close()
         return player
 
     player = asyncio.run(_run())
 
     if player.output_path:
         console.print(f"[green]Output written to: {player.output_path}[/green]")
-    if player.status == "error":
-        for task in player.failed_tasks:
-            console.print(f"[red]task - {task['name']}: {task['error']}[/red]")
+    for task in player.failed_tasks:
+        console.print(f"[red]task - {task['name']}: {task['error']}[/red]")
+    # Upstream treats partial failures (continueOnError) as a non-zero exit too.
+    if player.status == "error" or player.failed_tasks:
         raise typer.Exit(1)
     console.print("[green]YAML script executed successfully[/green]")
 

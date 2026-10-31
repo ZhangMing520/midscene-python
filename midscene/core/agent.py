@@ -375,6 +375,7 @@ class Agent:
                     effort=effort,
                     include_locate_in_planning=include_locate_in_planning,
                     planning_advice=planning_advice,
+                    action_context=self._resolve_call_context("aiAct", opt),
                 )
                 planning_advice = None
                 replan_count += 1
@@ -493,6 +494,7 @@ class Agent:
         effort: str,
         include_locate_in_planning: bool,
         planning_advice: Optional[str],
+        action_context: Optional[str] = None,
     ) -> Dict[str, Any]:
         adapter = planning_runtime.adapter
         if adapter.planning_kind == "custom" and adapter.planning_plan_fn is not None:
@@ -503,7 +505,7 @@ class Agent:
                 action_space=self.action_space,
                 conversation_history=conversation_history,
                 include_locate_in_planning=include_locate_in_planning,
-                action_context=self._resolve_call_context("aiAct", None),
+                action_context=action_context,
             )
         if adapter.family == "jev":
             return await jev_plan(
@@ -513,7 +515,7 @@ class Agent:
                 action_space=self.action_space,
                 conversation_history=conversation_history,
                 include_locate_in_planning=include_locate_in_planning,
-                action_context=self._resolve_call_context("aiAct", None),
+                action_context=action_context,
             )
         return await standard_plan(
             user_instruction=prompt_str,
@@ -523,7 +525,7 @@ class Agent:
             conversation_history=conversation_history,
             include_locate_in_planning=include_locate_in_planning,
             effort=effort,
-            action_context=self._resolve_call_context("aiAct", None),
+            action_context=action_context,
             planning_advice=planning_advice,
             images_include_count=2 if effort == "deepThink" else 1,
         )

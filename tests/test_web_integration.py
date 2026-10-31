@@ -79,6 +79,31 @@ async def _region_state(page):
 
 
 @pytest.mark.asyncio
+async def test_create_applies_viewport_user_agent_and_args():
+    from midscene.web.playwright_page import PlaywrightWebPage
+
+    try:
+        web = await PlaywrightWebPage.create(
+            headless=True,
+            viewport_size=(640, 480),
+            user_agent="midscene-test-agent",
+            args=["--disable-gpu"],
+        )
+    except Exception as exc:  # pragma: no cover - environment dependent
+        pytest.skip(f"chromium is not available: {exc}")
+    try:
+        size = await web.page.evaluate(
+            "() => [window.innerWidth, window.innerHeight]"
+        )
+        assert size == [640, 480]
+        assert await web.page.evaluate("() => navigator.userAgent") == (
+            "midscene-test-agent"
+        )
+    finally:
+        await web.close()
+
+
+@pytest.mark.asyncio
 async def test_scroll_to_bottom_uses_located_region(web_page):
     web, page = web_page
 

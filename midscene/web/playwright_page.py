@@ -187,17 +187,25 @@ class PlaywrightElement(BaseElement):
 class PlaywrightWebPage(AbstractInterface):
     """Playwright page interface"""
     
-    def __init__(self, page: Page, context: BrowserContext, browser: Browser):
+    def __init__(
+        self,
+        page: Page,
+        context: BrowserContext,
+        browser: Browser,
+        playwright: Optional[Any] = None,
+    ):
         """Initialize with Playwright page
         
         Args:
             page: Playwright page instance
             context: Browser context
             browser: Browser instance
+            playwright: Playwright instance started by create(), stopped on close
         """
         self.page = page
         self.context = context
         self.browser = browser
+        self._playwright = playwright
     
     @classmethod
     async def create(
@@ -205,6 +213,7 @@ class PlaywrightWebPage(AbstractInterface):
         headless: bool = False,
         viewport_size: tuple[int, int] = (1920, 1080),
         user_data_dir: Optional[str] = None,
+        user_agent: Optional[str] = None,
         **browser_options
     ) -> 'PlaywrightWebPage':
         """Create new Playwright page instance
@@ -213,7 +222,8 @@ class PlaywrightWebPage(AbstractInterface):
             headless: Run in headless mode
             viewport_size: Browser viewport size
             user_data_dir: Browser user data directory
-            **browser_options: Additional browser options
+            user_agent: Browser User-Agent string
+            **browser_options: Additional browser launch options (e.g. args)
             
         Returns:
             PlaywrightWebPage instance
@@ -231,12 +241,13 @@ class PlaywrightWebPage(AbstractInterface):
         browser = await playwright.chromium.launch(**launch_options)
         
         context = await browser.new_context(
-            viewport={"width": viewport_size[0], "height": viewport_size[1]}
+            viewport={"width": viewport_size[0], "height": viewport_size[1]},
+            user_agent=user_agent,
         )
         
         page = await context.new_page()
         
-        return cls(page, context, browser)
+        return cls(page, context, browser, playwright)
     
     @property
     def interface_type(self) -> InterfaceType:
@@ -489,10 +500,13 @@ class PlaywrightWebPage(AbstractInterface):
         return await self.page.evaluate(script, *args)
     
     async def close(self) -> None:
-        """Close the browser"""
+        """Close the browser and the Playwright driver started by create()."""
         try:
             await self.context.close()
             await self.browser.close()
+            if self._playwright is not None:
+                await self._playwright.stop()
+                self._playwright = None
         except Exception as e:
             logger.warning(f"Error closing browser: {e}")
     
