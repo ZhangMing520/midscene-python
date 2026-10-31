@@ -123,9 +123,18 @@ class AIUsageInfo(BaseModel):
 
 
 class LocateResult(BaseModel):
-    """Element locate result"""
+    """Element locate result.
+
+    After the upstream sync, locate is coordinate-based: `center` is the
+    (x, y) click point and `rect` the element bounding box when available.
+    `element` is kept for backward compatibility and stays None in the
+    pure-vision flow.
+    """
     element: Optional[BaseElement] = None
     rect: Optional[Rect] = None
+    center: Optional[List[float]] = None
+    description: Optional[str] = None
+    raw_response: Optional[str] = None
 
 
 class ExecutionResult(BaseModel, Generic[T]):
@@ -151,38 +160,74 @@ OnTaskStartTip = Callable[[str], Union[None, Awaitable[None]]]
 
 # Abstract interface for device/platform implementations
 class AbstractInterface(ABC):
-    """Abstract interface for platform implementations"""
-    
+    """Abstract interface for platform implementations.
+
+    tap/input_text/scroll are required; the remaining primitives power the
+    extended planning action space and raise NotImplementedError by default.
+    """
+
     @property
     @abstractmethod
     def interface_type(self) -> InterfaceType:
         """Get interface type"""
         pass
-    
+
     @abstractmethod
     async def get_context(self) -> UIContext:
         """Get current UI context"""
         pass
-    
+
     @abstractmethod
     async def action_space(self) -> List[str]:
         """Get available actions"""
         pass
-    
+
     @abstractmethod
     async def tap(self, x: float, y: float) -> None:
         """Tap at coordinates"""
         pass
-    
+
     @abstractmethod
     async def input_text(self, text: str) -> None:
         """Input text"""
         pass
-    
+
     @abstractmethod
-    async def scroll(self, direction: str, distance: Optional[int] = None) -> None:
+    async def scroll(self, direction: str, distance: Optional[int] = None, **kwargs) -> None:
         """Scroll in direction"""
         pass
+
+    # Optional primitives for the extended action space ---------------------
+
+    async def right_click(self, x: float, y: float) -> None:
+        raise NotImplementedError("right_click is not supported on this interface")
+
+    async def middle_click(self, x: float, y: float) -> None:
+        raise NotImplementedError("middle_click is not supported on this interface")
+
+    async def double_click(self, x: float, y: float) -> None:
+        raise NotImplementedError("double_click is not supported on this interface")
+
+    async def hover(self, x: float, y: float) -> None:
+        raise NotImplementedError("hover is not supported on this interface")
+
+    async def keyboard_press(self, key: str) -> None:
+        raise NotImplementedError("keyboard_press is not supported on this interface")
+
+    async def clear_input(self) -> None:
+        raise NotImplementedError("clear_input is not supported on this interface")
+
+    async def replace_input(self, text: str) -> None:
+        raise NotImplementedError("replace_input is not supported on this interface")
+
+    async def swipe(self, direction: str, distance: Optional[int] = None) -> None:
+        raise NotImplementedError("swipe is not supported on this interface")
+
+    async def drag_and_drop(self, from_point, to_point) -> None:
+        raise NotImplementedError("drag_and_drop is not supported on this interface")
+
+    async def long_press(self, x: float, y: float, duration: int = 1000) -> None:
+        raise NotImplementedError("long_press is not supported on this interface")
 
 
 class InsightAction(str, Enum):
@@ -203,7 +248,14 @@ class AgentOptions:
     auto_print_report_msg: bool = True
     ai_action_context: Optional[str] = None
     report_file_name: Optional[str] = None
-    model_config: Optional[Callable] = None
+    # Model configuration. Either an env-style dict (MIDSCENE_MODEL_NAME,
+    # MIDSCENE_MODEL_API_KEY, MIDSCENE_MODEL_BASE_URL, MIDSCENE_MODEL_FAMILY,
+    # MIDSCENE_PLANNING_MODEL_* ...), or a legacy callable returning such a dict.
+    model_config: Optional[Union[Dict[str, str], Callable]] = None
+    # Callback fired at the start of each execution task: (tip: str) -> None
+    on_task_start_tip: Optional[Callable] = None
+    # Override the replanning cycle limit (default: adapter value, 20 standard)
+    replanning_cycle_limit: Optional[int] = None
 
 
 @dataclass

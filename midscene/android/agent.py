@@ -8,7 +8,7 @@ from ..core.agent import Agent, AgentOptions
 from .device import AndroidDevice
 
 
-class AndroidAgent(Agent[AndroidDevice]):
+class AndroidAgent(Agent):
     """Android-specific agent implementation"""
     
     def __init__(self, device: AndroidDevice, options: Optional[AgentOptions] = None):

@@ -4,21 +4,16 @@ Android device management using ADB
 
 import asyncio
 import base64
-import json
 import subprocess
 import xml.etree.ElementTree as ET
-from typing import Any, Dict, List, Optional, Tuple
-from pathlib import Path
+from typing import List, Optional, Sequence
 
-import cv2
-import numpy as np
-from PIL import Image
 from loguru import logger
 from pydantic import BaseModel
 
 from ..core.types import (
     AbstractInterface, InterfaceType, UIContext, BaseElement, UINode, UITree,
-    Size, Rect, Point, NodeType
+    Size, Rect, NodeType
 )
 
 
@@ -201,22 +196,95 @@ class AndroidDevice(AbstractInterface):
             raise
     
     async def swipe(
-        self, 
-        start_x: float, start_y: float, 
-        end_x: float, end_y: float, 
-        duration: int = 300
+        self,
+        direction_or_start_x,
+        start_y=None,
+        end_x=None,
+        end_y=None,
+        duration: int = 300,
+        distance: Optional[int] = None,
     ) -> None:
-        """Swipe between coordinates"""
+        """Swipe.
+
+        Two forms:
+        - swipe(direction, distance=...) : finger-movement direction swipe
+          ('up' | 'down' | 'left' | 'right'), used by the action space.
+        - swipe(start_x, start_y, end_x, end_y, duration) : coordinate swipe.
+        """
         try:
+            if isinstance(direction_or_start_x, str):
+                await self._swipe_direction(direction_or_start_x, distance)
+                return
+            start_x = direction_or_start_x
             await self._run_adb_command([
                 "-s", self.device_id, "shell", "input", "swipe",
-                str(int(start_x)), str(int(start_y)), 
+                str(int(start_x)), str(int(start_y)),
                 str(int(end_x)), str(int(end_y)), str(duration)
             ])
         except Exception as e:
             logger.error(f"Failed to swipe: {e}")
             raise
-    
+
+    async def _swipe_direction(
+        self,
+        direction: str,
+        distance: Optional[int] = None,
+        point: Optional[Sequence[float]] = None,
+    ) -> None:
+        if not self._screen_size:
+            await self._get_screen_size()
+
+        center_x = int(point[0]) if point else self._screen_size.width // 2
+        center_y = int(point[1]) if point else self._screen_size.height // 2
+        distance = distance or 500
+
+        half = distance // 2
+        center_x = min(
+            max(center_x, half), max(half, self._screen_size.width - half)
+        )
+        center_y = min(
+            max(center_y, half), max(half, self._screen_size.height - half)
+        )
+
+        if direction == "down":
+            await self._run_adb_command([
+                "-s", self.device_id, "shell", "input", "swipe",
+                str(center_x), str(center_y - distance // 2),
+                str(center_x), str(center_y + distance // 2), "300",
+            ])
+        elif direction == "up":
+            await self._run_adb_command([
+                "-s", self.device_id, "shell", "input", "swipe",
+                str(center_x), str(center_y + distance // 2),
+                str(center_x), str(center_y - distance // 2), "300",
+            ])
+        elif direction == "left":
+            await self._run_adb_command([
+                "-s", self.device_id, "shell", "input", "swipe",
+                str(center_x + distance // 2), str(center_y),
+                str(center_x - distance // 2), str(center_y), "300",
+            ])
+        elif direction == "right":
+            await self._run_adb_command([
+                "-s", self.device_id, "shell", "input", "swipe",
+                str(center_x - distance // 2), str(center_y),
+                str(center_x + distance // 2), str(center_y), "300",
+            ])
+        else:
+            raise ValueError(f"Invalid swipe direction: {direction}")
+
+    async def drag_and_drop(self, from_point, to_point, duration: int = 1000) -> None:
+        """Drag an element from one point to another (upstream dragPoint)."""
+        try:
+            from_x, from_y = from_point
+            to_x, to_y = to_point
+            await self.swipe(
+                from_x, from_y, to_x, to_y, duration=duration
+            )
+        except Exception as e:
+            logger.error(f"Failed to drag from {from_point} to {to_point}: {e}")
+            raise
+
     async def input_text(self, text: str) -> None:
         """Input text"""
         try:
@@ -241,31 +309,79 @@ class AndroidDevice(AbstractInterface):
             logger.error(f"Failed to clear text: {e}")
             raise
     
-    async def scroll(self, direction: str, distance: Optional[int] = None) -> None:
-        """Scroll in direction"""
+    async def scroll(
+        self,
+        direction: str,
+        distance: Optional[int] = None,
+        point: Optional[Sequence[float]] = None,
+        scroll_type: Optional[str] = None,
+    ) -> None:
+        """Scroll in direction.
+
+        `point` is the gesture center (usually a located region). Scroll
+        directions describe the content to reveal, i.e. the opposite of the
+        finger movement used by swipe.
+        """
         try:
-            if not self._screen_size:
-                await self._get_screen_size()
-            
-            center_x = self._screen_size.width // 2
-            center_y = self._screen_size.height // 2
-            distance = distance or 500
-            
-            if direction == "down":
-                await self.swipe(center_x, center_y + distance//2, center_x, center_y - distance//2)
-            elif direction == "up":
-                await self.swipe(center_x, center_y - distance//2, center_x, center_y + distance//2)
-            elif direction == "left":
-                await self.swipe(center_x + distance//2, center_y, center_x - distance//2, center_y)
-            elif direction == "right":
-                await self.swipe(center_x - distance//2, center_y, center_x + distance//2, center_y)
-            else:
+            finger_direction = {
+                "down": "up",
+                "up": "down",
+                "left": "right",
+                "right": "left",
+            }.get(direction)
+            if finger_direction is None:
                 raise ValueError(f"Invalid scroll direction: {direction}")
-                
+
+            repeats = 10 if (scroll_type or "").startswith("scrollTo") else 1
+            if repeats > 1:
+                if not self._screen_size:
+                    await self._get_screen_size()
+                axis = (
+                    self._screen_size.height
+                    if direction in ("up", "down")
+                    else self._screen_size.width
+                )
+                distance = int(axis * 0.8)
+            for _ in range(repeats):
+                await self._swipe_direction(finger_direction, distance, point=point)
+
         except Exception as e:
             logger.error(f"Failed to scroll {direction}: {e}")
             raise
     
+    async def clear_input(self) -> None:
+        """Clear text in focused field (alias of clear_text)"""
+        await self.clear_text()
+
+    async def replace_input(self, text: str) -> None:
+        """Replace the content of the focused field"""
+        await self.clear_text()
+        await self.input_text(text)
+
+    async def keyboard_press(self, key: str) -> None:
+        """Press a key by name, e.g. 'Enter', 'Tab', 'Backspace', 'Control+A'."""
+        key_map = {
+            "ENTER": "KEYCODE_ENTER",
+            "TAB": "KEYCODE_TAB",
+            "BACKSPACE": "KEYCODE_DEL",
+            "DELETE": "KEYCODE_FORWARD_DEL",
+            "ESCAPE": "KEYCODE_ESCAPE",
+            "HOME": "KEYCODE_HOME",
+            "ARROWUP": "KEYCODE_DPAD_UP",
+            "ARROWDOWN": "KEYCODE_DPAD_DOWN",
+            "ARROWLEFT": "KEYCODE_DPAD_LEFT",
+            "ARROWRIGHT": "KEYCODE_DPAD_RIGHT",
+        }
+        # combinations like 'Control+A' fall back to the bare key
+        bare_key = key.split("+")[-1].upper()
+        key_code = key_map.get(bare_key)
+        if key_code:
+            await self.key_event(key_code)
+        elif bare_key.isalnum() and len(bare_key) == 1:
+            await self.key_event(f"KEYCODE_{bare_key.upper()}")
+        else:
+            raise ValueError(f"Unsupported key for Android: {key}")
+
     async def key_event(self, key_code: str) -> None:
         """Send key event"""
         try:

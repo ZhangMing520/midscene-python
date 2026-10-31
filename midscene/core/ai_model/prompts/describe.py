@@ -1,0 +1,80 @@
+"""Element describer prompt.
+
+Synced from upstream packages/core/src/ai-model/prompt/describe.ts
+"""
+
+from ..env_config import get_preferred_language
+
+_EXAMPLES_MAP = {
+    "Chinese": [
+        '"登录表单中的"登录"按钮"',
+        '"搜索输入框，placeholder 为"请输入关键词""',
+        '"顶部导航栏中文字为"首页"的链接"',
+        '"联系表单中的提交按钮"',
+        '"aria-label 为"打开菜单"的菜单图标"',
+        '"左侧导航栏中当前分组标题右侧的折叠图标"',
+    ],
+    "English": [
+        '"Login button with text \'Sign In\'"',
+        '"Search input with placeholder \'Enter keywords\'"',
+        '"Navigation link with text \'Home\' in header"',
+        '"Submit button in contact form"',
+        '"Menu icon with aria-label \'Open menu\'"',
+        '"Collapse icon to the right of the current section title in the left sidebar"',
+    ],
+}
+
+
+def _get_examples(language: str) -> str:
+    examples = _EXAMPLES_MAP.get(language, _EXAMPLES_MAP["English"])
+    return "\n".join(f"- {e}" for e in examples)
+
+
+def _describe_element_return_json_schema() -> str:
+    return """{
+  "description": "unique element identifier",
+  "error"?: "error message if any"
+}"""
+
+
+def element_describer_instruction() -> str:
+    preferred_language = get_preferred_language()
+
+    return f"""
+Describe the real page element indicated by the temporary target marker (a ring with a crosshair).
+The marker is an annotation overlay. It is not part of the page or target.
+The description will be used later to locate the same element on the original screenshot without annotations, so write a locator-style description instead of a visual caption.
+
+IMPORTANT: You MUST write the description in {preferred_language}.
+
+OBSERVE IN THIS ORDER:
+1. Target first: identify the smallest real UI part at the marker center: text, glyph, icon, arrow, input, dropdown/select, option, button, link, status, checkbox, radio, switch, tab, menu item, slider, image, control, or empty region.
+2. Primitive: name what that smallest part is before adding surrounding context.
+3. Owner/context: add the nearest stable owner only when it helps disambiguate, such as a label, row/card title, column header, field name, or adjacent visible text.
+4. Similar candidates: if multiple candidates look similar, add stable local anchors from the same row, card, field, header, or group. Prefer visible text and values over inferred row counting or temporary visual state.
+
+RULES:
+- Keep description under 35 words.
+- Describe the smallest indicated UI part itself, not the larger container, row, card, sentence, or group that merely contains it.
+- Ignore every annotation overlay, including ring, crosshair, line, color, marker, border, dot, or selection box. Never describe the annotation as the target.
+- Do not borrow the text, glyph, direction, purpose, or state from a nearby element outside the marker center.
+- For tiny or icon-only controls, name the visible glyph/control and add its owner/context; adjacent text is context, not the target. If similar tiny controls are adjacent in the same group, add local order or relative position inside that group.
+- If the marker center is on a field value, label, or input body, describe that value/field/control. Do not retarget to a trailing icon, dropdown arrow, clear button, or search affordance unless the marker center is on that icon itself.
+- If the marker center is inside the bordered body, current value, trigger, or blank area of a select/dropdown/combobox/filter field, use primitive "dropdown" and describe that dropdown/select control. Do not call it an input unless it is clearly a free-text field.
+- If the marker center is inside the bordered body or blank area of an input or filter field, describe the field body/current value/control even when the visible text is not exactly at the marker center. Use the field label or visible value as context; do not snap to trailing icons or nearby table headers.
+- If the marker center is on an expanded dropdown/select/menu list item, use primitive "option" for selectable list options or "menuitem" for command menu entries.
+- Only use primitive "icon" or "arrow" when the marker center directly overlaps the real glyph strokes. A nearby search icon, dropdown arrow, clear button, or wrong locator result must not become the target primitive.
+- For compound controls or stacked glyphs, describe only the sub-part containing the marker center, using upper/lower or left/right only when visible.
+- For inline text, links, or substrings, describe only the exact substring/link at the marker center, not the whole line.
+- For repeated rows, cards, or options, use same-local anchors that are visible in the screenshot, such as neighboring cell text, field value, title, date, time, ID, or column/header label.
+- For tables or grids, describe the target as the intersection of the target column/header and same-row anchors. Do not use row ordinals or column ordinals unless the index/header is clearly visible.
+- Use selected, highlighted, hovered, focused, or active state only if the marker center is inside that state.
+- If the marker center is on blank space, describe the empty region/gap between stable surrounding anchors. Do not invent a nearby control.
+- Use actual visible text from the current screenshot when available; do not copy labels from the examples.
+- **Write the description in {preferred_language}**
+
+EXAMPLES:
+{_get_examples(preferred_language)}
+
+Return JSON:
+{_describe_element_return_json_schema()}"""

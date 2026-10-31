@@ -3,24 +3,20 @@ Selenium WebDriver integration for Midscene
 """
 
 import base64
-import json
-from io import BytesIO
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.remote.webelement import WebElement
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
-from PIL import Image
+from selenium.common.exceptions import TimeoutException
 from loguru import logger
 
 from ..core.types import (
     AbstractInterface, InterfaceType, UIContext, BaseElement, UINode, UITree,
-    Size, Rect, Point, NodeType
+    Size, Rect, NodeType
 )
 
 
@@ -157,7 +153,96 @@ class SeleniumWebPage(AbstractInterface):
         except Exception as e:
             logger.error(f"Failed to tap at ({x}, {y}): {e}")
             raise
-    
+
+    async def right_click(self, x: float, y: float) -> None:
+        try:
+            self._action_chains.move_by_offset(x, y).context_click().perform()
+            self._action_chains.reset_actions()
+        except Exception as e:
+            logger.error(f"Failed to right click at ({x}, {y}): {e}")
+            raise
+
+    async def double_click(self, x: float, y: float) -> None:
+        try:
+            self._action_chains.move_by_offset(x, y).double_click().perform()
+            self._action_chains.reset_actions()
+        except Exception as e:
+            logger.error(f"Failed to double click at ({x}, {y}): {e}")
+            raise
+
+    async def hover(self, x: float, y: float) -> None:
+        try:
+            self._action_chains.move_by_offset(x, y).perform()
+            self._action_chains.reset_actions()
+        except Exception as e:
+            logger.error(f"Failed to hover at ({x}, {y}): {e}")
+            raise
+
+    async def drag_and_drop(self, from_point, to_point) -> None:
+        """Drag from one point to another with the mouse."""
+        try:
+            from_x, from_y = from_point
+            to_x, to_y = to_point
+            (
+                self._action_chains.move_by_offset(from_x, from_y)
+                .click_and_hold()
+                .move_by_offset(to_x - from_x, to_y - from_y)
+                .release()
+                .perform()
+            )
+            self._action_chains.reset_actions()
+        except Exception as e:
+            logger.error(f"Failed to drag from {from_point} to {to_point}: {e}")
+            raise
+
+    async def keyboard_press(self, key: str) -> None:
+        try:
+            from selenium.webdriver.common.keys import Keys
+
+            keys = key.split("+")
+            # Map common names; combinations send modifiers with the final key
+            key_map = {
+                "ENTER": Keys.ENTER, "TAB": Keys.TAB, "ESCAPE": Keys.ESCAPE,
+                "BACKSPACE": Keys.BACK_SPACE, "DELETE": Keys.DELETE,
+                "ARROWUP": Keys.ARROW_UP, "ARROWDOWN": Keys.ARROW_DOWN,
+                "ARROWLEFT": Keys.ARROW_LEFT, "ARROWRIGHT": Keys.ARROW_RIGHT,
+            }
+            modifier_map = {
+                "CONTROL": Keys.CONTROL, "CTRL": Keys.CONTROL,
+                "SHIFT": Keys.SHIFT, "ALT": Keys.ALT, "META": Keys.META,
+            }
+            to_send = []
+            for part in keys:
+                upper = part.strip().upper()
+                if upper in modifier_map:
+                    to_send.append(modifier_map[upper])
+                elif upper in key_map:
+                    to_send.append(key_map[upper])
+                else:
+                    to_send.append(part.strip())
+            active_element = self.driver.switch_to.active_element
+            active_element.send_keys(*to_send)
+        except Exception as e:
+            logger.error(f"Failed to press key {key}: {e}")
+            raise
+
+    async def clear_input(self) -> None:
+        try:
+            active_element = self.driver.switch_to.active_element
+            active_element.clear()
+        except Exception as e:
+            logger.error(f"Failed to clear input: {e}")
+            raise
+
+    async def replace_input(self, text: str) -> None:
+        try:
+            active_element = self.driver.switch_to.active_element
+            active_element.clear()
+            active_element.send_keys(text)
+        except Exception as e:
+            logger.error(f"Failed to replace input: {e}")
+            raise
+
     async def input_text(self, text: str) -> None:
         """Input text to focused element"""
         try:
@@ -166,23 +251,92 @@ class SeleniumWebPage(AbstractInterface):
         except Exception as e:
             logger.error(f"Failed to input text: {e}")
             raise
-    
-    async def scroll(self, direction: str, distance: Optional[int] = None) -> None:
+
+    async def scroll(
+        self, direction: str, distance: Optional[int] = None, **kwargs
+    ) -> None:
         """Scroll in direction"""
         try:
-            distance = distance or 500
-            
-            if direction == "down":
-                self.driver.execute_script(f"window.scrollBy(0, {distance});")
-            elif direction == "up":
-                self.driver.execute_script(f"window.scrollBy(0, -{distance});")
-            elif direction == "right":
-                self.driver.execute_script(f"window.scrollBy({distance}, 0);")
-            elif direction == "left":
-                self.driver.execute_script(f"window.scrollBy(-{distance}, 0);")
-            else:
+            scroll_type = kwargs.get("scroll_type") or "singleAction"
+            point = kwargs.get("point")
+            if scroll_type.startswith("scrollTo"):
+                target = scroll_type.replace("scrollTo", "").lower()
+                if point and target in ("bottom", "top", "right", "left"):
+                    self.driver.execute_script(
+                        "const el = document.elementFromPoint(arguments[0], arguments[1]);"
+                        "let node = el;"
+                        "while (node && node !== document.body &&"
+                        " node !== document.documentElement &&"
+                        " node.scrollHeight <= node.clientHeight &&"
+                        " node.scrollWidth <= node.clientWidth) {"
+                        " node = node.parentElement;"
+                        "}"
+                        "const target = (node && node !== document.body &&"
+                        " node !== document.documentElement)"
+                        " ? node : (document.scrollingElement || document.documentElement);"
+                        "const mode = arguments[2];"
+                        "if (mode === 'bottom') target.scrollTo({top: target.scrollHeight, behavior: 'instant'});"
+                        "else if (mode === 'top') target.scrollTo({top: 0, behavior: 'instant'});"
+                        "else if (mode === 'right') target.scrollTo({left: target.scrollWidth, behavior: 'instant'});"
+                        "else if (mode === 'left') target.scrollTo({left: 0, behavior: 'instant'});",
+                        point[0],
+                        point[1],
+                        target,
+                    )
+                    return
+                if target == "bottom":
+                    self.driver.execute_script(
+                        "window.scrollTo(0, document.body.scrollHeight);"
+                    )
+                    return
+                if target == "right":
+                    self.driver.execute_script(
+                        "window.scrollTo(document.body.scrollWidth, 0);"
+                    )
+                    return
+                if target in ("top", "left"):
+                    self.driver.execute_script("window.scrollTo(0, 0);")
+                    return
+
+            distance = int(float(distance or 500))
+
+            offsets = {
+                "down": (0, distance),
+                "up": (0, -distance),
+                "right": (distance, 0),
+                "left": (-distance, 0),
+            }
+            if direction not in offsets:
                 raise ValueError(f"Invalid scroll direction: {direction}")
-                
+            delta_x, delta_y = offsets[direction]
+
+            point = kwargs.get("point")
+            if point:
+                # Scroll the scrollable element under the located point, so
+                # nested regions (lists, panels) scroll instead of the page.
+                self.driver.execute_script(
+                    "const el = document.elementFromPoint(arguments[0], arguments[1]);"
+                    "let node = el;"
+                    "while (node && node !== document.body &&"
+                    " node !== document.documentElement &&"
+                    " node.scrollHeight <= node.clientHeight &&"
+                    " node.scrollWidth <= node.clientWidth) {"
+                    " node = node.parentElement;"
+                    "}"
+                    "const target = (node && node !== document.body &&"
+                    " node !== document.documentElement)"
+                    " ? node : (document.scrollingElement || document.documentElement);"
+                    "target.scrollBy(arguments[2], arguments[3]);",
+                    point[0],
+                    point[1],
+                    delta_x,
+                    delta_y,
+                )
+            else:
+                self.driver.execute_script(
+                    "window.scrollBy(arguments[0], arguments[1]);", delta_x, delta_y
+                )
+
         except Exception as e:
             logger.error(f"Failed to scroll {direction}: {e}")
             raise

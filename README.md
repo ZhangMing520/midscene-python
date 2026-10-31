@@ -119,9 +119,67 @@ AI understands page state and performs intelligent assertions:
 await agent.ai_assert("User has successfully logged in")
 ```
 
+## Model Configuration (aligned with upstream Midscene)
+
+Since v0.2.0 the model configuration layer is aligned with the official TypeScript SDK (v1.17.4): models can be split into planning / locate / insight slots, and every unconfigured slot falls back to the default model.
+
+```bash
+# Default model (fallback for all responsibilities)
+export MIDSCENE_MODEL_NAME="doubao-seed-1-6-250515"
+export MIDSCENE_MODEL_API_KEY="sk-..."
+export MIDSCENE_MODEL_BASE_URL="https://ark.cn-beijing.volces.com/api/v3"
+export MIDSCENE_MODEL_FAMILY="doubao-seed"   # required for locate coordinate parsing
+
+# Optional: dedicated (cheaper) locate model
+# export MIDSCENE_LOCATE_MODEL_NAME="qwen3-vl-max"
+# export MIDSCENE_LOCATE_MODEL_FAMILY="qwen3-vl"
+# export MIDSCENE_LOCATE_MODEL_BASE_URL="..."
+# export MIDSCENE_LOCATE_MODEL_API_KEY="..."
+```
+
+Supported model families match upstream `MIDSCENE_MODEL_FAMILY`: `qwen2.5-vl` / `qwen3-vl`, `doubao-seed` / `doubao-vision`, `gemini`, `gpt-5`, `glm-v`, `vlm-ui-tars` variants, `deepseek`, `kimi`, `auto-glm`, etc. The legacy `MIDSCENE_USE_QWEN_VL` / `MIDSCENE_USE_DOUBAO_VISION` switches keep working and map to the corresponding family.
+
+You can also pass the configuration per agent (takes precedence over environment variables):
+
+```python
+agent = Agent(page, AgentOptions(
+    cache_id="my-task",
+    model_config={
+        "MIDSCENE_MODEL_NAME": "qwen3-vl-max",
+        "MIDSCENE_MODEL_FAMILY": "qwen3-vl",
+        "MIDSCENE_MODEL_API_KEY": "sk-...",
+        "MIDSCENE_MODEL_BASE_URL": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    },
+))
+```
+
+### Full parity with the official TypeScript SDK (v1.17.4)
+
+Beyond model configuration, the following are aligned with upstream:
+
+- **Planning loop**: `ai_act` (alias `ai_action`) supports the three `effort` modes (`fast` / `balance` / `deepThink` with sub-goal tracking and dual-image history); `<error>` and `<complete success="false">` fail immediately; action-execution errors are fed back to the planner (up to 5 per loop); Jev delegation switches to the default model with advisory `<planning_advice>`.
+- **Convenience APIs**: `ai_tap / ai_right_click / ai_middle_click / ai_double_click / ai_hover / ai_input / ai_keyboard_press / ai_scroll / ai_long_press / ai_clear_input` (one locate call + action, no planning model), `sleep(ms)`, `ai_query / ai_boolean / ai_number / ai_string / ai_ask / ai_assert(keepRawResponse) / ai_wait_for / ai_locate`.
+- **DeepLocate two-stage locate**: with `deepLocate=True` the section is located first, cropped and upscaled 2x, the element is located on the zoomed image, then mapped back to original coordinates.
+- **All model families**: qwen2.5-vl / qwen3-vl / doubao-seed / doubao-vision / gemini / gpt-5 / gpt-6 / glm-v / kimi / kimi3 / deepseek (dedicated `<｜point｜>` locate protocol) / xiaomi-mimo / ant-ling / vlm-ui-tars (Thought/Action custom planner) / auto-glm (AutoGLM pseudo-code planner) / jev (System One protocol).
+- **Protocols**: both `openai-chat` (stream / non-stream) and `openai-responses` (stream / non-stream); SIWC (ChatGPT plan sign-in) via `midscene model siwc login` (credentials in `~/.midscene/siwc.json`, `MIDSCENE_MODEL_AUTH_MODE=siwc`).
+- **Model fallback**: models that cannot perform a task (e.g. jev for extraction) automatically fall back to the default model.
+- **YAML automation**: `midscene run script.yaml` supports upstream flow commands (`aiAct/aiAssert/aiWaitFor/aiQuery/aiTap/aiInput/aiKeyboardPress/aiScroll/aiDragAndDrop/sleep/javascript`), `${VAR}` interpolation, per-task `continueOnError`, results under `midscene_run/output/`.
+- **Connectivity test**: `midscene model connect` runs the text / vision / aiLocate / default checks in parallel.
+- **Report dump structures**: `midscene.core.dump` mirrors the upstream `IReportActionDump` field layout (`ExecutionDumpBuilder`, `build_execution_task`, `build_service_dump`); `ExecutionDumpBuilder.write_to_disk()` persists `midscene_run/report/*.json`. Automatic report generation/HTML visualization from agent runs is not wired yet.
+
+### Planning loop and caching
+
+- `ai_action` runs the upstream-style "plan -> execute -> feedback" loop: each turn emits one action (Tap/Input/Scroll/KeyboardPress, ...), which is executed and then fed back with a fresh screenshot until `<complete>` or the cycle limit (`MIDSCENE_REPLANNING_CYCLE_LIMIT`, default 20) is reached.
+- With `MIDSCENE_CACHE=1` and a `cache_id`, plans are cached to `midscene_run/cache/<cache_id>.cache.yaml`; rerunning the same instruction replays the cached actions (element locate still re-runs) and falls back to AI planning on any mismatch.
+- Element-level locate caching is not implemented: upstream persists element coordinates through `interface.cacheFeatureForPoint`, which the Python interfaces do not provide. The `cacheable` option is accepted for API parity but does not write a locate cache.
+
+### Semantic retry
+
+When the model output fails structural parsing (invalid coordinates / broken XML / truncated JSON), the parse error is fed back to the model automatically. Control it with `MIDSCENE_MODEL_RETRY_COUNT` (default 1) and `MIDSCENE_MODEL_RETRY_INTERVAL` (default 2000ms).
+
 ### 📝 Credits
 
-Thanks to Midscene Project: https://github.com/web-infra-dev/midscene for inspiration and technical references 
+Thanks to Midscene Project: https://github.com/web-infra-dev/midscene for inspiration and technical references. The AI model layer of this SDK (prompts, planning/locate/insight protocols, multi-slot model config, coordinate parsing) is kept in sync with upstream v1.17.4.
 
 ## License
 

@@ -4,9 +4,8 @@ AI Model Service - Unified interface for different AI providers
 
 import json
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Type
 
-import httpx
 from loguru import logger
 from pydantic import BaseModel
 

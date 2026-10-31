@@ -3,7 +3,7 @@ CLI configuration management
 """
 
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict
 
 import yaml
 from pydantic import BaseModel, Field

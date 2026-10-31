@@ -10,7 +10,7 @@ from loguru import logger
 
 from ..core.types import (
     AbstractInterface, InterfaceType, UIContext, BaseElement, UINode, UITree,
-    Size, Rect, Point, NodeType
+    Size, Rect, NodeType
 )
 
 
@@ -56,6 +56,7 @@ class BridgeWebPage(AbstractInterface):
         """
         self.websocket_url = websocket_url
         self.websocket: Optional[websockets.WebSocketServerProtocol] = None
+        self._server = None
         self._command_id = 0
         self._response_futures: Dict[int, asyncio.Future] = {}
     
@@ -87,7 +88,7 @@ class BridgeWebPage(AbstractInterface):
             logger.info(f"Waiting for extension connection on {self.websocket_url}")
             
             # Start WebSocket server and wait for extension to connect
-            server = await websockets.serve(
+            self._server = await websockets.serve(
                 self._handle_connection,
                 "localhost", 
                 8765
@@ -107,8 +108,13 @@ class BridgeWebPage(AbstractInterface):
             logger.error(f"Failed to connect to extension: {e}")
             raise
     
-    async def _handle_connection(self, websocket, path):
-        """Handle WebSocket connection from extension"""
+    async def _handle_connection(self, websocket, path=None):
+        """Handle WebSocket connection from extension.
+
+        `path` is only passed by the websockets legacy implementation; the
+        asyncio implementation (14+) calls the handler with the connection
+        alone.
+        """
         self.websocket = websocket
         logger.info("Extension connected")
         
@@ -167,7 +173,7 @@ class BridgeWebPage(AbstractInterface):
         except asyncio.TimeoutError:
             self._response_futures.pop(command_id, None)
             raise TimeoutError("Command timeout")
-        except Exception as e:
+        except Exception:
             self._response_futures.pop(command_id, None)
             raise
     
@@ -316,3 +322,7 @@ class BridgeWebPage(AbstractInterface):
         if self.websocket:
             await self.websocket.close()
             self.websocket = None
+        if self._server is not None:
+            self._server.close()
+            await self._server.wait_closed()
+            self._server = None
