@@ -6,6 +6,7 @@ import asyncio
 import json
 import websockets
 from typing import Any, Dict, List, Optional
+from urllib.parse import urlsplit
 from loguru import logger
 
 from ..core.types import (
@@ -88,12 +89,18 @@ class BridgeWebPage(AbstractInterface):
         """Connect to Chrome extension"""
         try:
             logger.info(f"Waiting for extension connection on {self.websocket_url}")
-            
+
+            # Bind the address the extension is configured to dial; the host
+            # and port come from websocket_url (defaults: localhost:8765).
+            parts = urlsplit(self.websocket_url)
+            host = parts.hostname or "localhost"
+            port = parts.port or 8765
+
             # Start WebSocket server and wait for extension to connect
             self._server = await websockets.serve(
                 self._handle_connection,
-                "localhost", 
-                8765
+                host,
+                port
             )
             
             # Wait for connection with timeout

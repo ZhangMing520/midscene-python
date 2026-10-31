@@ -40,6 +40,7 @@ from .ai_model.workflows.context_utils import user_prompt_to_string
 from .ai_model.workflows.jev import jev_plan
 from .ai_model.workflows.locate_service import locate_service
 from .task_cache import TaskCache
+from .dump import ExecutionDumpBuilder, build_execution_task, get_report_file_name
 from .types import (
     AbstractInterface,
     AgentOptions,
@@ -314,17 +315,27 @@ class Agent:
         cacheable = opt.get("cacheable", True)
         cache = self._get_task_cache()
         cached_entry = None
+        report_tasks: List[Dict[str, Any]] = []
         if cache is not None and planning_adapter.cache_enabled and cacheable:
             cached_entry = cache.match_plan_cache(prompt_str)
             if cached_entry:
                 replayed = False
                 try:
-                    replayed = await self._replay_cached_plan(cached_entry)
+                    replayed = await self._replay_cached_plan(
+                        cached_entry, report_tasks
+                    )
                 except Exception as e:
                     logger.warning(f"cached plan replay failed, falling back to AI: {e}")
                 if replayed:
+                    cache_yaml = cached_entry.get(
+                        "yamlWorkflow"
+                    ) or cached_entry.get("yaml_workflow")
+                    self._write_execution_report(
+                        prompt_str, report_tasks, None, cache_yaml=cache_yaml
+                    )
                     return None
                 cache.release_plan_cache(prompt_str)
+                report_tasks.clear()
 
         conversation_history = ConversationHistory()
         error_count = 0
@@ -335,106 +346,130 @@ class Agent:
 
         context = await self._get_ui_context("aiAct")
         replan_count = 0
-        while True:
-            if replan_count > replanning_cycle_limit:
-                raise RuntimeError(
-                    f"Task stopped: the planning cycle limit ({replanning_cycle_limit}) "
-                    "has been reached. This limit prevents the model from getting "
-                    "stuck in an endless planning loop. Increase replanningCycleLimit "
-                    "or set the environment variable MIDSCENE_REPLANNING_CYCLE_LIMIT."
-                )
-
-            # Delegation forces the default planning model for this round.
-            use_delegation_runtime = (
-                plan_result is not None and plan_result.get("delegation")
-            )
-            planning_runtime = (
-                self.model_runtime("default")
-                if use_delegation_runtime
-                else self.model_runtime("planning")
-            )
-
-            plan_result = await self._plan_once(
-                prompt_str,
-                context,
-                planning_runtime,
-                conversation_history,
-                effort=effort,
-                include_locate_in_planning=include_locate_in_planning,
-                planning_advice=planning_advice,
-            )
-            planning_advice = None
-            replan_count += 1
-
-            if plan_result.get("error"):
-                raise RuntimeError(
-                    f"Failed to continue: {plan_result['error']}\n{plan_result.get('log') or ''}"
-                )
-
-            if plan_result.get("finalize_success") is not None:
-                if not plan_result["finalize_success"]:
-                    raise AssertionError(
-                        "Task failed: "
-                        f"{plan_result.get('finalize_message') or 'No error message provided'}\n"
-                        f"{plan_result.get('log') or ''}"
-                    )
-                output_string = plan_result.get("finalize_message")
-                break
-
-            action = plan_result.get("action")
-            if action is None:
-                raise RuntimeError(
-                    "AI planning returned no action and no completion status"
-                )
-
-            if deep_locate:
-                for param_value in (action.get("param") or {}).values():
-                    if (
-                        isinstance(param_value, dict)
-                        and param_value.get("prompt")
-                        and "deepLocate" not in param_value
-                    ):
-                        param_value["deepLocate"] = True
-                    elif (
-                        isinstance(param_value, dict)
-                        and isinstance(param_value.get("locate"), dict)
-                    ):
-                        param_value["locate"].setdefault("deepLocate", True)
-
-            if action.get("type") == "Finished":
-                # Custom planners (UI-TARS) signal completion this way.
-                output_string = (action.get("thought") or "") or None
-                break
-
-            try:
-                await self._execute_planning_action(action)
-                executed_actions.append(
-                    {
-                        "type": action["type"],
-                        **_strip_runtime_locate_result(action.get("param") or {}),
-                    }
-                )
-                await asyncio.sleep(DEFAULT_WAIT_AFTER_ACTION_MS / 1000)
-                conversation_history.pending_feedback_message = (
-                    "Time: "
-                    f"{self._time_string()}, I have finished the action previously planned."
-                )
-            except Exception as e:
-                error_count += 1
-                conversation_history.pending_feedback_message = (
-                    f"Time: {self._time_string()}, Error executing running tasks: "
-                    f"{_truncate(str(e), 500)}"
-                )
-                logger.warning(
-                    f"error when executing planned action, continuing: {e} "
-                    f"(error count: {error_count})"
-                )
-                if error_count > MAX_ERROR_COUNT_IN_ONE_PLANNING_LOOP:
+        report_error: Optional[BaseException] = None
+        try:
+            while True:
+                if replan_count > replanning_cycle_limit:
                     raise RuntimeError(
-                        "Too many errors in one planning loop"
-                    ) from e
+                        f"Task stopped: the planning cycle limit ({replanning_cycle_limit}) "
+                        "has been reached. This limit prevents the model from getting "
+                        "stuck in an endless planning loop. Increase replanningCycleLimit "
+                        "or set the environment variable MIDSCENE_REPLANNING_CYCLE_LIMIT."
+                    )
 
-            context = await self._get_ui_context("aiAct")
+                # Delegation forces the default planning model for this round.
+                use_delegation_runtime = (
+                    plan_result is not None and plan_result.get("delegation")
+                )
+                planning_runtime = (
+                    self.model_runtime("default")
+                    if use_delegation_runtime
+                    else self.model_runtime("planning")
+                )
+
+                plan_result = await self._plan_once(
+                    prompt_str,
+                    context,
+                    planning_runtime,
+                    conversation_history,
+                    effort=effort,
+                    include_locate_in_planning=include_locate_in_planning,
+                    planning_advice=planning_advice,
+                )
+                planning_advice = None
+                replan_count += 1
+
+                if plan_result.get("error"):
+                    raise RuntimeError(
+                        f"Failed to continue: {plan_result['error']}\n{plan_result.get('log') or ''}"
+                    )
+
+                if plan_result.get("finalize_success") is not None:
+                    if not plan_result["finalize_success"]:
+                        raise AssertionError(
+                            "Task failed: "
+                            f"{plan_result.get('finalize_message') or 'No error message provided'}\n"
+                            f"{plan_result.get('log') or ''}"
+                        )
+                    output_string = plan_result.get("finalize_message")
+                    break
+
+                action = plan_result.get("action")
+                if action is None:
+                    raise RuntimeError(
+                        "AI planning returned no action and no completion status"
+                    )
+
+                if deep_locate:
+                    for param_value in (action.get("param") or {}).values():
+                        if (
+                            isinstance(param_value, dict)
+                            and param_value.get("prompt")
+                            and "deepLocate" not in param_value
+                        ):
+                            param_value["deepLocate"] = True
+                        elif (
+                            isinstance(param_value, dict)
+                            and isinstance(param_value.get("locate"), dict)
+                        ):
+                            param_value["locate"].setdefault("deepLocate", True)
+
+                if action.get("type") == "Finished":
+                    # Custom planners (UI-TARS) signal completion this way.
+                    output_string = (action.get("thought") or "") or None
+                    break
+
+                started_at = time.time()
+                try:
+                    await self._execute_planning_action(action)
+                    report_tasks.append(
+                        self._build_action_report_task(
+                            action, started_at, time.time()
+                        )
+                    )
+                    executed_actions.append(
+                        {
+                            "type": action["type"],
+                            **_strip_runtime_locate_result(action.get("param") or {}),
+                        }
+                    )
+                    await asyncio.sleep(DEFAULT_WAIT_AFTER_ACTION_MS / 1000)
+                    conversation_history.pending_feedback_message = (
+                        "Time: "
+                        f"{self._time_string()}, I have finished the action previously planned."
+                    )
+                except Exception as e:
+                    report_tasks.append(
+                        self._build_action_report_task(
+                            action,
+                            started_at,
+                            time.time(),
+                            status="failed",
+                            error=e,
+                        )
+                    )
+                    error_count += 1
+                    conversation_history.pending_feedback_message = (
+                        f"Time: {self._time_string()}, Error executing running tasks: "
+                        f"{_truncate(str(e), 500)}"
+                    )
+                    logger.warning(
+                        f"error when executing planned action, continuing: {e} "
+                        f"(error count: {error_count})"
+                    )
+                    if error_count > MAX_ERROR_COUNT_IN_ONE_PLANNING_LOOP:
+                        raise RuntimeError(
+                            "Too many errors in one planning loop"
+                        ) from e
+
+                context = await self._get_ui_context("aiAct")
+        except BaseException as e:
+            report_error = e
+            raise
+        finally:
+            self._write_execution_report(
+                prompt_str, report_tasks, output_string, error=report_error
+            )
 
         if cache is not None and not cache.read_only_mode and executed_actions:
             cache.append_plan_cache(
@@ -1046,9 +1081,16 @@ class Agent:
         center = element.get("center") if isinstance(element, dict) else None
         if not center:
             return
+        options: Dict[str, Any] = {"target_description": prompt_str}
+        try:
+            # Upstream AiJudgeOrderSensitive always uses the default slot.
+            options["model_runtime"] = self.model_runtime("default")
+        except Exception as e:
+            # Without a runtime the interface falls back to order-insensitive paths.
+            logger.debug(f"order-sensitive judge unavailable: {e}")
         try:
             feature = await self.interface.cache_feature_for_point(
-                [float(center[0]), float(center[1])]
+                [float(center[0]), float(center[1])], options
             )
         except NotImplementedError:
             return
@@ -1111,7 +1153,11 @@ class Agent:
         logger.info(f"Executing action {action_type}: {param}")
         await definition.execute(param, self.interface, self._locate_for_action)
 
-    async def _replay_cached_plan(self, cached_entry: Dict[str, Any]) -> bool:
+    async def _replay_cached_plan(
+        self,
+        cached_entry: Dict[str, Any],
+        reported: Optional[List[Dict[str, Any]]] = None,
+    ) -> bool:
         """Replay a cached YAML plan; returns True on success, False to fall
         back to AI planning (upstream loadYamlFlowAsPlanning)."""
         yaml_flow = cached_entry.get("yamlWorkflow") or cached_entry.get("yaml_workflow")
@@ -1137,9 +1183,101 @@ class Agent:
                 "param": _strip_runtime_locate_result(dict(action_dict)),
             }
             action["param"].pop("type", None)
+            started_at = time.time()
             await self._execute_planning_action(action)
+            if reported is not None:
+                reported.append(
+                    self._build_action_report_task(
+                        action, started_at, time.time()
+                    )
+                )
         logger.info("Cached plan replay completed")
         return True
+
+    # -- execution report ---------------------------------------------------
+
+    @staticmethod
+    def _build_action_report_task(
+        action: Dict[str, Any],
+        started_at: float,
+        finished_at: float,
+        status: str = "finished",
+        error: Optional[BaseException] = None,
+    ) -> Dict[str, Any]:
+        task = build_execution_task(
+            "Action Space",
+            action.get("type"),
+            _strip_runtime_locate_result(action.get("param") or {}),
+            status=status,
+            timing={
+                "start": int(started_at * 1000),
+                "end": int(finished_at * 1000),
+                "cost": int((finished_at - started_at) * 1000),
+            },
+        )
+        if error is not None:
+            task["errorMessage"] = str(error)
+        return task
+
+    def _write_execution_report(
+        self,
+        prompt_str: str,
+        action_tasks: List[Dict[str, Any]],
+        output: Optional[str],
+        error: Optional[BaseException] = None,
+        cache_yaml: Optional[str] = None,
+    ) -> Optional[str]:
+        """Persist the upstream-shaped execution dump for one aiAct run."""
+        if not getattr(self.options, "generate_report", True):
+            return None
+        try:
+            if cache_yaml is not None:
+                # Matches upstream loadYamlFlowAsPlanning task metadata.
+                planning_task = build_execution_task(
+                    "Planning",
+                    "LoadYaml",
+                    {"userInstruction": prompt_str},
+                    status="finished",
+                    output={
+                        "actions": [],
+                        "shouldContinuePlanning": False,
+                        "log": "",
+                        "yamlString": cache_yaml,
+                    },
+                    cache={"hit": True},
+                    hitBy={"from": "Cache", "context": {"yamlString": cache_yaml}},
+                )
+            else:
+                planning_task = build_execution_task(
+                    "Planning",
+                    "Plan",
+                    {"userInstruction": prompt_str},
+                    status="failed" if error is not None else "finished",
+                    output=output,
+                    cache={"hit": False},
+                )
+                if error is not None:
+                    planning_task["errorMessage"] = str(error)
+            tag = getattr(self.interface_type, "value", self.interface_type)
+            name = getattr(self.options, "report_file_name", None)
+            if name:
+                name = os.path.basename(name)
+                if name.lower().endswith((".json", ".html")):
+                    name = name.rsplit(".", 1)[0]
+            else:
+                name = get_report_file_name(tag)
+            builder = ExecutionDumpBuilder(
+                group_name=getattr(self.options, "group_name", "Midscene Report"),
+                group_description=getattr(
+                    self.options, "group_description", ""
+                ),
+                device_type=tag,
+            )
+            builder.add_execution(prompt_str, [planning_task, *action_tasks])
+            return builder.write_to_disk(name)
+        except Exception as e:
+            logger.warning(f"Failed to write execution report: {e}")
+            return None
 
     # ------------------------------------------------------------------
     # Helpers

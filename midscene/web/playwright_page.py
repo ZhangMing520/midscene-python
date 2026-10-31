@@ -13,18 +13,14 @@ from ..core.types import (
     AbstractInterface, InterfaceType, UIContext, BaseElement, UINode, UITree,
     Size, Rect, NodeType
 )
+from ..core.ai_model.workflows.order_sensitive import resolve_order_sensitive
 
 # Locate-cache feature extraction, mirroring upstream getElementXpath:
 # leaf elements use their normalized text, ancestors use sibling indexes.
-_XPATHS_AT_POINT_JS = r"""([x, y]) => {
-  const element = document.elementFromPoint(x, y);
-  if (!element) return [];
-  // Iframes and shadow roots need compound xpaths the cache cannot express;
-  // caching the host/iframe element would click the wrong target on replay.
-  if (element.getRootNode() !== document || element.shadowRoot) return [];
-  const tagName = element.tagName.toLowerCase();
-  if (tagName === 'iframe' || tagName === 'frame') return [];
+_XPATHS_AT_POINT_JS = r"""([x, y, isOrderSensitive]) => {
 
+  const SEP = '|>>|';
+  const MAX_DEPTH = 10;
   const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
   const normalizeText = (text) => (text || '').replace(/\s+/g, ' ').trim();
 
@@ -42,39 +38,124 @@ _XPATHS_AT_POINT_JS = r"""([x, y]) => {
 
   const buildXpath = (node, isLeaf) => {
     if (!node || node.nodeType !== Node.ELEMENT_NODE) return '';
-    const parentPath = buildXpath(node.parentNode, false);
     const tagName = node.nodeName.toLowerCase();
+    // html/body have a single canonical path, as in upstream getElementXpath.
+    if (tagName === 'html') return '/html';
+    if (tagName === 'body') return '/html/body';
+    const parentPath = buildXpath(node.parentNode, false);
     const selector = node.namespaceURI === SVG_NAMESPACE
       ? `*[name()="${tagName}"]`
       : tagName;
     const prefix = parentPath ? `${parentPath}/` : '/';
     const text = normalizeText(node.textContent);
-    if (isLeaf && text && !text.includes('"')) {
+    if (isLeaf && !isOrderSensitive && text && !text.includes('"')) {
       return `${prefix}${selector}[normalize-space()="${text}"]`;
     }
     return `${prefix}${selector}[${indexPath(node)}]`;
   };
 
-  return [buildXpath(element, true)];
+  let currentWindow = window;
+  let currentDocument = document;
+  let left = x;
+  let top = y;
+  let xpathPrefix = '';
+
+  for (let depth = 0; depth < MAX_DEPTH; depth++) {
+    const element = currentDocument.elementFromPoint(left, top);
+    if (!element) return [];
+    // Shadow DOM nodes have no document-level xpath; caching the host would
+    // replay onto the wrong target, so skip caching entirely.
+    if (element.getRootNode() !== currentDocument || element.shadowRoot) return [];
+
+    const tagName = element.tagName.toLowerCase();
+    if (tagName === 'iframe' || tagName === 'frame') {
+      const contentDocument = element.contentDocument;
+      const contentWindow = element.contentWindow;
+      if (contentDocument && contentWindow) {
+        const frameRect = element.getBoundingClientRect();
+        const style = currentWindow.getComputedStyle(element);
+        const zoom = Number.parseFloat(style.zoom || '1') || 1;
+        const paddingLeft = Number.parseFloat(style.paddingLeft) || 0;
+        const paddingTop = Number.parseFloat(style.paddingTop) || 0;
+        left = (left - frameRect.left - element.clientLeft - paddingLeft) / zoom;
+        top = (top - frameRect.top - element.clientTop - paddingTop) / zoom;
+        xpathPrefix += buildXpath(element, false) + SEP;
+        currentWindow = contentWindow;
+        currentDocument = contentDocument;
+        continue;
+      }
+      // Cross-origin frame: its document is unreachable, and caching the
+      // iframe host would replay onto the frame center instead of the target.
+      return [];
+    }
+
+    return [xpathPrefix + buildXpath(element, true)];
+  }
+  return [];
 }"""
 
 _RECT_FOR_XPATH_JS = """(xpath) => {
-  try {
-    const result = document.evaluate(
-      xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
-    );
-    const node = result.singleNodeValue;
+  const SEP = '|>>|';
+  const parts = String(xpath || '')
+    .split(SEP)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (!parts.length) return null;
+
+  let currentDocument = document;
+  let node = null;
+  for (let index = 0; index < parts.length; index++) {
+    let result;
+    try {
+      result = currentDocument.evaluate(
+        parts[index], currentDocument, null,
+        XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null
+      );
+    } catch (error) {
+      return null;
+    }
+    // An ambiguous path must not silently resolve to the first match.
+    if (result.snapshotLength !== 1) return null;
+    node = result.snapshotItem(0);
+    if (index === parts.length - 1) break;
     if (!node || node.nodeType !== Node.ELEMENT_NODE) return null;
-    const rect = node.getBoundingClientRect();
-    return {
-      left: rect.left,
-      top: rect.top,
-      width: rect.width,
-      height: rect.height,
-    };
-  } catch (error) {
-    return null;
+    const tagName = node.tagName.toLowerCase();
+    if (tagName !== 'iframe' && tagName !== 'frame') return null;
+    const nextDocument = node.contentDocument;
+    if (!nextDocument) return null;
+    currentDocument = nextDocument;
   }
+  if (!node || node.nodeType !== Node.ELEMENT_NODE) return null;
+
+  const rect = node.getBoundingClientRect();
+  let left = rect.left;
+  let top = rect.top;
+  let frameDocument = node.ownerDocument;
+  while (frameDocument && frameDocument !== document) {
+    const frame = frameDocument.defaultView && frameDocument.defaultView.frameElement;
+    if (!frame) break;
+    const frameRect = frame.getBoundingClientRect();
+    let borderLeft = 0;
+    let borderTop = 0;
+    let zoom = 1;
+    try {
+      const style = frame.ownerDocument.defaultView.getComputedStyle(frame);
+      borderLeft = Number.parseFloat(style.borderLeftWidth) || 0;
+      borderTop = Number.parseFloat(style.borderTopWidth) || 0;
+      zoom = Number.parseFloat(style.zoom || '1') || 1;
+    } catch (error) {
+      // cross-document style access can fail; use the defaults
+    }
+    left = left / zoom + frameRect.left + borderLeft;
+    top = top / zoom + frameRect.top + borderTop;
+    frameDocument = frame.ownerDocument;
+  }
+  return {
+    left: left,
+    top: top,
+    width: rect.width,
+    height: rect.height,
+  };
 }"""
 
 
@@ -251,9 +332,11 @@ class PlaywrightWebPage(AbstractInterface):
         self, center: List[float], options: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Build the xpath-based locate-cache feature for a point."""
+        order_sensitive = await resolve_order_sensitive(options)
         try:
             xpaths = await self.page.evaluate(
-                _XPATHS_AT_POINT_JS, [float(center[0]), float(center[1])]
+                _XPATHS_AT_POINT_JS,
+                [float(center[0]), float(center[1]), order_sensitive],
             )
         except Exception as e:
             logger.warning(f"Failed to build cache feature for {center}: {e}")

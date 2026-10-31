@@ -5,6 +5,7 @@ Synced from upstream packages/core/src/types.ts:
   AIUsageInfo field names, and the midscene_run directory layout.
 """
 
+import os
 import time
 import uuid
 from pathlib import Path
@@ -21,6 +22,15 @@ def new_task_id() -> str:
 
 def new_log_id() -> str:
     return uuid.uuid4().hex
+
+
+def get_report_file_name(tag: str = "web") -> str:
+    """Report file name in the upstream getReportFileName layout:
+    `<tag>-<YYYY-MM-DD_HH-mm-ss>-<8 chars>`, tag overridable via
+    MIDSCENE_REPORT_TAG_NAME."""
+    report_tag = os.environ.get("MIDSCENE_REPORT_TAG_NAME") or tag
+    timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
+    return f"{report_tag}-{timestamp}-{uuid.uuid4().hex[:8]}"
 
 
 def build_service_dump(
@@ -145,5 +155,6 @@ __all__ = [
     "build_service_dump",
     "build_execution_task",
     "ExecutionDumpBuilder",
+    "get_report_file_name",
     "new_task_id",
 ]

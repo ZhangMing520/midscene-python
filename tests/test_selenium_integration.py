@@ -7,6 +7,7 @@ looked up via CHROMEDRIVER, PATH, or Selenium Manager's cache directory.
 import glob
 import os
 import shutil
+import time
 from urllib.parse import quote
 
 import pytest
@@ -197,7 +198,7 @@ async def test_stale_cache_feature_returns_none(selenium_page):
 
 
 @pytest.mark.asyncio
-async def test_cache_feature_skips_iframe(selenium_page):
+async def test_cache_feature_uses_compound_xpath_inside_iframe(selenium_page):
     page, driver = selenium_page
 
     driver.get(
@@ -206,12 +207,96 @@ async def test_cache_feature_skips_iframe(selenium_page):
             "<style>body{margin:0}</style>"
             "<iframe style='position:absolute;left:100px;top:100px;"
             "width:200px;height:150px;border:0' "
-            "srcdoc=\"<button style='width:100%;height:100%'>inner</button>\"></iframe>"
+            'srcdoc="<style>body{margin:0}</style>'
+            "<button style='width:200px;height:150px'>inner</button>\"></iframe>"
         )
     )
 
     feature = await page.cache_feature_for_point([200, 175])
+    assert feature["xpaths"][0].startswith("/html/body/iframe[1]|>>|")
+    assert "inner" in feature["xpaths"][0]
+
+    rect = await page.rect_matches_cache_feature(feature)
+    assert rect is not None
+    assert round(rect.left) == 100
+    assert round(rect.top) == 100
+    assert round(rect.width) == 200
+    assert round(rect.height) == 150
+
+
+@pytest.mark.asyncio
+async def test_cache_feature_skips_cross_origin_iframe(selenium_page):
+    page, driver = selenium_page
+
+    driver.get(
+        "data:text/html;charset=utf-8,"
+        + quote(
+            "<style>body{margin:0}</style>"
+            "<iframe style='position:absolute;left:100px;top:100px;"
+            "width:200px;height:150px;border:0' "
+            "src='data:text/html,<button style=width:200px;height:150px>"
+            "inner</button>'></iframe>"
+        )
+    )
+    time.sleep(0.3)
+
+    # The frame document is unreachable, so caching the iframe host would
+    # replay onto the frame center instead of the target.
+    feature = await page.cache_feature_for_point([200, 175])
     assert feature["xpaths"] == []
+
+
+@pytest.mark.asyncio
+async def test_cache_feature_rejects_ambiguous_xpath(selenium_page):
+    page, driver = selenium_page
+
+    driver.get(
+        "data:text/html;charset=utf-8,"
+        + quote(
+            "<style>body{margin:0}</style>"
+            "<button style='position:absolute;left:0;top:0;width:100px;"
+            "height:50px'>Submit</button>"
+            "<button style='position:absolute;left:150px;top:0;width:100px;"
+            "height:50px'>Submit</button>"
+        )
+    )
+
+    feature = await page.cache_feature_for_point([200, 25])
+    assert feature["xpaths"]
+    assert await page.rect_matches_cache_feature(feature) is None
+
+
+@pytest.mark.asyncio
+async def test_cache_feature_uses_index_for_order_sensitive(
+    selenium_page, monkeypatch
+):
+    page, driver = selenium_page
+
+    async def fake_judge(options):
+        return True
+
+    monkeypatch.setattr(
+        "midscene.web.selenium_page.resolve_order_sensitive", fake_judge
+    )
+    driver.get(
+        "data:text/html;charset=utf-8,"
+        + quote(
+            "<style>body{margin:0}</style>"
+            "<button style='position:absolute;left:0;top:0;width:100px;"
+            "height:50px'>Submit</button>"
+            "<button style='position:absolute;left:150px;top:0;width:100px;"
+            "height:50px'>Submit</button>"
+        )
+    )
+
+    feature = await page.cache_feature_for_point(
+        [200, 25], {"target_description": "the second Submit button"}
+    )
+    assert feature["xpaths"][0].endswith("/button[2]")
+
+    rect = await page.rect_matches_cache_feature(feature)
+    assert rect is not None
+    assert round(rect.left) == 150
 
 
 @pytest.mark.asyncio

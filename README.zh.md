@@ -166,13 +166,13 @@ agent = Agent(page, AgentOptions(
 - **模型回退**：jev 等不支持数据提取的模型在 extract 任务上自动回退默认模型。
 - **YAML 自动化脚本**：`midscene run script.yaml` 支持 `aiAct/aiAssert/aiWaitFor/aiQuery/aiTap/aiInput/aiKeyboardPress/aiScroll/aiDragAndDrop/sleep/javascript` 等上游同款 flow 指令、`${VAR}` 环境变量插值、任务 `continueOnError`、结果输出到 `midscene_run/output/`。
 - **连通性测试**：`midscene model connect` 并行执行文本 / 视觉 / 定位 / 默认四项检查。
-- **报告 dump 结构**：`midscene.core.dump` 对齐上游 `IReportActionDump` 字段结构（`ExecutionDumpBuilder`、`build_execution_task`、`build_service_dump`），`ExecutionDumpBuilder.write_to_disk()` 可写入 `midscene_run/report/*.json`；Agent 运行时的自动报告生成 / HTML 可视化尚未接入。
+- **执行报告**：每次 `ai_act` 运行都会自动写入上游格式的 JSON 报告 `midscene_run/report/<tag>-<YYYY-MM-DD_HH-mm-ss>-<8 位随机串>.json`（tag 默认取接口类型，可用 `MIDSCENE_REPORT_TAG_NAME` 覆盖），记录规划输出、每个动作的墙钟耗时/状态/错误，缓存回放则写入上游同款 `LoadYaml` 任务（含 `cache.hit` / `hitBy` 标记）；`AgentOptions` 的 `generate_report`、`report_file_name`、`group_name` / `group_description` 均会生效。`midscene.core.dump` 对齐上游 `IReportActionDump` 字段结构（`ExecutionDumpBuilder`、`build_execution_task`、`build_service_dump`）。HTML 可视化尚未移植。
 
 ### 规划循环与缓存
 
 - `ai_action` 采用上游同款「规划 → 执行 → 反馈」循环：每轮输出一个动作（Tap/Input/Scroll/KeyboardPress 等），执行后带截图反馈重新规划，直到 `<complete>` 或达到循环上限（`MIDSCENE_REPLANNING_CYCLE_LIMIT`，默认 20）。
 - 开启 `MIDSCENE_CACHE=1` 并提供 `cache_id` 后，规划结果会缓存到 `midscene_run/cache/<cache_id>.cache.yaml`，同一指令重跑时直接回放缓存动作（命中元素级定位缓存时直接复用坐标），命中失败自动回退 AI 重新规划。
-- 元素级定位缓存（Playwright / Selenium）：定位成功后把目标点上的元素以 XPath 特征写入同一个 YAML 缓存（对齐 `interface.cacheFeatureForPoint`），下次运行直接由缓存还原坐标、不再调用模型；Android / Bridge 等未实现该钩子的接口以及 iframe / Shadow DOM 内元素仍走 AI 定位。
+- 元素级定位缓存（Playwright / Selenium）：定位成功后把目标点上的元素以 XPath 特征写入同一个 YAML 缓存（对齐 `interface.cacheFeatureForPoint`），下次运行直接由缓存还原坐标、不再调用模型。iframe 内元素通过 `...|>>|...` 复合 XPath 支持，跨 frame 累加偏移（与上游一致）；某段 XPath 命中多个元素时不写入缓存（避免误点第一个），交给 AI 重新定位；位置相关描述（如「第二个按钮」）会由 AI 判断顺序敏感性并生成带索引的 XPath。Android / Bridge 等未实现该钩子的接口、Shadow DOM 内元素，以及无法访问文档的跨域 iframe 仍走 AI 定位。
 
 ### 语义重试
 

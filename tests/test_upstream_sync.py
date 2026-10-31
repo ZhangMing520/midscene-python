@@ -1340,6 +1340,33 @@ tasks:
             server.close()
             await server.wait_closed()
 
+    @pytest.mark.asyncio
+    async def test_bridge_connect_uses_url_host_and_port(self, monkeypatch):
+        import websockets
+
+        from midscene.web.bridge import BridgeWebPage
+
+        captured = {}
+
+        async def fake_serve(handler, host, port):
+            captured.update(host=host, port=port)
+
+            class FakeServer:
+                def close(self):
+                    pass
+
+                async def wait_closed(self):
+                    pass
+
+            return FakeServer()
+
+        monkeypatch.setattr(websockets, "serve", fake_serve)
+        bridge = BridgeWebPage("ws://127.0.0.1:9000")
+        bridge.websocket = object()
+        await bridge.connect()
+
+        assert captured == {"host": "127.0.0.1", "port": 9000}
+
     def test_action_space_ignores_unimplemented_stubs(self):
         from midscene.core.types import AbstractInterface, InterfaceType
 

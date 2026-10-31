@@ -4,6 +4,7 @@ Test suite for Midscene Python core functionality (upstream-synced architecture)
 
 import base64
 import json
+import re
 from typing import Any, Dict, List, Optional
 from unittest.mock import AsyncMock, patch
 
@@ -1327,6 +1328,7 @@ class _CacheInterface(MockInterface):
     def __init__(self):
         super().__init__()
         self.features: List[list] = []
+        self.feature_options: List[Any] = []
         self.resolved: List[Dict[str, Any]] = []
         self.rect_to_return: Optional[Rect] = Rect(
             left=10, top=20, width=30, height=40
@@ -1334,6 +1336,7 @@ class _CacheInterface(MockInterface):
 
     async def cache_feature_for_point(self, center, options=None):
         self.features.append(list(center))
+        self.feature_options.append(options)
         return {"xpaths": ["/html/body/button[1]"]}
 
     async def rect_matches_cache_feature(self, feature):
@@ -1426,6 +1429,7 @@ class TestLocateCache:
         await agent._locate_for_action({"prompt": "the button"})
 
         assert interface.features == [[25.0, 40.0]]
+        assert interface.feature_options[0]["target_description"] == "the button"
         reloaded = TaskCache(cache_id="locate-write", enabled=True)
         assert reloaded.match_locate_cache("the button")["cache"] == {
             "xpaths": ["/html/body/button[1]"]
@@ -1539,6 +1543,257 @@ class TestLocateCache:
         await agent._locate_for_action({"prompt": "the button"})
 
         assert agent._get_task_cache().cache["caches"] == []
+
+    @pytest.mark.asyncio
+    async def test_order_sensitive_judge_result_is_used(self, monkeypatch):
+        from midscene.core.ai_model.workflows import order_sensitive
+
+        captured = {}
+
+        async def fake_call(messages, runtime, options):
+            captured["messages"] = messages
+            return {"content": '{"isOrderSensitive": true}'}
+
+        monkeypatch.setattr(order_sensitive, "call_generative_ai", fake_call)
+        result = await order_sensitive.resolve_order_sensitive(
+            {"target_description": "the second button", "model_runtime": object()}
+        )
+
+        assert result is True
+        assert "the second button" in captured["messages"][1]["content"]
+
+    @pytest.mark.asyncio
+    async def test_order_sensitive_judge_falls_back_to_false(self, monkeypatch):
+        from midscene.core.ai_model.workflows import order_sensitive
+
+        async def fail_call(*args, **kwargs):
+            raise RuntimeError("model down")
+
+        monkeypatch.setattr(order_sensitive, "call_generative_ai", fail_call)
+
+        assert await order_sensitive.resolve_order_sensitive(None) is False
+        assert (
+            await order_sensitive.resolve_order_sensitive(
+                {"target_description": "x", "model_runtime": object()}
+            )
+            is False
+        )
+
+
+class TestExecutionReport:
+    MODEL_CONFIG = {
+        "MIDSCENE_MODEL_NAME": "mock-model",
+        "MIDSCENE_MODEL_API_KEY": "sk-test",
+        "MIDSCENE_MODEL_BASE_URL": "https://example.com/v1",
+        "MIDSCENE_MODEL_FAMILY": "gpt-5",
+    }
+
+    @staticmethod
+    def _read_report(tmp_path):
+        files = sorted((tmp_path / "report").glob("*.json"))
+        assert len(files) == 1
+        return files[0], json.loads(files[0].read_text(encoding="utf-8"))
+
+    @pytest.mark.asyncio
+    async def test_ai_action_writes_report_on_success(
+        self, mock_interface, tmp_path, monkeypatch
+    ):
+        from midscene.core.agent import Agent
+        from midscene.core.ai_model.env_config import MIDSCENE_RUN_DIR
+
+        monkeypatch.setenv(MIDSCENE_RUN_DIR, str(tmp_path))
+        responses = [
+            (
+                "<action-type>Tap</action-type>\n"
+                "<action-param-json>\n"
+                '{"locate": {"prompt": "the button", '
+                '"bbox": [190, 115, 210, 135], '
+                '"locatedPixelResult": {"center": [200, 125]}}}\n'
+                "</action-param-json>"
+            ),
+            '<complete success="true">finished</complete>',
+        ]
+        calls = {"n": 0}
+
+        async def planning_handler(*args, **kwargs):
+            calls["n"] += 1
+            return {"content": responses[calls["n"] - 1], "usage": None}
+
+        with patch_model_call(
+            "midscene.core.ai_model.workflows.planning", planning_handler
+        ):
+            agent = Agent(
+                mock_interface, AgentOptions(model_config=self.MODEL_CONFIG)
+            )
+            assert await agent.ai_action("tap the test button") == "finished"
+
+        path, dump = self._read_report(tmp_path)
+        assert re.match(
+            r"^web-\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}-[0-9a-f]{8}\.json$",
+            path.name,
+        )
+        assert dump["deviceType"] == "web"
+        execution = dump["executions"][0]
+        assert execution["name"] == "tap the test button"
+
+        planning, action = execution["tasks"]
+        assert planning["type"] == "Planning"
+        assert planning["status"] == "finished"
+        assert planning["output"] == "finished"
+        assert planning["cache"] == {"hit": False}
+        assert action["type"] == "Action Space"
+        assert action["subType"] == "Tap"
+        assert action["status"] == "finished"
+        assert "errorMessage" not in action
+        # The plan carried locatedPixelResult; the dump must drop it so a
+        # cached replay can never click stale screenshot coordinates.
+        assert action["param"]["locate"] == {"prompt": "the button"}
+        assert action["timing"]["cost"] >= 0
+        # Report timestamps are wall-clock epoch ms, like upstream Date.now().
+        assert abs(action["timing"]["start"] - planning["logTime"]) < 60_000
+
+    @pytest.mark.asyncio
+    async def test_ai_action_writes_failed_report(
+        self, mock_interface, tmp_path, monkeypatch
+    ):
+        from midscene.core.agent import Agent
+        from midscene.core.ai_model.env_config import MIDSCENE_RUN_DIR
+
+        monkeypatch.setenv(MIDSCENE_RUN_DIR, str(tmp_path))
+        with patch_model_call(
+            "midscene.core.ai_model.workflows.planning",
+            lambda *a, **k: {
+                "content": '<complete success="false">could not find it</complete>',
+                "usage": None,
+            },
+        ):
+            agent = Agent(
+                mock_interface, AgentOptions(model_config=self.MODEL_CONFIG)
+            )
+            with pytest.raises(AssertionError):
+                await agent.ai_action("do the impossible")
+
+        _, dump = self._read_report(tmp_path)
+        tasks = dump["executions"][0]["tasks"]
+        assert len(tasks) == 1
+        assert tasks[0]["type"] == "Planning"
+        assert tasks[0]["status"] == "failed"
+        assert tasks[0]["output"] is None
+        assert "could not find it" in tasks[0]["errorMessage"]
+
+    @pytest.mark.asyncio
+    async def test_cached_replay_report_marks_cache_hit(
+        self, mock_interface, tmp_path, monkeypatch
+    ):
+        from midscene.core.agent import Agent
+        from midscene.core.ai_model.env_config import MIDSCENE_RUN_DIR
+
+        monkeypatch.setenv(MIDSCENE_RUN_DIR, str(tmp_path))
+        yaml_workflow = (
+            "tasks:\n"
+            "  - name: t\n"
+            "    flow:\n"
+            "      - type: Sleep\n"
+            "        timeMs: 1\n"
+        )
+        agent = Agent(
+            mock_interface,
+            AgentOptions(cache_id="report-replay", model_config=self.MODEL_CONFIG),
+        )
+        agent._get_task_cache().append_plan_cache("cached prompt", yaml_workflow)
+
+        async def fake_execute(action):
+            return None
+
+        monkeypatch.setattr(agent, "_execute_planning_action", fake_execute)
+
+        async def fail_planning(*args, **kwargs):
+            raise AssertionError("planning must not run on a cache replay")
+
+        with patch_model_call(
+            "midscene.core.ai_model.workflows.planning", fail_planning
+        ):
+            assert await agent.ai_action("cached prompt") is None
+
+        _, dump = self._read_report(tmp_path)
+        planning, action = dump["executions"][0]["tasks"]
+        assert planning["status"] == "finished"
+        assert planning["subType"] == "LoadYaml"
+        assert planning["cache"] == {"hit": True}
+        assert planning["hitBy"]["from"] == "Cache"
+        assert planning["hitBy"]["context"]["yamlString"] == yaml_workflow
+        assert planning["output"]["yamlString"] == yaml_workflow
+        assert planning["output"]["shouldContinuePlanning"] is False
+        assert action["subType"] == "Sleep"
+        assert action["status"] == "finished"
+
+    def test_report_file_name_format_and_env_tag(self, monkeypatch):
+        from midscene.core.dump import get_report_file_name
+
+        monkeypatch.delenv("MIDSCENE_REPORT_TAG_NAME", raising=False)
+        assert re.match(
+            r"^android-\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}-[0-9a-f]{8}$",
+            get_report_file_name("android"),
+        )
+
+        monkeypatch.setenv("MIDSCENE_REPORT_TAG_NAME", "my-suite")
+        assert get_report_file_name("web").startswith("my-suite-")
+
+    @pytest.mark.asyncio
+    async def test_generate_report_false_writes_no_dump(
+        self, mock_interface, tmp_path, monkeypatch
+    ):
+        from midscene.core.agent import Agent
+        from midscene.core.ai_model.env_config import MIDSCENE_RUN_DIR
+
+        monkeypatch.setenv(MIDSCENE_RUN_DIR, str(tmp_path))
+        with patch_model_call(
+            "midscene.core.ai_model.workflows.planning",
+            lambda *a, **k: {
+                "content": '<complete success="true">done</complete>',
+                "usage": None,
+            },
+        ):
+            agent = Agent(
+                mock_interface,
+                AgentOptions(
+                    model_config=self.MODEL_CONFIG, generate_report=False
+                ),
+            )
+            assert await agent.ai_action("no report") == "done"
+
+        assert list((tmp_path / "report").glob("*.json")) == []
+
+    @pytest.mark.asyncio
+    async def test_report_file_name_and_group_metadata(
+        self, mock_interface, tmp_path, monkeypatch
+    ):
+        from midscene.core.agent import Agent
+        from midscene.core.ai_model.env_config import MIDSCENE_RUN_DIR
+
+        monkeypatch.setenv(MIDSCENE_RUN_DIR, str(tmp_path))
+        with patch_model_call(
+            "midscene.core.ai_model.workflows.planning",
+            lambda *a, **k: {
+                "content": '<complete success="true">done</complete>',
+                "usage": None,
+            },
+        ):
+            agent = Agent(
+                mock_interface,
+                AgentOptions(
+                    model_config=self.MODEL_CONFIG,
+                    report_file_name="suite-report.html",
+                    group_name="My Suite",
+                    group_description="Regression run",
+                ),
+            )
+            assert await agent.ai_action("custom report") == "done"
+
+        path, dump = self._read_report(tmp_path)
+        assert path.name == "suite-report.json"
+        assert dump["groupName"] == "My Suite"
+        assert dump["groupDescription"] == "Regression run"
 
 
 if __name__ == "__main__":

@@ -151,19 +151,95 @@ async def test_stale_cache_feature_returns_none(web_page):
 
 
 @pytest.mark.asyncio
-async def test_cache_feature_skips_iframe(web_page):
+async def test_cache_feature_uses_compound_xpath_inside_iframe(web_page):
     web, page = web_page
 
     await page.set_content(
         "<style>body{margin:0}</style>"
         "<iframe style='position:absolute;left:100px;top:100px;"
         "width:200px;height:150px;border:0' "
-        "srcdoc=\"<button style='width:100%;height:100%'>inner</button>\"></iframe>"
+        'srcdoc="<style>body{margin:0}</style>'
+        "<button style='width:200px;height:150px'>inner</button>\"></iframe>"
     )
     await page.wait_for_timeout(100)
 
     feature = await web.cache_feature_for_point([200, 175])
+    assert feature["xpaths"][0].startswith("/html/body/iframe[1]|>>|")
+    assert "inner" in feature["xpaths"][0]
+
+    rect = await web.rect_matches_cache_feature(feature)
+    assert rect is not None
+    assert round(rect.left) == 100
+    assert round(rect.top) == 100
+    assert round(rect.width) == 200
+    assert round(rect.height) == 150
+
+
+@pytest.mark.asyncio
+async def test_cache_feature_skips_cross_origin_iframe(web_page):
+    web, page = web_page
+
+    await page.set_content(
+        "<style>body{margin:0}</style>"
+        "<iframe style='position:absolute;left:100px;top:100px;"
+        "width:200px;height:150px;border:0' "
+        'src="data:text/html,<button style=\'width:200px;height:150px\'>'
+        'inner</button>"></iframe>'
+    )
+    await page.wait_for_timeout(200)
+
+    # The frame document is unreachable, so caching the iframe host would
+    # replay onto the frame center instead of the target.
+    feature = await web.cache_feature_for_point([200, 175])
     assert feature["xpaths"] == []
+
+
+@pytest.mark.asyncio
+async def test_cache_feature_rejects_ambiguous_xpath(web_page):
+    web, page = web_page
+
+    await page.set_content(
+        "<style>body{margin:0}</style>"
+        "<button style='position:absolute;left:0;top:0;width:100px;"
+        "height:50px'>Submit</button>"
+        "<button style='position:absolute;left:150px;top:0;width:100px;"
+        "height:50px'>Submit</button>"
+    )
+
+    feature = await web.cache_feature_for_point([200, 25])
+    assert feature["xpaths"]
+
+    # Both buttons share the same text xpath; guessing the first match would
+    # click the wrong element, so the cache must reject it.
+    assert await web.rect_matches_cache_feature(feature) is None
+
+
+@pytest.mark.asyncio
+async def test_cache_feature_uses_index_for_order_sensitive(web_page, monkeypatch):
+    web, page = web_page
+
+    async def fake_judge(options):
+        return True
+
+    monkeypatch.setattr(
+        "midscene.web.playwright_page.resolve_order_sensitive", fake_judge
+    )
+    await page.set_content(
+        "<style>body{margin:0}</style>"
+        "<button style='position:absolute;left:0;top:0;width:100px;"
+        "height:50px'>Submit</button>"
+        "<button style='position:absolute;left:150px;top:0;width:100px;"
+        "height:50px'>Submit</button>"
+    )
+
+    feature = await web.cache_feature_for_point(
+        [200, 25], {"target_description": "the second Submit button"}
+    )
+    assert feature["xpaths"][0].endswith("/button[2]")
+
+    rect = await web.rect_matches_cache_feature(feature)
+    assert rect is not None
+    assert round(rect.left) == 150
 
 
 @pytest.mark.asyncio
