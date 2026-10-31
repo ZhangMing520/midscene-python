@@ -48,6 +48,7 @@ from .types import (
     ScrollParam,
     TUserPrompt,
     UIContext,
+    supports_interface_extension,
 )
 
 # Task types for model-fallback resolution (upstream ModelTaskType)
@@ -957,23 +958,105 @@ class Agent:
     # ------------------------------------------------------------------
 
     async def _locate_for_action(self, locate_param: Any) -> Dict[str, Any]:
-        """Resolve a planning locate parameter to pixel coordinates."""
+        """Resolve a planning locate parameter to pixel coordinates.
+
+        Locate-cache order mirrors upstream task-builder: plan coordinates win,
+        then a cached xpath is resolved, then AI locate runs, and a successful
+        locate writes the element feature back to the cache.
+        """
         if not isinstance(locate_param, dict):
             raise ValueError(f"locate parameter must be an object, got {locate_param!r}")
         prompt = locate_param.get("prompt")
         if not prompt:
             raise ValueError("locate parameter requires a prompt")
 
+        prompt_str = user_prompt_to_string(prompt)
+        cacheable = locate_param.get("cacheable", True)
+        cache = self._get_task_cache()
+
         cached_pixel = locate_param.get("locatedPixelResult")
         if cached_pixel and cached_pixel.get("center"):
+            # Fresh plan coordinates take precedence over the cache. Record the
+            # feature once for future runs, unless an entry already exists.
+            if not (cache is not None and cache.has_locate_cache(prompt_str)):
+                await self._write_locate_cache(
+                    prompt_str, cached_pixel, cache, cacheable, None
+                )
             return cached_pixel
 
+        replace_index: Optional[int] = None
+        if (
+            cache is not None
+            and cacheable is not False
+            and supports_interface_extension(
+                self.interface, "rect_matches_cache_feature"
+            )
+        ):
+            matched = cache.match_locate_cache(prompt_str)
+            if matched is not None:
+                rect = await self._rect_from_cache_feature(matched["cache"])
+                if rect is not None:
+                    return {
+                        "center": [
+                            rect.left + rect.width / 2,
+                            rect.top + rect.height / 2,
+                        ],
+                        "rect": rect,
+                        "description": prompt_str,
+                    }
+                # Stale feature: re-locate and replace this entry in place.
+                replace_index = matched["index"]
+
         context = await self._get_ui_context("locate")
-        return await self._run_locate(
+        element = await self._run_locate(
             prompt,
             context,
             deep_locate=bool(locate_param.get("deepLocate")),
         )
+        await self._write_locate_cache(
+            prompt_str, element, cache, cacheable, replace_index
+        )
+        return element
+
+    async def _rect_from_cache_feature(self, feature: Dict[str, Any]):
+        try:
+            return await self.interface.rect_matches_cache_feature(feature)
+        except NotImplementedError:
+            return None
+        except Exception as e:
+            logger.warning(f"Failed to resolve locate cache feature: {e}")
+            return None
+
+    async def _write_locate_cache(
+        self,
+        prompt_str: str,
+        element: Dict[str, Any],
+        cache: Optional[TaskCache],
+        cacheable: Any,
+        replace_index: Optional[int] = None,
+    ) -> None:
+        if (
+            cache is None
+            or cacheable is False
+            or not supports_interface_extension(
+                self.interface, "cache_feature_for_point"
+            )
+        ):
+            return
+        center = element.get("center") if isinstance(element, dict) else None
+        if not center:
+            return
+        try:
+            feature = await self.interface.cache_feature_for_point(
+                [float(center[0]), float(center[1])]
+            )
+        except NotImplementedError:
+            return
+        except Exception as e:
+            logger.warning(f"Failed to build locate cache feature: {e}")
+            return
+        if isinstance(feature, dict) and feature.get("xpaths"):
+            cache.append_locate_cache(prompt_str, feature, replace_index)
 
     async def _run_locate(
         self,

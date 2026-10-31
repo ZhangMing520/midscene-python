@@ -9,7 +9,7 @@ import asyncio
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
-from .types import AbstractInterface
+from .types import supports_interface_extension
 
 LOCATE_PARAM = {
     "type": "{ prompt: string }",
@@ -19,9 +19,7 @@ LOCATE_PARAM = {
 
 def _supports(device: Any, primitive: str) -> bool:
     """True when the concrete interface overrides the base-class stub."""
-    base = getattr(AbstractInterface, primitive, None)
-    implementation = getattr(type(device), primitive, None)
-    return implementation is not None and implementation is not base
+    return supports_interface_extension(device, primitive)
 
 
 @dataclass

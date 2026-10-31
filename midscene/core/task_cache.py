@@ -64,6 +64,9 @@ class TaskCache:
                 logger.warning(f"Failed to read cache file, will create new one: {e}")
 
         self.cache_original_length = len(self.cache.get("caches", []))
+        # Consumed locate entries for this run only; upstream keeps this in
+        # memory so a fresh Agent run can reuse the same cache file.
+        self._locate_matched_indices = set()
 
     # -- matching -----------------------------------------------------------
 
@@ -122,6 +125,67 @@ class TaskCache:
                 changed = True
         if changed:
             self._flush()
+
+    # -- locate entries ------------------------------------------------------
+
+    def match_locate_cache(self, prompt: Any) -> Optional[Dict[str, Any]]:
+        """Match the next unconsumed locate entry for the prompt.
+
+        Returns ``{"cache": feature, "index": index, "prompt": prompt_str}``.
+        Each entry is consumed once per run so repeated prompts keep their own
+        occurrence, mirroring upstream `matchCache('locate')`.
+        """
+        if not self.enabled or self.write_only_mode:
+            return None
+        prompt_str = prompt if isinstance(prompt, str) else str(prompt)
+        for index, entry in enumerate(self.cache.get("caches", [])):
+            if entry.get("type") != "locate" or index in self._locate_matched_indices:
+                continue
+            if entry.get("prompt") != prompt_str:
+                continue
+            feature = entry.get("cache")
+            if not feature and entry.get("xpaths"):
+                feature = {"xpaths": entry["xpaths"]}
+            if not isinstance(feature, dict) or not feature.get("xpaths"):
+                continue
+            self._locate_matched_indices.add(index)
+            self.is_cache_result_used = True
+            logger.info(f"Matched locate cache for prompt: {prompt_str[:50]}")
+            return {"cache": feature, "index": index, "prompt": prompt_str}
+        return None
+
+    def has_locate_cache(self, prompt: Any) -> bool:
+        """True when the prompt already has a non-empty locate entry.
+
+        Non-consuming: used to avoid appending a duplicate entry when the plan
+        supplies the coordinates (upstream ``hasNonEmptyCache`` check).
+        """
+        prompt_str = prompt if isinstance(prompt, str) else str(prompt)
+        for entry in self.cache.get("caches", []):
+            if entry.get("type") != "locate" or entry.get("prompt") != prompt_str:
+                continue
+            feature = entry.get("cache") or {"xpaths": entry.get("xpaths")}
+            if isinstance(feature, dict) and feature.get("xpaths"):
+                return True
+        return False
+
+    def append_locate_cache(
+        self,
+        prompt: Any,
+        feature: Dict[str, Any],
+        replace_index: Optional[int] = None,
+    ) -> None:
+        """Append a locate entry, or replace a stale matched entry in place."""
+        if not self.enabled or self.read_only_mode:
+            return
+        prompt_str = prompt if isinstance(prompt, str) else str(prompt)
+        record = {"type": "locate", "prompt": prompt_str, "cache": feature}
+        caches = self.cache.setdefault("caches", [])
+        if replace_index is not None and 0 <= replace_index < len(caches):
+            caches[replace_index] = record
+        else:
+            caches.append(record)
+        self._flush()
 
     # -- persistence --------------------------------------------------------
 

@@ -171,8 +171,8 @@ agent = Agent(page, AgentOptions(
 ### 规划循环与缓存
 
 - `ai_action` 采用上游同款「规划 → 执行 → 反馈」循环：每轮输出一个动作（Tap/Input/Scroll/KeyboardPress 等），执行后带截图反馈重新规划，直到 `<complete>` 或达到循环上限（`MIDSCENE_REPLANNING_CYCLE_LIMIT`，默认 20）。
-- 开启 `MIDSCENE_CACHE=1` 并提供 `cache_id` 后，规划结果会缓存到 `midscene_run/cache/<cache_id>.cache.yaml`，同一指令重跑时直接回放缓存动作（元素定位仍会重新执行），命中失败自动回退 AI 重新规划。
-- 元素级定位缓存尚未实现：上游通过 `interface.cacheFeatureForPoint` 持久化元素坐标，当前 Python 各接口未提供该能力。`cacheable` 参数为保持 API 对齐而保留，但不会写入定位缓存。
+- 开启 `MIDSCENE_CACHE=1` 并提供 `cache_id` 后，规划结果会缓存到 `midscene_run/cache/<cache_id>.cache.yaml`，同一指令重跑时直接回放缓存动作（命中元素级定位缓存时直接复用坐标），命中失败自动回退 AI 重新规划。
+- 元素级定位缓存（Playwright / Selenium）：定位成功后把目标点上的元素以 XPath 特征写入同一个 YAML 缓存（对齐 `interface.cacheFeatureForPoint`），下次运行直接由缓存还原坐标、不再调用模型；Android / Bridge 等未实现该钩子的接口以及 iframe / Shadow DOM 内元素仍走 AI 定位。
 
 ### 语义重试
 

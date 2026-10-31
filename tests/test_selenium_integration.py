@@ -25,9 +25,14 @@ DEMO_PAGE = """
     position: absolute; left: 500px; top: 100px;
     width: 80px; height: 80px; background: #c00;
   }
+  #label {
+    position: absolute; left: 50px; top: 300px;
+    width: 200px; height: 30px;
+  }
 </style>
 <div id="region"><div id="region-inner"></div></div>
 <div id="card"></div>
+<div id="label">Unique label</div>
 <script>
   window.__events = { clicks: [], down: null, up: null, moves: 0 };
   document.addEventListener('mousedown', (event) => {
@@ -151,3 +156,80 @@ async def test_single_action_scroll_uses_located_region(selenium_page):
     state = _region_state(driver)
     assert 0 < state["top"] <= 200
     assert state["windowY"] == 0
+
+
+@pytest.mark.asyncio
+async def test_cache_feature_roundtrip(selenium_page):
+    page, driver = selenium_page
+
+    feature = await page.cache_feature_for_point([540, 140])
+    assert feature["xpaths"]
+
+    rect = await page.rect_matches_cache_feature(feature)
+    assert rect is not None
+    assert round(rect.left) == 500
+    assert round(rect.top) == 100
+    assert round(rect.width) == 80
+    assert round(rect.height) == 80
+
+
+@pytest.mark.asyncio
+async def test_cache_feature_uses_text_for_leaf(selenium_page):
+    page, driver = selenium_page
+
+    feature = await page.cache_feature_for_point([80, 310])
+    assert any("Unique label" in xpath for xpath in feature["xpaths"])
+
+    rect = await page.rect_matches_cache_feature(feature)
+    assert rect is not None
+    assert round(rect.left) == 50
+    assert round(rect.top) == 300
+
+
+@pytest.mark.asyncio
+async def test_stale_cache_feature_returns_none(selenium_page):
+    page, driver = selenium_page
+
+    rect = await page.rect_matches_cache_feature(
+        {"xpaths": ["//*[@id='missing-element']"]}
+    )
+    assert rect is None
+
+
+@pytest.mark.asyncio
+async def test_cache_feature_skips_iframe(selenium_page):
+    page, driver = selenium_page
+
+    driver.get(
+        "data:text/html;charset=utf-8,"
+        + quote(
+            "<style>body{margin:0}</style>"
+            "<iframe style='position:absolute;left:100px;top:100px;"
+            "width:200px;height:150px;border:0' "
+            "srcdoc=\"<button style='width:100%;height:100%'>inner</button>\"></iframe>"
+        )
+    )
+
+    feature = await page.cache_feature_for_point([200, 175])
+    assert feature["xpaths"] == []
+
+
+@pytest.mark.asyncio
+async def test_cache_feature_skips_shadow_dom(selenium_page):
+    page, driver = selenium_page
+
+    driver.get(
+        "data:text/html;charset=utf-8,"
+        + quote(
+            "<style>body{margin:0}</style>"
+            "<div id='host' style='position:absolute;left:50px;top:50px;"
+            "width:200px;height:100px'></div>"
+            "<script>"
+            "document.getElementById('host').attachShadow({mode: 'open'}).innerHTML ="
+            "'<button style=\"width:100%;height:100%\">shadow button</button>';"
+            "</script>"
+        )
+    )
+
+    feature = await page.cache_feature_for_point([150, 100])
+    assert feature["xpaths"] == []

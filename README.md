@@ -170,8 +170,8 @@ Beyond model configuration, the following are aligned with upstream:
 ### Planning loop and caching
 
 - `ai_action` runs the upstream-style "plan -> execute -> feedback" loop: each turn emits one action (Tap/Input/Scroll/KeyboardPress, ...), which is executed and then fed back with a fresh screenshot until `<complete>` or the cycle limit (`MIDSCENE_REPLANNING_CYCLE_LIMIT`, default 20) is reached.
-- With `MIDSCENE_CACHE=1` and a `cache_id`, plans are cached to `midscene_run/cache/<cache_id>.cache.yaml`; rerunning the same instruction replays the cached actions (element locate still re-runs) and falls back to AI planning on any mismatch.
-- Element-level locate caching is not implemented: upstream persists element coordinates through `interface.cacheFeatureForPoint`, which the Python interfaces do not provide. The `cacheable` option is accepted for API parity but does not write a locate cache.
+- With `MIDSCENE_CACHE=1` and a `cache_id`, plans are cached to `midscene_run/cache/<cache_id>.cache.yaml`; rerunning the same instruction replays the cached actions (locate results are reused when the element-level cache is available) and falls back to AI planning on any mismatch.
+- Element-level locate caching (Playwright / Selenium): after a successful locate the element at the target point is persisted as an XPath feature in the same YAML cache (upstream `interface.cacheFeatureForPoint` parity), and later runs resolve it back to a rect without calling the model. Interfaces without these hooks (Android, Bridge) and elements inside iframes or shadow roots still go through AI locate.
 
 ### Semantic retry
 

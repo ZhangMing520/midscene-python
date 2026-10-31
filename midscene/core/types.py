@@ -229,6 +229,36 @@ class AbstractInterface(ABC):
     async def long_press(self, x: float, y: float, duration: int = 1000) -> None:
         raise NotImplementedError("long_press is not supported on this interface")
 
+    # Optional element locate-cache hooks -----------------------------------
+
+    async def cache_feature_for_point(
+        self, center: List[float], options: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """Build a serializable feature for the element at `center`.
+
+        The feature is persisted in the locate cache and must be resolvable by
+        `rect_matches_cache_feature` on a later run (upstream
+        `interface.cacheFeatureForPoint`).
+        """
+        raise NotImplementedError(
+            "cache_feature_for_point is not supported on this interface"
+        )
+
+    async def rect_matches_cache_feature(
+        self, feature: Dict[str, Any]
+    ) -> Optional[Rect]:
+        """Resolve a cached feature back to a rect, or None when it is stale."""
+        raise NotImplementedError(
+            "rect_matches_cache_feature is not supported on this interface"
+        )
+
+
+def supports_interface_extension(interface: Any, method_name: str) -> bool:
+    """True when the concrete interface overrides the base-class stub."""
+    base = getattr(AbstractInterface, method_name, None)
+    implementation = getattr(type(interface), method_name, None)
+    return implementation is not None and implementation is not base
+
 
 class InsightAction(str, Enum):
     """Insight action types"""

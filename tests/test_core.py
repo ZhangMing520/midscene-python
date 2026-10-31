@@ -1316,5 +1316,230 @@ class TestTaskCache:
         assert captured[0]["param"]["locate"] == {"prompt": "the button"}
 
 
+# ---------------------------------------------------------------------------
+# element-level locate cache
+# ---------------------------------------------------------------------------
+
+
+class _CacheInterface(MockInterface):
+    """Mock interface exposing the optional locate-cache hooks."""
+
+    def __init__(self):
+        super().__init__()
+        self.features: List[list] = []
+        self.resolved: List[Dict[str, Any]] = []
+        self.rect_to_return: Optional[Rect] = Rect(
+            left=10, top=20, width=30, height=40
+        )
+
+    async def cache_feature_for_point(self, center, options=None):
+        self.features.append(list(center))
+        return {"xpaths": ["/html/body/button[1]"]}
+
+    async def rect_matches_cache_feature(self, feature):
+        self.resolved.append(feature)
+        return self.rect_to_return
+
+
+class TestLocateCache:
+    def test_locate_cache_roundtrip(self, tmp_path, monkeypatch):
+        from midscene.core.task_cache import TaskCache
+
+        monkeypatch.setenv("MIDSCENE_RUN_DIR", str(tmp_path))
+        cache = TaskCache(cache_id="locate-unit", enabled=True)
+        cache.append_locate_cache("the button", {"xpaths": ["/html/body/button[1]"]})
+
+        cache2 = TaskCache(cache_id="locate-unit", enabled=True)
+        matched = cache2.match_locate_cache("the button")
+        assert matched is not None
+        assert matched["cache"] == {"xpaths": ["/html/body/button[1]"]}
+        assert matched["index"] == 0
+        # each entry is consumed once per run
+        assert cache2.match_locate_cache("the button") is None
+
+    def test_locate_cache_replaces_stale_entry(self, tmp_path, monkeypatch):
+        from midscene.core.task_cache import TaskCache
+
+        monkeypatch.setenv("MIDSCENE_RUN_DIR", str(tmp_path))
+        cache = TaskCache(cache_id="locate-replace", enabled=True)
+        cache.append_locate_cache("the button", {"xpaths": ["/old"]})
+        matched = cache.match_locate_cache("the button")
+        cache.append_locate_cache(
+            "the button", {"xpaths": ["/new"]}, replace_index=matched["index"]
+        )
+
+        cache2 = TaskCache(cache_id="locate-replace", enabled=True)
+        assert len(cache2.cache["caches"]) == 1
+        assert cache2.match_locate_cache("the button")["cache"] == {"xpaths": ["/new"]}
+
+    def test_locate_cache_read_only_does_not_write(self, tmp_path, monkeypatch):
+        from midscene.core.task_cache import TaskCache
+
+        monkeypatch.setenv("MIDSCENE_RUN_DIR", str(tmp_path))
+        cache = TaskCache(
+            cache_id="locate-readonly", enabled=True, read_only_mode=True
+        )
+        cache.append_locate_cache("the button", {"xpaths": ["/x"]})
+
+        cache2 = TaskCache(cache_id="locate-readonly", enabled=True)
+        assert cache2.match_locate_cache("the button") is None
+
+    @pytest.mark.asyncio
+    async def test_agent_uses_cached_feature_without_ai(
+        self, tmp_path, monkeypatch
+    ):
+        from midscene.core.agent import Agent
+
+        monkeypatch.setenv("MIDSCENE_RUN_DIR", str(tmp_path))
+        interface = _CacheInterface()
+        agent = Agent(interface, AgentOptions(cache_id="locate-hit"))
+        agent._get_task_cache().append_locate_cache(
+            "the button", {"xpaths": ["/cached"]}
+        )
+
+        async def fail_locate(*args, **kwargs):
+            raise AssertionError("AI locate must not run on a cache hit")
+
+        monkeypatch.setattr(agent, "_run_locate", fail_locate)
+        result = await agent._locate_for_action({"prompt": "the button"})
+
+        assert result["center"] == [25.0, 40.0]
+        assert result["rect"] == Rect(left=10, top=20, width=30, height=40)
+        assert interface.resolved == [{"xpaths": ["/cached"]}]
+
+    @pytest.mark.asyncio
+    async def test_agent_writes_cache_after_ai_locate(self, tmp_path, monkeypatch):
+        from midscene.core.agent import Agent
+        from midscene.core.task_cache import TaskCache
+
+        monkeypatch.setenv("MIDSCENE_RUN_DIR", str(tmp_path))
+        interface = _CacheInterface()
+        agent = Agent(interface, AgentOptions(cache_id="locate-write"))
+
+        async def fake_locate(*args, **kwargs):
+            return {
+                "center": [25, 40],
+                "rect": Rect(left=10, top=20, width=30, height=40),
+            }
+
+        monkeypatch.setattr(agent, "_run_locate", fake_locate)
+        await agent._locate_for_action({"prompt": "the button"})
+
+        assert interface.features == [[25.0, 40.0]]
+        reloaded = TaskCache(cache_id="locate-write", enabled=True)
+        assert reloaded.match_locate_cache("the button")["cache"] == {
+            "xpaths": ["/html/body/button[1]"]
+        }
+
+    @pytest.mark.asyncio
+    async def test_agent_skips_cache_when_cacheable_false(
+        self, tmp_path, monkeypatch
+    ):
+        from midscene.core.agent import Agent
+
+        monkeypatch.setenv("MIDSCENE_RUN_DIR", str(tmp_path))
+        interface = _CacheInterface()
+        agent = Agent(interface, AgentOptions(cache_id="locate-nocache"))
+
+        async def fake_locate(*args, **kwargs):
+            return {"center": [1, 2], "rect": None}
+
+        monkeypatch.setattr(agent, "_run_locate", fake_locate)
+        await agent._locate_for_action({"prompt": "the button", "cacheable": False})
+
+        assert interface.features == []
+        assert agent._get_task_cache().cache["caches"] == []
+
+    @pytest.mark.asyncio
+    async def test_agent_replaces_stale_cache_entry(self, tmp_path, monkeypatch):
+        from midscene.core.agent import Agent
+        from midscene.core.task_cache import TaskCache
+
+        monkeypatch.setenv("MIDSCENE_RUN_DIR", str(tmp_path))
+        interface = _CacheInterface()
+        interface.rect_to_return = None
+        agent = Agent(interface, AgentOptions(cache_id="locate-stale"))
+        agent._get_task_cache().append_locate_cache(
+            "the button", {"xpaths": ["/stale"]}
+        )
+
+        async def fake_locate(*args, **kwargs):
+            return {"center": [5, 6], "rect": None}
+
+        monkeypatch.setattr(agent, "_run_locate", fake_locate)
+        result = await agent._locate_for_action({"prompt": "the button"})
+
+        assert result["center"] == [5, 6]
+        assert interface.features == [[5.0, 6.0]]
+        reloaded = TaskCache(cache_id="locate-stale", enabled=True)
+        assert reloaded.match_locate_cache("the button")["cache"] == {
+            "xpaths": ["/html/body/button[1]"]
+        }
+
+    @pytest.mark.asyncio
+    async def test_agent_caches_plan_coordinates(self, tmp_path, monkeypatch):
+        from midscene.core.agent import Agent
+
+        monkeypatch.setenv("MIDSCENE_RUN_DIR", str(tmp_path))
+        interface = _CacheInterface()
+        agent = Agent(interface, AgentOptions(cache_id="locate-plan"))
+        result = await agent._locate_for_action(
+            {
+                "prompt": "the button",
+                "locatedPixelResult": {"center": [7, 8]},
+            }
+        )
+
+        assert result == {"center": [7, 8]}
+        assert interface.features == [[7.0, 8.0]]
+
+    @pytest.mark.asyncio
+    async def test_plan_coordinates_win_over_cache(self, tmp_path, monkeypatch):
+        from midscene.core.agent import Agent
+
+        monkeypatch.setenv("MIDSCENE_RUN_DIR", str(tmp_path))
+        interface = _CacheInterface()
+        agent = Agent(interface, AgentOptions(cache_id="locate-plan-priority"))
+        agent._get_task_cache().append_locate_cache(
+            "the button", {"xpaths": ["/cached"]}
+        )
+
+        async def fail_locate(*args, **kwargs):
+            raise AssertionError("AI locate must not run on a plan hit")
+
+        monkeypatch.setattr(agent, "_run_locate", fail_locate)
+        result = await agent._locate_for_action(
+            {
+                "prompt": "the button",
+                "locatedPixelResult": {"center": [7, 8]},
+            }
+        )
+
+        assert result == {"center": [7, 8]}
+        assert interface.resolved == []
+        assert interface.features == []
+        assert len(agent._get_task_cache().cache["caches"]) == 1
+
+    @pytest.mark.asyncio
+    async def test_agent_does_not_cache_empty_feature(self, tmp_path, monkeypatch):
+        from midscene.core.agent import Agent
+
+        class EmptyFeatureInterface(_CacheInterface):
+            async def cache_feature_for_point(self, center, options=None):
+                self.features.append(list(center))
+                return {"xpaths": []}
+
+        monkeypatch.setenv("MIDSCENE_RUN_DIR", str(tmp_path))
+        agent = Agent(EmptyFeatureInterface(), AgentOptions(cache_id="locate-empty"))
+
+        async def fake_locate(*args, **kwargs):
+            return {"center": [1, 2], "rect": None}
+
+        monkeypatch.setattr(agent, "_run_locate", fake_locate)
+        await agent._locate_for_action({"prompt": "the button"})
+
+        assert agent._get_task_cache().cache["caches"] == []
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

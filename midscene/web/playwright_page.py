@@ -14,6 +14,69 @@ from ..core.types import (
     Size, Rect, NodeType
 )
 
+# Locate-cache feature extraction, mirroring upstream getElementXpath:
+# leaf elements use their normalized text, ancestors use sibling indexes.
+_XPATHS_AT_POINT_JS = r"""([x, y]) => {
+  const element = document.elementFromPoint(x, y);
+  if (!element) return [];
+  // Iframes and shadow roots need compound xpaths the cache cannot express;
+  // caching the host/iframe element would click the wrong target on replay.
+  if (element.getRootNode() !== document || element.shadowRoot) return [];
+  const tagName = element.tagName.toLowerCase();
+  if (tagName === 'iframe' || tagName === 'frame') return [];
+
+  const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
+  const normalizeText = (text) => (text || '').replace(/\s+/g, ' ').trim();
+
+  const indexPath = (node) => {
+    let index = 1;
+    let previous = node.previousElementSibling;
+    while (previous) {
+      if (previous.nodeName.toLowerCase() === node.nodeName.toLowerCase()) {
+        index += 1;
+      }
+      previous = previous.previousElementSibling;
+    }
+    return index;
+  };
+
+  const buildXpath = (node, isLeaf) => {
+    if (!node || node.nodeType !== Node.ELEMENT_NODE) return '';
+    const parentPath = buildXpath(node.parentNode, false);
+    const tagName = node.nodeName.toLowerCase();
+    const selector = node.namespaceURI === SVG_NAMESPACE
+      ? `*[name()="${tagName}"]`
+      : tagName;
+    const prefix = parentPath ? `${parentPath}/` : '/';
+    const text = normalizeText(node.textContent);
+    if (isLeaf && text && !text.includes('"')) {
+      return `${prefix}${selector}[normalize-space()="${text}"]`;
+    }
+    return `${prefix}${selector}[${indexPath(node)}]`;
+  };
+
+  return [buildXpath(element, true)];
+}"""
+
+_RECT_FOR_XPATH_JS = """(xpath) => {
+  try {
+    const result = document.evaluate(
+      xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
+    );
+    const node = result.singleNodeValue;
+    if (!node || node.nodeType !== Node.ELEMENT_NODE) return null;
+    const rect = node.getBoundingClientRect();
+    return {
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
+  } catch (error) {
+    return null;
+  }
+}"""
+
 
 class PlaywrightElement(BaseElement):
     """Playwright element wrapper"""
@@ -183,6 +246,40 @@ class PlaywrightWebPage(AbstractInterface):
         except Exception as e:
             logger.error(f"Failed to drag from {from_point} to {to_point}: {e}")
             raise
+
+    async def cache_feature_for_point(
+        self, center: List[float], options: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """Build the xpath-based locate-cache feature for a point."""
+        try:
+            xpaths = await self.page.evaluate(
+                _XPATHS_AT_POINT_JS, [float(center[0]), float(center[1])]
+            )
+        except Exception as e:
+            logger.warning(f"Failed to build cache feature for {center}: {e}")
+            xpaths = []
+        return {
+            "xpaths": [
+                xpath for xpath in (xpaths or []) if isinstance(xpath, str) and xpath
+            ]
+        }
+
+    async def rect_matches_cache_feature(
+        self, feature: Dict[str, Any]
+    ) -> Optional[Rect]:
+        """Resolve cached xpaths back to the first matching element rect."""
+        xpaths = (feature or {}).get("xpaths") or []
+        for xpath in xpaths:
+            if not isinstance(xpath, str) or not xpath:
+                continue
+            try:
+                rect = await self.page.evaluate(_RECT_FOR_XPATH_JS, xpath)
+            except Exception as e:
+                logger.debug(f"Failed to evaluate cached xpath {xpath}: {e}")
+                continue
+            if rect:
+                return Rect(**rect)
+        return None
 
     async def keyboard_press(self, key: str) -> None:
         try:
