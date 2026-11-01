@@ -226,6 +226,15 @@ class AbstractInterface(ABC):
     async def swipe(self, direction: str, distance: Optional[int] = None) -> None:
         raise NotImplementedError("swipe is not supported on this interface")
 
+    async def pinch(
+        self,
+        direction: str,
+        point: Optional[List[float]] = None,
+        distance: Optional[int] = None,
+        duration: Optional[int] = None,
+    ) -> None:
+        raise NotImplementedError("pinch is not supported on this interface")
+
     async def drag_and_drop(self, from_point, to_point) -> None:
         raise NotImplementedError("drag_and_drop is not supported on this interface")
 

@@ -355,6 +355,7 @@ def build_web_action_space() -> List[DeviceAction]:
             locate_fields=["locate"],
             sample={"direction": "in", "locate": {"prompt": "the map"}},
             interface_alias="aiPinch",
+            primitive="pinch",
             execute=_execute_pinch,
         ),
         DeviceAction(

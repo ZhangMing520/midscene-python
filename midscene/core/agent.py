@@ -258,12 +258,11 @@ class Agent:
         return context
 
     def _apply_screenshot_shrink(self, context: UIContext) -> UIContext:
-        """Downscale the screenshot for the model and record the coordinate
-        ratio back to logical space (upstream commonContextParser:
-        shrunkShotToLogicalRatio = dpr / screenshotShrinkFactor)."""
+        """Record the screenshot-space -> logical-space ratio and downscale the
+        screenshot when asked (upstream commonContextParser:
+        shrunkShotToLogicalRatio = dpr / screenshotShrinkFactor,
+        dpr = physicalWidth / logicalWidth)."""
         factor = float(getattr(self.options, "screenshot_shrink_factor", 1.0) or 1.0)
-        if factor <= 1:
-            return context
         try:
             import base64 as _b64
             import io as _io
@@ -277,13 +276,19 @@ class Agent:
             physical_width, physical_height = image.size
             logical_width = context.size.width or physical_width
             dpr = physical_width / logical_width if logical_width else 1.0
+            ratio = dpr / factor
+            if factor <= 1:
+                if ratio == 1.0:
+                    return context
+                return context.model_copy(
+                    update={"shrunk_shot_to_logical_ratio": ratio}
+                )
             target_width = max(1, round(physical_width / factor))
             target_height = max(1, round(physical_height / factor))
             shrunk = image.resize((target_width, target_height))
             buffer = _io.BytesIO()
             shrunk.save(buffer, format="PNG")
             shrunk_base64 = _b64.b64encode(buffer.getvalue()).decode("ascii")
-            ratio = dpr / factor
             return context.model_copy(
                 update={
                     "screenshot_base64": shrunk_base64,
@@ -1346,7 +1351,9 @@ class Agent:
 
     @staticmethod
     def _to_logical_coords(element: Dict[str, Any], context: UIContext) -> Dict[str, Any]:
-        """Scale screenshot-space coordinates back to logical viewport space."""
+        """Scale screenshot-space coordinates back to logical viewport space
+        (upstream task-builder.ts divides the shot coordinates by
+        shrunkShotToLogicalRatio)."""
         ratio = float(getattr(context, "shrunk_shot_to_logical_ratio", 1.0) or 1.0)
         if ratio == 1.0:
             return element
@@ -1354,17 +1361,17 @@ class Agent:
         if center:
             element = {
                 **element,
-                "center": [center[0] * ratio, center[1] * ratio],
+                "center": [center[0] / ratio, center[1] / ratio],
             }
         rect = element.get("rect")
         if rect:
             element = {
                 **element,
                 "rect": {
-                    "left": rect["left"] * ratio,
-                    "top": rect["top"] * ratio,
-                    "width": rect["width"] * ratio,
-                    "height": rect["height"] * ratio,
+                    "left": rect["left"] / ratio,
+                    "top": rect["top"] / ratio,
+                    "width": rect["width"] / ratio,
+                    "height": rect["height"] / ratio,
                 },
             }
         return element

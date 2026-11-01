@@ -139,7 +139,7 @@ asyncio.run(main())
 
 ### Chrome Bridge
 
-Bridge 模式让浏览器里的 Midscene Chrome 扩展通过 WebSocket 驱动当前标签页，本 SDK 作为服务端等待扩展连接：
+Bridge 模式由本 SDK 启动一个 Socket.IO 服务端（默认 `127.0.0.1:3766`），浏览器里的 Midscene Chrome 扩展作为客户端接入，并在当前标签页上执行鼠标键盘动作与截图：
 
 ```python
 import asyncio
@@ -149,15 +149,27 @@ from midscene.web import BridgeWebPage
 
 
 async def main():
-    page = await BridgeWebPage.create("ws://localhost:8765")
+    page = BridgeWebPage()
+    await page.connect()          # 等待扩展接入并接管当前标签页
     agent = Agent(page)
     await agent.ai_act("Click the login button")
+    await page.close()
 
 
 asyncio.run(main())
 ```
 
-默认地址为 `ws://localhost:8765`，`wait_for_connection=True` 时会等待扩展接入（默认 30 秒）。
+使用前先在扩展里把服务端地址设置为 `http://127.0.0.1:3766`（上游扩展的默认值）。
+
+`BridgeWebPage()` 的参数：
+
+- `host` / `port`：服务端监听地址，默认 `127.0.0.1` / `3766`；
+- `listening_timeout`：等待扩展接入的秒数，默认 30，传 `None` 表示一直等；
+- `connect_options`：传给扩展的标签页选项（`forceSameTabNavigation`、`activateTab`、`enableWaterFlowAnimation`）；
+- `close_conflict_server`：监听前先发送 kill 信号释放被占用的端口，默认 `True`；
+- `allow_remote_access`：绑定 `0.0.0.0` 允许其它主机上的扩展接入。开启后任何能访问该端口、且不带 `Origin` 头的进程都能驱动你的浏览器，请只在可信网络内使用。
+
+动作通过 `page.connect_new_tab_with_url(url)` 在新标签页打开，`page.get_browser_tab_list()` / `page.set_active_tab_id()` 切换标签页。Bridge 模式没有 DOM 快照，因此不提供 XPath 定位缓存（Android 同理），元素仍由视觉模型定位；扩展侧需要元素信息的 `clearInput` 也尚未接入，所以 ClearInput 不在 Bridge 的规划动作空间里。
 
 ## Android 自动化
 

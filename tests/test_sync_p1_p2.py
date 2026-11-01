@@ -74,7 +74,7 @@ class TestScreenshotShrink:
 
         context = UIContext(
             screenshot_base64=make_png_base64(320, 240),
-            size=Size(width=160, height=120),
+            size=Size(width=320, height=240),
             content=[],
             tree=UITree(
                 node=UINode(
@@ -88,6 +88,28 @@ class TestScreenshotShrink:
         shrunk = agent._apply_screenshot_shrink(context)
         assert shrunk.screenshot_base64 == context.screenshot_base64
         assert shrunk.shrunk_shot_to_logical_ratio == 1.0
+
+    def test_device_pixel_ratio_recorded_without_shrink(self):
+        """A dpr != 1 screenshot (e.g. the Chrome extension CDP capture) is
+        kept as-is but the ratio is still recorded."""
+        from midscene.core.types import UIContext, Size, UITree, UINode, Rect, NodeType
+
+        context = UIContext(
+            screenshot_base64=make_png_base64(320, 240),
+            size=Size(width=160, height=120),
+            content=[],
+            tree=UITree(
+                node=UINode(
+                    id="root", content="",
+                    rect=Rect(left=0, top=0, width=0, height=0),
+                    center=(0, 0), node_type=NodeType.CONTAINER,
+                )
+            ),
+        )
+        agent = _agent()
+        shrunk = agent._apply_screenshot_shrink(context)
+        assert shrunk.screenshot_base64 == context.screenshot_base64
+        assert shrunk.shrunk_shot_to_logical_ratio == pytest.approx(2.0)
 
     def test_locate_result_scaled_to_logical(self):
         from midscene.core.types import UIContext, Size, UITree, UINode, Rect, NodeType
@@ -106,7 +128,8 @@ class TestScreenshotShrink:
             ),
             shrunk_shot_to_logical_ratio=2.0,
         )
-        element = {"center": (50, 60), "rect": {"left": 40, "top": 50, "width": 20, "height": 20}}
+        # shot space is twice the logical viewport: (200, 240) -> (100, 120)
+        element = {"center": (200, 240), "rect": {"left": 160, "top": 200, "width": 40, "height": 40}}
         scaled = agent._to_logical_coords(element, context)
         assert scaled["center"] == [100, 120]
         assert scaled["rect"]["left"] == 80
@@ -403,13 +426,18 @@ class TestPinch:
         assert hasattr(PlaywrightWebPage, "pinch")
 
     def test_android_pinch_not_supported(self):
+        """Android only inherits the base stub, so Pinch is filtered out of
+        its action space."""
+        from midscene.android.device import AndroidDevice
         from midscene.core.types import AbstractInterface
 
-        assert not hasattr(AbstractInterface, "pinch") or getattr(
-            __import__("midscene.android.device", fromlist=["AndroidDevice"]).AndroidDevice,
-            "pinch",
-            None,
-        ) is None
+        assert AndroidDevice.pinch is AbstractInterface.pinch
+
+    def test_pinch_filtered_when_interface_lacks_primitive(self):
+        from midscene.core.actions import _supports
+
+        assert not _supports(MockInterface(), "pinch")
+        assert "Pinch" not in [a.name for a in _agent().action_space]
 
     @pytest.mark.asyncio
     async def test_pinch_executor_validates_direction(self):
