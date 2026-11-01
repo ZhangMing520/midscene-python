@@ -1320,52 +1320,102 @@ tasks:
         ]
 
     @pytest.mark.asyncio
-    async def test_bridge_handler_accepts_asyncio_websockets_api(self):
-        import websockets
+    async def test_bridge_call_response_round_trip(self):
+        """Extension client receives bridge-call and its response resolves
+        the server-side call (Socket.IO protocol)."""
+        import socketio
 
-        from midscene.web.bridge import BridgeWebPage
+        from midscene.web.bridge import BridgeServer
 
-        bridge = BridgeWebPage("ws://localhost:0")
-        server = await websockets.serve(bridge._handle_connection, "localhost", 0)
-        port = server.sockets[0].getsockname()[1]
+        server = BridgeServer(host="127.0.0.1", port=0)
+        # patch TCPSite to pick an ephemeral port
+        from aiohttp import web as aio_web
+
+        sio = socketio.AsyncServer(async_mode="aiohttp", cors_allowed_origins=[])
+        sio.on("connect", server._on_connect)
+        sio.on("disconnect", server._on_disconnect)
+        sio.on("bridge-call-response", server._on_call_response)
+        app = aio_web.Application()
+        sio.attach(app)
+        runner = aio_web.AppRunner(app)
+        await runner.setup()
+        site = aio_web.TCPSite(runner, "127.0.0.1", 0)
+        await site.start()
+        port = runner.addresses[0][1]
+        server._sio = sio
+        server._runner = runner
+        server._site = site
+
+        received: list = []
+
+        client = socketio.AsyncClient()
+        client.eio.http = None
+
+        @client.on("bridge-call")
+        async def on_call(data):
+            received.append(data)
+            await client.emit(
+                "bridge-call-response",
+                {"id": data["id"], "response": {"clicked": True}},
+            )
+
+        import aiohttp
+
+        session = aiohttp.ClientSession(
+            headers={"Origin": "chrome-extension://testext"}
+        )
+        client.eio.http = session
         try:
-            async with websockets.connect(f"ws://localhost:{port}") as client:
-                await client.send('{"hello": 1}')
-                for _ in range(100):
-                    if bridge.websocket is not None:
-                        break
-                    await asyncio.sleep(0.01)
-                assert bridge.websocket is not None
+            await client.connect(
+                f"ws://127.0.0.1:{port}",
+                transports=["websocket"],
+                socketio_path="socket.io",
+            )
+            for _ in range(100):
+                if server._client_sid is not None:
+                    break
+                await asyncio.sleep(0.02)
+            assert server._client_sid is not None
+
+            response = await server.call("mouse.click", [10, 20], timeout=5)
+            assert response == {"clicked": True}
+            assert received[0]["method"] == "mouse.click"
+            assert received[0]["args"] == [10, 20]
         finally:
-            server.close()
-            await server.wait_closed()
+            await client.disconnect()
+            await session.close()
+            await server.close()
 
     @pytest.mark.asyncio
-    async def test_bridge_connect_uses_url_host_and_port(self, monkeypatch):
-        import websockets
+    async def test_bridge_rejects_untrusted_origin(self):
+        import socketio
 
-        from midscene.web.bridge import BridgeWebPage
+        from midscene.web.bridge import BridgeServer
 
-        captured = {}
+        server = BridgeServer()
+        sio = socketio.AsyncServer(async_mode="aiohttp", cors_allowed_origins=[])
+        sio.on("connect", server._on_connect)
+        sio.on("disconnect", server._on_disconnect)
+        sio.on("bridge-call-response", server._on_call_response)
 
-        async def fake_serve(handler, host, port):
-            captured.update(host=host, port=port)
+        environ = {"HTTP_ORIGIN": "https://evil.com"}
+        result = await server._on_connect("sid1", environ)
+        assert result is False  # connection rejected
 
-            class FakeServer:
-                def close(self):
-                    pass
+        # trusted origin connects and sets the client sid
+        await server._on_connect(
+            "sid2", {"HTTP_ORIGIN": "chrome-extension://testext", "QUERY_STRING": ""}
+        )
+        assert server._client_sid == "sid2"
 
-                async def wait_closed(self):
-                    pass
+    @pytest.mark.asyncio
+    async def test_bridge_listen_timeout_without_client(self):
+        from midscene.web.bridge import BridgeServer
 
-            return FakeServer()
-
-        monkeypatch.setattr(websockets, "serve", fake_serve)
-        bridge = BridgeWebPage("ws://127.0.0.1:9000")
-        bridge.websocket = object()
-        await bridge.connect()
-
-        assert captured == {"host": "127.0.0.1", "port": 9000}
+        server = BridgeServer(port=0)
+        with pytest.raises(RuntimeError) as exc:
+            await server.listen(timeout=0.3)
+        assert "no extension connected" in str(exc.value)
 
     def test_action_space_ignores_unimplemented_stubs(self):
         from midscene.core.types import AbstractInterface, InterfaceType
