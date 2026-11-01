@@ -1170,6 +1170,27 @@ class Agent:
             raise RuntimeError("Cache is not configured")
         self._task_cache.flush()
 
+    def start_observing(self, opt: Optional[Dict[str, Any]] = None):
+        """Record a time window of UI frames (upstream startObserving)."""
+        from .ui_observer import UIObserver
+
+        if self._frozen:
+            raise RuntimeError(
+                "startObserving() cannot be used while the UI context is "
+                "frozen (call unfreeze_page_context() first)"
+            )
+        return UIObserver(self, opt)
+
+    async def run_gherkin_scenario(
+        self,
+        scenario_text: str,
+        opt: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Run a Gherkin scenario: Given/When -> aiAct, Then -> aiAssert."""
+        from .gherkin import run_gherkin_scenario as run_scenario
+
+        await run_scenario(self, scenario_text, opt)
+
     async def run_yaml(
         self, yaml_script_content: str, options: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:

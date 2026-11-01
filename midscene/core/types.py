@@ -116,6 +116,9 @@ class UIContext(BaseModel, Generic[ElementType]):
     # Screenshot coordinates -> logical viewport coordinates factor
     # (upstream shrunkShotToLogicalRatio = dpr / screenshotShrinkFactor).
     shrunk_shot_to_logical_ratio: float = 1.0
+    # Optional consecutive screenshots over a time window (UI observation
+    # frames, earliest first; upstream screenshotSequence)
+    screenshot_sequence: Optional[List[str]] = None
     
     
 class AIUsageInfo(BaseModel):

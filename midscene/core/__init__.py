@@ -31,6 +31,8 @@ from .actions import DeviceAction, build_web_action_space, build_android_action_
 from .task_cache import TaskCache
 from .yaml_runner import ScriptPlayer, parse_yaml_script
 from .dump import ExecutionDumpBuilder, build_execution_task, build_service_dump
+from .ui_observer import UIObserver, UIObservation
+from .gherkin import run_gherkin_scenario, parse_gherkin_scenario
 
 __all__ = [
     "Agent",
@@ -56,4 +58,8 @@ __all__ = [
     "ExecutionDumpBuilder",
     "build_execution_task",
     "build_service_dump",
+    "UIObserver",
+    "UIObservation",
+    "run_gherkin_scenario",
+    "parse_gherkin_scenario",
 ]

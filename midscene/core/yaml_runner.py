@@ -311,6 +311,31 @@ class ScriptPlayer:
                 "javascript flow item requires an interface with execute_script"
             )
 
+        if key == "runGherkinScenario":
+            scenario = value if isinstance(value, str) else (value or {}).get("scenario")
+            if not scenario:
+                raise ValueError("runGherkinScenario requires a scenario")
+            await agent.run_gherkin_scenario(scenario)
+            return _NO_RESULT
+
+        if key == "Finalize":
+            # Planning-only marker; nothing to execute (upstream no-op).
+            return _NO_RESULT
+
+        if key == "terminate":
+            uri = value.get("uri") if isinstance(value, dict) else str(value)
+            if not uri or not str(uri).strip():
+                raise ValueError("terminate requires a non-empty uri")
+            await agent._call_action_in_action_space("Terminate", {"uri": str(uri)})
+            return _NO_RESULT
+
+        if key == "launch":
+            uri = value.get("uri") if isinstance(value, dict) else str(value)
+            if not uri or not str(uri).strip():
+                raise ValueError("launch requires a non-empty uri")
+            await agent._call_action_in_action_space("Launch", {"uri": str(uri)})
+            return _NO_RESULT
+
         if key in ("recordToReport", "logScreenshot"):
             options = value if isinstance(value, dict) else {"content": str(value)}
             title = options.get("title") or (

@@ -69,6 +69,7 @@ async def ai_extract_element_info(
     page_description: str = "",
     screenshot_included: bool = True,
     context_text: Optional[str] = None,
+    screenshot_sequence: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """Run the insight workflow.
 
@@ -122,18 +123,48 @@ async def ai_extract_element_info(
 
     user_content: List[Dict[str, Any]] = []
     if screenshot_included:
-        user_content.append(
-            {
-                "type": "text",
-                "text": (
-                    "This is the current screenshot to evaluate. Unless "
-                    "<DATA_DEMAND> explicitly asks for comparison or matching "
-                    "against reference images, base your answer on this screenshot "
-                    "and its contents when provided."
-                ),
-            }
-        )
-        user_content.append({"type": "image", "url": screenshot_base64})
+        frames = screenshot_sequence or []
+        if len(frames) > 1:
+            user_content.append(
+                {
+                    "type": "text",
+                    "text": (
+                        f"The following {len(frames)} images are consecutive "
+                        "screenshots captured over a time window, ordered from "
+                        "earliest to latest (Frame 1 is first, Frame "
+                        f"{len(frames)} is last). They record what appeared on "
+                        "screen during that window. Some UI elements such as "
+                        "toasts, banners, or transitions may appear only in "
+                        "certain frames and be gone by later ones. Interpret "
+                        "the temporal scope from the statement or question "
+                        "itself: if it asks whether something appeared at any "
+                        "point, inspect the whole sequence; if it asks about "
+                        "the final or current state, use the relevant later "
+                        "frame; if it asks about a change or sequence, compare "
+                        "frames in order. Unless <DATA_DEMAND> explicitly asks "
+                        "for comparison or matching against reference images, "
+                        "base your answer on these screenshots and their contents."
+                    ),
+                }
+            )
+            for index, frame in enumerate(frames):
+                user_content.append(
+                    {"type": "text", "text": f"Frame {index + 1}/{len(frames)}"}
+                )
+                user_content.append({"type": "image", "url": frame})
+        else:
+            user_content.append(
+                {
+                    "type": "text",
+                    "text": (
+                        "This is the current screenshot to evaluate. Unless "
+                        "<DATA_DEMAND> explicitly asks for comparison or matching "
+                        "against reference images, base your answer on this screenshot "
+                        "and its contents when provided."
+                    ),
+                }
+            )
+            user_content.append({"type": "image", "url": screenshot_base64})
 
     user_content.append({"type": "text", "text": extract_data_prompt_text})
 
