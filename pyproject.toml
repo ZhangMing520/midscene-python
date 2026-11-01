@@ -43,6 +43,8 @@ dependencies = [
     "pyjwt[crypto]>=2.8.0",
     "json-repair>=0.30.0",
     "python-socketio>=5.11.0",
+    "pyautogui>=0.9.54",
+    "pyperclip>=1.8.0",
 ]
 version = "0.2.0"
 

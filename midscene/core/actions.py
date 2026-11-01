@@ -745,4 +745,8 @@ def build_android_action_space() -> List[DeviceAction]:
 def build_action_space_for(interface_type: str) -> List[DeviceAction]:
     if interface_type == "android":
         return build_android_action_space()
+    # web and computer share the desktop-style action space; Pinch (two-finger
+    # touch) is only available on the web touch surface.
+    if interface_type == "computer":
+        return [a for a in build_web_action_space() if a.name != "Pinch"]
     return build_web_action_space()
