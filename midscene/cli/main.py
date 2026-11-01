@@ -30,8 +30,24 @@ model_app.add_typer(siwc_app, name="siwc")
 console = Console()
 
 
+def _is_batch_config(path: Path) -> bool:
+    """True when the YAML file declares a "files" key (batch config)."""
+    if path.suffix.lower() not in (".yml", ".yaml"):
+        return False
+    try:
+        import yaml as _yaml
+
+        obj = _yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        return isinstance(obj, dict) and "files" in obj
+    except Exception:
+        return False
+
+
 async def _create_agent_for_script(
-    script: dict, headed: bool, device_id: Optional[str]
+    script: dict,
+    headed: bool,
+    device_id: Optional[str],
+    shared_page=None,
 ):
     """Build an agent from the script's target section (web or android)."""
 
@@ -75,6 +91,9 @@ async def _create_agent_for_script(
         await page.navigate_to(url)
         return page
 
+    if shared_page is not None:
+        await shared_page.navigate_to(url)
+        return shared_page, _build_agent_options(web_section)
     page = await _create()
     return page, _build_agent_options(web_section)
 
@@ -109,7 +128,8 @@ def run(
     device_id: Optional[str] = typer.Option(None, "--device", "-d", help="Android device ID"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
 ):
-    """Run a YAML automation script (upstream `midscene run`)."""
+    """Run a YAML script, a directory of scripts, or a batch config
+(upstream `midscene run`)."""
     from midscene.core.agent import Agent
     from midscene.core.yaml_runner import ScriptPlayer, parse_yaml_script
 
@@ -122,6 +142,63 @@ def run(
     if not path.exists():
         console.print(f"[red]Script not found: {script_path}[/red]")
         raise typer.Exit(1)
+
+    # Batch entry: a directory or a config file with a "files" key
+    if path.is_dir() or _is_batch_config(path):
+        from midscene.core.batch_runner import BatchRunner, load_batch_config
+
+        if path.is_dir():
+            config_file = path / "midscene.yml"
+            if not config_file.exists():
+                console.print(f"[red]No midscene.yml in directory: {path}[/red]")
+                raise typer.Exit(1)
+            batch_config = load_batch_config(str(config_file))
+            script_dir = path
+        else:
+            batch_config = load_batch_config(str(path))
+            script_dir = path.parent
+        file_paths = [
+            str((script_dir / f).resolve()) if not Path(f).is_absolute() else f
+            for f in batch_config["files"]
+        ]
+        batch_config["files"] = file_paths
+
+        async def _run_batch():
+
+            shared_page_holder: dict = {}
+
+            async def factory(content: str, file_path: str):
+                script = parse_yaml_script(content)
+                created = await _create_agent_for_script(
+                    script,
+                    headed,
+                    device_id,
+                    shared_page=shared_page_holder.get("page"),
+                )
+                if isinstance(created, tuple):
+                    page, options = created
+                    if batch_config["share_browser_context"]:
+                        shared_page_holder["page"] = page
+                    agent = Agent(page, options)
+                else:
+                    agent = created
+                player = ScriptPlayer(script, agent)
+                player.shared_page = shared_page_holder.get("page")
+                return player
+
+            runner = BatchRunner(batch_config, factory)
+            results = await runner.run()
+            return runner, results
+
+        runner, results = asyncio.run(_run_batch())
+        for result in results:
+            status = "[green]PASS[/green]" if result["success"] else "[red]FAIL[/red]"
+            extra = f" ({result.get('resultType')})" if not result["executed"] else ""
+            console.print(f"{status} {result['file']}{extra}")
+        if runner.get_failed_files() or runner.get_not_executed_files():
+            raise typer.Exit(1)
+        console.print("[green]Batch executed successfully[/green]")
+        return
 
     content = path.read_text(encoding="utf-8")
     script = parse_yaml_script(content)
