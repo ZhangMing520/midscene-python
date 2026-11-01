@@ -392,3 +392,149 @@ class TestRDPDevice:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestRecorderMarkdownGeneration:
+    def _events(self):
+        return [
+            {"type": "navigation", "url": "https://shop.example", "timestamp": 1},
+            {"type": "click", "description": "search box", "timestamp": 2},
+            {"type": "input", "description": "search box", "value": "shoes", "timestamp": 3},
+        ]
+
+    def test_normalize_markdown_strips_fences(self):
+        from midscene.core.recorder_generation import normalize_generated_markdown
+
+        assert normalize_generated_markdown("```md\n# Title\n```") == "# Title\n"
+        assert normalize_generated_markdown("# Plain") == "# Plain\n"
+
+    def test_payload_budget_limits_assets(self):
+        from midscene.core.recorder_generation import (
+            limit_screenshot_assets_for_markdown_replay,
+        )
+
+        big = {"dataUrl": "x" * 700_000, "eventIndex": 0, "eventHashId": "a"}
+        small = {"dataUrl": "y" * 100, "eventIndex": 1, "eventHashId": "b"}
+        kept = limit_screenshot_assets_for_markdown_replay([big, small])
+        # the oversized asset is dropped, the small one kept
+        assert kept == [small]
+
+    def test_prompt_structure_and_screenshot_refs(self):
+        from midscene.core.recorder_generation import (
+            create_recorder_markdown_replay_prompt,
+            prepare_event_summary,
+        )
+
+        events = self._events()
+        target = {"platformId": "web", "label": "Web", "values": {"url": "https://shop.example"}}
+        summary = prepare_event_summary(events, {})
+        assets = [
+            {"eventIndex": 1, "eventHashId": summary["events"][1]["hashId"],
+             "eventType": "click", "dataUrl": "data:image/jpeg;base64,AAA",
+             "relativePath": "shot-1.jpeg"}
+        ]
+        input_payload = {"testName": "checkout", "target": target, "events": events}
+        prompt = create_recorder_markdown_replay_prompt(input_payload, summary, assets)
+
+        # system role
+        assert prompt[0]["role"] == "system"
+        assert "agent.aiAct" in prompt[0]["content"]
+
+        # user content carries the prompt text and one screenshot pair
+        user_content = prompt[1]["content"]
+        text_part = user_content[0]["text"]
+        assert "screenshot-1" in text_part
+        assert "Required structure:" in text_part
+        assert "# checkout" in text_part
+        assert "Never write Markdown image syntax" in text_part
+        # image follows its label
+        assert user_content[1]["text"].startswith("screenshot-1 for event #2")
+        assert user_content[2]["type"] == "image"
+
+    @pytest.mark.asyncio
+    async def test_generate_markdown_replay(self):
+        from midscene.core.recorder_generation import generate_markdown_replay
+
+        captured: Dict[str, Any] = {}
+
+        async def fake_call(prompt, runtime):
+            captured["prompt"] = prompt
+            return {"content": "```md\n# checkout\n## Steps\n1. tap search\n```"}
+
+        with patch(
+            "midscene.core.recorder_generation.call_ai_with_string_response",
+            new=fake_call,
+        ):
+            result = await generate_markdown_replay(self._events(), {}, Mock())
+
+        assert result.startswith("# checkout\n")
+        system_prompt = captured["prompt"][0]["content"]
+        assert "must not contain image references" in system_prompt
+
+    @pytest.mark.asyncio
+    async def test_generate_markdown_wraps_errors(self):
+        from midscene.core.recorder_generation import generate_markdown_replay
+
+        async def fake_call(prompt, runtime):
+            raise RuntimeError("down")
+
+        with patch(
+            "midscene.core.recorder_generation.call_ai_with_string_response",
+            new=fake_call,
+        ):
+            with pytest.raises(RuntimeError) as exc:
+                await generate_markdown_replay(self._events(), {}, Mock())
+        assert "Failed to generate recorder Markdown replay" in str(exc.value)
+
+
+class TestRecorderPlaywrightGeneration:
+    @pytest.mark.asyncio
+    async def test_generate_playwright_test(self):
+        from midscene.core.recorder_generation import generate_playwright_test
+
+        captured: Dict[str, Any] = {}
+
+        async def fake_call(prompt, runtime):
+            captured["prompt"] = prompt
+            return {"content": "```typescript\nimport { test } from '@playwright/test';\n```"}
+
+        events = [
+            {"type": "navigation", "url": "https://shop.example", "timestamp": 1},
+            {"type": "click", "description": "buy", "timestamp": 2},
+        ]
+        with patch(
+            "midscene.core.recorder_generation.call_ai_with_string_response",
+            new=fake_call,
+        ):
+            result = await generate_playwright_test(events, {"testName": "buy-flow"}, Mock())
+
+        assert result.startswith("import { test }")
+        user_prompt = captured["prompt"][1]["content"]
+        assert "@midscene/web/playwright" in user_prompt
+        assert "https://shop.example" in user_prompt
+        assert "Return ONLY the raw Playwright test code" in user_prompt
+
+    @pytest.mark.asyncio
+    async def test_playwright_summary_options(self):
+        from midscene.core.recorder_generation import generate_playwright_test
+
+        captured: Dict[str, Any] = {}
+
+        async def fake_call(prompt, runtime):
+            captured["prompt"] = prompt
+            return {"content": "// test"}
+
+        events = [{"type": "click", "timestamp": 1}]
+        with patch(
+            "midscene.core.recorder_generation.call_ai_with_string_response",
+            new=fake_call,
+        ):
+            await generate_playwright_test(
+                events,
+                {"viewportSize": {"width": 800, "height": 600}, "waitForNetworkIdleTimeout": 3000},
+                Mock(),
+            )
+        summary_text = captured["prompt"][1]["content"]
+        assert '"viewportSize"' in summary_text
+        assert "800" in summary_text
+        assert "3000" in summary_text
