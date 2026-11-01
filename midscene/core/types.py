@@ -19,6 +19,7 @@ class InterfaceType(str, Enum):
     ANDROID = "android"
     COMPUTER = "computer"
     HARMONY = "harmony"
+    IOS = "ios"
 
 
 class NodeType(str, Enum):
