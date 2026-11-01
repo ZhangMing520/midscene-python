@@ -101,6 +101,14 @@ class TestMergeWebOverrides:
         merged = merge_web_overrides({"tasks": []}, {"url": "https://batch.example"})
         assert merged["web"]["url"] == "https://batch.example"
 
+    def test_native_targets_keep_their_own_env(self):
+        for section in ("android", "computer"):
+            merged = merge_web_overrides(
+                {section: {}, "tasks": []}, {"url": "https://batch.example"}
+            )
+            assert "web" not in merged
+            assert merged[section] == {}
+
 
 class TestBatchRunner:
     @pytest.mark.asyncio
@@ -205,5 +213,10 @@ class TestBatchRunner:
 
     def test_web_overrides_not_applied_to_android_scripts(self, scripts):
         content = "android:\n  deviceId: x\ntasks:\n  - name: t\n    flow:\n      - sleep: 1\n"
+        runner = BatchRunner({"files": ["x.yml"]}, lambda c, f: FakePlayer("ok"))
+        assert runner._apply_web_overrides(content, {"url": "https://x"}) == content
+
+    def test_web_overrides_not_applied_to_desktop_scripts(self, scripts):
+        content = "computer: {}\ntasks:\n  - name: t\n    flow:\n      - sleep: 1\n"
         runner = BatchRunner({"files": ["x.yml"]}, lambda c, f: FakePlayer("ok"))
         assert runner._apply_web_overrides(content, {"url": "https://x"}) == content

@@ -115,12 +115,17 @@ def parse_yaml_script(content: str) -> Dict[str, Any]:
     if not isinstance(obj, dict):
         raise ValueError("yaml script must be a mapping")
 
-    env_sections = [
-        obj.get(key) for key in ("web", "browser", "page", "target", "android")
+    # Upstream counts declared targets by presence, not truthiness, so an empty
+    # `computer: {}` still conflicts with a web block.
+    declared = [
+        key
+        for key in ("web", "browser", "page", "target", "android", "computer")
+        if obj.get(key) is not None
     ]
-    provided = [s for s in env_sections if s]
-    if len(provided) > 1:
-        raise ValueError("only one of web/browser/page/target/android can be set")
+    if len(declared) > 1:
+        raise ValueError(
+            "only one of web/browser/page/target/android/computer can be set"
+        )
 
     tasks = obj.get("tasks")
     if not tasks:
@@ -133,7 +138,7 @@ def parse_yaml_script(content: str) -> Dict[str, Any]:
         "config": obj.get("config") or {},
         "agent": obj.get("agent") or {},
     }
-    for key in ("web", "browser", "page", "target", "android"):
+    for key in ("web", "browser", "page", "target", "android", "computer"):
         if obj.get(key) is not None:
             script[key] = obj[key]
     return script

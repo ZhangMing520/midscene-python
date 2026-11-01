@@ -517,6 +517,24 @@ tasks:
             parse_yaml_script("web:\n  url: https://example.com\n")
         assert '"tasks" is required' in str(exc.value)
 
+    def test_computer_env_is_a_target(self):
+        from midscene.core.yaml_runner import parse_yaml_script
+
+        script = parse_yaml_script(
+            "computer:\n  displayId: '1'\n"
+            "tasks:\n  - name: t\n    flow:\n      - sleep: 1\n"
+        )
+        assert script["computer"]["displayId"] == "1"
+
+    def test_computer_and_web_are_mutually_exclusive(self):
+        from midscene.core.yaml_runner import parse_yaml_script
+
+        with pytest.raises(ValueError, match="only one of"):
+            parse_yaml_script(
+                "web:\n  url: https://example.com\ncomputer: {}\n"
+                "tasks:\n  - name: t\n    flow:\n      - sleep: 1\n"
+            )
+
     def test_env_interpolation(self):
         from midscene.core.yaml_runner import parse_yaml_script
 

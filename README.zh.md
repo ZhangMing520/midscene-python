@@ -1,8 +1,8 @@
 # Midscene Python
 
-**像人一样理解界面。用自然语言驱动 Web 与 Android 的 UI 自动化与端到端测试。**
+**像人一样理解界面。用自然语言驱动 Web、Android 与桌面的 UI 自动化与端到端测试。**
 
-Midscene Python 是 [Midscene](https://github.com/web-infra-dev/midscene) 的 Python SDK。它截取当前屏幕，交给视觉语言模型判断下一步该做什么，再通过 Playwright、Selenium、Chrome Bridge 或 ADB 执行动作。AI 模型层（提示词、规划/定位/理解协议、多模型插槽、坐标解析）与上游 Midscene v1.17.4 保持同步。
+Midscene Python 是 [Midscene](https://github.com/web-infra-dev/midscene) 的 Python SDK。它截取当前屏幕，交给视觉语言模型判断下一步该做什么，再通过 Playwright、Selenium、Chrome Bridge、ADB 或 pyautogui 执行动作。AI 模型层（提示词、规划/定位/理解协议、多模型插槽、坐标解析）与上游 Midscene v1.17.4 保持同步。
 
 [English](README.md) | [简体中文](README.zh.md)
 
@@ -75,9 +75,10 @@ await agent.ai_assert("The error message is visible below the email field")
 | Web | [Playwright](https://midscenejs.com/integrate-with-playwright) 或 Selenium |
 | 桌面 Chrome | [Bridge 模式](https://midscenejs.com/bridge-mode)（Chrome 扩展通过 WebSocket 与本 SDK 通信） |
 | Android | 通过 ADB 连接真机与模拟器 |
+| 桌面系统 | Windows / macOS / Linux 整屏截图与系统指针控制（pyautogui，仅主显示器），需 `pip install "midscene-python[desktop]"` |
 | 自定义接口 | 继承 `AbstractInterface`，提供截图与动作能力 |
 
-上游 Midscene 中的 iOS、HarmonyOS、桌面端目标与 Puppeteer **未移植**到本 SDK。
+上游 Midscene 中的 iOS、HarmonyOS 与 Puppeteer **未移植**到本 SDK。
 
 ## 模型与配置
 
@@ -143,6 +144,9 @@ agent = Agent(page, AgentOptions(
 
 ```bash
 pip install midscene-python
+
+# 桌面自动化需要 GUI 扩展依赖
+pip install "midscene-python[desktop]"
 ```
 
 | 命令 | 用途 |
@@ -168,6 +172,7 @@ midscene-python/
 │   │   └── ai_model/         # 模型适配器、提示词、协议、工作流
 │   ├── web/                  # Playwright、Selenium、Bridge 接口
 │   ├── android/              # ADB 设备与 Android Agent
+│   ├── desktop/              # pyautogui 整屏截图与系统输入
 │   ├── cli/                  # `midscene` 命令行
 │   └── shared/               # 日志与共享工具
 ├── examples/

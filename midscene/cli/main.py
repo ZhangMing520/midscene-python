@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 app = typer.Typer(
     name="midscene",
-    help="AI-powered automation framework for Web and Android platforms",
+    help="AI-powered automation framework for Web, Android, and Desktop platforms",
     no_args_is_help=True,
 )
 model_app = typer.Typer(name="model", help="Model configuration and diagnostics")
@@ -49,7 +49,7 @@ async def _create_agent_for_script(
     device_id: Optional[str],
     shared_page=None,
 ):
-    """Build an agent from the script's target section (web or android)."""
+    """Build an agent from the script's target section (web, android, or computer)."""
 
     if script.get("android"):
         from midscene.android import AndroidAgent
@@ -63,6 +63,16 @@ async def _create_agent_for_script(
             console.print(f"[blue]Launching app: {launch}[/blue]")
             await device.launch_app(launch)
         return AndroidAgent(device, _build_agent_options(android_section))
+
+    if script.get("computer"):
+        from midscene.desktop import DesktopAgent
+        from midscene.desktop.desktop import DesktopDevice
+
+        computer_section = script["computer"] or {}
+        # DesktopDevice only grabs the primary display, so a declared displayId
+        # raises instead of being silently dropped.
+        device = DesktopDevice(display_id=computer_section.get("displayId"))
+        return DesktopAgent(device, _build_agent_options(computer_section))
 
     web_section = script.get("web") or script.get("browser") or script.get("page") or script.get("target") or {}
     from midscene.web import PlaywrightWebPage

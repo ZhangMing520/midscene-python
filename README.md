@@ -1,8 +1,8 @@
 # Midscene Python
 
-**See interfaces like a human. UI automation and E2E testing in natural language for Web and Android.**
+**See interfaces like a human. UI automation and E2E testing in natural language for Web, Android, and Desktop.**
 
-Midscene Python is the Python SDK for [Midscene](https://github.com/web-infra-dev/midscene). It captures a screenshot, asks a vision-language model what to do next, and executes the action through Playwright, Selenium, the Chrome Bridge, or ADB. The AI model layer (prompts, planning/locate/insight protocols, multi-slot configuration and coordinate parsing) is synced with upstream Midscene v1.17.4.
+Midscene Python is the Python SDK for [Midscene](https://github.com/web-infra-dev/midscene). It captures a screenshot, asks a vision-language model what to do next, and executes the action through Playwright, Selenium, the Chrome Bridge, ADB, or pyautogui. The AI model layer (prompts, planning/locate/insight protocols, multi-slot configuration and coordinate parsing) is synced with upstream Midscene v1.17.4.
 
 [English](README.md) | [简体中文](README.zh.md)
 
@@ -75,9 +75,10 @@ Visual localization does not depend on the UI rendering stack, so the same `Agen
 | Web | [Playwright](https://midscenejs.com/integrate-with-playwright) or Selenium |
 | Desktop Chrome | [Bridge mode](https://midscenejs.com/bridge-mode) (Chrome extension talks to this SDK over WebSocket) |
 | Android | Devices and emulators through ADB |
+| Desktop | Windows / macOS / Linux screen and pointer control through pyautogui, primary display only (`pip install "midscene-python[desktop]"`) |
 | Custom interfaces | Subclass `AbstractInterface` and provide screenshots plus actions |
 
-iOS, HarmonyOS, desktop targets, and Puppeteer from upstream Midscene are **not ported** in this SDK.
+iOS, HarmonyOS, and Puppeteer from upstream Midscene are **not ported** in this SDK.
 
 ## Models and configuration
 
@@ -143,6 +144,9 @@ When model output fails structural parsing (invalid coordinates / broken XML / t
 
 ```bash
 pip install midscene-python
+
+# Desktop automation needs the GUI extra
+pip install "midscene-python[desktop]"
 ```
 
 | Command | Purpose |
@@ -168,6 +172,7 @@ midscene-python/
 │   │   └── ai_model/         # Model adapters, prompts, protocols, workflows
 │   ├── web/                  # Playwright, Selenium and Bridge interfaces
 │   ├── android/              # ADB device and Android agent
+│   ├── desktop/              # pyautogui screen capture and OS input
 │   ├── cli/                  # `midscene` command line
 │   └── shared/               # Logger and shared helpers
 ├── examples/

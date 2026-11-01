@@ -614,6 +614,33 @@ _ANDROID_SHARED_ACTIONS = (
 )
 
 
+def _swipe_action() -> DeviceAction:
+    """Swipe is exposed by touch (android) and pointer (computer) devices."""
+    return DeviceAction(
+        name="Swipe",
+        description=(
+            "Perform a swipe gesture with the finger-movement convention: "
+            "direction refers to finger movement."
+        ),
+        param_schema={
+            "direction": {
+                "type": '"up" | "down" | "left" | "right"',
+                "description": "The direction of the finger movement",
+            },
+            "distance": {
+                "type": "number",
+                "description": "Swipe distance in pixels",
+                "optional": True,
+            },
+        },
+        locate_fields=[],
+        sample={"direction": "up", "distance": 400},
+        interface_alias="aiSwipe",
+        primitive="swipe",
+        execute=_execute_swipe,
+    )
+
+
 def build_android_action_space() -> List[DeviceAction]:
     """Android action space: only primitives the device interface implements."""
     actions = [
@@ -623,29 +650,7 @@ def build_android_action_space() -> List[DeviceAction]:
     ]
     actions.extend(
         [
-            DeviceAction(
-                name="Swipe",
-                description=(
-                    "Perform a swipe gesture with the finger-movement convention: "
-                    "direction refers to finger movement."
-                ),
-                param_schema={
-                    "direction": {
-                        "type": '"up" | "down" | "left" | "right"',
-                        "description": "The direction of the finger movement",
-                    },
-                    "distance": {
-                        "type": "number",
-                        "description": "Swipe distance in pixels",
-                        "optional": True,
-                    },
-                },
-                locate_fields=[],
-                sample={"direction": "up", "distance": 400},
-                interface_alias="aiSwipe",
-                primitive="swipe",
-                execute=_execute_swipe,
-            ),
+            _swipe_action(),
             DeviceAction(
                 name="LongPress",
                 description="Long press the element",
@@ -748,5 +753,11 @@ def build_action_space_for(interface_type: str) -> List[DeviceAction]:
     # web and computer share the desktop-style action space; Pinch (two-finger
     # touch) is only available on the web touch surface.
     if interface_type == "computer":
-        return [a for a in build_web_action_space() if a.name != "Pinch"]
+        # Upstream computer exposes the pointer swipe but no longPress
+        # primitive.
+        # TODO(computer): DesktopDevice.long_press stays a direct-API helper
+        # until upstream advertises LongPress for this platform.
+        return [
+            a for a in build_web_action_space() if a.name != "Pinch"
+        ] + [_swipe_action()]
     return build_web_action_space()

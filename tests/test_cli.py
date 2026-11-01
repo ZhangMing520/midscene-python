@@ -48,6 +48,32 @@ async def test_web_section_maps_to_playwright_options(monkeypatch):
     assert options.cache_id is None
 
 
+@pytest.mark.asyncio
+async def test_computer_section_builds_desktop_agent():
+    cli_main = importlib.import_module("midscene.cli.main")
+    from midscene.desktop import DesktopAgent
+
+    agent = await cli_main._create_agent_for_script(
+        {"computer": {"agent": {"groupName": "desktop run"}}},
+        headed=False,
+        device_id=None,
+    )
+    assert isinstance(agent, DesktopAgent)
+    assert agent.interface_type.value == "computer"
+
+
+@pytest.mark.asyncio
+async def test_computer_section_refuses_display_id():
+    """The pyautogui backend grabs the primary display only, so a declared
+    displayId must fail loudly instead of being ignored."""
+    cli_main = importlib.import_module("midscene.cli.main")
+
+    with pytest.raises(NotImplementedError):
+        await cli_main._create_agent_for_script(
+            {"computer": {"displayId": "1"}}, headed=False, device_id=None
+        )
+
+
 @pytest.mark.parametrize(
     "status,failed_tasks,expected_exit",
     [

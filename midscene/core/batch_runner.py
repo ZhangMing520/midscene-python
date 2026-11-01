@@ -80,16 +80,25 @@ def merge_web_overrides(
     script: Dict[str, Any], overrides: Dict[str, Any]
 ) -> Dict[str, Any]:
     """Deep-merge the batch-level web env into a script's own web env; the
-    script's own keys win (upstream deep-merge semantics)."""
+    script's own keys win. A script aimed at a native target keeps its section
+    untouched and never gains a web block."""
     if not overrides:
         return script
     merged = dict(script)
-    for key in ("web", "page", "browser", "target", "android"):
-        section = merged.get(key)
-        if isinstance(section, dict):
-            merged[key] = {**overrides, **section}
-        elif key != "android" and overrides:
-            merged[key] = dict(overrides)
+    if any(merged.get(key) is not None for key in ("android", "computer")):
+        return merged
+    web_key = next(
+        (
+            key
+            for key in ("web", "page", "browser", "target")
+            if isinstance(merged.get(key), dict)
+        ),
+        None,
+    )
+    if web_key:
+        merged[web_key] = {**overrides, **merged[web_key]}
+    else:
+        merged["web"] = dict(overrides)
     return merged
 
 
@@ -229,8 +238,10 @@ class BatchRunner:
         if not isinstance(doc, dict):
             return content
         has_own = any(isinstance(doc.get(k), dict) for k in ("web", "page", "browser", "target"))
-        has_android = doc.get("android") is not None
-        if has_own or has_android:
+        has_native_target = any(
+            doc.get(k) is not None for k in ("android", "computer")
+        )
+        if has_own or has_native_target:
             return content
         web_block = yaml.safe_dump({"web": overrides}, allow_unicode=True)
         return web_block + content

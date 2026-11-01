@@ -1,6 +1,6 @@
 # 快速开始 - Midscene Python
 
-Midscene Python 是 [Midscene](https://github.com/web-infra-dev/midscene) 的 Python SDK：截取当前屏幕，交给视觉语言模型判断下一步，再通过 Playwright、Selenium、Chrome Bridge 或 ADB 执行动作。
+Midscene Python 是 [Midscene](https://github.com/web-infra-dev/midscene) 的 Python SDK：截取当前屏幕，交给视觉语言模型判断下一步，再通过 Playwright、Selenium、Chrome Bridge、ADB 或 pyautogui（桌面）执行动作。
 
 本指南中的 API、环境变量与 YAML 格式均与当前仓库代码一致；上游 TypeScript 版的使用说明见 [midscenejs.com](https://midscenejs.com/)。
 
@@ -11,6 +11,9 @@ pip install midscene-python
 
 # 使用 Playwright 时还需要下载浏览器
 playwright install chromium
+
+# 桌面自动化（Windows / macOS / Linux）需要 GUI 依赖，单独安装
+pip install "midscene-python[desktop]"
 ```
 
 Selenium 模式需要本机安装 Chrome，Selenium Manager 会自动解析 chromedriver；Android 模式需要 `adb` 在 `PATH` 中，且设备已开启 USB 调试。
@@ -199,6 +202,41 @@ asyncio.run(main())
 
 `AndroidAgent` 还提供 `stop_app(package_name)`、`install_app(apk_path)`、`home()` 与 `recent()`。
 
+## 桌面自动化
+
+桌面设备截取整屏、用系统指针与键盘操作本机，对应上游 `@midscene/computer`：
+
+```python
+import asyncio
+
+from midscene.desktop import DesktopAgent, DesktopDevice
+
+
+async def main():
+    device = DesktopDevice()
+    agent = DesktopAgent(device)
+
+    await agent.ai_act("Open the Files app and sort by modification time")
+    await agent.ai_tap("the close button at the top right")
+    await agent.ai_input("the search box", {"value": "report-2026"})
+
+    # 直接 API：组合键、滚动（distance 单位为像素）、拖拽、长按
+    await device.keyboard_press("Control+Space")   # mac 上写 "Command+Space"
+    await device.scroll("down", 600)
+    await device.long_press(960, 540, 1000)
+
+
+asyncio.run(main())
+```
+
+与上游一致的行为约束：
+
+- 输入文本走剪贴板粘贴（保存旧剪贴板 → 写入 → `Ctrl/Cmd+V` → 还原），因此中文等非 ASCII 文本不受输入法干扰；缺少 `pyperclip` 时非 ASCII 输入会报错。
+- `scroll` 的 `distance` 是像素，内部按每 100 像素一个滚轮刻度换算并逐格发送；未指定距离时滚动视口轴的 70%。
+- 抓屏只覆盖主显示器：`DesktopDevice(display_id=...)`（对应 YAML 的 `displayId`）会直接抛 `NotImplementedError`，而不是假装切换成功。多屏需要 per-monitor 截图后端。
+- `LongPress` 只在直接 API 中提供，未进入 AI 动作空间；`Pinch` 桌面不支持。
+- 键名会归一到 pyautogui 各平台的实际映射（`Command`/`Super`、`Page Down`、`Esc` 等都能用），未知键名会抛错而不是被静默忽略；单个字符保留大小写，`keyboard_press("A")` 等价于 Shift+a。
+
 ## 常用操作 API
 
 ### AI 规划：ai_act
@@ -264,7 +302,7 @@ await agent.ai_wait_for("The loading spinner is gone", {"timeoutMs": 15000, "che
 
 ## YAML 自动化脚本
 
-YAML 脚本由 `midscene run` 执行，用 Playwright 打开页面（或在 Android 设备上运行），按 `tasks` 顺序播放 `flow`。
+YAML 脚本由 `midscene run` 执行，用 Playwright 打开页面（或在 Android 设备、本机桌面上运行），按 `tasks` 顺序播放 `flow`。
 
 ```yaml
 # flow.yaml
@@ -306,7 +344,7 @@ midscene run flow.yaml --verbose
 
 ### 顶部目标
 
-顶层只能出现 `web`（或别名 `browser` / `page` / `target`）与 `android` 之一。
+顶层只能出现 `web`（或别名 `browser` / `page` / `target`）、`android` 与 `computer` 之一。
 
 Web 支持：
 
@@ -326,6 +364,28 @@ Android 支持：
 | `deviceId` | 设备序列号；也可用 `--device` 覆盖 |
 | `launch` | 启动后要打开的包名 |
 | `agent` | Agent 选项 |
+
+Computer（桌面）支持：
+
+| 字段 | 说明 |
+| --- | --- |
+| `displayId` | 上游字段；当前 pyautogui 后端只能抓主屏，写了会抛 `NotImplementedError` |
+| `agent` | Agent 选项 |
+
+```yaml
+# desktop.yaml
+computer: {}
+
+tasks:
+  - name: Sort files by date
+    flow:
+      - aiAct: Open the Files app and sort by modification time
+      - aiAssert: The most recently modified file is at the top
+```
+
+```bash
+midscene run desktop.yaml
+```
 
 `agent` 下可配置 `groupName`、`groupDescription`、`generateReport`、`autoPrintReportMsg`、`reportFileName`、`cache`（字符串 id 或 `{id: ...}`）以及 `replanningCycleLimit`。
 
