@@ -326,6 +326,58 @@ class PlaywrightWebPage(AbstractInterface):
             logger.error(f"Failed to hover at ({x}, {y}): {e}")
             raise
 
+    async def pinch(
+        self,
+        direction: str,
+        point: Optional[List[float]] = None,
+        distance: Optional[int] = None,
+        duration: Optional[int] = None,
+    ) -> None:
+        """Two-finger pinch via CDP touch events (upstream web Pinch).
+
+        direction 'out' zooms out (fingers move together), 'in' zooms in
+        (fingers move apart).
+        """
+        if direction not in ("in", "out"):
+            raise ValueError('pinch direction must be "in" or "out"')
+        viewport = self.page.viewport_size or {"width": 1280, "height": 720}
+        cx = float(point[0]) if point else viewport["width"] / 2
+        cy = float(point[1]) if point else viewport["height"] / 2
+        spread = float(distance if distance is not None else 100)
+        duration_s = (duration if duration is not None else 600) / 1000
+        steps = 12
+        gap_start = spread / 2
+        gap_end = 10.0 if direction == "out" else spread / 2 + spread / 2
+        if direction == "in":
+            gap_start, gap_end = 10.0, spread / 2 + spread / 2
+
+        cdp = await self.context.new_cdp_session(self.page)
+
+        async def touch(token: str, phase: str, x: float, y: float) -> None:
+            await cdp.send(
+                "Input.dispatchTouchEvent",
+                {
+                    "type": phase,
+                    "touchPoints": [
+                        {"x": x, "y": y, "id": 0},
+                        {"x": 2 * cx - x, "y": 2 * cy - y, "id": 1},
+                    ]
+                    if phase != "touchEnd"
+                    else [],
+                },
+            )
+
+        try:
+            await touch("start", "touchStart", cx - gap_start, cy - gap_start)
+            for step in range(1, steps + 1):
+                t = step / steps
+                gap = gap_start + (gap_end - gap_start) * t
+                await asyncio.sleep(duration_s / steps)
+                await touch("move", "touchMove", cx - gap, cy - gap)
+            await touch("end", "touchEnd", cx - gap_end, cy - gap_end)
+        finally:
+            await cdp.detach()
+
     async def drag_and_drop(self, from_point, to_point) -> None:
         """Drag from one point to another (upstream page.mouse.drag)."""
         try:

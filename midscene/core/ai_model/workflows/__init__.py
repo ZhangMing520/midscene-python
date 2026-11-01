@@ -2,6 +2,7 @@
 
 from .context_utils import (
     ensure_data_url,
+    render_ai_context,
     format_locate_model_context,
     get_screenshot_base64,
     get_shot_size,
@@ -33,6 +34,7 @@ __all__ = [
     "format_locate_model_context",
     "get_screenshot_base64",
     "get_shot_size",
+    "render_ai_context",
     "prepare_model_image",
     "user_prompt_to_string",
 ]

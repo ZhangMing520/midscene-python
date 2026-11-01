@@ -112,6 +112,9 @@ class UIContext(BaseModel, Generic[ElementType]):
     size: Size
     content: List[ElementType]
     tree: UITree
+    # Screenshot coordinates -> logical viewport coordinates factor
+    # (upstream shrunkShotToLogicalRatio = dpr / screenshotShrinkFactor).
+    shrunk_shot_to_logical_ratio: float = 1.0
     
     
 class AIUsageInfo(BaseModel):
@@ -286,6 +289,30 @@ class AgentOptions:
     on_task_start_tip: Optional[Callable] = None
     # Override the replanning cycle limit (default: adapter value, 20 standard)
     replanning_cycle_limit: Optional[int] = None
+    # Downscale the captured screenshot before sending it to the model
+    # (>= 1; coordinates are mapped back afterwards, upstream
+    # AgentOpt.screenshotShrinkFactor)
+    screenshot_shrink_factor: float = 1.0
+    # Cache configuration: False disables, a string is the cache id, a dict is
+    # {id, strategy: 'read-only'|'read-write'|'write-only', cacheDir} (upstream
+    # AgentOpt.cache)
+    cache: Optional[Union[bool, str, Dict[str, Any]]] = None
+    # Milliseconds to wait after each executed action (upstream waitAfterAction)
+    wait_after_action_ms: int = 300
+    # Async callback awaited after each successful action:
+    # (context: {'action': dict}) -> None (upstream waitForActionReady)
+    wait_for_action_ready: Optional[Callable] = None
+    # Default AI context text per API key, seeded into agent.ai_contexts
+    # (upstream AgentOpt.aiContexts)
+    ai_contexts: Optional[Dict[str, str]] = None
+    # Callback receiving each AIUsageInfo (upstream AgentOpt.onLLMUsage)
+    on_llm_usage: Optional[Callable] = None
+    # Extra attributes merged into the report dump top level
+    report_attributes: Optional[Dict[str, Any]] = None
+    # When False, skip writing the execution dump report file
+    persist_execution_dump: bool = True
+    # Use the device-reported time in planning feedback messages (android)
+    use_device_time: bool = False
 
 
 @dataclass

@@ -326,6 +326,38 @@ def build_web_action_space() -> List[DeviceAction]:
             execute=_make_tap("hover"),
         ),
         DeviceAction(
+            name="Pinch",
+            description=(
+                "Pinch (two-finger zoom) on the element: direction 'out' zooms "
+                "out (fingers move together), 'in' zooms in (fingers move apart)"
+            ),
+            param_schema={
+                "direction": {
+                    "type": '"in" | "out"',
+                    "description": "Zoom direction",
+                },
+                "locate": {
+                    "type": "locate",
+                    "description": "The element to pinch on",
+                    "optional": True,
+                },
+                "distance": {
+                    "type": "number",
+                    "description": "Pinch distance in pixels",
+                    "optional": True,
+                },
+                "duration": {
+                    "type": "number",
+                    "description": "Pinch duration in milliseconds",
+                    "optional": True,
+                },
+            },
+            locate_fields=["locate"],
+            sample={"direction": "in", "locate": {"prompt": "the map"}},
+            interface_alias="aiPinch",
+            execute=_execute_pinch,
+        ),
+        DeviceAction(
             name="DragAndDrop",
             description=(
                 "Pick up a specific UI element and move it to a new position "
@@ -519,6 +551,50 @@ def build_web_action_space() -> List[DeviceAction]:
     ]
 
 
+async def _execute_run_adb_shell(param: Dict[str, Any], device: Any, locate_fn) -> None:
+    command = param.get("command")
+    if not command:
+        raise ValueError("RunAdbShell requires a command parameter")
+    if not hasattr(device, "run_adb_shell"):
+        raise NotImplementedError("RunAdbShell is not supported on this interface")
+    timeout = param.get("timeout")
+    if timeout is not None:
+        await device.run_adb_shell(str(command), timeout=float(timeout))
+    else:
+        await device.run_adb_shell(str(command))
+
+
+async def _execute_launch(param: Dict[str, Any], device: Any, locate_fn) -> None:
+    uri = param.get("uri")
+    if not uri or not str(uri).strip():
+        raise ValueError("Launch requires a non-empty uri parameter")
+    await device.launch_app(str(uri))
+
+
+async def _execute_terminate(param: Dict[str, Any], device: Any, locate_fn) -> None:
+    uri = param.get("uri")
+    if not uri or not str(uri).strip():
+        raise ValueError("Terminate requires a non-empty uri parameter")
+    await device.stop_app(str(uri))
+
+
+async def _execute_pinch(param: Dict[str, Any], device: Any, locate_fn) -> None:
+    direction = param.get("direction")
+    if direction not in ("in", "out"):
+        raise ValueError('Pinch direction must be "in" or "out"')
+    locate = param.get("locate")
+    point = None
+    if locate is not None:
+        point_result = await _resolve_locate_point(locate, locate_fn)
+        point = point_result["center"]
+    kwargs: Dict[str, Any] = {}
+    if param.get("distance") is not None:
+        kwargs["distance"] = param["distance"]
+    if param.get("duration") is not None:
+        kwargs["duration"] = param["duration"]
+    await device.pinch(direction, point=point, **kwargs)
+
+
 def _make_system_action(method_name: str) -> Callable[..., Any]:
     async def execute(param: Dict[str, Any], device: Any, locate_fn) -> None:
         await getattr(device, method_name)()
@@ -612,6 +688,53 @@ def build_android_action_space() -> List[DeviceAction]:
                 interface_alias="aiAndroidRecentApps",
                 primitive="recent",
                 execute=_make_system_action("recent"),
+            ),
+            DeviceAction(
+                name="RunAdbShell",
+                description="Run an adb shell command on the device",
+                param_schema={
+                    "command": {
+                        "type": "string",
+                        "description": "The adb shell command to run",
+                    },
+                    "timeout": {
+                        "type": "number",
+                        "description": "Command timeout in milliseconds",
+                        "optional": True,
+                    },
+                },
+                locate_fields=[],
+                sample={"command": "dumpsys window | grep mCurrentFocus"},
+                interface_alias="runAdbShell",
+                execute=_execute_run_adb_shell,
+            ),
+            DeviceAction(
+                name="Launch",
+                description="Launch an Android app or URL",
+                param_schema={
+                    "uri": {
+                        "type": "string",
+                        "description": "App package name or URL to launch",
+                    }
+                },
+                locate_fields=[],
+                sample={"uri": "com.example.app"},
+                interface_alias="launch",
+                execute=_execute_launch,
+            ),
+            DeviceAction(
+                name="Terminate",
+                description="Terminate (force-stop) an Android app by package name",
+                param_schema={
+                    "uri": {
+                        "type": "string",
+                        "description": "Package name of the app to force-stop",
+                    }
+                },
+                locate_fields=[],
+                sample={"uri": "com.example.app"},
+                interface_alias="terminate",
+                execute=_execute_terminate,
             ),
         ]
     )

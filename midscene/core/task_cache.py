@@ -30,6 +30,7 @@ class TaskCache:
         enabled: bool,
         read_only_mode: bool = False,
         write_only_mode: bool = False,
+        cache_dir: Optional[str] = None,
     ):
         if not cache_id:
             raise ValueError("cacheId is required")
@@ -43,7 +44,7 @@ class TaskCache:
         safe_cache_id = _replace_illegal_path_chars_and_space(cache_id)
         self.cache_id = safe_cache_id
 
-        cache_dir = os.environ.get(MIDSCENE_RUN_DIR) or get_midscene_run_dir()
+        cache_dir = cache_dir or os.environ.get(MIDSCENE_RUN_DIR) or get_midscene_run_dir()
         cache_file_dir = Path(cache_dir) / "cache"
         cache_file_dir.mkdir(parents=True, exist_ok=True)
         self.cache_file_path = str(cache_file_dir / f"{safe_cache_id}{CACHE_FILE_EXT}")

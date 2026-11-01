@@ -308,6 +308,10 @@ class ScriptPlayer:
 
         if key in ("recordToReport", "logScreenshot"):
             options = value if isinstance(value, dict) else {"content": str(value)}
+            title = options.get("title") or (
+                str(value) if isinstance(value, str) else "record"
+            )
+            agent.record_to_report(title, options)
             logger.info(f"record: {options.get('content', '')}")
             return _NO_RESULT
 

@@ -163,7 +163,14 @@ class Agent:
         self._runtime_cache: Dict[str, ModelRuntime] = {}
         self._action_space: Optional[List[DeviceAction]] = None
         self._task_cache: Optional[TaskCache] = None
-        self.ai_contexts: Dict[str, str] = {}
+        self.ai_contexts: Dict[str, str] = dict(
+            getattr(self.options, "ai_contexts", None) or {}
+        )
+        legacy_action_context = getattr(self.options, "ai_action_context", None)
+        if legacy_action_context and "aiAct" not in self.ai_contexts:
+            self.ai_contexts["aiAct"] = legacy_action_context
+        self._report_builder = None
+        self._usage_by_intent: Dict[str, Dict[str, int]] = {}
 
         # Execution state
         self.destroyed = False
@@ -181,8 +188,26 @@ class Agent:
 
     def model_runtime(self, intent: str) -> ModelRuntime:
         if intent not in self._runtime_cache:
-            self._runtime_cache[intent] = get_model_runtime(self._model_config(intent))
+            runtime = get_model_runtime(self._model_config(intent))
+            on_llm_usage = getattr(self.options, "on_llm_usage", None)
+            if on_llm_usage:
+                runtime.on_usage = on_llm_usage
+            self._runtime_cache[intent] = runtime
         return self._runtime_cache[intent]
+
+    @property
+    def metrics(self) -> Dict[str, Dict[str, int]]:
+        """Accumulated token usage per model-config intent (upstream metrics)."""
+        return self._usage_by_intent
+
+    def _record_usage_metrics(self, intent: str, usage: Optional[Dict[str, Any]]) -> None:
+        if not usage:
+            return
+        bucket = self._usage_by_intent.setdefault(
+            intent, {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+        )
+        for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
+            bucket[key] += int(usage.get(key) or 0)
 
     def _resolve_runtime(self, task_type: str) -> ModelRuntime:
         """Resolve the runtime for a task type with model fallback
@@ -227,9 +252,47 @@ class Agent:
         if self._frozen and self.frozen_context is not None:
             return self.frozen_context
         context = await self.interface.get_context()
+        context = self._apply_screenshot_shrink(context)
         if self._frozen:
             self.frozen_context = context
         return context
+
+    def _apply_screenshot_shrink(self, context: UIContext) -> UIContext:
+        """Downscale the screenshot for the model and record the coordinate
+        ratio back to logical space (upstream commonContextParser:
+        shrunkShotToLogicalRatio = dpr / screenshotShrinkFactor)."""
+        factor = float(getattr(self.options, "screenshot_shrink_factor", 1.0) or 1.0)
+        if factor <= 1:
+            return context
+        try:
+            import base64 as _b64
+            import io as _io
+
+            from PIL import Image
+
+            raw = context.screenshot_base64
+            if raw.startswith("data:"):
+                raw = raw.split(",", 1)[1]
+            image = Image.open(_io.BytesIO(_b64.b64decode(raw)))
+            physical_width, physical_height = image.size
+            logical_width = context.size.width or physical_width
+            dpr = physical_width / logical_width if logical_width else 1.0
+            target_width = max(1, round(physical_width / factor))
+            target_height = max(1, round(physical_height / factor))
+            shrunk = image.resize((target_width, target_height))
+            buffer = _io.BytesIO()
+            shrunk.save(buffer, format="PNG")
+            shrunk_base64 = _b64.b64encode(buffer.getvalue()).decode("ascii")
+            ratio = dpr / factor
+            return context.model_copy(
+                update={
+                    "screenshot_base64": shrunk_base64,
+                    "shrunk_shot_to_logical_ratio": ratio,
+                }
+            )
+        except Exception as e:
+            logger.warning(f"screenshot shrink failed, using original: {e}")
+            return context
 
     async def _get_ui_context(self, action: str) -> UIContext:
         return await self.get_ui_context(action)
@@ -247,6 +310,53 @@ class Agent:
         self.frozen_context = None
 
     unfreeze_context = unfreeze_page_context
+
+    def _merge_call_context(
+        self,
+        api_name: str,
+        opt: Optional[Dict[str, Any]],
+        context: UIContext,
+        dom_included: Union[bool, str] = False,
+    ) -> Optional[str]:
+        """Combine the per-API context text with the rendered DOM context
+        (upstream renderAIContext, enabled by domIncluded)."""
+        parts = []
+        base_context = self._resolve_call_context(api_name, opt)
+        if base_context:
+            parts.append(base_context)
+        if dom_included:
+            from .ai_model.workflows.context_utils import render_ai_context
+
+            rendered = render_ai_context(context)
+            if rendered:
+                parts.append(rendered)
+        return "\n\n".join(parts) if parts else None
+
+    async def _wait_for_action_ready(self, action: Dict[str, Any]) -> None:
+        """Await the user's waitForActionReady callback after a successful
+        action; slow waits only warn (upstream agent/action-readiness.ts)."""
+        callback = getattr(self.options, "wait_for_action_ready", None)
+        if not callback:
+            return
+        started = time.time()
+        warned = False
+        task = asyncio.ensure_future(
+            callback({"action": {"name": action.get("type"), "id": None}})
+        )
+        while not task.done():
+            await asyncio.sleep(0.05)
+            if not warned and time.time() - started > 5:
+                logger.warning(
+                    f"waitForActionReady for {action.get('type')} is still "
+                    "pending after 5000ms; continuing to wait."
+                )
+                warned = True
+        try:
+            await task
+        except Exception as e:
+            raise RuntimeError(
+                f"waitForActionReady failed for {action.get('type')}: {e}"
+            ) from e
 
     def _notify_task_start(self, tip: str) -> None:
         callback: Optional[Callable] = getattr(self.options, "on_task_start_tip", None)
@@ -434,7 +544,10 @@ class Agent:
                             **_strip_runtime_locate_result(action.get("param") or {}),
                         }
                     )
-                    await asyncio.sleep(DEFAULT_WAIT_AFTER_ACTION_MS / 1000)
+                    await asyncio.sleep(
+                        getattr(self.options, "wait_after_action_ms", 300) / 1000
+                    )
+                    await self._wait_for_action_ready(action)
                     conversation_history.pending_feedback_message = (
                         "Time: "
                         f"{self._time_string()}, I have finished the action previously planned."
@@ -711,6 +824,23 @@ class Agent:
             param["locate"] = self._build_locate_param(locate_prompt, opt, "aiScroll")
         await self._call_action_in_action_space("Scroll", param)
 
+    async def ai_pinch(
+        self,
+        locate_prompt: Optional[TUserPrompt],
+        opt: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """aiPinch: two-finger zoom ('in' | 'out') around the element."""
+        self._check_not_destroyed()
+        opt = dict(opt or {})
+        param: Dict[str, Any] = {"direction": opt.get("direction") or "in"}
+        if locate_prompt is not None:
+            param["locate"] = self._build_locate_param(locate_prompt, opt, "aiPinch")
+        if opt.get("distance") is not None:
+            param["distance"] = opt["distance"]
+        if opt.get("duration") is not None:
+            param["duration"] = opt["duration"]
+        await self._call_action_in_action_space("Pinch", param)
+
     async def ai_long_press(
         self, locate_prompt: TUserPrompt, opt: Optional[Dict[str, Any]] = None
     ) -> None:
@@ -764,7 +894,9 @@ class Agent:
             model_runtime=runtime,
             page_description="",
             screenshot_included=opt.get("screenshotIncluded", True),
-            context_text=self._resolve_call_context("aiQuery", opt),
+            context_text=self._merge_call_context(
+                "aiQuery", opt, context, opt.get("domIncluded", False)
+            ),
         )
         return response.get("parse_result", {}).get("data")
 
@@ -813,8 +945,11 @@ class Agent:
             model_runtime=runtime,
             page_description="",
             screenshot_included=opt.get("screenshotIncluded", True),
-            context_text=self._resolve_call_context(api_name, opt),
+            context_text=self._merge_call_context(
+                api_name, opt, context, opt.get("domIncluded", False)
+            ),
         )
+        self._record_usage_metrics("insight", response.get("usage"))
         data = response.get("parse_result", {}).get("data")
         return _extract_typed_query_result(data, demand_type)
 
@@ -843,7 +978,9 @@ class Agent:
             model_runtime=runtime,
             page_description="",
             screenshot_included=opt.get("screenshotIncluded", True),
-            context_text=self._resolve_call_context("aiAssert", opt),
+            context_text=self._merge_call_context(
+                "aiAssert", opt, context, opt.get("domIncluded", False)
+            ),
         )
         parse_result = response.get("parse_result", {})
         data = parse_result.get("data")
@@ -968,6 +1105,60 @@ class Agent:
             self.destroyed = True
             if self._task_cache:
                 self._task_cache.flush()
+            await self.flush_report()
+
+    def _get_report_builder(self):
+        if self._report_builder is None:
+            from .dump import ExecutionDumpBuilder
+
+            tag = getattr(self.interface_type, "value", self.interface_type)
+            self._report_builder = ExecutionDumpBuilder(
+                group_name=getattr(self.options, "group_name", "Midscene Report"),
+                group_description=getattr(self.options, "group_description", ""),
+                device_type=tag,
+            )
+            attributes = getattr(self.options, "report_attributes", None)
+            if attributes:
+                self._report_builder.dump.update(attributes)
+        return self._report_builder
+
+    def record_to_report(
+        self,
+        title: str,
+        opt: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Append a log/screenshot entry to the report (upstream
+        recordToReport). opt: {content?, screenshots?: [{base64, description?}]}."""
+        from .dump import build_execution_task
+
+        opt = opt or {}
+        screenshots = opt.get("screenshots") or []
+        if opt.get("screenshot_base64"):
+            screenshots = [{"base64": opt["screenshot_base64"]}]
+        tasks = [
+            build_execution_task(
+                "Log",
+                "Screenshot" if screenshots else "Log",
+                {"title": title, "content": opt.get("content", "")},
+                output=screenshots or None,
+            )
+        ]
+        self._get_report_builder().add_execution(
+            f"Log - {title}", tasks
+        )
+
+    # deprecated alias (upstream logScreenshot)
+    log_screenshot = record_to_report
+
+    async def flush_report(self) -> None:
+        """Write any standalone report entries to disk."""
+        if self._report_builder is not None:
+            name = getattr(self.options, "report_file_name", None)
+            self._report_builder.write_to_disk(
+                name.rsplit(".", 1)[0]
+                if name and name.lower().endswith((".json", ".html"))
+                else name
+            )
 
     def flush_cache(self, options: Optional[Dict[str, Any]] = None) -> None:
         if self._task_cache is None:
@@ -1151,6 +1342,31 @@ class Agent:
                 f"Element not found : {user_prompt_to_string(prompt)}"
                 + (f" ({'; '.join(errors)})" if errors else "")
             )
+        return self._to_logical_coords(element, context)
+
+    @staticmethod
+    def _to_logical_coords(element: Dict[str, Any], context: UIContext) -> Dict[str, Any]:
+        """Scale screenshot-space coordinates back to logical viewport space."""
+        ratio = float(getattr(context, "shrunk_shot_to_logical_ratio", 1.0) or 1.0)
+        if ratio == 1.0:
+            return element
+        center = element.get("center")
+        if center:
+            element = {
+                **element,
+                "center": [center[0] * ratio, center[1] * ratio],
+            }
+        rect = element.get("rect")
+        if rect:
+            element = {
+                **element,
+                "rect": {
+                    "left": rect["left"] * ratio,
+                    "top": rect["top"] * ratio,
+                    "width": rect["width"] * ratio,
+                    "height": rect["height"] * ratio,
+                },
+            }
         return element
 
     async def _execute_planning_action(self, action: Dict[str, Any]) -> None:
@@ -1239,6 +1455,8 @@ class Agent:
         """Persist the upstream-shaped execution dump for one aiAct run."""
         if not getattr(self.options, "generate_report", True):
             return None
+        if not getattr(self.options, "persist_execution_dump", True):
+            return None
         try:
             if cache_yaml is not None:
                 # Matches upstream loadYamlFlowAsPlanning task metadata.
@@ -1280,6 +1498,9 @@ class Agent:
                 ),
                 device_type=tag,
             )
+            attributes = getattr(self.options, "report_attributes", None)
+            if attributes:
+                builder.dump.update(attributes)
             builder.add_execution(prompt_str, [planning_task, *action_tasks])
             return builder.write_to_disk(name)
         except Exception as e:
@@ -1291,21 +1512,60 @@ class Agent:
     # ------------------------------------------------------------------
 
     def _get_task_cache(self) -> Optional[TaskCache]:
+        if self._task_cache is not None:
+            return self._task_cache
+
+        cache_config = getattr(self.options, "cache", None)
         cache_id = getattr(self.options, "cache_id", None)
-        if not is_cache_enabled() and not cache_id:
+        enabled = is_cache_enabled()
+        read_only = False
+        write_only = False
+        cache_dir: Optional[str] = None
+
+        if isinstance(cache_config, dict):
+            strategy = cache_config.get("strategy") or "read-write"
+            if strategy not in ("read-only", "read-write", "write-only"):
+                raise ValueError(
+                    'cache.strategy must be one of "read-only", "read-write", '
+                    f'"write-only", but received "{strategy}"'
+                )
+            read_only = strategy == "read-only"
+            write_only = strategy == "write-only"
+            cache_id = cache_config.get("id") or cache_id
+            cache_dir = cache_config.get("cacheDir") or cache_config.get("cache_dir")
+            enabled = True
+        elif isinstance(cache_config, str):
+            cache_id = cache_config
+            enabled = True
+        elif cache_config is False:
             return None
-        if self._task_cache is None:
-            self._task_cache = TaskCache(
-                cache_id=cache_id or "midscene-python", enabled=True
-            )
+
+        if not enabled and not cache_id:
+            return None
+        self._task_cache = TaskCache(
+            cache_id=cache_id or "midscene-python",
+            enabled=True,
+            read_only_mode=read_only,
+            write_only_mode=write_only,
+            cache_dir=cache_dir,
+        )
         return self._task_cache
 
     def _check_not_destroyed(self) -> None:
         if self.destroyed:
             raise RuntimeError("Agent has been destroyed")
 
-    @staticmethod
-    def _time_string() -> str:
+    def _time_string(self) -> str:
+        if getattr(self.options, "use_device_time", False):
+            device_time = getattr(self.interface, "get_device_time", None)
+            if device_time is not None:
+                try:
+                    result = device_time()
+                    if asyncio.iscoroutine(result):
+                        return asyncio.get_event_loop().run_until_complete(result)
+                    return str(result)
+                except NotImplementedError:
+                    pass
         return time.strftime("%H:%M:%S")
 
     @property

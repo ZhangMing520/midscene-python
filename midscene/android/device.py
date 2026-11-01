@@ -6,6 +6,7 @@ import asyncio
 import base64
 import subprocess
 import xml.etree.ElementTree as ET
+from pathlib import Path
 from typing import List, Optional, Sequence
 
 from loguru import logger
@@ -50,6 +51,49 @@ class AndroidElement(BaseElement):
             raise
 
 
+# ---------------------------------------------------------------------------
+# Text input helpers (upstream packages/android/src/device.ts)
+# ---------------------------------------------------------------------------
+
+IME_STRATEGY_ALWAYS_YADB = "always-yadb"
+IME_STRATEGY_YADB_FOR_NON_ASCII = "yadb-for-non-ascii"
+IME_STRATEGY_LEGACY = "legacy"
+YADB_VERSION = "v1.1.1"
+YADB_DEVICE_PATH = "/data/local/tmp/yadb"
+
+
+def escape_for_shell(text: str) -> str:
+    """Escape text for safe use inside single-quoted shell strings.
+
+    In single quotes all characters are literal except ' itself; newlines are
+    converted to literal \n (yadb interprets them back to real newlines).
+    """
+    return text.replace("'", "'\\''").replace("\n", "\\n")
+
+
+def shell_escape_arg(text: str) -> str:
+    """Escape a string as a single `adb shell input text` argument.
+
+    Wraps the value in single quotes so the device shell does not interpret
+    spaces, &, ;, |, $, ` etc. Internal single quotes use the '\'' sequence.
+    """
+    return "'" + text.replace("'", "'\\''") + "'"
+
+
+def should_use_yadb_for_text(text: str) -> bool:
+    """True when `adb shell input text` cannot reliably deliver this text:
+    non-ASCII (Chinese etc.), format specifiers, shell-special characters, or
+    mixed quotes (upstream shouldUseYadbForText)."""
+    import re as _re
+
+    has_non_ascii = any(ord(ch) >= 0x80 for ch in text)
+    has_format_specifiers = bool(_re.search(r"%[a-zA-Z]", text))
+    has_shell_special_chars = bool(_re.search(r"[\\`$]", text))
+    has_both_quotes = '"' in text and "'" in text
+    return has_non_ascii or has_format_specifiers or has_shell_special_chars or has_both_quotes
+
+
+
 class AndroidDeviceConfig(BaseModel):
     """Android device configuration"""
     device_id: str
@@ -74,6 +118,8 @@ class AndroidDevice(AbstractInterface):
         self.config = config or AndroidDeviceConfig(device_id=device_id)
         self._connected = False
         self._screen_size: Optional[Size] = None
+        self._yadb_pushed = False
+        self._yadb_bin_path: Optional[str] = None
     
     @classmethod
     async def create(cls, device_id: Optional[str] = None) -> 'AndroidDevice':
@@ -286,16 +332,131 @@ class AndroidDevice(AbstractInterface):
             raise
 
     async def input_text(self, text: str) -> None:
-        """Input text"""
+        r"""Input text.
+
+        Uses the upstream IME strategy (MIDSCENE_ANDROID_IME_STRATEGY):
+        'yadb-for-non-ascii' (default) routes text that `adb shell input text`
+        cannot deliver reliably (non-ASCII, % specifiers, \ ` $, mixed quotes)
+        through the Yadb tool; 'always-yadb' always uses Yadb; 'legacy' always
+        uses `input text` with proper shell escaping.
+        """
+        await self._type_text(text)
+
+    async def _type_text(self, text: str) -> None:
+        """Type text following the resolved IME strategy (upstream typeText)."""
+        if not text:
+            return
+        import os as _os
+
+        strategy = (
+            _os.environ.get("MIDSCENE_ANDROID_IME_STRATEGY")
+            or IME_STRATEGY_YADB_FOR_NON_ASCII
+        )
+        if strategy not in (
+            IME_STRATEGY_ALWAYS_YADB,
+            IME_STRATEGY_YADB_FOR_NON_ASCII,
+            IME_STRATEGY_LEGACY,
+        ):
+            logger.warning(
+                f"Unknown MIDSCENE_ANDROID_IME_STRATEGY {strategy!r}, "
+                f"falling back to {IME_STRATEGY_YADB_FOR_NON_ASCII}"
+            )
+            strategy = IME_STRATEGY_YADB_FOR_NON_ASCII
+
+        needs_yadb = strategy == IME_STRATEGY_ALWAYS_YADB or (
+            strategy == IME_STRATEGY_YADB_FOR_NON_ASCII
+            and should_use_yadb_for_text(text)
+        )
+
         try:
-            # Escape special characters
-            escaped_text = text.replace(' ', '%s').replace('&', '\\&')
-            await self._run_adb_command([
-                "-s", self.device_id, "shell", "input", "text", escaped_text
-            ])
+            if needs_yadb:
+                await self._exec_yadb_raw(text)
+            else:
+                await self._shell_input_text(text)
         except Exception as e:
             logger.error(f"Failed to input text: {e}")
             raise
+
+    async def _shell_input_text(self, text: str) -> None:
+        """`adb shell input text` with proper shell escaping; input text cannot
+        handle newlines, so segments are split and Enter is pressed between
+        them (upstream shellInputText)."""
+        segments = text.split("\n")
+        for index, segment in enumerate(segments):
+            if segment:
+                await self._run_adb_command([
+                    "-s", self.device_id, "shell",
+                    "input", "text", shell_escape_arg(segment),
+                ])
+            if index < len(segments) - 1:
+                await self.key_event("KEYCODE_ENTER")
+
+    def _resolve_yadb_bin_path(self) -> str:
+        """Local Yadb binary path: <MIDSCENE_RUN_DIR>/bin/yadb."""
+        from ..core.ai_model.env_config import get_midscene_run_dir
+
+        if self._yadb_bin_path is None:
+            self._yadb_bin_path = str(
+                Path(get_midscene_run_dir("bin")) / "yadb"
+            )
+        return self._yadb_bin_path
+
+    async def _ensure_yadb(self) -> None:
+        """Download (once) and push the Yadb tool to the device."""
+        if self._yadb_pushed:
+            return
+        bin_path = Path(self._resolve_yadb_bin_path())
+        bin_path.parent.mkdir(parents=True, exist_ok=True)
+        if not bin_path.exists():
+            import httpx
+
+            url = (
+                "https://github.com/ysbing/YADB/releases/download/"
+                f"{YADB_VERSION}/yadb"
+            )
+            logger.info(f"Downloading Yadb tool from {url} ...")
+            async with httpx.AsyncClient(timeout=120.0, follow_redirects=True) as client:
+                response = await client.get(url)
+            if response.status_code != 200:
+                raise RuntimeError(
+                    f"Failed to download Yadb tool ({response.status_code}). "
+                    "Chinese/special-character input requires Yadb; place the "
+                    "binary at " + str(bin_path) + " manually, or set "
+                    "MIDSCENE_ANDROID_IME_STRATEGY=legacy."
+                )
+            bin_path.write_bytes(response.content)
+            bin_path.chmod(0o755)
+        await self._run_adb_command(["push", str(bin_path), YADB_DEVICE_PATH])
+        self._yadb_pushed = True
+
+    async def _exec_yadb_raw(self, keyboard_content: str) -> None:
+        """Inject text through the Yadb app_process tool."""
+        try:
+            await self._ensure_yadb()
+        except Exception as e:
+            logger.warning(
+                f"Yadb unavailable ({e}); falling back to `input text`."
+            )
+            await self._shell_input_text(keyboard_content)
+            return
+        await self._run_adb_command([
+            "-s", self.device_id, "shell",
+            "app_process",
+            f"-Djava.class.path={YADB_DEVICE_PATH}",
+            YADB_DEVICE_PATH,
+            "com.ysbing.yadb.Main",
+            "-keyboard",
+            "'" + escape_for_shell(keyboard_content) + "'",
+        ])
+
+    async def run_adb_shell(self, command: str, timeout: Optional[float] = None) -> str:
+        """Run an arbitrary adb shell command (RunAdbShell action).
+
+        `timeout` is accepted for upstream compatibility; the underlying adb
+        client applies its own command timeout.
+        """
+        output = await self._run_adb_command(["-s", self.device_id, "shell", command])
+        return output if isinstance(output, str) else ""
     
     async def clear_text(self) -> None:
         """Clear text in focused field"""
@@ -585,10 +746,9 @@ class AndroidDevice(AbstractInterface):
             self._screen_size = Size(width=1080, height=1920)
     
     async def _setup_ime(self) -> None:
-        """Setup input method for text input"""
+        """No IME setup required: text injection uses the Yadb tool
+        (app_process) or `input text`, neither of which needs an IME."""
         try:
-            # This would setup a custom IME for better text input
-            # For now, just use default
             pass
         except Exception as e:
             logger.warning(f"Failed to setup IME: {e}")
