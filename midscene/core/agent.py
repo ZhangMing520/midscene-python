@@ -1171,7 +1171,16 @@ class Agent:
         self._task_cache.flush()
 
     def start_observing(self, opt: Optional[Dict[str, Any]] = None):
-        """Record a time window of UI frames (upstream startObserving)."""
+        """Record a time window of UI frames (upstream startObserving).
+
+        Options: `intervalMs` (default 1000, min 200), `maxFrames` (default 30,
+        buffer is thinned past the cap while recording continues) and
+        `watchdogMs` (default 5 minutes, 0 disables). `stop()` freezes the
+        window into a UIObservation whose insight calls read the frames.
+
+        TODO: docs/quickstart.md covers the YAML flow items but not this Python
+        API yet.
+        """
         from .ui_observer import UIObserver
 
         if self._frozen:

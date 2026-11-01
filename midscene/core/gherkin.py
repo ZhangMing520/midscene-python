@@ -31,7 +31,6 @@ def parse_gherkin_scenario(scenario_text: str) -> Dict[str, Any]:
     steps: List[Dict[str, Any]] = []
     scenario: Optional[str] = None
     scenario_count = 0
-    section = "prelude"
 
     for line_number, raw_line in enumerate(scenario_text.splitlines(), start=1):
         line = raw_line.strip()
@@ -56,7 +55,6 @@ def parse_gherkin_scenario(scenario_text: str) -> Dict[str, Any]:
         if header_match:
             scenario_count += 1
             scenario = header_match.group(2).strip() or None
-            section = "scenario"
             continue
 
         step_match = STEP_KEYWORD_PATTERN.match(line)
@@ -107,6 +105,17 @@ def build_step_prompt(step: Dict[str, Any]) -> str:
     return f"Verify that {step['text']}"
 
 
+def _describe_step_execution(step: Dict[str, Any], action: str) -> str:
+    keyword = step["keyword"]
+    effective = step["effective_keyword"]
+    mapping = keyword if keyword == effective else f"{keyword} as {effective}"
+    if effective == "Given":
+        return f"setting up the precondition ({mapping} -> {action})"
+    if effective == "When":
+        return f"performing the user action ({mapping} -> {action})"
+    return f"verifying the expected result ({mapping} -> {action})"
+
+
 async def run_gherkin_scenario(
     agent: Any,
     scenario_text: str,
@@ -118,9 +127,25 @@ async def run_gherkin_scenario(
     opt["cacheable"] = False
 
     for step in parsed["steps"]:
-        if step["effective_keyword"] == "Then":
-            await agent.ai_assert(
-                step["text"], None, {"context": opt.get("context")}
-            )
-        else:
-            await agent.ai_act(build_step_prompt(step), opt)
+        # upstream asserts on the built prompt, so Then keeps the "Verify that"
+        # framing; an empty options object is not passed at all
+        prompt = build_step_prompt(step)
+        is_assert = step["effective_keyword"] == "Then"
+        action = "aiAssert" if is_assert else "aiAct"
+        try:
+            if is_assert:
+                context = opt.get("context")
+                await agent.ai_assert(
+                    prompt,
+                    None,
+                    {"context": context} if context is not None else None,
+                )
+            else:
+                await agent.ai_act(prompt, opt)
+        except Exception as error:
+            raise RuntimeError(
+                f"runGherkinScenario failed while "
+                f"{_describe_step_execution(step, action)} at line "
+                f"{step['line_number']}: {step['keyword']} {step['text']}. "
+                f"Original error: {error}"
+            ) from error

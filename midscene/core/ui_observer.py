@@ -19,6 +19,7 @@ DEFAULT_INTERVAL_MS = 1000
 MIN_INTERVAL_MS = 200
 DEFAULT_MAX_FRAMES = 30
 DEFAULT_WATCHDOG_MS = 5 * 60 * 1000
+MAX_FRAMES_PER_RECORD = 50
 
 
 class UIObservation:
@@ -26,7 +27,12 @@ class UIObservation:
 
     def __init__(self, agent, frames: List[str], started_at: int):
         self._agent = agent
-        self._frames = frames
+        # own the window: the observer keeps sampling into its own buffer.
+        # Upstream dedupeRefs drops repeated *frame refs* (one persisted file
+        # reused across ticks); here every entry is its own capture, so a
+        # repeated screenshot is a real "nothing changed" data point.
+        self._frames = list(frames)
+        self._representative = frames[-1] if frames else None
         self.started_at = started_at
         self.ended_at = int(time.time() * 1000)
         self._disposed = False
@@ -38,7 +44,7 @@ class UIObservation:
     def _frozen_context(self, base: UIContext) -> UIContext:
         return base.model_copy(
             update={
-                "screenshot_base64": self._frames[-1],
+                "screenshot_base64": self._representative,
                 "screenshot_sequence": list(self._frames),
             }
         )
@@ -116,10 +122,10 @@ class UIObservation:
             screenshot_sequence=self._frames,
         )
         self._agent._record_usage_metrics("insight", response.get("usage"))
+        from .agent import _extract_typed_query_result
+
         data = response.get("parse_result", {}).get("data")
-        if isinstance(data, dict):
-            return data.get(demand_type)
-        return data
+        return _extract_typed_query_result(data, demand_type)
 
     async def ai_assert(
         self,
@@ -185,6 +191,7 @@ class UIObserver:
         self._loop_task: Optional[asyncio.Task] = None
         self._stop_requested = False
         self._observation: Optional[UIObservation] = None
+        self._stop_task: Optional[asyncio.Task] = None
         self._watchdog_task: Optional[asyncio.Task] = None
         self.started_at = 0
 
@@ -206,19 +213,53 @@ class UIObserver:
         )
 
     async def _capture_once(self) -> None:
-        context = await self._agent.get_ui_context("observe")
+        # Upstream captureOnce swallows per-tick failures: one bad screenshot
+        # must not abort the recording window.
+        try:
+            context = await self._agent.get_ui_context("observe")
+        except Exception as e:
+            logger.warning(f"observation frame capture failed, skipping tick: {e}")
+            return
         self._frames.append(context.screenshot_base64)
+        if len(self._frames) > self.max_frames:
+            self._frames = self._thin_buffer(self._frames)
+
+    def _thin_buffer(self, frames: List[str]) -> List[str]:
+        """Drop redundant frames, always keeping the first and the last."""
+        if len(frames) <= 1:
+            return frames
+        is_change_point = [frames[i] != frames[i - 1] for i in range(1, len(frames))]
+        is_change_point.insert(0, True)
+        is_change_point[-1] = True
+
+        result: List[str] = []
+        static_counter = 0
+        for index, frame in enumerate(frames):
+            if is_change_point[index]:
+                result.append(frame)
+                static_counter = 0
+            elif static_counter % 2 == 0:
+                result.append(frame)
+                static_counter += 1
+            else:
+                static_counter += 1
+
+        if len(result) > self.max_frames:
+            step = len(result) / self.max_frames
+            result = [result[int(index * step)] for index in range(self.max_frames)]
+            result[-1] = frames[-1]
+        return result
 
     async def _run_loop(self) -> None:
-        while not self._stop_requested and len(self._frames) < self.max_frames:
-            await asyncio.sleep(self.interval_ms / 1000)
-            if self._stop_requested:
-                break
-            try:
-                await self._capture_once()
-            except Exception as e:
-                logger.warning(f"observation frame capture failed: {e}")
-                await asyncio.sleep(self.interval_ms / 1000)
+        while not self._stop_requested:
+            tick_start = int(time.time() * 1000)
+            await self._capture_once()
+            # deadline-based pacing so a slow capture does not drift the window
+            while (
+                not self._stop_requested
+                and int(time.time() * 1000) - tick_start < self.interval_ms
+            ):
+                await asyncio.sleep(0.05)
 
     async def _watchdog(self) -> None:
         await asyncio.sleep(self.watchdog_ms / 1000)
@@ -227,25 +268,52 @@ class UIObserver:
                 f"UIObserver auto-stopped after {self.watchdog_ms}ms. "
                 "Call observer.stop() explicitly to avoid this."
             )
-            await self.stop()
+            try:
+                await self.stop()
+            except Exception as e:
+                logger.warning(f"UIObserver auto-stop failed: {e}")
 
-    async def stop(self) -> UIObservation:
-        if self._observation is None:
-            self._stop_requested = True
-            if self._loop_task is not None:
-                await self._loop_task
-            if self._watchdog_task is not None:
-                self._watchdog_task.cancel()
-            if not self._frames:
-                await self._capture_once()
-            self._observation = UIObservation(
-                self._agent, self._frames, self.started_at
+    def stop(self):
+        """Stop recording and return the fixed observation window.
+
+        Synchronous on purpose: the task is memoized before the first await
+        (upstream `stopPromise`), so a watchdog auto-stop and an explicit
+        stop() can never finalize two different windows.
+        """
+        if self._stop_task is None:
+            self._stop_task = asyncio.ensure_future(self._finalize_stop())
+        # shield so a cancelled awaiter cannot drop the window mid-finalize
+        return asyncio.shield(self._stop_task)
+
+    async def _finalize_stop(self) -> UIObservation:
+        self._stop_requested = True
+        if self._watchdog_task is not None:
+            self._watchdog_task.cancel()
+            self._watchdog_task = None
+        if self._loop_task is not None:
+            await self._loop_task
+            self._loop_task = None
+        if not self._frames:
+            await self._capture_once()
+        if len(self._frames) > MAX_FRAMES_PER_RECORD:
+            logger.warning(
+                f"exporting {len(self._frames)} frames (soft limit "
+                f"{MAX_FRAMES_PER_RECORD}): every frame goes to the model, "
+                "consider increasing intervalMs or decreasing maxFrames"
             )
+        self._observation = UIObservation(
+            self._agent, self._frames, self.started_at
+        )
         return self._observation
 
     async def dispose(self) -> None:
-        self._stop_requested = True
-        if self._loop_task is not None:
-            self._loop_task.cancel()
-        if self._observation is None:
-            self._frames.clear()
+        """Stop recording if needed and release the recorded frames."""
+        try:
+            # stop() is memoized, so awaiting it here also joins a stop() the
+            # caller never awaited (upstream dispose does the same)
+            await self.stop()
+        except Exception as e:
+            logger.warning(f"observation stopped with an error on dispose: {e}")
+        if self._observation is not None:
+            await self._observation.dispose()
+        self._frames = []

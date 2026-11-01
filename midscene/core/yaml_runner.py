@@ -322,18 +322,13 @@ class ScriptPlayer:
             # Planning-only marker; nothing to execute (upstream no-op).
             return _NO_RESULT
 
-        if key == "terminate":
-            uri = value.get("uri") if isinstance(value, dict) else str(value)
-            if not uri or not str(uri).strip():
-                raise ValueError("terminate requires a non-empty uri")
-            await agent._call_action_in_action_space("Terminate", {"uri": str(uri)})
-            return _NO_RESULT
-
-        if key == "launch":
-            uri = value.get("uri") if isinstance(value, dict) else str(value)
-            if not uri or not str(uri).strip():
-                raise ValueError("launch requires a non-empty uri")
-            await agent._call_action_in_action_space("Launch", {"uri": str(uri)})
+        if key in ("terminate", "launch"):
+            # Upstream only maps these shortcuts from a string value; a bool or
+            # number must not be coerced into a uri like "True".
+            uri = value.get("uri") if isinstance(value, dict) else value
+            if not isinstance(uri, str) or not uri.strip():
+                raise ValueError(f"{key} requires a non-empty uri string")
+            await agent._call_action_in_action_space(key.capitalize(), {"uri": uri})
             return _NO_RESULT
 
         if key in ("recordToReport", "logScreenshot"):

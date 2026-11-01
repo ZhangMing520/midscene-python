@@ -416,6 +416,9 @@ flow 指令支持字符串简写或映射形式：
 | `aiAndroidBack` / `aiAndroidHome` / `aiAndroidRecentApps` | Android 导航键 |
 | `sleep` | 等待毫秒数 |
 | `javascript` | 执行页面脚本（Playwright / Selenium） |
+| `launch` / `terminate` | 仅 Android 动作空间：启动包名或 URL、强停应用；值必须是非空字符串 |
+| `runGherkinScenario` | 播放单条 Gherkin 场景：Given/When 走 `ai_act`，Then 走 `ai_assert` |
+| `Finalize` | 上游规划期标记，运行时为空操作 |
 | `recordToReport` / `logScreenshot` | 记录日志 |
 
 脚本支持对 `web` / `android` 等非 `tasks` 区域做 `${VAR}` 环境变量插值；变量未定义时会直接报错。
