@@ -7,6 +7,8 @@ its HTTP endpoints.
 """
 
 import asyncio
+import re
+import time
 from typing import Any, Dict, Optional, Tuple
 
 import httpx
@@ -22,6 +24,77 @@ def normalize_webdriver_base_url(base_url: str) -> str:
     if not url.startswith("http://") and not url.startswith("https://"):
         url = f"http://{url}"
     return url
+
+
+W3C_ELEMENT_KEY = "element-6066-11e4-a52e-4f735466cecf"
+
+TEXT_INPUT_TYPES = (
+    "XCUIElementTypeTextField",
+    "XCUIElementTypeSecureTextField",
+    "XCUIElementTypeTextView",
+    "XCUIElementTypeSearchField",
+)
+
+
+class WebDriverRequestError(RuntimeError):
+    """A failed WebDriver request plus the protocol error code, if any.
+
+    WDA reports errors as {"value": {"error": "<code>", ...}}; callers branch
+    on that code (stale element, missing route) instead of matching message
+    strings.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        status_code: int,
+        error_code: Optional[str] = None,
+    ):
+        super().__init__(message)
+        self.status_code = status_code
+        self.error_code = error_code
+
+
+def protocol_error_code(body: Any) -> Optional[str]:
+    if not isinstance(body, dict):
+        return None
+    value = body.get("value")
+    if isinstance(value, dict) and isinstance(value.get("error"), str):
+        return value["error"]
+    if isinstance(body.get("error"), str):
+        return body["error"]
+    return None
+
+
+def wda_error_code(error: BaseException) -> Optional[str]:
+    """The WDA protocol error code carried by a failed request, if any."""
+    if isinstance(error, WebDriverRequestError):
+        return error.error_code
+    match = re.search(r'"error"\s*:\s*"([^"]+)"', str(error))
+    return match.group(1) if match else None
+
+
+def is_missing_endpoint(error: BaseException) -> bool:
+    """True when the server has no such route, so another endpoint may work."""
+    if isinstance(error, WebDriverRequestError):
+        if error.status_code in (404, 405):
+            return True
+        return bool(error.error_code) and error.error_code in (
+            "unknown method",
+            "unknown command",
+        )
+    return "unable to find a route" in str(error).lower()
+
+
+def element_id_from(value: Any) -> Optional[str]:
+    """W3C element id with the legacy ELEMENT fallback (upstream getElementId)."""
+    if not isinstance(value, dict):
+        return None
+    for key in (W3C_ELEMENT_KEY, "ELEMENT"):
+        element_id = value.get(key)
+        if isinstance(element_id, str) and element_id:
+            return element_id
+    return None
 
 
 class WebDriverClient:
@@ -45,6 +118,8 @@ class WebDriverClient:
         )
         self.session_id: Optional[str] = session_id
         self.owns_session = session_id is None
+        self._client: Optional[httpx.AsyncClient] = None
+        self._client_loop: Optional[asyncio.AbstractEventLoop] = None
 
     @property
     def session_info(self) -> Optional[Dict[str, Any]]:
@@ -54,16 +129,47 @@ class WebDriverClient:
 
     # -- transport ----------------------------------------------------------
 
+    async def _http(self) -> httpx.AsyncClient:
+        """One client per running loop, reused so keep-alive connections work.
+
+        A client bound to a loop that is no longer ours cannot be closed from
+        here, so it is simply dropped and its connections are collected.
+        """
+        loop = asyncio.get_running_loop()
+        if self._client is not None and (
+            self._client.is_closed or self._client_loop is not loop
+        ):
+            stale, self._client = self._client, None
+            if self._client_loop is loop and not stale.is_closed:
+                await stale.aclose()
+        if self._client is None:
+            self._client = httpx.AsyncClient(timeout=self.timeout)
+            self._client_loop = loop
+        return self._client
+
+    async def close(self) -> None:
+        """Release the pooled connections (called from device destroy())."""
+        client, self._client = self._client, None
+        self._client_loop = None
+        if client is not None and not client.is_closed:
+            await client.aclose()
+
     async def make_request(
         self, method: str, path: str, body: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         url = f"{self.base_url}{path}"
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            response = await client.request(method, url, json=body)
+        client = await self._http()
+        response = await client.request(method, url, json=body)
         if response.status_code >= 400:
-            raise RuntimeError(
+            try:
+                error_body = response.json()
+            except ValueError:
+                error_body = None
+            raise WebDriverRequestError(
                 f"WebDriver request failed ({response.status_code}) "
-                f"{method} {path}: {response.text[:500]}"
+                f"{method} {path}: {response.text[:500]}",
+                response.status_code,
+                protocol_error_code(error_body),
             )
         try:
             return response.json()
@@ -118,7 +224,12 @@ class WebDriverClient:
         response = await self.make_request(
             "GET", f"/session/{self.session_id}/screenshot"
         )
-        return response.get("value") or response
+        payload = response.get("value") or response
+        if not isinstance(payload, str) or not payload.strip():
+            raise RuntimeError(
+                f"Unexpected WebDriver screenshot payload: {str(payload)[:200]}"
+            )
+        return payload
 
     async def get_window_size(self) -> Tuple[int, int]:
         self._ensure_session()
@@ -280,13 +391,93 @@ class WebDriverAgentBackend(WebDriverClient):
             return
         raise RuntimeError(f'Key "{key}" is not supported on iOS platform')
 
+    # -- input focus / clearing (upstream packages/ios/src/input-focus.ts) --------
+
+    async def get_active_element_id(self) -> Optional[str]:
+        """The id of the focused element, or None when nothing has focus."""
+        try:
+            response = await self._request("GET", "/element/active")
+        except WebDriverRequestError as e:
+            if e.error_code == "no such element":
+                return None
+            raise
+        return element_id_from(response.get("value"))
+
+    async def get_element_attribute(self, element_id: str, name: str) -> Any:
+        response = await self._request(
+            "GET", f"/element/{element_id}/attribute/{name}"
+        )
+        return response.get("value")
+
+    async def wait_for_input_focus(self, timeout_ms: float = 3000.0) -> None:
+        """Block until an element owns the keyboard, or fail loudly."""
+        deadline = time.monotonic() + timeout_ms / 1000.0
+        while not await self.get_active_element_id():
+            if time.monotonic() >= deadline:
+                raise RuntimeError(
+                    f"Timed out waiting for iOS input focus after {int(timeout_ms)}ms"
+                )
+            await asyncio.sleep(0.05)
+
+    async def clear_active_element(self) -> bool:
+        """Clear the focused input and keep focus.
+
+        Returns False when there is nothing to clear or this WDA build has no
+        active-element API, so callers can fall back to plain typing. Raises
+        when a clear cannot be verified: appending text to a field still full
+        of the old value is worse than reporting failure.
+        """
+        try:
+            original_id = await self.get_active_element_id()
+        except WebDriverRequestError as e:
+            if e.error_code in ("unknown command", "unsupported operation"):
+                return False
+            raise
+        if not original_id:
+            return False
+
+        clear_error: Optional[BaseException] = None
+        try:
+            await self._request("POST", f"/element/{original_id}/clear")
+        except WebDriverRequestError as e:
+            # TODO(ios): upstream re-identifies a stale field by its
+            # accessibility name (POST /elements + predicate string), clicks the
+            # unique match and retries the clear once. Until that lookup exists
+            # here a stale id only counts as cleared if the value reads back
+            # empty.
+            if e.error_code != "stale element reference":
+                raise
+            clear_error = e
+
+        if await self.get_active_element_id() != original_id:
+            await self._request("POST", f"/element/{original_id}/click")
+            if await self.get_active_element_id() != original_id:
+                raise RuntimeError(
+                    "Failed to restore input focus after clearing the field"
+                )
+
+        value = await self.get_element_attribute(original_id, "value")
+        if value is None or value == "":
+            return True
+        # TODO(ios): upstream also accepts value == placeholderValue when the
+        # field can be re-identified uniquely; that needs POST /elements.
+        raise RuntimeError(
+            "Cannot verify that input was cleared; refusing to append text"
+        ) from clear_error
+
     # -- pointer ------------------------------------------------------------------
 
     async def tap(self, x: float, y: float) -> None:
-        """WDA 6.0+ /wda/tap with legacy /wda/tap/0 fallback."""
+        """WDA 6.0+ /wda/tap; WDA 5.x only knows /wda/tap/0.
+
+        Only a missing route may fall back: replaying the gesture after a
+        timeout or a server-side failure would tap a second time.
+        """
         try:
             await self._request("POST", "/wda/tap", {"x": x, "y": y})
-        except Exception:
+        except WebDriverRequestError as e:
+            if not is_missing_endpoint(e):
+                raise
             await self._request("POST", "/wda/tap/0", {"x": x, "y": y})
 
     async def double_tap(self, x: float, y: float) -> None:

@@ -1518,10 +1518,12 @@ class TestBridgeProtocol:
 
     @pytest.mark.asyncio
     async def test_pinch_maps_to_extension_arguments(self):
+        """Upstream labels: 'in' pinches the fingers together, 'out' spreads
+        them apart."""
         page, recorder = self._connected_page()
-        await page.pinch("out", point=[10, 20], distance=120)
-        assert recorder.calls[-1] == ("pinch", [10, 20, 120.0, 20.0, 500])
         await page.pinch("in", point=[10, 20], distance=120)
+        assert recorder.calls[-1] == ("pinch", [10, 20, 120.0, 20.0, 500])
+        await page.pinch("out", point=[10, 20], distance=120)
         assert recorder.calls[-1] == ("pinch", [10, 20, 20.0, 120.0, 500])
         with pytest.raises(ValueError):
             await page.pinch("sideways")

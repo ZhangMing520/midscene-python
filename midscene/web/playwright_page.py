@@ -335,8 +335,8 @@ class PlaywrightWebPage(AbstractInterface):
     ) -> None:
         """Two-finger pinch via CDP touch events (upstream web Pinch).
 
-        direction 'out' zooms out (fingers move together), 'in' zooms in
-        (fingers move apart).
+        direction 'in' brings the fingers together (zoom out), 'out' spreads
+        them apart (zoom in).
         """
         if direction not in ("in", "out"):
             raise ValueError('pinch direction must be "in" or "out"')
@@ -346,10 +346,8 @@ class PlaywrightWebPage(AbstractInterface):
         spread = float(distance if distance is not None else 100)
         duration_s = (duration if duration is not None else 600) / 1000
         steps = 12
-        gap_start = spread / 2
-        gap_end = 10.0 if direction == "out" else spread / 2 + spread / 2
-        if direction == "in":
-            gap_start, gap_end = 10.0, spread / 2 + spread / 2
+        closed, open_ = 10.0, spread
+        gap_start, gap_end = (closed, open_) if direction == "out" else (open_, closed)
 
         cdp = await self.context.new_cdp_session(self.page)
 

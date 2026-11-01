@@ -484,8 +484,8 @@ class BridgeWebPage(AbstractInterface):
             point = [size["width"] / 2, size["height"] / 2]
         spread = float(distance if distance is not None else 100)
         # extension signature: pinch(centerX, centerY, startDistance,
-        # endDistance, duration); 'out' brings the fingers together
-        start, end = (spread, 20.0) if direction == "out" else (20.0, spread)
+        # endDistance, duration); 'in' brings the fingers together
+        start, end = (spread, 20.0) if direction == "in" else (20.0, spread)
         await server.call(
             "pinch",
             [

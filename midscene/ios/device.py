@@ -7,7 +7,9 @@ endpoints. Coordinates are logical points (window size); the screenshot is
 physical pixels and the device pixel ratio comes from /wda/screen.
 """
 
-from typing import Any, Dict, List, Optional
+import asyncio
+import math
+from typing import Any, Dict, List, Optional, Tuple
 
 from loguru import logger
 
@@ -22,6 +24,58 @@ from ..core.types import (
     NodeType,
 )
 from .wda import WebDriverAgentBackend
+
+# upstream scrollUntilBoundary timings and geometry
+SCROLL_MAX_ATTEMPTS = 20
+SCROLL_UNSTABLE_ATTEMPT_LIMIT = 15
+SCROLL_SETTLE_MS = 500
+SCROLL_INERTIA_MS = 2000
+SCROLL_FLING_MS = 300
+SCROLL_BOUNDARY_DISTANCE_RATIO = 0.6
+SCROLL_UNCHANGED_TOLERANCE_PERCENT = 10
+# upstream waitForInputFocus deadline: the keyboard needs a moment after a tap
+INPUT_FOCUS_TIMEOUT_MS = 3000
+
+
+def _screenshots_similar(before: str, after: str, tolerance_percent: float) -> bool:
+    """Compare base64 screenshots while tolerating a little dynamic content.
+
+    Upstream compares the encoded text directly: animated clocks and badges
+    change a small fraction of the characters, so a threshold on the sampled
+    prefix is enough to tell "the page stopped moving" from "still scrolling".
+    """
+    if before == after:
+        return True
+    shortest = min(len(before), len(after))
+    if not shortest:
+        return False
+    if abs(len(before) - len(after)) > shortest * 0.1:
+        return False
+    sample = min(2000, shortest)
+    diff_count = sum(1 for i in range(sample) if before[i] != after[i])
+    return (diff_count / sample) * 100 <= tolerance_percent
+
+
+def _default_scroll_gesture(
+    direction: str, width: int, height: int
+) -> Tuple[Tuple[int, int], Tuple[int, int]]:
+    """Start and end of an untargeted scroll (upstream resolveDefaultMobileScroll).
+
+    The gesture crosses the central 70% of the axis so consecutive
+    observations keep overlapping content.
+    """
+    horizontal = direction in ("left", "right")
+    forward = direction in ("down", "right")
+    extent = width if horizontal else height
+    start = round(extent * (0.85 if forward else 0.15))
+    end = round(extent * (0.15 if forward else 0.85))
+    from_point = [round(width / 2), round(height / 2)]
+    to_point = [round(width / 2), round(height / 2)]
+    if horizontal:
+        from_point[0], to_point[0] = start, end
+    else:
+        from_point[1], to_point[1] = start, end
+    return tuple(from_point), tuple(to_point)
 
 
 class IOSDevice(AbstractInterface):
@@ -40,7 +94,7 @@ class IOSDevice(AbstractInterface):
             session_id=session_id, timeout=timeout,
         )
         self._connected = False
-        self._device_pixel_ratio: Optional[float] = None
+        self._screen_scale: Optional[float] = None
 
     @property
     def interface_type(self) -> InterfaceType:
@@ -83,14 +137,15 @@ class IOSDevice(AbstractInterface):
     # -- screen -----------------------------------------------------------------
 
     async def _device_pixel_ratio(self) -> float:
-        if self._device_pixel_ratio is None:
+        """Screen scale from /wda/screen (upstream size().scale)."""
+        if self._screen_scale is None:
             scale = await self.wda.get_screen_scale()
             if not scale or scale <= 0:
                 raise RuntimeError(
                     "Failed to get device pixel ratio from WebDriverAgent API"
                 )
-            self._device_pixel_ratio = scale
-        return self._device_pixel_ratio
+            self._screen_scale = scale
+        return self._screen_scale
 
     async def size(self) -> Dict[str, int]:
         """Logical window size in points (upstream size())."""
@@ -121,9 +176,26 @@ class IOSDevice(AbstractInterface):
     # -- text / keys -----------------------------------------------------------------
 
     async def input_text(self, text: str) -> None:
-        """Type into the focused element (WDA keys endpoint)."""
+        """Type into the focused element (WDA keys endpoint).
+
+        WDA's keys endpoint appends, so callers that must not keep the old
+        content go through replace_input, which clears first.
+        """
         await self._ensure_connected()
         await self.wda.type_text(text)
+
+    async def clear_input(self) -> None:
+        """Clear the focused field with the W3C element API (upstream clearInputAt)."""
+        await self._ensure_connected()
+        await self.wda.wait_for_input_focus(INPUT_FOCUS_TIMEOUT_MS)
+        if not await self.wda.clear_active_element():
+            raise RuntimeError(
+                "Cannot verify that input was cleared; refusing to append text"
+            )
+
+    async def replace_input(self, text: str) -> None:
+        await self.clear_input()
+        await self.input_text(text)
 
     async def keyboard_press(self, key: str) -> None:
         await self._ensure_connected()
@@ -131,44 +203,186 @@ class IOSDevice(AbstractInterface):
 
     # -- scroll / swipe ---------------------------------------------------------------
 
-    async def scroll(
-        self, direction: str, distance: Optional[int] = None, **kwargs
-    ) -> None:
-        """Fling-style scroll via the W3C swipe sequence."""
-        if direction not in ("up", "down", "left", "right"):
-            raise ValueError(f"Invalid scroll direction: {direction}")
-        size = await self.size()
-        distance = distance or min(size["width"], size["height"]) // 2
-        cx, cy = size["width"] // 2, size["height"] // 2
-        deltas = {
-            "down": (0, distance), "up": (0, -distance),
-            "right": (distance, 0), "left": (-distance, 0),
-        }
-        dx, dy = deltas[direction]
-        await self.swipe(f"{direction}-scroll", cx - dx // 2, cy - dy // 2, cx + dx // 2, cy + dy // 2)
-
-    async def swipe(
-        self, direction: str, from_x: float, from_y: float, to_x: float, to_y: float,
+    async def _swipe_coordinates(
+        self,
+        from_x: float, from_y: float, to_x: float, to_y: float,
         duration: float = 500.0,
     ) -> None:
-        """Direct-coordinate swipe (finger-movement convention)."""
+        """Raw finger path (upstream swipeCoordinates/swipePoint)."""
         await self._ensure_connected()
         await self.wda.swipe(from_x, from_y, to_x, to_y, duration)
 
-    async def pinch(
-        self, center_x: float, center_y: float,
-        direction: str = "in", distance: Optional[int] = None,
+    async def swipe(
+        self, direction: str, distance: Optional[int] = None
     ) -> None:
-        """Two-finger pinch: 'in' zooms in (fingers apart), 'out' zooms out."""
-        await self._ensure_connected()
+        """Finger-movement convention swipe (content follows the finger)."""
+        if direction not in ("up", "down", "left", "right"):
+            raise ValueError(f"Invalid swipe direction: {direction}")
         size = await self.size()
-        distance = distance or min(size["width"], size["height"]) // 4
-        if direction == "in":
-            await self.wda.pinch(center_x, center_y, distance, 10.0)
-        elif direction == "out":
-            await self.wda.pinch(center_x, center_y, 10.0, distance)
+        width, height = size["width"], size["height"]
+        distance = distance or min(width, height) // 4
+        cx, cy = width // 2, height // 2
+        # (dx, dy) is the finger movement vector, so the path runs from
+        # center - vector/2 to center + vector/2.
+        vectors = {
+            "up": (0, -distance), "down": (0, distance),
+            "left": (-distance, 0), "right": (distance, 0),
+        }
+        dx, dy = vectors[direction]
+        await self._swipe_coordinates(
+            cx - dx // 2, cy - dy // 2, cx + dx // 2, cy + dy // 2
+        )
+
+    async def scroll(
+        self,
+        direction: str,
+        distance: Optional[int] = None,
+        *,
+        point: Optional[List[float]] = None,
+        scroll_type: Optional[str] = None,
+        **kwargs,
+    ) -> None:
+        """Scroll `direction` names the content to reveal, so the finger moves
+        the opposite way (upstream scrollDown swipes upward from the located
+        point or the viewport centre).
+
+        scrollType scrollToTop/Bottom/Left/Right keeps flinging until the
+        screen stops changing (upstream scrollUntilBoundary).
+        """
+        if direction not in ("up", "down", "left", "right"):
+            raise ValueError(f"Invalid scroll direction: {direction}")
+        boundary = {
+            "scrollToTop": "up",
+            "scrollToBottom": "down",
+            "scrollToLeft": "left",
+            "scrollToRight": "right",
+        }.get((scroll_type or "").strip())
+        if boundary:
+            await self._scroll_until_boundary(boundary, point=point)
+            return
+        size = await self.size()
+        width, height = size["width"], size["height"]
+        if not distance and not point:
+            # upstream scrollDefault: cross the central 70% slowly, so the
+            # release velocity stays below the point where iOS flings past the
+            # viewport.
+            (from_x, from_y), (to_x, to_y) = _default_scroll_gesture(
+                direction, width, height
+            )
+            await self._swipe_coordinates(
+                from_x,
+                from_y,
+                to_x,
+                to_y,
+                # a fixed duration keeps short gestures from flinging; cap the
+                # velocity at 0.4 points per millisecond
+                max(1000, round(math.hypot(to_x - from_x, to_y - from_y) / 0.4)),
+            )
+            return
+        # upstream defaults: height/3 vertically, width * 0.7 horizontally
+        default = (
+            round(height / 3) if direction in ("up", "down") else round(width * 0.7)
+        )
+        scroll_distance = int(distance) if distance else default
+        cx = int(point[0]) if point else width // 2
+        cy = int(point[1]) if point else height // 2
+        vectors = {
+            "down": (0, -scroll_distance), "up": (0, scroll_distance),
+            "right": (-scroll_distance, 0), "left": (scroll_distance, 0),
+        }
+        dx, dy = vectors[direction]
+        await self._swipe_coordinates(cx, cy, cx + dx, cy + dy)
+
+    async def _scroll_until_boundary(
+        self, direction: str, point: Optional[List[float]] = None
+    ) -> None:
+        """Fling toward the boundary until the screen stops changing.
+
+        `direction` names the content to reveal, so the finger travels the
+        opposite way and starts near the edge that content must cross.
+        """
+        size = await self.size()
+        width, height = size["width"], size["height"]
+        if point:
+            start_x, start_y = round(point[0]), round(point[1])
         else:
+            anchors = {
+                "up": (width / 2, height * 0.2),
+                "down": (width / 2, height * 0.8),
+                "left": (width * 0.8, height / 2),
+                "right": (width * 0.2, height / 2),
+            }
+            start_x, start_y = (round(v) for v in anchors[direction])
+        extent = width if direction in ("left", "right") else height
+        distance = round(extent * SCROLL_BOUNDARY_DISTANCE_RATIO)
+        vectors = {
+            "up": (0, distance), "down": (0, -distance),
+            "left": (distance, 0), "right": (-distance, 0),
+        }
+        dx, dy = vectors[direction]
+        # upstream only insists on 3 unchanged frames when scrolling right;
+        # horizontal carousels settle after one, the rest use a single check.
+        max_unchanged = 3 if direction == "right" else 1
+
+        last_screenshot: Optional[str] = None
+        unchanged_count = 0
+        for attempt in range(SCROLL_MAX_ATTEMPTS):
+            await asyncio.sleep(SCROLL_SETTLE_MS / 1000.0)
+            current = await self.screenshot_base64()
+            if last_screenshot is not None and _screenshots_similar(
+                last_screenshot, current, SCROLL_UNCHANGED_TOLERANCE_PERCENT
+            ):
+                unchanged_count += 1
+                if unchanged_count >= max_unchanged:
+                    logger.debug(f"Scrolled to {direction}: screen no longer changes")
+                    return
+            else:
+                unchanged_count = 0
+
+            if attempt >= SCROLL_UNSTABLE_ATTEMPT_LIMIT and unchanged_count == 0:
+                logger.warning(
+                    f"Too many attempts with changing content, stopping scroll to {direction}"
+                )
+                return
+
+            last_screenshot = current
+            await self._swipe_coordinates(
+                start_x, start_y, start_x + dx, start_y + dy, SCROLL_FLING_MS
+            )
+            # wait for the gesture plus its inertia
+            await asyncio.sleep(SCROLL_INERTIA_MS / 1000.0)
+
+    async def pinch(
+        self,
+        direction: str,
+        point: Optional[List[float]] = None,
+        distance: Optional[int] = None,
+        duration: Optional[int] = None,
+    ) -> None:
+        """Two-finger pinch (upstream normalizePinchParam): "in" pinches the
+        fingers together (zoom out / shrink), "out" spreads them apart
+        (zoom in / enlarge).
+
+        The fingers start min(width, height)/4 apart and each travels
+        `distance` (default: that same base) from there.
+        """
+        if direction not in ("in", "out"):
             raise ValueError(f'Invalid pinch direction: {direction}. Use "in" or "out"')
+        size = await self.size()
+        width, height = size["width"], size["height"]
+        base = round(min(width, height) / 4)
+        finger = int(distance) if distance else base
+        center_x = float(point[0]) if point else width / 2
+        center_y = float(point[1]) if point else height / 2
+        end_distance = base + finger if direction == "out" else max(10, base - finger)
+        await self._ensure_connected()
+        await self.wda.pinch(
+            center_x,
+            center_y,
+            base,
+            end_distance,
+            500.0 if duration is None else float(duration),
+        )
 
     # -- apps ---------------------------------------------------------------------------
 
@@ -190,3 +404,23 @@ class IOSDevice(AbstractInterface):
     async def app_switcher(self) -> None:
         await self._ensure_connected()
         await self.wda.app_switcher()
+
+    async def run_wda_request(
+        self, method: str, endpoint: str, data: Optional[Dict[str, Any]] = None
+    ) -> Any:
+        """Raw WDA API access (upstream runWdaRequest, the iOS sibling of
+        runAdbShell). Returns the parsed WDA response."""
+        await self._ensure_connected()
+        return await self.wda.execute_request(method, endpoint, data)
+
+    # -- lifecycle -----------------------------------------------------------------
+
+    async def destroy(self) -> None:
+        """Drop the WDA session and the HTTP pool (upstream destroy).
+
+        Safe to call twice and before connect(): an absent session or client
+        is nothing to release.
+        """
+        await self.wda.delete_session()
+        await self.wda.close()
+        self._connected = False

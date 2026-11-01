@@ -293,8 +293,8 @@ class ScriptPlayer:
             action_name = _ACTION_COMMANDS[key]
             options = value if isinstance(value, dict) else {"prompt": value}
             param = _build_action_param(action_name, options)
-            await agent._call_action_in_action_space(action_name, param)
-            return _NO_RESULT
+            result = await agent._call_action_in_action_space(action_name, param)
+            return _NO_RESULT if result is None else result
 
         if key == "sleep":
             ms = int(float(value))

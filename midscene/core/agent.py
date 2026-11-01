@@ -660,7 +660,7 @@ class Agent:
         self,
         action_type: str,
         param: Optional[Dict[str, Any]] = None,
-    ) -> None:
+    ) -> Any:
         definition = find_action_in_action_space_or_throw(action_type, self.action_space)
         param = dict(param or {})
         tip = definition.interface_alias or action_type
@@ -670,7 +670,7 @@ class Agent:
         self._notify_task_start(tip)
         if definition.execute is None:
             raise NotImplementedError(f"Action {action_type} has no executor")
-        await definition.execute(param, self.interface, self._locate_for_action)
+        return await definition.execute(param, self.interface, self._locate_for_action)
 
     def _build_locate_param(
         self, prompt: TUserPrompt, opt: Dict[str, Any], api_name: str
@@ -1111,6 +1111,11 @@ class Agent:
             if self._task_cache:
                 self._task_cache.flush()
             await self.flush_report()
+            # Not every interface owns a transport; those that do (WDA session,
+            # browser context) release it here.
+            interface_destroy = getattr(self.interface, "destroy", None)
+            if asyncio.iscoroutinefunction(interface_destroy):
+                await interface_destroy()
 
     def _get_report_builder(self):
         if self._report_builder is None:

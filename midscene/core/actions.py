@@ -332,32 +332,45 @@ def build_web_action_space() -> List[DeviceAction]:
         DeviceAction(
             name="Pinch",
             description=(
-                "Pinch (two-finger zoom) on the element: direction 'out' zooms "
-                "out (fingers move together), 'in' zooms in (fingers move apart)"
+                "Perform a two-finger pinch gesture. Use direction 'in' to pinch "
+                "fingers together (zoom out / shrink), or 'out' to spread fingers "
+                "apart (zoom in / enlarge). Optionally specify distance for how "
+                "far each finger moves."
             ),
             param_schema={
                 "direction": {
                     "type": '"in" | "out"',
-                    "description": "Zoom direction",
+                    "description": (
+                        'Pinch direction. "in" = pinch fingers together '
+                        '(zoom out / shrink), "out" = spread fingers apart '
+                        "(zoom in / enlarge)."
+                    ),
                 },
                 "locate": {
                     "type": "locate",
-                    "description": "The element to pinch on",
+                    "description": (
+                        "The element to pinch on. If not specified, the center "
+                        "of the screen will be used"
+                    ),
                     "optional": True,
                 },
                 "distance": {
                     "type": "number",
-                    "description": "Pinch distance in pixels",
+                    "description": (
+                        "How far each finger moves in pixels. Defaults to a "
+                        "quarter of the shorter screen dimension."
+                    ),
                     "optional": True,
                 },
                 "duration": {
                     "type": "number",
-                    "description": "Pinch duration in milliseconds",
+                    "description": "Duration of the pinch gesture in milliseconds",
                     "optional": True,
                 },
             },
             locate_fields=["locate"],
-            sample={"direction": "in", "locate": {"prompt": "the map"}},
+            sample={"direction": "out", "distance": 200,
+                    "locate": {"prompt": "the map area"}},
             interface_alias="aiPinch",
             primitive="pinch",
             execute=_execute_pinch,
@@ -556,7 +569,7 @@ def build_web_action_space() -> List[DeviceAction]:
     ]
 
 
-async def _execute_run_adb_shell(param: Dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_run_adb_shell(param: Dict[str, Any], device: Any, locate_fn) -> Any:
     command = param.get("command")
     if not command:
         raise ValueError("RunAdbShell requires a command parameter")
@@ -564,9 +577,8 @@ async def _execute_run_adb_shell(param: Dict[str, Any], device: Any, locate_fn) 
         raise NotImplementedError("RunAdbShell is not supported on this interface")
     timeout = param.get("timeout")
     if timeout is not None:
-        await device.run_adb_shell(str(command), timeout=float(timeout))
-    else:
-        await device.run_adb_shell(str(command))
+        return await device.run_adb_shell(str(command), timeout=float(timeout))
+    return await device.run_adb_shell(str(command))
 
 
 async def _execute_launch(param: Dict[str, Any], device: Any, locate_fn) -> None:
@@ -600,13 +612,30 @@ async def _execute_pinch(param: Dict[str, Any], device: Any, locate_fn) -> None:
     await device.pinch(direction, point=point, **kwargs)
 
 
-async def _execute_run_hdc_shell(param: Dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_run_hdc_shell(param: Dict[str, Any], device: Any, locate_fn) -> Any:
     command = param.get("command")
     if not command or not str(command).strip():
         raise RuntimeError("RunHdcShell requires a non-empty command")
     if not hasattr(device, "run_hdc_shell"):
         raise NotImplementedError("RunHdcShell is not supported on this interface")
-    await device.run_hdc_shell(str(command))
+    return await device.run_hdc_shell(str(command))
+
+
+_WDA_HTTP_METHODS = ("GET", "POST", "DELETE", "PUT")
+
+
+async def _execute_run_wda_request(param: Dict[str, Any], device: Any, locate_fn) -> Any:
+    method = str(param.get("method") or "").upper()
+    if method not in _WDA_HTTP_METHODS:
+        raise ValueError(
+            f"RunWdaRequest requires one of {', '.join(_WDA_HTTP_METHODS)}"
+        )
+    endpoint = param.get("endpoint")
+    if not endpoint or not str(endpoint).strip():
+        raise ValueError("RunWdaRequest requires a non-empty endpoint")
+    if not hasattr(device, "run_wda_request"):
+        raise NotImplementedError("RunWdaRequest is not supported on this interface")
+    return await device.run_wda_request(method, str(endpoint), param.get("data"))
 
 
 def _make_harmony_system_action(method_name: str) -> Callable[..., Any]:
@@ -661,6 +690,30 @@ def _swipe_action() -> DeviceAction:
     )
 
 
+def _long_press_action() -> DeviceAction:
+    """LongPress is exposed by the touch devices that implement long_press."""
+    return DeviceAction(
+        name="LongPress",
+        description="Long press the element",
+        param_schema={
+            "locate": {
+                "type": "locate",
+                "description": "The element to long press",
+            },
+            "duration": {
+                "type": "number",
+                "description": "Press duration in milliseconds",
+                "optional": True,
+            },
+        },
+        locate_fields=["locate"],
+        sample={"locate": {"prompt": "the chat message to react to"}},
+        interface_alias="aiLongPress",
+        primitive="long_press",
+        execute=_execute_long_press,
+    )
+
+
 def build_android_action_space() -> List[DeviceAction]:
     """Android action space: only primitives the device interface implements."""
     actions = [
@@ -671,26 +724,7 @@ def build_android_action_space() -> List[DeviceAction]:
     actions.extend(
         [
             _swipe_action(),
-            DeviceAction(
-                name="LongPress",
-                description="Long press the element",
-                param_schema={
-                    "locate": {
-                        "type": "locate",
-                        "description": "The element to long press",
-                    },
-                    "duration": {
-                        "type": "number",
-                        "description": "Press duration in milliseconds",
-                        "optional": True,
-                    },
-                },
-                locate_fields=["locate"],
-                sample={"locate": {"prompt": "the chat message to react to"}},
-                interface_alias="aiLongPress",
-                primitive="long_press",
-                execute=_execute_long_press,
-            ),
+            _long_press_action(),
             DeviceAction(
                 name="AndroidBackButton",
                 supported_by_system_one=True,
@@ -841,11 +875,98 @@ def _build_harmony_action_space() -> List[DeviceAction]:
     return mobile + harmony_system
 
 
+def _build_ios_action_space() -> List[DeviceAction]:
+    """iOS action space (upstream packages/ios/src/device.ts actionSpace()):
+    the touch-mobile set plus the WDA-specific actions. Mouse-only actions are
+    absent because a touch screen has no pointer buttons; ClearInput is
+    available because WDA exposes the W3C element clear API."""
+    ios_specific = [
+        _swipe_action(),
+        _long_press_action(),
+        DeviceAction(
+            name="Launch",
+            description="Launch an iOS app or URL",
+            param_schema={
+                "uri": {
+                    "type": "string",
+                    "description": "Bundle ID or URL to launch",
+                }
+            },
+            locate_fields=[],
+            sample={"uri": "com.apple.Preferences"},
+            interface_alias="launch",
+            execute=_execute_launch,
+        ),
+        DeviceAction(
+            name="Terminate",
+            description="Terminate (close) an iOS app by its bundle ID",
+            param_schema={
+                "uri": {
+                    "type": "string",
+                    "description": "Bundle ID of the app to close",
+                }
+            },
+            locate_fields=[],
+            sample={"uri": "com.apple.Preferences"},
+            interface_alias="terminate",
+            execute=_execute_terminate,
+        ),
+        DeviceAction(
+            name="IOSHomeButton",
+            supported_by_system_one=True,
+            description='Trigger the system "home" operation on iOS devices',
+            interface_alias="aiIOSHome",
+            primitive="home",
+            execute=_make_system_action("home"),
+        ),
+        DeviceAction(
+            name="IOSAppSwitcher",
+            supported_by_system_one=True,
+            description='Trigger the system "app switcher" operation on iOS devices',
+            interface_alias="aiIOSAppSwitcher",
+            primitive="app_switcher",
+            execute=_make_system_action("app_switcher"),
+        ),
+        DeviceAction(
+            name="RunWdaRequest",
+            description="Execute a WebDriverAgent API request on the iOS device",
+            param_schema={
+                "method": {
+                    "type": '"GET" | "POST" | "DELETE" | "PUT"',
+                    "description": "HTTP method",
+                },
+                "endpoint": {
+                    "type": "string",
+                    "description": "WebDriver API endpoint",
+                },
+                "data": {
+                    "type": "object",
+                    "description": "Optional request body data as JSON object",
+                    "optional": True,
+                },
+            },
+            locate_fields=[],
+            sample={"method": "GET", "endpoint": "/status"},
+            interface_alias="runWdaRequest",
+            execute=_execute_run_wda_request,
+        ),
+    ]
+    mobile = [
+        action
+        for action in build_web_action_space()
+        if action.name
+        not in ("RightClick", "MiddleClick", "Hover", "DragAndDrop")
+    ]
+    return mobile + ios_specific
+
+
 def build_action_space_for(interface_type: str) -> List[DeviceAction]:
     if interface_type == "android":
         return build_android_action_space()
     if interface_type == "harmony":
         return _build_harmony_action_space()
+    if interface_type == "ios":
+        return _build_ios_action_space()
     # web and computer share the desktop-style action space; Pinch (two-finger
     # touch) is only available on the web touch surface.
     if interface_type == "computer":

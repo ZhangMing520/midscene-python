@@ -75,10 +75,12 @@ await agent.ai_assert("The error message is visible below the email field")
 | Web | [Playwright](https://midscenejs.com/integrate-with-playwright) 或 Selenium |
 | 桌面 Chrome | [Bridge 模式](https://midscenejs.com/bridge-mode)（Chrome 扩展通过 WebSocket 与本 SDK 通信） |
 | Android | 通过 ADB 连接真机与模拟器 |
+| iOS | 通过 WebDriverAgent（WDA / Appium XCUITest）连接真机与模拟器 |
+| HarmonyOS | 通过 `hdc` + `uitest` 连接真机与模拟器 |
 | 桌面系统 | Windows / macOS / Linux 整屏截图与系统指针控制（pyautogui，仅主显示器），需 `pip install "midscene-python[desktop]"` |
 | 自定义接口 | 继承 `AbstractInterface`，提供截图与动作能力 |
 
-上游 Midscene 中的 iOS、HarmonyOS 与 Puppeteer **未移植**到本 SDK。
+上游 Midscene 中的 Puppeteer **未移植**到本 SDK。iOS 与 HarmonyOS 层已移植，但尚未在真实设备上验收，目前由假 WDA / `hdc` 传输层的单元测试覆盖。
 
 ## 模型与配置
 
@@ -126,9 +128,9 @@ agent = Agent(page, AgentOptions(
 - **模型回退**：无法执行某类任务的模型（例如 jev 之于数据提取）自动回退到默认模型。
 - **YAML 自动化**：`midscene run script.yaml` 支持上游同款 flow 指令（`aiAct / aiAssert / aiWaitFor / aiQuery / aiTap / aiInput / aiKeyboardPress / aiScroll / aiDragAndDrop / sleep / javascript` 等）、`${VAR}` 环境变量插值、任务级 `continueOnError`，结果输出到 `midscene_run/output/`。
 - **连通性测试**：`midscene model connect` 并行执行规划文本、理解视觉、aiLocate、默认文本四项检查。
-- **执行报告**：每次进入规划阶段的 `ai_act` 运行都会写入上游格式的 JSON 报告 `midscene_run/report/<tag>-<YYYY-MM-DD_HH-MM-SS>-<8 位随机串>.json`（tag 默认取接口类型，可用 `MIDSCENE_REPORT_TAG_NAME` 覆盖；`generateReport: false` 可关闭）。报告记录规划输出、每个动作的墙钟耗时/状态/错误；缓存回放时写入上游同款 `LoadYaml` 任务（含 `cache.hit` / `hitBy`）。`AgentOptions` 的 `generate_report`、`report_file_name`、`group_name` 与 `group_description` 均会生效。`midscene.core.dump` 对齐上游 `IReportActionDump` 字段结构。
+- **执行报告**：每次进入规划阶段的 `ai_act` 运行都会写入上游格式的 JSON 报告 `midscene_run/report/<tag>-<YYYY-MM-DD_HH-MM-SS>-<8 位随机串>.json`，并生成同名单文件 HTML 查看器（tag 默认取接口类型，可用 `MIDSCENE_REPORT_TAG_NAME` 覆盖；`generateReport: false` 可关闭）。报告记录规划输出、每个动作的墙钟耗时/状态/错误；缓存回放时写入上游同款 `LoadYaml` 任务（含 `cache.hit` / `hitBy`）。`AgentOptions` 的 `generate_report`、`report_file_name`、`group_name` 与 `group_description` 均会生效。`midscene.core.dump` 对齐上游 `IReportActionDump` 字段结构。
 
-未从上游移植：HTML 报告可视化（仅 JSON dump；fork 时期的 `midscene.shared.ReportGenerator` 已移除）、Midscene Test 框架（YAML 生命周期钩子、TypeScript Nodes、`summary.json`、runner 并发）、Puppeteer，以及 iOS / HarmonyOS / 桌面端目标。
+未从上游移植：官方 React 报告可视化器（本 SDK 写入上游格式的 JSON dump，并自带单文件 HTML 查看器）、Midscene Test 框架的 YAML 生命周期钩子与 TypeScript Nodes、Puppeteer。
 
 ## 规划循环与缓存
 

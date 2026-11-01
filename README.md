@@ -75,10 +75,12 @@ Visual localization does not depend on the UI rendering stack, so the same `Agen
 | Web | [Playwright](https://midscenejs.com/integrate-with-playwright) or Selenium |
 | Desktop Chrome | [Bridge mode](https://midscenejs.com/bridge-mode) (Chrome extension talks to this SDK over WebSocket) |
 | Android | Devices and emulators through ADB |
+| iOS | Real devices and simulators through WebDriverAgent (WDA / Appium XCUITest) |
+| HarmonyOS | Devices and emulators through `hdc` + `uitest` |
 | Desktop | Windows / macOS / Linux screen and pointer control through pyautogui, primary display only (`pip install "midscene-python[desktop]"`) |
 | Custom interfaces | Subclass `AbstractInterface` and provide screenshots plus actions |
 
-iOS, HarmonyOS, and Puppeteer from upstream Midscene are **not ported** in this SDK.
+Puppeteer from upstream Midscene is **not ported** in this SDK. The iOS and HarmonyOS layers are ported but have not been verified against real hardware yet; they are exercised by unit tests over a fake WDA / `hdc` transport.
 
 ## Models and configuration
 
@@ -126,9 +128,9 @@ Aligned with the official TypeScript SDK:
 - **Model fallback**: models that cannot perform a task (for example jev for extraction) automatically fall back to the default model.
 - **YAML automation**: `midscene run script.yaml` supports the upstream flow commands (`aiAct / aiAssert / aiWaitFor / aiQuery / aiTap / aiInput / aiKeyboardPress / aiScroll / aiDragAndDrop / sleep / javascript`, and more), `${VAR}` interpolation, per-task `continueOnError`, and results under `midscene_run/output/`.
 - **Connectivity test**: `midscene model connect` runs the planning text, insight vision, aiLocate, and default text checks in parallel.
-- **Execution reports**: each `ai_act` run that reaches planning writes an upstream-shaped JSON dump to `midscene_run/report/<tag>-<YYYY-MM-DD_HH-MM-SS>-<8 chars>.json` (tag defaults to the interface type, overridable via `MIDSCENE_REPORT_TAG_NAME`); disable it with `generateReport: false`. It records the planning output, per-action wall-clock timing/status/errors and, for cache replays, an upstream `LoadYaml` task with `cache.hit` / `hitBy`. `AgentOptions` honors `generate_report`, `report_file_name`, `group_name` and `group_description`. `midscene.core.dump` mirrors the upstream `IReportActionDump` layout.
+- **Execution reports**: each `ai_act` run that reaches planning writes an upstream-shaped JSON dump to `midscene_run/report/<tag>-<YYYY-MM-DD_HH-MM-SS>-<8 chars>.json` and the matching single-file HTML viewer under the same name (tag defaults to the interface type, overridable via `MIDSCENE_REPORT_TAG_NAME`); disable it with `generateReport: false`. It records the planning output, per-action wall-clock timing/status/errors and, for cache replays, an upstream `LoadYaml` task with `cache.hit` / `hitBy`. `AgentOptions` honors `generate_report`, `report_file_name`, `group_name` and `group_description`. `midscene.core.dump` mirrors the upstream `IReportActionDump` layout.
 
-Not ported from upstream: the HTML report visualizer (JSON dumps only; the fork-era `midscene.shared.ReportGenerator` was removed), the Midscene Test framework (YAML lifecycle hooks, TypeScript Nodes, `summary.json`, runner concurrency), Puppeteer, and the iOS / HarmonyOS / desktop targets.
+Not ported from upstream: the official React report visualizer (this SDK writes upstream-shaped JSON dumps plus its own single-file HTML viewer), the Midscene Test framework's YAML lifecycle hooks and TypeScript nodes, and Puppeteer.
 
 ## Planning loop and caching
 
