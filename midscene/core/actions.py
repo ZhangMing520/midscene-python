@@ -112,6 +112,10 @@ async def _execute_input(param: Dict[str, Any], device: Any, locate_fn) -> None:
     if locate is not None:
         point = await _resolve_locate_point(locate, locate_fn)
         x, y = point["center"]
+        if hasattr(device, "input_text_at"):
+            # Harmony uitest inputText uses (x, y) to identify the field
+            await device.input_text_at(x, y, str(value) if mode != "clear" else "")
+            return
         await device.tap(x, y)
         await asyncio.sleep(0.2)
     if mode == "replace" and _supports(device, "replace_input"):
@@ -596,6 +600,22 @@ async def _execute_pinch(param: Dict[str, Any], device: Any, locate_fn) -> None:
     await device.pinch(direction, point=point, **kwargs)
 
 
+async def _execute_run_hdc_shell(param: Dict[str, Any], device: Any, locate_fn) -> None:
+    command = param.get("command")
+    if not command or not str(command).strip():
+        raise RuntimeError("RunHdcShell requires a non-empty command")
+    if not hasattr(device, "run_hdc_shell"):
+        raise NotImplementedError("RunHdcShell is not supported on this interface")
+    await device.run_hdc_shell(str(command))
+
+
+def _make_harmony_system_action(method_name: str) -> Callable[..., Any]:
+    async def execute(param: Dict[str, Any], device: Any, locate_fn) -> None:
+        await getattr(device, method_name)()
+
+    return execute
+
+
 def _make_system_action(method_name: str) -> Callable[..., Any]:
     async def execute(param: Dict[str, Any], device: Any, locate_fn) -> None:
         await getattr(device, method_name)()
@@ -747,9 +767,85 @@ def build_android_action_space() -> List[DeviceAction]:
     return actions
 
 
+def _build_harmony_action_space() -> List[DeviceAction]:
+    """Harmony action space: mobile set plus system buttons and HDC shell
+    (upstream packages/harmony/src/device.ts systemActions). Keyboard combos
+    are unsupported on HarmonyOS uitest."""
+    harmony_system = [
+        DeviceAction(
+            name="RunHdcShell",
+            description="Execute HDC shell command on HarmonyOS device",
+            param_schema={
+                "command": {
+                    "type": "string",
+                    "description": "The shell command to run, without an hdc prefix",
+                }
+            },
+            locate_fields=[],
+            sample={"command": "hidumper -s WindowManagerService -a"},
+            interface_alias="runHdcShell",
+            execute=_execute_run_hdc_shell,
+        ),
+        DeviceAction(
+            name="Launch",
+            description="Launch a HarmonyOS app or URL",
+            param_schema={
+                "uri": {"type": "string", "description": "Bundle name or URL to launch"}
+            },
+            locate_fields=[],
+            sample={"uri": "com.example.app"},
+            interface_alias="launch",
+            execute=_execute_launch,
+        ),
+        DeviceAction(
+            name="Terminate",
+            description="Terminate (force-stop) a HarmonyOS app by bundle name",
+            param_schema={
+                "uri": {
+                    "type": "string",
+                    "description": "Bundle name of the app to force-stop",
+                }
+            },
+            locate_fields=[],
+            sample={"uri": "com.example.app"},
+            interface_alias="terminate",
+            execute=_execute_terminate,
+        ),
+        DeviceAction(
+            name="HarmonyBackButton",
+            supported_by_system_one=True,
+            description='Trigger the system "back" operation on HarmonyOS devices',
+            interface_alias="harmonyBack",
+            execute=_make_harmony_system_action("back"),
+        ),
+        DeviceAction(
+            name="HarmonyHomeButton",
+            supported_by_system_one=True,
+            description='Trigger the system "home" operation on HarmonyOS devices',
+            interface_alias="harmonyHome",
+            execute=_make_harmony_system_action("home"),
+        ),
+        DeviceAction(
+            name="HarmonyRecentAppsButton",
+            supported_by_system_one=True,
+            description='Trigger the system "recent apps" operation on HarmonyOS devices',
+            interface_alias="harmonyRecentApps",
+            execute=_make_harmony_system_action("recent_apps"),
+        ),
+    ]
+    mobile = [
+        action
+        for action in build_web_action_space()
+        if action.name not in ("Pinch", "RightClick", "MiddleClick")
+    ]
+    return mobile + harmony_system
+
+
 def build_action_space_for(interface_type: str) -> List[DeviceAction]:
     if interface_type == "android":
         return build_android_action_space()
+    if interface_type == "harmony":
+        return _build_harmony_action_space()
     # web and computer share the desktop-style action space; Pinch (two-finger
     # touch) is only available on the web touch surface.
     if interface_type == "computer":
