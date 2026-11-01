@@ -11,6 +11,8 @@ import json
 import re
 from typing import Any, Dict, List, Optional
 
+from loguru import logger
+
 from .ai_model.adapters import ModelRuntime, get_model_runtime
 from .ai_model.caller import call_ai_with_string_response
 
@@ -308,7 +310,13 @@ def limit_screenshot_assets_for_markdown_replay(screenshot_assets):
 
 
 def prepare_screenshot_assets_for_markdown_replay(screenshot_assets):
-    """Compress each asset to a 768px longest edge and apply the budget."""
+    """Shrink assets whose longest edge exceeds 768px, then apply the budget.
+
+    An asset already inside the limit is returned untouched: re-encoding a
+    small PNG to JPEG blurs the UI text the model reads and would leave the
+    caller's base64Data/mimeType describing a different image (upstream
+    compressScreenshotAssetForMarkdownReplay returns early for those).
+    """
     import base64 as _b64
     import io as _io
 
@@ -322,16 +330,28 @@ def prepare_screenshot_assets_for_markdown_replay(screenshot_assets):
             image = Image.open(_io.BytesIO(_b64.b64decode(raw)))
             width, height = image.size
             longest_edge = max(width, height)
-            if longest_edge > MARKDOWN_REPLAY_SCREENSHOT_MAX_EDGE:
-                scale = MARKDOWN_REPLAY_SCREENSHOT_MAX_EDGE / longest_edge
-                image = image.resize(
-                    (max(1, round(width * scale)), max(1, round(height * scale)))
-                )
+            if longest_edge <= MARKDOWN_REPLAY_SCREENSHOT_MAX_EDGE:
+                compressed.append(asset)
+                continue
+            scale = MARKDOWN_REPLAY_SCREENSHOT_MAX_EDGE / longest_edge
+            image = image.resize(
+                (max(1, round(width * scale)), max(1, round(height * scale)))
+            )
             buffer = _io.BytesIO()
             image.convert("RGB").save(buffer, format="JPEG", quality=85)
             encoded = _b64.b64encode(buffer.getvalue()).decode("ascii")
-            compressed.append({**asset, "dataUrl": f"data:image/jpeg;base64,{encoded}"})
-        except Exception:
+            resized = {**asset, "dataUrl": f"data:image/jpeg;base64,{encoded}"}
+            if "base64Data" in asset:
+                resized["base64Data"] = encoded
+            if "mimeType" in asset:
+                resized["mimeType"] = "image/jpeg"
+            compressed.append(resized)
+        except Exception as error:
+            logger.debug(
+                "failed to compress screenshot asset; keeping original "
+                f"eventHashId={asset.get('eventHashId')} "
+                f"eventIndex={asset.get('eventIndex')} error={error}"
+            )
             compressed.append(asset)
     return limit_screenshot_assets_for_markdown_replay(compressed)
 
@@ -362,6 +382,26 @@ def create_recorder_markdown_replay_prompt(
             item["screenshotRef"] = ref
         events.append(item)
 
+    # upstream labels each shot with the semantic-resolved description, which
+    # process_events_for_llm already put on the processed events; a stale asset
+    # index must not fail the whole generation.
+    described_events = summary.get("events") or []
+    screenshot_entries = []
+    for index, asset in enumerate(screenshot_assets):
+        event_index = asset["eventIndex"]
+        description = None
+        if isinstance(event_index, int) and 0 <= event_index < len(described_events):
+            description = described_events[event_index].get("description")
+        screenshot_entries.append(
+            {
+                "screenshotRef": f"screenshot-{index + 1}",
+                "eventIndex": event_index,
+                "eventHashId": asset["eventHashId"],
+                "eventType": asset.get("eventType"),
+                "description": description,
+            }
+        )
+
     prompt_payload = {
         "testName": input_payload.get("testName") or summary.get("testName"),
         "target": {
@@ -371,18 +411,7 @@ def create_recorder_markdown_replay_prompt(
         },
         "startUrl": summary.get("startUrl"),
         "events": events,
-        "screenshots": [
-            {
-                "screenshotRef": f"screenshot-{index + 1}",
-                "eventIndex": asset["eventIndex"],
-                "eventHashId": asset["eventHashId"],
-                "eventType": asset.get("eventType"),
-                "description": (input_payload.get("events") or [{}])[
-                    asset["eventIndex"]
-                ].get("description"),
-            }
-            for index, asset in enumerate(screenshot_assets)
-        ],
+        "screenshots": screenshot_entries,
     }
     test_name = input_payload.get("testName") or summary.get("testName")
 
@@ -507,11 +536,53 @@ async def generate_markdown_replay(
 # Playwright test generation (upstream playwright.ts)
 # ---------------------------------------------------------------------------
 
+# upstream getScreenshotsForLLM caps the playwright visual context at three
+# shots (options.maxScreenshots || 3)
+PLAYWRIGHT_MAX_SCREENSHOTS = 3
+
+# upstream createMessageContent announces the attached shots with this line
+PLAYWRIGHT_SCREENSHOTS_INTRO = (
+    "Here are screenshots from the recording session to help you "
+    "understand the context:"
+)
+
+# Upstream embeds the whole PLAYWRIGHT_EXAMPLE_CODE reference test. The Python
+# SDK keeps what a model cannot guess instead: the exact signatures and the
+# fixture wiring every generated file has to reproduce.
 PLAYWRIGHT_EXAMPLE_REFERENCE = """
-// Reference the following code to generate Midscene test cases
-// The following is Playwright syntax with Midscene AI fixture methods:
-// aiTap(locate), aiInput(text, locate), aiAssert(assertion), aiQuery({...}),
-// aiKeyboardPress(key), aiHover(locate), aiScroll(...), aiWaitFor(prompt)
+// The following is Playwright syntax with the Midscene AI fixture, for reference
+IMPORTANT: Follow these exact type signatures for AI functions:
+aiAct(prompt: string, options?: { cacheable?: boolean }): Promise<string | undefined>
+aiInput(text: string, locate: string, options?: { deepLocate?: boolean, xpath?: string, cacheable?: boolean }): Promise<void>
+aiTap(locate: string, options?: { deepLocate?: boolean, xpath?: string, cacheable?: boolean }): Promise<void>
+aiHover(locate: string): Promise<void>
+aiDoubleClick(locate: string): Promise<void>
+aiKeyboardPress(key: string, locate?: string): Promise<void>
+aiScroll(locate: string | undefined, options: { direction?: 'up' | 'down' | 'left' | 'right', scrollType?: 'singleAction' | 'scrollToBottom' | 'scrollToTop' | 'scrollToRight' | 'scrollToLeft', distance?: number | null }): Promise<void>
+aiAssert(assertion: string, options?: { errorMessage?: string }): Promise<void>
+aiWaitFor(prompt: string, options?: { timeout?: number }): Promise<void>
+aiQuery<T>(queryObject: Record<string, string>): Promise<T>
+
+// Reproduce this structure, imports and fixture wiring included:
+import { test as base } from '@playwright/test';
+import type { PlayWrightAiFixtureType } from '@midscene/web/playwright';
+import { PlaywrightAiFixture } from '@midscene/web/playwright';
+
+const test = base.extend<PlayWrightAiFixtureType>(PlaywrightAiFixture({
+  waitForNetworkIdleTimeout: 2000,
+}));
+
+test.beforeEach(async ({ page }) => {
+  await page.goto('<startUrl from the event summary>');
+  await page.setViewportSize({ width: 1280, height: 800 });
+});
+
+test('<testName>', async ({ aiTap, aiInput, aiAssert, aiQuery, aiKeyboardPress, aiScroll, aiWaitFor, page }) => {
+  await aiAssert('The page shows the login interface');
+  await aiInput('user_name', 'in user name input');
+  await aiKeyboardPress('Enter', 'Login Button');
+  await aiWaitFor('The page shows that the loading is complete');
+});
 """
 
 
@@ -529,8 +600,10 @@ async def generate_playwright_test(
     )
     playwright_summary = {
         **summary,
-        "waitForNetworkIdle": options.get("waitForNetworkIdle", True),
-        "waitForNetworkIdleTimeout": options.get("waitForNetworkIdleTimeout", 2000),
+        # upstream normalizes with `!== false` and `|| 2000`: a null coming from
+        # a YAML option bag still means "wait for network idle for two seconds"
+        "waitForNetworkIdle": options.get("waitForNetworkIdle") is not False,
+        "waitForNetworkIdleTimeout": options.get("waitForNetworkIdleTimeout") or 2000,
         "viewportSize": options.get("viewportSize") or {"width": 1280, "height": 800},
     }
 
@@ -552,6 +625,29 @@ Generated code should:
 
 Important: Return ONLY the raw Playwright test code. Do NOT wrap the response in markdown code blocks (no ```typescript, ```javascript or ```). Start directly with the code content."""
 
+    screenshots = []
+    if options.get("includeScreenshots", True):
+        # upstream caps the shots at maxScreenshots; a whole recording of full
+        # PNGs gets the request rejected by the provider instead
+        max_screenshots = options.get("maxScreenshots") or PLAYWRIGHT_MAX_SCREENSHOTS
+        screenshots = limit_screenshot_assets_for_markdown_replay(
+            (options.get("screenshotAssets") or [])[:max_screenshots]
+        )
+
+    user_content: Any = prompt_text
+    if screenshots:
+        # one user message, intro first, then the prompt, then the shots
+        # (upstream createMessageContent)
+        user_content = [
+            {"type": "text", "text": PLAYWRIGHT_SCREENSHOTS_INTRO},
+            {"type": "text", "text": prompt_text},
+        ]
+        for asset in screenshots:
+            user_content.append(
+                {"type": "text", "text": f"Screenshot for event #{asset['eventIndex'] + 1}"}
+            )
+            user_content.append({"type": "image", "url": asset.get("dataUrl", "")})
+
     prompt: List[Dict[str, Any]] = [
         {
             "role": "system",
@@ -560,30 +656,15 @@ Important: Return ONLY the raw Playwright test code. Do NOT wrap the response in
                 "Midscene AI-powered tests. Generate complete, runnable test code."
             ),
         },
-        {"role": "user", "content": prompt_text},
+        {"role": "user", "content": user_content},
     ]
-
-    screenshots = options.get("screenshotAssets") or []
-    if screenshots and options.get("includeScreenshots", True):
-        prompt.append(
-            {
-                "role": "user",
-                "content": [
-                    part
-                    for asset in screenshots
-                    for part in (
-                        {"type": "text", "text": f"Screenshot for event #{asset['eventIndex'] + 1}"},
-                        {"type": "image", "url": asset.get("dataUrl", "")},
-                    )
-                ],
-            }
-        )
 
     runtime = model_runtime or get_model_runtime(get_global_default_config())
     response = await call_ai_with_string_response(prompt, runtime)
     content = response.get("content")
     if not isinstance(content, str) or not content.strip():
-        raise RuntimeError("Failed to generate recorder Playwright test")
-    # strip code fences if present
+        raise RuntimeError("Failed to generate Playwright test code")
+    # the prompt already forbids fences; strip them anyway (upstream returns the
+    # model output verbatim) so a wrapped reply still saves as runnable code
     fenced = re.match(r"^```(?:typescript|javascript|ts|js)?\s*([\s\S]*?)\s*```$", content.strip(), re.IGNORECASE)
     return (fenced.group(1) if fenced else content).strip() + "\n"

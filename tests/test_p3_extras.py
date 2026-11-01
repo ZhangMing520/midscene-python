@@ -419,6 +419,90 @@ class TestRecorderMarkdownGeneration:
         # the oversized asset is dropped, the small one kept
         assert kept == [small]
 
+    def test_assets_below_the_edge_limit_survive_untouched(self):
+        import base64
+        import io
+
+        from PIL import Image
+
+        from midscene.core.recorder_generation import (
+            prepare_screenshot_assets_for_markdown_replay,
+        )
+
+        def png(width, height):
+            buffer = io.BytesIO()
+            Image.new("RGBA", (width, height), (255, 0, 0, 0)).save(buffer, "PNG")
+            return "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode()
+
+        small = png(300, 200)
+        kept = prepare_screenshot_assets_for_markdown_replay([
+            {"dataUrl": small, "eventIndex": 0, "eventHashId": "a",
+             "mimeType": "image/png", "base64Data": "keep"}
+        ])
+        # re-encoding a small PNG to JPEG blurs the UI text the model reads and
+        # leaves mimeType/base64Data describing a different image
+        assert kept[0]["dataUrl"] == small
+        assert kept[0]["mimeType"] == "image/png"
+        assert kept[0]["base64Data"] == "keep"
+
+        resized = prepare_screenshot_assets_for_markdown_replay([
+            {"dataUrl": png(1600, 900), "eventIndex": 1, "eventHashId": "b",
+             "mimeType": "image/png", "base64Data": "old"}
+        ])[0]
+        assert resized["dataUrl"].startswith("data:image/jpeg;base64,")
+        assert resized["mimeType"] == "image/jpeg"
+        assert resized["base64Data"] == resized["dataUrl"].split(",", 1)[1]
+        with Image.open(io.BytesIO(base64.b64decode(resized["base64Data"]))) as image:
+            assert max(image.size) == 768
+
+    def test_screenshot_entries_use_the_semantic_description(self):
+        import json
+
+        from midscene.core.recorder_generation import (
+            create_recorder_markdown_replay_prompt,
+            prepare_event_summary,
+        )
+
+        events = [
+            {
+                "type": "click",
+                "description": "div.k9x2",
+                "semantic": {
+                    "source": "aiDescribe",
+                    "status": "ready",
+                    "elementDescription": "the blue cart button",
+                },
+            }
+        ]
+        summary = prepare_event_summary(events, {})
+
+        def payload_for(assets):
+            prompt = create_recorder_markdown_replay_prompt(
+                {"testName": "t", "target": {"platformId": "web"}, "events": events},
+                summary,
+                assets,
+            )
+            text = prompt[1]["content"][0]["text"]
+            return json.loads(
+                text.split("Recorder data:\n", 1)[1].split("\n\nImportant:", 1)[0]
+            )
+
+        entry = payload_for([
+            {"eventIndex": 0, "eventHashId": summary["events"][0]["hashId"],
+             "eventType": "click", "dataUrl": "data:image/jpeg;base64,AA"}
+        ])["screenshots"][0]
+        # upstream resolves the label through the semantic description; the raw
+        # recorder css path is noise for the model
+        assert entry["description"] == "the blue cart button"
+
+        # an asset from a stale recording must not fail the whole generation
+        stale = payload_for([
+            {"eventIndex": 99, "eventHashId": "gone", "eventType": "click",
+             "dataUrl": "data:image/jpeg;base64,AA"}
+        ])["screenshots"][0]
+        assert stale["description"] is None
+        assert stale["eventIndex"] == 99
+
     def test_prompt_structure_and_screenshot_refs(self):
         from midscene.core.recorder_generation import (
             create_recorder_markdown_replay_prompt,
@@ -538,3 +622,125 @@ class TestRecorderPlaywrightGeneration:
         assert '"viewportSize"' in summary_text
         assert "800" in summary_text
         assert "3000" in summary_text
+
+    @pytest.mark.asyncio
+    async def test_playwright_screenshots_share_the_user_message(self):
+        from midscene.core.recorder_generation import generate_playwright_test
+
+        captured: Dict[str, Any] = {}
+
+        async def fake_call(prompt, runtime):
+            captured["prompt"] = prompt
+            return {"content": "// test"}
+
+        events = [{"type": "click", "timestamp": 1}]
+        shots = [{"eventIndex": 0, "dataUrl": "data:image/png;base64,AA"}]
+        with patch(
+            "midscene.core.recorder_generation.call_ai_with_string_response",
+            new=fake_call,
+        ):
+            await generate_playwright_test(events, {"screenshotAssets": shots}, Mock())
+
+        # upstream createMessageContent keeps the intro, the prompt and the
+        # shots in one user turn; a second turn reorders the context
+        assert len(captured["prompt"]) == 2
+        content = captured["prompt"][1]["content"]
+        assert content[0]["text"].startswith("Here are screenshots")
+        assert "Generate a Playwright test" in content[1]["text"]
+        assert content[2]["type"] == "text" and content[3]["type"] == "image"
+
+    @pytest.mark.asyncio
+    async def test_playwright_normalizes_falsy_option_defaults(self):
+        from midscene.core.recorder_generation import generate_playwright_test
+
+        captured: Dict[str, Any] = {}
+
+        async def fake_call(prompt, runtime):
+            captured["prompt"] = prompt
+            return {"content": "// test"}
+
+        with patch(
+            "midscene.core.recorder_generation.call_ai_with_string_response",
+            new=fake_call,
+        ):
+            # an empty YAML option leaves these as None/0, and a model reading
+            # "waitForNetworkIdle": null drops the wait from the generated test
+            await generate_playwright_test(
+                [{"type": "click", "timestamp": 1}],
+                {"waitForNetworkIdle": None, "waitForNetworkIdleTimeout": 0},
+                Mock(),
+            )
+        text = captured["prompt"][1]["content"]
+        assert '"waitForNetworkIdle": true' in text
+        assert '"waitForNetworkIdleTimeout": 2000' in text
+
+    @pytest.mark.asyncio
+    async def test_playwright_empty_response_raises(self):
+        from midscene.core.recorder_generation import generate_playwright_test
+
+        async def fake_call(prompt, runtime):
+            return {"content": "   "}
+
+        with patch(
+            "midscene.core.recorder_generation.call_ai_with_string_response",
+            new=fake_call,
+        ):
+            with pytest.raises(RuntimeError) as exc:
+                await generate_playwright_test([{"type": "click", "timestamp": 1}], {}, Mock())
+        assert "Failed to generate Playwright test code" in str(exc.value)
+
+    @pytest.mark.asyncio
+    async def test_playwright_screenshots_are_capped_and_bounded(self):
+        from midscene.core.recorder_generation import generate_playwright_test
+
+        captured: Dict[str, Any] = {}
+
+        async def fake_call(prompt, runtime):
+            captured["prompt"] = prompt
+            return {"content": "// test"}
+
+        events = [{"type": "click", "timestamp": 1}]
+
+        def shots(size, count):
+            return [
+                {"eventIndex": index, "dataUrl": "data:image/png;base64" + "A" * size}
+                for index in range(count)
+            ]
+
+        def images_of(prompt):
+            return [
+                part
+                for message in prompt
+                if isinstance(message["content"], list)
+                for part in message["content"]
+                if part["type"] == "image"
+            ]
+
+        with patch(
+            "midscene.core.recorder_generation.call_ai_with_string_response",
+            new=fake_call,
+        ):
+            await generate_playwright_test(events, {"screenshotAssets": shots(1_000, 8)}, Mock())
+        # upstream caps the visual context at maxScreenshots (3 by default)
+        assert len(images_of(captured["prompt"])) == 3
+
+        with patch(
+            "midscene.core.recorder_generation.call_ai_with_string_response",
+            new=fake_call,
+        ):
+            await generate_playwright_test(
+                events, {"screenshotAssets": shots(250_000, 8), "maxScreenshots": 8}, Mock(),
+            )
+        # eight full-size shots would be rejected by the provider outright
+        assert sum(len(part["url"]) for part in images_of(captured["prompt"])) <= 600_000
+
+        with patch(
+            "midscene.core.recorder_generation.call_ai_with_string_response",
+            new=fake_call,
+        ):
+            await generate_playwright_test(
+                events,
+                {"screenshotAssets": shots(1_000, 3), "includeScreenshots": False},
+                Mock(),
+            )
+        assert all(isinstance(m["content"], str) for m in captured["prompt"])
