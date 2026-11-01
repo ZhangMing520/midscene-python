@@ -1539,7 +1539,11 @@ class Agent:
             if attributes:
                 builder.dump.update(attributes)
             builder.add_execution(prompt_str, [planning_task, *action_tasks])
-            return builder.write_to_disk(name)
+            json_path = builder.write_to_disk(name)
+            from .report_viewer import write_report_html
+
+            write_report_html(builder.to_dict(), name)
+            return json_path
         except Exception as e:
             logger.warning(f"Failed to write execution report: {e}")
             return None
