@@ -531,6 +531,12 @@ class Agent:
             ]
         return self._action_space
 
+    async def get_action_space(self) -> List[DeviceAction]:
+        """Return the full device action space for this agent
+        (upstream `agent.getActionSpace()`)."""
+        return self.action_space
+
+
     def _build_file_chooser_action(self) -> DeviceAction:
         """File-chooser action only exposed when the interface implements the
         listener (upstream defineActionRegisterFileChooserAccept)."""
