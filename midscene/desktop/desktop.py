@@ -219,6 +219,14 @@ class DesktopDevice(AbstractInterface):
                 raise ValueError(f"Unknown key name: {name!r}")
         await self._press_combo(pyautogui, keys)
 
+    async def cursor_move(self, direction: str, times: int = 1) -> None:
+        """Move the caret with arrow keys (upstream computer cursorMove)."""
+        if direction not in ("left", "right"):
+            raise ValueError('CursorMove direction must be "left" or "right"')
+        arrow_key = "ArrowLeft" if direction == "left" else "ArrowRight"
+        for _ in range(max(1, int(times))):
+            await self.keyboard_press(arrow_key)
+
     async def _press_combo(self, pyautogui, keys: List[str]) -> None:
         """Tap the last key with the leading keys held as modifiers.
 

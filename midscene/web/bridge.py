@@ -469,6 +469,20 @@ class BridgeWebPage(AbstractInterface):
             "keyboard.press", [build_key_commands(key)]
         )
 
+    async def cursor_move(self, direction: str, times: int = 1) -> None:
+        """Move the caret inside the focused field (upstream web cursorMove)."""
+        if direction not in ("left", "right"):
+            raise ValueError(f"Invalid cursor direction: {direction}")
+        arrow_key = "ArrowLeft" if direction == "left" else "ArrowRight"
+        for _ in range(max(1, int(times))):
+            await self.keyboard_press(arrow_key)
+            await asyncio.sleep(0.1)
+
+    async def clear_input(self) -> None:
+        """Clear the focused field through the extension keyboard channel."""
+        await self.keyboard_press("Control+A")
+        await self.keyboard_press("Delete")
+
     async def pinch(
         self,
         direction: str,
@@ -513,8 +527,21 @@ class BridgeWebPage(AbstractInterface):
             raise ValueError(f"Invalid scroll direction: {direction}")
         await self._require_server().call("mouse.wheel", [delta_x, delta_y])
 
+    async def evaluate_javascript(self, script: str) -> Any:
+        """Evaluate JavaScript through the extension's debugger channel."""
+        return await self._require_server().call("evaluateJavaScript", [script])
+
     async def navigate_to(self, url: str) -> None:
         await self._require_server().call("navigate", [url])
+
+    async def reload(self) -> None:
+        await self._require_server().call("reload", [])
+
+    async def go_back(self) -> None:
+        await self._require_server().call("goBack", [])
+
+    async def go_forward(self) -> None:
+        await self._require_server().call("goForward", [])
 
     async def get_browser_tab_list(self) -> Any:
         return await self._require_server().call(
@@ -536,5 +563,5 @@ class BridgeWebPage(AbstractInterface):
             BRIDGE_EVENT_UPDATE_AGENT_STATUS, [message]
         )
 
-    # TODO(bridge): the extension's clearInput(element) needs a locate-aware
-    # ElementInfo argument, so ClearInput stays out of the bridge action space.
+    # ClearInput goes through the keyboard channel (Control+A + Delete), so it
+    # does not need the extension's locate-aware clearInput(element) API.

@@ -201,6 +201,15 @@ class IOSDevice(AbstractInterface):
         await self._ensure_connected()
         await self.wda.press_key(key)
 
+    async def cursor_move(self, direction: str, times: int = 1) -> None:
+        """Move the caret with arrow keys (upstream ios cursorMove); mobile
+        devices have no wait between key presses."""
+        if direction not in ("left", "right"):
+            raise ValueError('CursorMove direction must be "left" or "right"')
+        arrow_key = "ArrowLeft" if direction == "left" else "ArrowRight"
+        for _ in range(max(1, int(times))):
+            await self.keyboard_press(arrow_key)
+
     # -- scroll / swipe ---------------------------------------------------------------
 
     async def _swipe_coordinates(

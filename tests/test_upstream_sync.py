@@ -1535,9 +1535,9 @@ class TestBridgeProtocol:
         assert {
             "Tap", "RightClick", "MiddleClick", "DoubleClick", "Hover",
             "DragAndDrop", "KeyboardPress", "Scroll", "Input", "Pinch",
+            "ClearInput", "CursorMove", "Navigate", "Reload", "GoBack",
+            "GoForward",
         } <= names
-        # the extension's clearInput needs an ElementInfo, not coordinates
-        assert "ClearInput" not in names
 
     @pytest.mark.asyncio
     async def test_get_context_describes_the_viewport_root(self):

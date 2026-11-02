@@ -208,6 +208,51 @@ async def _execute_sleep(param: Dict[str, Any], device: Any, locate_fn) -> None:
     await asyncio.sleep(time_ms / 1000)
 
 
+async def _execute_cursor_move(param: Dict[str, Any], device: Any, locate_fn) -> None:
+    direction = param.get("direction")
+    if direction not in ("left", "right"):
+        raise ValueError('CursorMove direction must be "left" or "right"')
+    times = param.get("times") or 1
+    try:
+        times = max(1, int(times))
+    except (TypeError, ValueError):
+        times = 1
+    if _supports(device, "cursor_move"):
+        await device.cursor_move(direction, times)
+        return
+    arrow_key = "ArrowLeft" if direction == "left" else "ArrowRight"
+    for _ in range(times):
+        await device.keyboard_press(arrow_key)
+        await asyncio.sleep(0.1)
+
+
+async def _execute_navigate(param: Dict[str, Any], device: Any, locate_fn) -> None:
+    url = param.get("url")
+    if not url or not str(url).strip():
+        raise ValueError("Navigate requires a non-empty url parameter")
+    if not _supports(device, "navigate_to"):
+        raise NotImplementedError("Navigate is not supported on this interface")
+    await device.navigate_to(str(url))
+
+
+async def _execute_reload(param: Dict[str, Any], device: Any, locate_fn) -> None:
+    if not _supports(device, "reload"):
+        raise NotImplementedError("Reload is not supported on this interface")
+    await device.reload()
+
+
+async def _execute_go_back(param: Dict[str, Any], device: Any, locate_fn) -> None:
+    if not _supports(device, "go_back"):
+        raise NotImplementedError("GoBack is not supported on this interface")
+    await device.go_back()
+
+
+async def _execute_go_forward(param: Dict[str, Any], device: Any, locate_fn) -> None:
+    if not _supports(device, "go_forward"):
+        raise NotImplementedError("GoForward is not supported on this interface")
+    await device.go_forward()
+
+
 async def _execute_swipe(param: Dict[str, Any], device: Any, locate_fn) -> None:
     direction = param.get("direction") or "up"
     distance = param.get("distance")
@@ -566,6 +611,78 @@ def build_web_action_space() -> List[DeviceAction]:
             interface_alias="aiSleep",
             execute=_execute_sleep,
         ),
+        DeviceAction(
+            name="CursorMove",
+            description=(
+                "Move the text cursor (caret) left or right within an input field "
+                "or text area. Use this to reposition the cursor without selecting "
+                "text."
+            ),
+            param_schema={
+                "direction": {
+                    "type": '"left" | "right"',
+                    "description": "The direction to move the cursor",
+                },
+                "times": {
+                    "type": "number",
+                    "description": (
+                        "The number of times to move the cursor in the specified "
+                        "direction. Default: 1"
+                    ),
+                    "optional": True,
+                },
+            },
+            locate_fields=[],
+            sample={"direction": "left", "times": 3},
+            interface_alias="aiCursorMove",
+            primitive="cursor_move",
+            execute=_execute_cursor_move,
+        ),
+        DeviceAction(
+            name="Navigate",
+            description=(
+                "Navigate the browser to a specified URL. Opens the URL in the "
+                "current tab."
+            ),
+            param_schema={
+                "url": {
+                    "type": "string",
+                    "description": "The URL to navigate to",
+                }
+            },
+            locate_fields=[],
+            sample={"url": "https://www.example.com"},
+            interface_alias="aiNavigate",
+            primitive="navigate_to",
+            execute=_execute_navigate,
+        ),
+        DeviceAction(
+            name="Reload",
+            supported_by_system_one=True,
+            description="Reload the current page",
+            locate_fields=[],
+            interface_alias="aiReload",
+            primitive="reload",
+            execute=_execute_reload,
+        ),
+        DeviceAction(
+            name="GoBack",
+            supported_by_system_one=True,
+            description="Navigate back in browser history",
+            locate_fields=[],
+            interface_alias="aiGoBack",
+            primitive="go_back",
+            execute=_execute_go_back,
+        ),
+        DeviceAction(
+            name="GoForward",
+            supported_by_system_one=True,
+            description="Navigate forward in browser history",
+            locate_fields=[],
+            interface_alias="aiGoForward",
+            primitive="go_forward",
+            execute=_execute_go_forward,
+        ),
     ]
 
 
@@ -656,6 +773,7 @@ _ANDROID_SHARED_ACTIONS = (
     "Tap",
     "Input",
     "KeyboardPress",
+    "CursorMove",
     "Scroll",
     "ClearInput",
     "DragAndDrop",

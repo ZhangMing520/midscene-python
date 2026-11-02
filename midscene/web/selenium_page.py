@@ -5,6 +5,7 @@ Selenium WebDriver integration for Midscene
 import base64
 from typing import Any, Dict, List, Optional
 
+import asyncio
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
@@ -318,6 +319,15 @@ class SeleniumWebPage(AbstractInterface):
             logger.error(f"Failed to double click at ({x}, {y}): {e}")
             raise
 
+    async def middle_click(self, x: float, y: float) -> None:
+        try:
+            self._action_chains.reset_actions()
+            self._action_chains.move_by_offset(x, y).click(button=2).perform()
+            self._action_chains.reset_actions()
+        except Exception as e:
+            logger.error(f"Failed to middle click at ({x}, {y}): {e}")
+            raise
+
     async def hover(self, x: float, y: float) -> None:
         try:
             self._action_chains.move_by_offset(x, y).perform()
@@ -343,6 +353,28 @@ class SeleniumWebPage(AbstractInterface):
             logger.error(f"Failed to drag from {from_point} to {to_point}: {e}")
             raise
 
+
+
+    async def reload(self) -> None:
+        'Reload the current page.'
+        self.driver.refresh()
+
+    async def go_back(self) -> None:
+        'Navigate back in browser history.'
+        self.driver.back()
+
+    async def go_forward(self) -> None:
+        'Navigate forward in browser history.'
+        self.driver.forward()
+
+    async def cursor_move(self, direction: str, times: int = 1) -> None:
+        'Move the caret inside the focused field (upstream web cursorMove).'
+        if direction not in ('left', 'right'):
+            raise ValueError(f'Invalid cursor direction: {direction}')
+        arrow_key = 'ArrowLeft' if direction == 'left' else 'ArrowRight'
+        for _ in range(max(1, int(times))):
+            await self.keyboard_press(arrow_key)
+            await asyncio.sleep(0.1)
     async def cache_feature_for_point(
         self, center: List[float], options: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:

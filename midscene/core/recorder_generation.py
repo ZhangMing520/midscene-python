@@ -271,7 +271,13 @@ async def generate_yaml_test(
         runtime = model_runtime or get_model_runtime(
             get_global_default_config()
         )
-        response = await call_ai_with_string_response(prompt, runtime)
+        stream_options = _recorder_stream_options(options)
+        if stream_options:
+            response = await call_ai_with_string_response(
+                prompt, runtime, stream_options
+            )
+        else:
+            response = await call_ai_with_string_response(prompt, runtime)
         content = response.get("content")
         if not isinstance(content, str) or not content.strip():
             raise RuntimeError("Failed to generate recorder YAML test configuration")
@@ -284,6 +290,17 @@ def get_global_default_config() -> Dict[str, Any]:
     from .ai_model.env_config import get_global_model_config_manager
 
     return get_global_model_config_manager().get_model_config("default")
+
+
+def _recorder_stream_options(
+    options: Dict[str, Any],
+) -> Optional[Dict[str, Any]]:
+    """Upstream streams only when both `stream` and `onChunk` are provided and
+    silently falls back to a non-streaming call otherwise."""
+    if options.get("stream") and options.get("onChunk"):
+        return {"stream": True, "onChunk": options["onChunk"]}
+    return None
+
 
 # ---------------------------------------------------------------------------
 # Markdown replay generation (upstream markdown.ts)
@@ -660,7 +677,11 @@ Important: Return ONLY the raw Playwright test code. Do NOT wrap the response in
     ]
 
     runtime = model_runtime or get_model_runtime(get_global_default_config())
-    response = await call_ai_with_string_response(prompt, runtime)
+    stream_options = _recorder_stream_options(options)
+    if stream_options:
+        response = await call_ai_with_string_response(prompt, runtime, stream_options)
+    else:
+        response = await call_ai_with_string_response(prompt, runtime)
     content = response.get("content")
     if not isinstance(content, str) or not content.strip():
         raise RuntimeError("Failed to generate Playwright test code")

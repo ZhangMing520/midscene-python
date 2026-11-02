@@ -49,6 +49,9 @@ class FakeHdc:
     async def key_event(self, *keys):
         await self._record("keyEvent", *keys)
 
+    async def clear_text_field(self):
+        await self._record("clearTextField")
+
     async def screenshot(self, remote_path):
         await self._record("screenshot", remote_path)
         return self.snapshot_output
@@ -142,6 +145,22 @@ class TestHdcHelpers:
             await client.key_event("Back", "2054")  # string + numeric mix
         with pytest.raises(RuntimeError):
             await client.key_event("NotAKey")
+
+    @pytest.mark.asyncio
+    async def test_clear_text_field_selects_all_then_deletes(self):
+        client = HdcClient(hdc_path="/fake/hdc")
+        client.shell = AsyncMock(return_value="")
+
+        await client.clear_text_field()
+        client.shell.assert_awaited_with(
+            "uitest uiInput keyEvent 2072 2017;uitest uiInput keyEvent 2055"
+        )
+
+    @pytest.mark.asyncio
+    async def test_device_clear_input_uses_clear_text_field(self):
+        device = _device()
+        await device.clear_input()
+        assert ("clearTextField",) in device.hdc.calls
 
     @pytest.mark.asyncio
     async def test_input_text_escapes_quotes(self):

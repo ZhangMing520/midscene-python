@@ -18,6 +18,14 @@ from loguru import logger
 
 RESULT_TYPES = ("success", "failed", "partialFailed", "notExecuted")
 
+# All target sections a batch config may carry (upstream midsceneYamlTargetKeys).
+_TARGET_KEYS = (
+    "web", "page", "browser", "target",
+    "android", "ios", "harmony", "computer", "interface",
+)
+_WEB_TARGET_KEYS = ("web", "page", "browser", "target")
+_NATIVE_TARGET_KEYS = ("android", "ios", "harmony", "computer", "interface")
+
 
 def parse_batch_config(config: Dict[str, Any]) -> Dict[str, Any]:
     """Validate a MidsceneYamlConfig mapping (upstream schema subset)."""
@@ -52,15 +60,25 @@ def parse_batch_config(config: Dict[str, Any]) -> Dict[str, Any]:
         "share_browser_context": share_browser_context,
         "reuse_page": reuse_page,
         "web_overrides": _web_overrides(config),
+        "native_overrides": _native_overrides(config),
     }
 
 
 def _web_overrides(config: Dict[str, Any]) -> Dict[str, Any]:
     """Partial web-env overrides deep-merged into each script
     (web/page/browser/target keys, upstream MidsceneYamlTargetConfig)."""
-    for key in ("web", "page", "browser", "target"):
+    for key in _WEB_TARGET_KEYS:
         if isinstance(config.get(key), dict):
             return dict(config[key])
+    return {}
+
+
+def _native_overrides(config: Dict[str, Any]) -> Dict[str, Any]:
+    """Batch-level native target section merged into each script of that
+    platform (upstream globalConfig merge for android/ios/harmony/computer)."""
+    for key in _NATIVE_TARGET_KEYS:
+        if isinstance(config.get(key), dict):
+            return {key: dict(config[key])}
     return {}
 
 
@@ -85,7 +103,7 @@ def merge_web_overrides(
     if not overrides:
         return script
     merged = dict(script)
-    if any(merged.get(key) is not None for key in ("android", "computer")):
+    if any(merged.get(key) is not None for key in _NATIVE_TARGET_KEYS):
         return merged
     web_key = next(
         (
@@ -139,6 +157,7 @@ class BatchRunner:
                         file_path,
                         retries=cfg["retry"],
                         overrides=cfg["web_overrides"],
+                        native_overrides=cfg["native_overrides"],
                     )
 
             outcomes = await asyncio.gather(
@@ -152,6 +171,7 @@ class BatchRunner:
                     file_path,
                     retries=cfg["retry"],
                     overrides=cfg["web_overrides"],
+                    native_overrides=cfg["native_overrides"],
                     shared_page=shared_page if cfg["share_browser_context"] else None,
                 )
                 self.results.append(result)
@@ -170,6 +190,7 @@ class BatchRunner:
         file_path: str,
         retries: int = 0,
         overrides: Optional[Dict[str, Any]] = None,
+        native_overrides: Optional[Dict[str, Any]] = None,
         shared_page: Any = None,
     ) -> Dict[str, Any]:
         start = time.time()
@@ -180,6 +201,8 @@ class BatchRunner:
         content = Path(file_path).read_text(encoding="utf-8")
         if overrides:
             content = self._apply_web_overrides(content, overrides)
+        if native_overrides:
+            content = self._apply_native_overrides(content, native_overrides)
 
         for attempt in range(1, max_attempts + 1):
             player = self._player_factory(content, file_path)
@@ -237,14 +260,41 @@ class BatchRunner:
             return content
         if not isinstance(doc, dict):
             return content
-        has_own = any(isinstance(doc.get(k), dict) for k in ("web", "page", "browser", "target"))
+        has_own = any(
+            isinstance(doc.get(k), dict) for k in _WEB_TARGET_KEYS
+        )
         has_native_target = any(
-            doc.get(k) is not None for k in ("android", "computer")
+            doc.get(k) is not None for k in _NATIVE_TARGET_KEYS
         )
         if has_own or has_native_target:
             return content
         web_block = yaml.safe_dump({"web": overrides}, allow_unicode=True)
         return web_block + content
+
+    def _apply_native_overrides(
+        self, content: str, overrides: Dict[str, Any]
+    ) -> str:
+        """Deep-merge the batch-level native target section into a script of
+        the same platform; the script's own keys win. A script targeting
+        another platform (or another target) is left untouched."""
+        if not overrides:
+            return content
+        try:
+            doc = yaml.safe_load(content)
+        except yaml.YAMLError:
+            return content
+        if not isinstance(doc, dict):
+            return content
+        key, values = next(iter(overrides.items()))
+        declared = [k for k in _TARGET_KEYS if doc.get(k) is not None]
+        if declared and declared[0] != key:
+            return content
+        own = doc.get(key)
+        if isinstance(own, dict):
+            doc[key] = {**values, **own}
+        else:
+            doc[key] = dict(values)
+        return yaml.safe_dump(doc, allow_unicode=True, sort_keys=False)
 
     @staticmethod
     def _not_executed(file_path: str) -> Dict[str, Any]:

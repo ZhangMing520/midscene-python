@@ -5,6 +5,7 @@ are device render pixels (foldable-aware); fling endpoints keep a margin
 from screen edges because uitest ignores boundary flings.
 """
 
+import asyncio
 import base64
 import tempfile
 from pathlib import Path
@@ -174,46 +175,117 @@ class HarmonyDevice(AbstractInterface):
         codes = resolve_harmony_key_codes(key)
         await hdc.key_event(*codes)
 
+    async def clear_input(self) -> None:
+        """Select-all + delete in the focused field (upstream clearInput)."""
+        hdc = await self._get_hdc()
+        await hdc.clear_text_field()
+
     # -- scroll / swipe -----------------------------------------------------------
 
     async def scroll(
         self, direction: str, distance: Optional[int] = None, **kwargs
     ) -> None:
-        """Scroll via fling; boundary-fling fix keeps endpoints off the screen
-        edge (upstream scrollInDirection)."""
+        """Scroll in direction (content direction, upstream scrollInDirection).
+
+        Untargeted scrolls cross the central 70% slowly; scrollTo* repeats a
+        fast fling toward the edge, then waits for the screen to settle.
+        """
         hdc = await self._get_hdc()
         size = await self.size()
         width, height = size["width"], size["height"]
         if direction not in ("up", "down", "left", "right"):
             raise ValueError(f"Invalid scroll direction: {direction}")
 
-        if distance is None:
-            # full-viewport fling from the center, edge-margin applied
-            cx, cy = width // 2, height // 2
-            fling_distance = min(width, height) // 2
-            endpoints = {
-                "down": (cx, cy + fling_distance, cx, max(SCREEN_EDGE_MARGIN, cy - fling_distance)),
-                "up": (cx, cy - fling_distance, cx, min(height - SCREEN_EDGE_MARGIN, cy + fling_distance)),
-                "left": (cx + fling_distance, cy, max(SCREEN_EDGE_MARGIN, cx - fling_distance), cy),
-                "right": (cx - fling_distance, cy, min(width - SCREEN_EDGE_MARGIN, cx + fling_distance), cy),
-            }
-            fx, fy, tx, ty = endpoints[direction]
-            await hdc.fling(fx, fy, tx, ty, resolve_swipe_speed(
-                {"x": fx, "y": fy}, {"x": tx, "y": ty}, 1000
-            ))
+        scroll_type = kwargs.get("scroll_type") or "singleAction"
+        point = kwargs.get("point")
+        if scroll_type.startswith("scrollTo"):
+            boundary = {
+                "scrollToTop": "up",
+                "scrollToBottom": "down",
+                "scrollToLeft": "left",
+                "scrollToRight": "right",
+            }.get(scroll_type)
+            if boundary is None:
+                raise ValueError(f"Unknown scroll type: {scroll_type}")
+            await self._scroll_until_edge(hdc, boundary, width, height, point)
             return
 
-        scroll_distance = min(int(distance), MAX_SCROLL_DISTANCE)
+        if distance is None and not point:
+            # Upstream scrollDefault: from 0.85 to 0.15 of the axis.
+            horizontal = direction in ("left", "right")
+            forward = direction in ("down", "right")
+            extent = width if horizontal else height
+            start = round(extent * (0.85 if forward else 0.15))
+            end = round(extent * (0.15 if forward else 0.85))
+            cx, cy = width // 2, height // 2
+            if horizontal:
+                fx, fy, tx, ty = start, cy, end, cy
+            else:
+                fx, fy, tx, ty = cx, start, cx, end
+            await hdc.fling(
+                fx, fy, tx, ty,
+                resolve_swipe_speed({"x": fx, "y": fy}, {"x": tx, "y": ty}, 1000),
+            )
+            return
+
+        vertical = direction in ("up", "down")
+        scroll_distance = int(distance) if distance else (
+            height if vertical else width
+        )
+        if point:
+            sx, sy = int(point[0]), int(point[1])
+            endpoints = {
+                "down": (sx, max(SCREEN_EDGE_MARGIN, sy - scroll_distance)),
+                "up": (sx, min(height - SCREEN_EDGE_MARGIN, sy + scroll_distance)),
+                "left": (min(width - SCREEN_EDGE_MARGIN, sx + scroll_distance), sy),
+                "right": (max(SCREEN_EDGE_MARGIN, sx - scroll_distance), sy),
+            }
+            ex, ey = endpoints[direction]
+            await hdc.fling(sx, sy, ex, ey, DEFAULT_FAST_SWIPE_SPEED)
+            return
+
+        deltas = {
+            "down": (0, scroll_distance),
+            "up": (0, -scroll_distance),
+            "left": (-scroll_distance, 0),
+            "right": (scroll_distance, 0),
+        }
+        dx, dy = deltas[direction]
         cx, cy = width // 2, height // 2
-        if direction == "down":
-            fx, fy, tx, ty = cx, min(height - SCREEN_EDGE_MARGIN, cy + scroll_distance // 2), cx, max(SCREEN_EDGE_MARGIN, cy + scroll_distance // 2 - scroll_distance)
-        elif direction == "up":
-            fx, fy, tx, ty = cx, max(SCREEN_EDGE_MARGIN, cy - scroll_distance // 2), cx, min(height - SCREEN_EDGE_MARGIN, cy - scroll_distance // 2 + scroll_distance)
-        elif direction == "left":
-            fx, fy, tx, ty = min(width - SCREEN_EDGE_MARGIN, cx + scroll_distance // 2), cy, max(SCREEN_EDGE_MARGIN, cx + scroll_distance // 2 - scroll_distance), cy
-        else:
-            fx, fy, tx, ty = max(SCREEN_EDGE_MARGIN, cx - scroll_distance // 2), cy, min(width - SCREEN_EDGE_MARGIN, cx - scroll_distance // 2 + scroll_distance), cy
-        await hdc.fling(fx, fy, tx, ty, DEFAULT_FAST_SWIPE_SPEED)
+        await hdc.fling(
+            cx, cy, cx - dx, cy - dy, DEFAULT_FAST_SWIPE_SPEED
+        )
+
+    async def _scroll_until_edge(
+        self,
+        hdc: HdcClient,
+        direction: str,
+        width: int,
+        height: int,
+        point: Optional[List[float]],
+    ) -> None:
+        """Upstream scrollUntilEdge: 10 flings + 1s settle."""
+        sx, sy = (
+            (int(point[0]), int(point[1]))
+            if point
+            else (width // 2, height // 2)
+        )
+        targets = {
+            "up": (sx, height - SCREEN_EDGE_MARGIN),
+            "down": (sx, SCREEN_EDGE_MARGIN),
+            "left": (width - SCREEN_EDGE_MARGIN, sy),
+            "right": (SCREEN_EDGE_MARGIN, sy),
+        }
+        tx, ty = targets[direction]
+        for _ in range(10):
+            await hdc.fling(sx, sy, tx, ty, DEFAULT_FAST_SWIPE_SPEED)
+        await asyncio.sleep(1)
+
+    async def cursor_move(self, direction: str, times: int = 1) -> None:
+        """Move the caret with Arrow key events (upstream harmony cursorMove)."""
+        arrow_key = "ArrowLeft" if direction == "left" else "ArrowRight"
+        for _ in range(max(1, int(times))):
+            await self.keyboard_press(arrow_key)
 
     async def swipe(
         self, direction: str, distance: Optional[int] = None

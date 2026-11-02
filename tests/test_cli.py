@@ -128,3 +128,124 @@ def test_run_exit_code_reflects_failed_tasks(
     assert result.exit_code == expected_exit
     if failed_tasks:
         assert "boom" in result.output
+
+
+def test_cli_target_overrides_parse_dotted_flags():
+    cli_main = importlib.import_module("midscene.cli.main")
+
+    overrides = cli_main._parse_cli_target_overrides(
+        [
+            "--web.viewport-width",
+            "1440",
+            "--web.accept-insecure-certs",
+            "true",
+            "--android.device-id",
+            "emulator-5554",
+            "--unknown.flag",
+            "x",
+        ]
+    )
+    assert overrides == {
+        "web": {"viewportWidth": 1440, "acceptInsecureCerts": True},
+        "android": {"deviceId": "emulator-5554"},
+    }
+
+    script = {"web": {"url": "https://example.com", "viewportWidth": 800}}
+    merged = cli_main._merge_cli_target_overrides(script, overrides)
+    # The script's own keys win over CLI defaults (batch merge order).
+    assert merged["web"]["viewportWidth"] == 800
+    assert merged["web"]["acceptInsecureCerts"] is True
+    assert merged["android"]["deviceId"] == "emulator-5554"
+
+
+def test_dotenv_loader_respects_override(tmp_path, monkeypatch):
+    cli_main = importlib.import_module("midscene.cli.main")
+    env_file = tmp_path / ".env"
+    env_file.write_text("MIDSCENE_TEST_KEY=from-file\n")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("MIDSCENE_TEST_KEY", "from-env")
+
+    cli_main._load_dotenv(override=False)
+    assert __import__("os").environ["MIDSCENE_TEST_KEY"] == "from-env"
+    cli_main._load_dotenv(override=True)
+    assert __import__("os").environ["MIDSCENE_TEST_KEY"] == "from-file"
+
+
+def test_report_tool_split_markdown_and_merge(tmp_path):
+    from typer.testing import CliRunner
+    from midscene.core.report_viewer import (
+        merge_report_files,
+        report_file_to_markdown,
+        split_report_file,
+        write_report_html,
+    )
+
+    cli_main = importlib.import_module("midscene.cli.main")
+    dump = {
+        "sdkVersion": "0.2.0",
+        "groupName": "Report tool",
+        "groupDescription": "demo",
+        "modelBriefs": [],
+        "deviceType": "web",
+        "executions": [
+            {
+                "id": "a1",
+                "name": "first",
+                "tasks": [
+                    {
+                        "type": "Planning",
+                        "status": "finished",
+                        "param": {"userInstruction": "hello"},
+                        "output": "done",
+                    }
+                ],
+            },
+            {
+                "id": "a2",
+                "name": "second",
+                "tasks": [
+                    {
+                        "type": "Screenshot",
+                        "status": "finished",
+                        "output": [{"base64": "aGVsbG8="}],
+                    }
+                ],
+            },
+        ],
+    }
+    # Render twice so merge can exercise dedupe-by-id (keep latest).
+    html_path = write_report_html(dump, "report-tool-fixture", str(tmp_path))
+    assert html_path
+
+    split_dir = tmp_path / "split"
+    split = split_report_file(html_path, str(split_dir))
+    assert len(split["executionJsonFiles"]) == 2
+    assert (split_dir / "1.execution.json").exists()
+
+    markdown_dir = tmp_path / "md"
+    markdown = report_file_to_markdown(html_path, str(markdown_dir))
+    assert (markdown_dir / "report.md").exists()
+    assert markdown["markdownFiles"]
+    assert "## 1. first" in (markdown_dir / "report.md").read_text(encoding="utf-8")
+
+    merged_dir = tmp_path / "merged"
+    merged = merge_report_files(
+        [html_path, html_path], str(merged_dir), "merged", overwrite=True
+    )
+    assert (merged_dir / "merged.html").exists()
+    assert merged["mergedReportPath"].endswith("merged.html")
+
+    result = CliRunner().invoke(
+        cli_main.app,
+        [
+            "report-tool",
+            "--action",
+            "split",
+            "--htmlPath",
+            html_path,
+            "--outputDir",
+            str(tmp_path / "cli-split"),
+        ],
+    )
+    assert result.exit_code == 0
+    assert "Report split completed" in result.output

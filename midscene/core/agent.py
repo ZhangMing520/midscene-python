@@ -12,8 +12,14 @@ Fully aligned with upstream web-infra-dev/midscene v1.17.4 (packages/core/src/ag
 """
 
 import asyncio
+import base64
+import inspect
+import json
 import os
+import re
 import time
+import traceback
+from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Union
 
 import yaml as pyyaml
@@ -42,8 +48,11 @@ from .ai_model.workflows.locate_service import locate_service
 from .task_cache import TaskCache
 from .dump import ExecutionDumpBuilder, build_execution_task, get_report_file_name
 from .types import (
+    AbortError,
+    AbortSignal,
     AbstractInterface,
     AgentOptions,
+    FileChooserHandler,
     InterfaceType,
     LocateResult,
     ScrollParam,
@@ -60,6 +69,16 @@ TASK_TYPE_BOOLEAN = "boolean"
 
 MAX_ERROR_COUNT_IN_ONE_PLANNING_LOOP = 5
 DEFAULT_WAIT_AFTER_ACTION_MS = 300
+
+# Transient browser errors worth retrying when building the UI context
+# (upstream BROWSER_NAVIGATION_ERROR_PATTERN in web-integration).
+BROWSER_NAVIGATION_ERROR_PATTERN = re.compile(
+    "execution context was destroyed|frame was detached|target closed|"
+    "page has been closed|context was destroyed|net::ERR_ABORTED",
+    re.IGNORECASE,
+)
+CONTEXT_RETRY_MAX = 3
+CONTEXT_RETRY_DELAY_MS = 1500
 
 AGENT_AI_CONTEXT_KEYS = (
     "default",
@@ -111,6 +130,168 @@ def _strip_runtime_locate_result(value: Any) -> Any:
     return value
 
 
+_FILE_CHOOSER_ACCEPT_KEYS = ("fileChooserAccept", "file_chooser_accept")
+_FILE_CHOOSER_ALLOWED_DIR_KEYS = ("fileChooserAllowedDir", "file_chooser_allowed_dir")
+_ABORT_SIGNAL_KEYS = ("abortSignal", "abort_signal")
+
+
+def _get_opt(opt: Dict[str, Any], keys: tuple, default: Any = None) -> Any:
+    for key in keys:
+        if opt.get(key) is not None:
+            return opt[key]
+    return default
+
+
+def _normalize_file_paths(files: Any) -> List[str]:
+    """Resolve file chooser paths and fail early when a file is missing
+    (upstream normalizeFilePaths)."""
+    items = files if isinstance(files, (list, tuple)) else [files]
+    normalized: List[str] = []
+    for item in items:
+        if not isinstance(item, str) or not item:
+            raise ValueError("File path must be a non-empty string")
+        resolved = Path(item).expanduser().resolve()
+        if not resolved.exists():
+            raise FileNotFoundError(
+                f"File not found: {item}. Resolved to: {resolved}. "
+                f"Current working directory: {Path.cwd()}"
+            )
+        normalized.append(str(resolved))
+    return normalized
+
+
+def _normalize_file_chooser_accept_in_allowed_dir(
+    files: Any, allowed_dir: str
+) -> List[str]:
+    """Resolve files relative to `allowed_dir` and reject paths escaping it
+    (upstream normalizeFileChooserAcceptInAllowedDir)."""
+    allowed = Path(allowed_dir).expanduser().resolve()
+    items = files if isinstance(files, (list, tuple)) else [files]
+    resolved_files: List[str] = []
+    for item in items:
+        if not isinstance(item, str) or not item:
+            raise ValueError("File path must be a non-empty string")
+        raw = Path(item).expanduser()
+        resolved = (raw if raw.is_absolute() else allowed / raw).resolve()
+        try:
+            resolved.relative_to(allowed)
+        except ValueError:
+            raise ValueError(
+                "File chooser path must be inside the configured "
+                f"fileChooserAllowedDir: {item}"
+            ) from None
+        resolved_files.append(str(resolved))
+    return _normalize_file_paths(resolved_files)
+
+
+def _is_aborted(signal: Any) -> bool:
+    if signal is None:
+        return False
+    if isinstance(signal, AbortSignal):
+        return signal.aborted
+    aborted = getattr(signal, "aborted", None)
+    if aborted is not None:
+        return bool(aborted)
+    is_set = getattr(signal, "is_set", None)
+    if callable(is_set):
+        return bool(is_set())
+    raise TypeError(
+        "abortSignal must be an AbortSignal, asyncio.Event or threading.Event"
+    )
+
+
+def _throw_if_aborted(signal: Any) -> None:
+    if not _is_aborted(signal):
+        return
+    thrower = getattr(signal, "throw_if_aborted", None)
+    if callable(thrower):
+        thrower()
+        return
+    reason = getattr(signal, "reason", None) or "signal already aborted"
+    raise AbortError(f"aiAct aborted: {reason}")
+
+
+async def _read_registration_error(registration: Any) -> Optional[BaseException]:
+    error = registration.get_error()
+    if inspect.isawaitable(error):
+        error = await error
+    return error
+
+
+class _FileChooserAccepter:
+    """Holds the file chooser configuration for one aiAct execution
+    (upstream FileChooserAccepter)."""
+
+    def __init__(self, interface: AbstractInterface):
+        self._interface = interface
+        self._registration = None
+
+    async def register(self, files: Any) -> None:
+        await self._replace(_normalize_file_paths(files))
+
+    async def register_from_allowed_dir(
+        self, files: Any, allowed_dir: str
+    ) -> None:
+        await self._replace(
+            _normalize_file_chooser_accept_in_allowed_dir(files, allowed_dir)
+        )
+
+    async def _replace(self, accepted_files: List[str]) -> None:
+        previous_error = await self.clear()
+        if previous_error:
+            raise previous_error
+        if not accepted_files:
+            return
+        if not _supports(self._interface, "register_file_chooser_listener"):
+            raise RuntimeError(
+                f"File upload is not supported on {self._interface.interface_type}"
+            )
+
+        async def handler(chooser: FileChooserHandler) -> None:
+            await chooser.accept(accepted_files)
+
+        self._registration = await self._interface.register_file_chooser_listener(
+            handler
+        )
+
+    async def clear(self) -> Optional[BaseException]:
+        registration, self._registration = self._registration, None
+        if registration is None:
+            return None
+        try:
+            return await _read_registration_error(registration)
+        finally:
+            registration.dispose()
+
+
+async def _with_file_chooser(
+    interface: AbstractInterface,
+    files: Optional[List[str]],
+    action: Callable[[], Any],
+) -> Any:
+    """Run `action` while accepting `files` on any file chooser dialog
+    (upstream withFileChooser)."""
+    if not files:
+        return await action()
+    if not _supports(interface, "register_file_chooser_listener"):
+        raise RuntimeError(
+            f"File upload is not supported on {interface.interface_type}"
+        )
+
+    async def handler(chooser: FileChooserHandler) -> None:
+        await chooser.accept(files)
+
+    registration = await interface.register_file_chooser_listener(handler)
+    try:
+        result = await action()
+        error = await _read_registration_error(registration)
+        if error:
+            raise error
+        return result
+    finally:
+        registration.dispose()
+
+
 def _env_number(key: str) -> Optional[int]:
     raw = os.environ.get(key)
     if not raw:
@@ -119,6 +300,113 @@ def _env_number(key: str) -> Optional[int]:
         return int(float(raw))
     except ValueError:
         return None
+
+
+_MARKDOWN_IMAGE_PATTERN = re.compile(r"!\[([^\]]*)\]\(([^)]+)\)")
+_MARKDOWN_IMAGE_REFERENCE_PATTERN = re.compile(r"!\[[^\]]*\]\[[^\]]*\]")
+_MAX_MARKDOWN_IMAGES = 20
+_REFERENCE_IMAGE_PREFIX = "参考图片"
+_URL_SCHEME_PATTERN = re.compile(r"^[a-zA-Z][a-zA-Z\d+.-]*:")
+
+
+def _markdown_to_ai_act_prompt(
+    markdown: str, source_path: Optional[str] = None
+) -> Union[str, Dict[str, Any]]:
+    """Replace Markdown images with reference-image placeholders
+    (upstream markdownToAiActPrompt)."""
+    reference_match = _MARKDOWN_IMAGE_REFERENCE_PATTERN.search(markdown)
+    if reference_match:
+        raise ValueError(
+            "runMarkdown does not support reference-style images; "
+            "use direct image syntax instead."
+        )
+    images: List[Dict[str, str]] = []
+
+    def replace(match: "re.Match[str]") -> str:
+        url = match.group(2)
+        if not url:
+            raise ValueError(
+                f"Markdown image {_REFERENCE_IMAGE_PREFIX}-"
+                f"{len(images) + 1:03d} is missing a URL."
+            )
+        name = f"{_REFERENCE_IMAGE_PREFIX}-{len(images) + 1:03d}"
+        resolved = url
+        if source_path and not _URL_SCHEME_PATTERN.match(url) and not os.path.isabs(url):
+            resolved = str(Path(source_path).resolve().parent / url)
+        images.append({"name": name, "url": resolved})
+        if len(images) > _MAX_MARKDOWN_IMAGES:
+            raise ValueError(
+                "runMarkdown supports at most "
+                f"{_MAX_MARKDOWN_IMAGES} images, but found more."
+            )
+        return name
+
+    prompt = _MARKDOWN_IMAGE_PATTERN.sub(replace, markdown)
+    if not images:
+        return markdown
+    return {
+        "prompt": prompt,
+        "images": images,
+        "convertHttpImage2Base64": True,
+    }
+
+
+_REFERENCE_IMAGE_MIME = {
+    "png": "image/png",
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "gif": "image/gif",
+    "webp": "image/webp",
+    "bmp": "image/bmp",
+}
+
+
+def _resolve_reference_image(image, convert_http):
+    """Resolve one markdown reference image to a model-ingestable URL."""
+    url = image.get("url") if isinstance(image, dict) else None
+    if not url or not isinstance(url, str):
+        return None
+    if url.startswith("data:"):
+        return url
+    if url.startswith("http://") or url.startswith("https://"):
+        if not convert_http:
+            return url
+        try:
+            import urllib.request
+
+            with urllib.request.urlopen(url, timeout=15) as resp:
+                raw = resp.read()
+            mime = getattr(resp.headers, "get_content_type", lambda: "image/png")()
+            return f"data:{mime};base64,{base64.b64encode(raw).decode('ascii')}"
+        except Exception as e:
+            logger.warning(f"Failed to inline reference image {url}: {e}")
+            return url
+    path = Path(url)
+    if path.exists():
+        suffix = path.suffix.lstrip(".").lower() or "png"
+        mime = _REFERENCE_IMAGE_MIME.get(suffix, "image/png")
+        return f"data:{mime};base64,{base64.b64encode(path.read_bytes()).decode('ascii')}"
+    return None
+
+
+def _resolve_reference_images(images, convert_http):
+    """Resolve a list of markdown reference images to model-ingestable URLs."""
+    resolved = []
+    for item in images or []:
+        url = _resolve_reference_image(item, convert_http)
+        if url:
+            resolved.append(url)
+    return resolved
+
+
+def _reference_images_from_prompt(task_prompt):
+    """Pull reference images out of a markdown-style prompt dict."""
+    if isinstance(task_prompt, dict) and task_prompt.get("images"):
+        return _resolve_reference_images(
+            task_prompt["images"],
+            bool(task_prompt.get("convertHttpImage2Base64", False)),
+        )
+    return None
 
 
 def _extract_typed_query_result(data: Any, key: str) -> Any:
@@ -171,6 +459,19 @@ class Agent:
             self.ai_contexts["aiAct"] = legacy_action_context
         self._report_builder = None
         self._usage_by_intent: Dict[str, Dict[str, int]] = {}
+        # Report state shared by the upstream-shaped public APIs
+        # (resetDump/finalizeReport/dumpDataString/reportHTMLString).
+        self._dump_update_listeners: List[Callable] = []
+        self._progress_listeners: List[Callable] = []
+        self._progress_sequence = 0
+        self._report_finalized: Optional[str] = None
+        self._report_file_name: Optional[str] = None
+        self._last_execution: Optional[Dict[str, Any]] = None
+        self._execution_index_by_runner: Dict[int, int] = {}
+        # File chooser state for the running aiAct (upstream
+        # activeFileChooserAccepter / activeFileChooserAllowedDir).
+        self._active_file_chooser_accepter: Optional[_FileChooserAccepter] = None
+        self._active_file_chooser_allowed_dir: Optional[str] = None
 
         # Execution state
         self.destroyed = False
@@ -219,7 +520,9 @@ class Agent:
     @property
     def action_space(self) -> List[DeviceAction]:
         if self._action_space is None:
-            actions = build_action_space_for(self.interface.interface_type)
+            actions = list(build_action_space_for(self.interface.interface_type))
+            if _supports(self.interface, "register_file_chooser_listener"):
+                actions.append(self._build_file_chooser_action())
             self._action_space = [
                 action
                 for action in actions
@@ -227,6 +530,49 @@ class Agent:
                 or _supports(self.interface, action.primitive)
             ]
         return self._action_space
+
+    def _build_file_chooser_action(self) -> DeviceAction:
+        """File-chooser action only exposed when the interface implements the
+        listener (upstream defineActionRegisterFileChooserAccept)."""
+
+        async def execute(param: Dict[str, Any], device: Any, locate_fn) -> None:
+            accepter = self._active_file_chooser_accepter
+            if accepter is None:
+                raise RuntimeError(
+                    "RegisterFileChooserAccept can only be used while aiAct "
+                    "is running"
+                )
+            allowed_dir = self._active_file_chooser_allowed_dir
+            if not allowed_dir:
+                raise RuntimeError(
+                    "RegisterFileChooserAccept requires aiAct option "
+                    "fileChooserAllowedDir"
+                )
+            await accepter.register_from_allowed_dir(param.get("files"), allowed_dir)
+
+        return DeviceAction(
+            name="RegisterFileChooserAccept",
+            description=(
+                "Configure files for file chooser dialogs triggered by later "
+                "actions in this aiAct"
+            ),
+            param_schema={
+                "files": {
+                    "type": "string | string[]",
+                    "description": (
+                        "File path(s) within the current aiAct call's "
+                        "fileChooserAllowedDir to use whenever a later action "
+                        "triggers a file chooser. fileChooserAllowedDir must be "
+                        "provided for this action. This setting replaces any "
+                        "previously registered file path(s)."
+                    ),
+                }
+            },
+            locate_fields=[],
+            sample={"files": ["fixtures/document.pdf"]},
+            interface_alias="registerFileChooserAccept",
+            execute=execute,
+        )
 
     # ------------------------------------------------------------------
     # Context helpers
@@ -248,10 +594,40 @@ class Agent:
             return self.ai_contexts[api_name]
         return self.ai_contexts.get("default")
 
+    def is_retryable_context_error(self, error: BaseException) -> bool:
+        """Override in subclasses to mark transient context errors retryable.
+
+        The base implementation retries browser-navigation races for web
+        interfaces (upstream WebAgentCore subclass override).
+        """
+        if self.interface_type == InterfaceType.WEB:
+            return bool(
+                BROWSER_NAVIGATION_ERROR_PATTERN.search(str(error) or "")
+            )
+        return False
+
     async def get_ui_context(self, action: str = "locate") -> UIContext:
         if self._frozen and self.frozen_context is not None:
             return self.frozen_context
-        context = await self.interface.get_context()
+        attempt = 0
+        while True:
+            try:
+                context = await self.interface.get_context()
+                break
+            except Exception as e:
+                if (
+                    attempt < CONTEXT_RETRY_MAX
+                    and self.is_retryable_context_error(e)
+                ):
+                    logger.debug(
+                        "retryable context error "
+                        f"(attempt {attempt + 1}/{CONTEXT_RETRY_MAX}), "
+                        f"retrying in {CONTEXT_RETRY_DELAY_MS}ms: {e}"
+                    )
+                    await asyncio.sleep(CONTEXT_RETRY_DELAY_MS / 1000)
+                    attempt += 1
+                    continue
+                raise
         context = self._apply_screenshot_shrink(context)
         if self._frozen:
             self.frozen_context = context
@@ -371,6 +747,76 @@ class Agent:
                 asyncio.ensure_future(result)
 
     # ------------------------------------------------------------------
+    # Progress bus (upstream addProgressListener / AgentProgressEvent)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _action_progress_summary(action: Dict[str, Any]) -> Dict[str, Any]:
+        """Structured, presentation-free action descriptor for progress events
+        (upstream ai-act-progress summarizers)."""
+        name = action.get("type")
+        param = action.get("param") or {}
+        summary: Dict[str, Any] = {"name": name}
+        locate = param.get("locate") or param.get("from")
+        if isinstance(locate, dict):
+            if locate.get("prompt"):
+                summary["target"] = locate["prompt"]
+            bbox = locate.get("bbox")
+            if isinstance(bbox, (list, tuple)) and len(bbox) >= 4:
+                summary["bbox"] = [int(v) for v in bbox[:4]]
+        elif isinstance(locate, str):
+            summary["target"] = locate
+        if "target" not in summary and isinstance(param.get("prompt"), str):
+            summary["target"] = param["prompt"]
+        if "target" not in summary and "bbox" not in summary:
+            compact = {
+                key: value
+                for key, value in param.items()
+                if isinstance(value, (str, int, float, bool))
+            }
+            if compact:
+                summary["param"] = compact
+        return summary
+
+    async def _emit_progress(
+        self, scope: str, phase: str, data: Any
+    ) -> None:
+        if not self._progress_listeners:
+            return
+        self._progress_sequence += 1
+        event = {
+            "scope": scope,
+            "phase": phase,
+            "sequence": self._progress_sequence,
+            "data": data,
+        }
+        for listener in list(self._progress_listeners):
+            try:
+                result = listener(event)
+                if asyncio.iscoroutine(result):
+                    await result
+            except Exception as e:  # listeners must never break execution
+                logger.warning(f"progress listener threw, ignoring: {e}")
+
+    def add_progress_listener(self, listener: Callable) -> Callable[[], None]:
+        """Subscribe to agent progress; returns a remove function."""
+        self._progress_listeners.append(listener)
+
+        def remove() -> None:
+            self.remove_progress_listener(listener)
+
+        return remove
+
+    def remove_progress_listener(self, listener: Callable) -> None:
+        try:
+            self._progress_listeners.remove(listener)
+        except ValueError:
+            pass
+
+    def clear_progress_listeners(self) -> None:
+        self._progress_listeners.clear()
+
+    # ------------------------------------------------------------------
     # aiAct: the planning loop
     # ------------------------------------------------------------------
 
@@ -379,10 +825,72 @@ class Agent:
         task_prompt: TUserPrompt,
         opt: Optional[Dict[str, Any]] = None,
     ) -> Optional[str]:
+        """Execute a task via the planning loop within a file-chooser scope
+        (upstream executeAiAct + FileChooserAccepter lifecycle)."""
+        self._check_not_destroyed()
+        opt = opt or {}
+        _throw_if_aborted(_get_opt(opt, _ABORT_SIGNAL_KEYS, None))
+
+        file_chooser_files = _get_opt(opt, _FILE_CHOOSER_ACCEPT_KEYS, None)
+        normalized_files = (
+            _normalize_file_paths(file_chooser_files)
+            if file_chooser_files
+            else None
+        )
+        allowed_dir = _get_opt(opt, _FILE_CHOOSER_ALLOWED_DIR_KEYS, None)
+
+        accepter = None
+        if _supports(self.interface, "register_file_chooser_listener"):
+            accepter = _FileChooserAccepter(self.interface)
+        self._active_file_chooser_accepter = accepter
+        self._active_file_chooser_allowed_dir = (
+            str(Path(allowed_dir).expanduser().resolve()) if allowed_dir else None
+        )
+
+        ai_act_error: Optional[BaseException] = None
+        file_chooser_error: Optional[BaseException] = None
+        result: Optional[str] = None
+        try:
+            if normalized_files:
+                if accepter is None:
+                    raise RuntimeError(
+                        "File upload is not supported on "
+                        f"{self.interface.interface_type}"
+                    )
+                await accepter.register(normalized_files)
+            result = await self._ai_act_impl(task_prompt, opt)
+        except BaseException as e:
+            ai_act_error = e
+        finally:
+            self._active_file_chooser_accepter = None
+            self._active_file_chooser_allowed_dir = None
+            if accepter is not None:
+                try:
+                    file_chooser_error = await accepter.clear()
+                except BaseException as e:
+                    logger.warning(
+                        f"Failed to clear file chooser registration: {e}"
+                    )
+
+        if ai_act_error is not None:
+            raise ai_act_error
+        if file_chooser_error is not None:
+            raise file_chooser_error
+        return result
+
+    async def _ai_act_impl(
+        self,
+        task_prompt: TUserPrompt,
+        opt: Optional[Dict[str, Any]] = None,
+    ) -> Optional[str]:
         """Execute a task via the planning loop; returns the finalize message."""
         self._check_not_destroyed()
         opt = opt or {}
+        abort_signal = _get_opt(opt, _ABORT_SIGNAL_KEYS, None)
+        _throw_if_aborted(abort_signal)
         prompt_str = user_prompt_to_string(task_prompt)
+        reference_images = _reference_images_from_prompt(task_prompt)
+        await self._emit_progress("aiAct", "start", {"prompt": prompt_str})
 
         # Effort resolution (upstream aiAct boundary)
         effort = opt.get("effort")
@@ -440,6 +948,7 @@ class Agent:
                         cached_entry, report_tasks
                     )
                 except Exception as e:
+                    _throw_if_aborted(abort_signal)
                     logger.warning(f"cached plan replay failed, falling back to AI: {e}")
                 if replayed:
                     cache_yaml = cached_entry.get(
@@ -464,6 +973,7 @@ class Agent:
         report_error: Optional[BaseException] = None
         try:
             while True:
+                _throw_if_aborted(abort_signal)
                 if replan_count > replanning_cycle_limit:
                     raise RuntimeError(
                         f"Task stopped: the planning cycle limit ({replanning_cycle_limit}) "
@@ -482,6 +992,16 @@ class Agent:
                     else self.model_runtime("planning")
                 )
 
+                await self._emit_progress(
+                    "aiAct",
+                    "plan_thinking",
+                    {
+                        "prompt": prompt_str,
+                        "planIndex": replan_count + 1,
+                        "planLimit": replanning_cycle_limit,
+                        "screenshot": context.screenshot_base64,
+                    },
+                )
                 plan_result = await self._plan_once(
                     prompt_str,
                     context,
@@ -491,17 +1011,36 @@ class Agent:
                     include_locate_in_planning=include_locate_in_planning,
                     planning_advice=planning_advice,
                     action_context=self._resolve_call_context("aiAct", opt),
+                    reference_images=reference_images,
                 )
                 planning_advice = None
                 replan_count += 1
 
                 if plan_result.get("error"):
+                    await self._emit_progress(
+                        "aiAct",
+                        "plan_failed",
+                        {
+                            "prompt": prompt_str,
+                            "error": str(plan_result["error"]),
+                            "log": plan_result.get("log"),
+                        },
+                    )
                     raise RuntimeError(
                         f"Failed to continue: {plan_result['error']}\n{plan_result.get('log') or ''}"
                     )
 
                 if plan_result.get("finalize_success") is not None:
                     if not plan_result["finalize_success"]:
+                        await self._emit_progress(
+                            "aiAct",
+                            "plan_failed",
+                            {
+                                "prompt": prompt_str,
+                                "error": str(plan_result.get("finalize_message") or ""),
+                                "log": plan_result.get("log"),
+                            },
+                        )
                         raise AssertionError(
                             "Task failed: "
                             f"{plan_result.get('finalize_message') or 'No error message provided'}\n"
@@ -512,9 +1051,26 @@ class Agent:
 
                 action = plan_result.get("action")
                 if action is None:
+                    await self._emit_progress(
+                        "aiAct",
+                        "plan_failed",
+                        {"prompt": prompt_str, "error": "no action in plan"},
+                    )
                     raise RuntimeError(
                         "AI planning returned no action and no completion status"
                     )
+                await self._emit_progress(
+                    "aiAct",
+                    "plan_planned",
+                    {
+                        "prompt": prompt_str,
+                        "planIndex": replan_count,
+                        "planLimit": replanning_cycle_limit,
+                        "action": self._action_progress_summary(action),
+                        "thought": plan_result.get("thought"),
+                        "log": plan_result.get("log"),
+                    },
+                )
 
                 if deep_locate:
                     for param_value in (action.get("param") or {}).values():
@@ -536,7 +1092,16 @@ class Agent:
                     break
 
                 started_at = time.time()
+                await self._emit_progress(
+                    "aiAct",
+                    "action_running",
+                    {
+                        "prompt": prompt_str,
+                        "action": self._action_progress_summary(action),
+                    },
+                )
                 try:
+                    _throw_if_aborted(abort_signal)
                     await self._execute_planning_action(action)
                     report_tasks.append(
                         self._build_action_report_task(
@@ -553,11 +1118,22 @@ class Agent:
                         getattr(self.options, "wait_after_action_ms", 300) / 1000
                     )
                     await self._wait_for_action_ready(action)
+                    await self._emit_progress(
+                        "aiAct",
+                        "action_done",
+                        {
+                            "prompt": prompt_str,
+                            "action": self._action_progress_summary(action),
+                            "durationMs": int((time.time() - started_at) * 1000),
+                        },
+                    )
+                    time_string = await self._time_string()
                     conversation_history.pending_feedback_message = (
                         "Time: "
-                        f"{self._time_string()}, I have finished the action previously planned."
+                        f"{time_string}, I have finished the action previously planned."
                     )
                 except Exception as e:
+                    _throw_if_aborted(abort_signal)
                     report_tasks.append(
                         self._build_action_report_task(
                             action,
@@ -567,9 +1143,20 @@ class Agent:
                             error=e,
                         )
                     )
+                    await self._emit_progress(
+                        "aiAct",
+                        "action_failed",
+                        {
+                            "prompt": prompt_str,
+                            "action": self._action_progress_summary(action),
+                            "durationMs": int((time.time() - started_at) * 1000),
+                            "error": str(e),
+                        },
+                    )
                     error_count += 1
+                    time_string = await self._time_string()
                     conversation_history.pending_feedback_message = (
-                        f"Time: {self._time_string()}, Error executing running tasks: "
+                        f"Time: {time_string}, Error executing running tasks: "
                         f"{_truncate(str(e), 500)}"
                     )
                     logger.warning(
@@ -584,11 +1171,20 @@ class Agent:
                 context = await self._get_ui_context("aiAct")
         except BaseException as e:
             report_error = e
+            await self._emit_progress(
+                "aiAct", "failed", {"prompt": prompt_str, "error": str(e)}
+            )
             raise
         finally:
             self._write_execution_report(
                 prompt_str, report_tasks, output_string, error=report_error
             )
+
+        await self._emit_progress(
+            "aiAct",
+            "complete",
+            {"prompt": prompt_str, "output": output_string},
+        )
 
         if cache is not None and not cache.read_only_mode and executed_actions:
             cache.append_plan_cache(
@@ -613,6 +1209,7 @@ class Agent:
         include_locate_in_planning: bool,
         planning_advice: Optional[str],
         action_context: Optional[str] = None,
+        reference_images: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         adapter = planning_runtime.adapter
         if adapter.planning_kind == "custom" and adapter.planning_plan_fn is not None:
@@ -624,6 +1221,7 @@ class Agent:
                 conversation_history=conversation_history,
                 include_locate_in_planning=include_locate_in_planning,
                 action_context=action_context,
+                reference_images=reference_images,
             )
         if adapter.family == "jev":
             return await jev_plan(
@@ -634,6 +1232,7 @@ class Agent:
                 conversation_history=conversation_history,
                 include_locate_in_planning=include_locate_in_planning,
                 action_context=action_context,
+                reference_images=reference_images,
             )
         return await standard_plan(
             user_instruction=prompt_str,
@@ -645,8 +1244,13 @@ class Agent:
             effort=effort,
             action_context=action_context,
             planning_advice=planning_advice,
+            reference_images=reference_images,
             images_include_count=2 if effort == "deepThink" else 1,
         )
+
+    async def ai(self, *args, **kwargs) -> Optional[str]:
+        """Alias of aiAct (upstream `agent.ai(...)`)."""
+        return await self.ai_act(*args, **kwargs)
 
     async def ai_action(self, prompt: TUserPrompt, **kwargs) -> Optional[str]:
         """Deprecated alias of aiAct (upstream keeps the same alias)."""
@@ -686,9 +1290,18 @@ class Agent:
     async def ai_tap(self, locate_prompt: TUserPrompt, opt: Optional[Dict[str, Any]] = None) -> None:
         opt = opt or {}
         self._check_not_destroyed()
-        await self._call_action_in_action_space(
-            "Tap", {"locate": self._build_locate_param(locate_prompt, opt, "aiTap")}
+        file_chooser_files = _get_opt(opt, _FILE_CHOOSER_ACCEPT_KEYS, None)
+        normalized_files = (
+            _normalize_file_paths(file_chooser_files)
+            if file_chooser_files
+            else None
         )
+        locate_param = self._build_locate_param(locate_prompt, opt, "aiTap")
+
+        async def action() -> None:
+            await self._call_action_in_action_space("Tap", {"locate": locate_param})
+
+        await _with_file_chooser(self.interface, normalized_files, action)
 
     async def ai_right_click(self, locate_prompt: TUserPrompt, opt: Optional[Dict[str, Any]] = None) -> None:
         opt = opt or {}
@@ -1153,22 +1766,263 @@ class Agent:
                 output=screenshots or None,
             )
         ]
-        self._get_report_builder().add_execution(
+        execution = self._get_report_builder().add_execution(
             f"Log - {title}", tasks
         )
+        self._last_execution = execution
+        self._notify_dump_update_listeners(execution)
 
     # deprecated alias (upstream logScreenshot)
     log_screenshot = record_to_report
 
-    async def flush_report(self) -> None:
-        """Write any standalone report entries to disk."""
-        if self._report_builder is not None:
-            name = getattr(self.options, "report_file_name", None)
-            self._report_builder.write_to_disk(
-                name.rsplit(".", 1)[0]
-                if name and name.lower().endswith((".json", ".html"))
-                else name
+    async def record_error_to_report(
+        self,
+        title: str,
+        opt: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Append a failed Log entry to the report (upstream recordErrorToReport).
+
+        opt: {error: BaseException, content?, screenshotBase64?}. When no
+        screenshot is supplied the current interface screenshot is captured.
+        """
+        from .dump import build_execution_task
+
+        opt = opt or {}
+        error = opt.get("error")
+        message = str(error) if error is not None else ""
+        error_info: Dict[str, Any] = {
+            "name": type(error).__name__ if error is not None else "",
+            "message": message,
+            "stack": "",
+        }
+        if isinstance(error, BaseException):
+            error_info["stack"] = "".join(
+                traceback.format_exception(type(error), error, error.__traceback__)
             )
+        content = opt.get("content") or message
+        screenshot = (
+            opt.get("screenshotBase64")
+            or opt.get("screenshot_base64")
+            or opt.get("screenshot")
+        )
+        if not screenshot:
+            try:
+                screenshot = getattr(
+                    await self.get_context(), "screenshot_base64", None
+                )
+            except Exception as capture_error:  # screenshot is best effort
+                logger.debug(f"record_error_to_report screenshot failed: {capture_error}")
+        output = [{"base64": screenshot}] if screenshot else None
+        tasks = [
+            build_execution_task(
+                "Log",
+                "Error",
+                {"content": content},
+                status="failed",
+                error=error_info,
+                errorMessage=message,
+                errorStack=error_info["stack"],
+                output=output,
+            )
+        ]
+        execution = self._get_report_builder().add_execution(
+            title, tasks, description=content
+        )
+        self._last_execution = execution
+        self._notify_dump_update_listeners(execution)
+
+    async def set_ai_action_context(self, prompt: str) -> None:
+        """Deprecated upstream alias for setAIContext('aiAct', ...)."""
+        self.set_ai_context("aiAct", prompt)
+
+    async def set_ai_act_context(self, prompt: str) -> None:
+        """Deprecated upstream alias for setAIContext('aiAct', ...)."""
+        self.set_ai_context("aiAct", prompt)
+
+    def _report_name(self) -> str:
+        if self._report_file_name:
+            return self._report_file_name
+        name = getattr(self.options, "report_file_name", None)
+        if name:
+            name = os.path.basename(name)
+            if name.lower().endswith((".json", ".html")):
+                name = name.rsplit(".", 1)[0]
+        else:
+            tag = getattr(self.options, "test_id", None) or getattr(
+                self.interface_type, "value", self.interface_type
+            )
+            name = get_report_file_name(tag)
+        self._report_file_name = name
+        return name
+
+    async def flush_report(self) -> Optional[str]:
+        """Write the in-memory report to disk; returns the report path."""
+        if self._report_builder is None:
+            return None
+        name = self._report_name()
+        json_path = self._report_builder.write_to_disk(name)
+        from .report_viewer import write_report_html
+
+        html_path = write_report_html(self._report_builder.to_dict(), name)
+        return html_path or json_path or None
+
+    # ------------------------------------------------------------------
+    # Report APIs (upstream resetDump / finalizeReport / dumpDataString ...)
+    # ------------------------------------------------------------------
+
+    async def reset_dump(self) -> Dict[str, Any]:
+        """Finalize the preceding report and start a fresh execution dump."""
+        self._check_not_destroyed()
+        try:
+            await self.finalize_report()
+        except Exception as e:  # failure belongs to the previous report
+            logger.warning(f"Failed to finalize previous report; resetting dump: {e}")
+        self._check_not_destroyed()
+        self._report_builder = None
+        self._report_finalized = None
+        self._report_file_name = None
+        self._last_execution = None
+        self._execution_index_by_runner = {}
+        return self._get_report_builder().to_dict()
+
+    async def finalize_report(self) -> Optional[str]:
+        """Seal the current report and release its in-memory records."""
+        if self._report_finalized is not None:
+            return self._report_finalized or None
+        if self.destroyed:
+            raise RuntimeError("Cannot finalize a report using a destroyed Agent.")
+        path = await self.flush_report()
+        self._report_finalized = path or ""
+        # Mirror upstream clearDumpInMemory: records are released after sealing.
+        self._report_builder = None
+        self._last_execution = None
+        self._execution_index_by_runner = {}
+        return path
+
+    def append_execution_dump(
+        self, execution: Dict[str, Any], runner: Any = None
+    ) -> None:
+        """Append one execution dump; a runner replaces its previous entry."""
+        if self._report_finalized is not None:
+            raise RuntimeError(
+                "Cannot append to a finalized report. Await resetDump() first."
+            )
+        builder = self._get_report_builder()
+        executions = builder.dump["executions"]
+        if runner is not None:
+            key = id(runner)
+            index = self._execution_index_by_runner.get(key)
+            if index is not None:
+                executions[index] = execution
+            else:
+                executions.append(execution)
+                self._execution_index_by_runner[key] = len(executions) - 1
+        else:
+            executions.append(execution)
+        self._last_execution = execution
+
+    def dump_data_string(
+        self, opt: Optional[Dict[str, Any]] = None
+    ) -> str:
+        """Serialize the in-memory dump (upstream dumpDataString)."""
+        return json.dumps(
+            self._get_report_builder().to_dict(),
+            ensure_ascii=False,
+        )
+
+    def report_html_string(
+        self, opt: Optional[Dict[str, Any]] = None
+    ) -> str:
+        """Render the in-memory dump as a self-contained HTML string."""
+        from .report_viewer import render_report_html
+
+        return render_report_html(self._get_report_builder().to_dict(), self._report_name())
+
+    def write_out_action_dumps(
+        self, execution_dump: Optional[Dict[str, Any]] = None
+    ) -> Optional[str]:
+        """Persist the current report (JSON + HTML) without disposing the Agent."""
+        if self._report_finalized is not None:
+            if execution_dump is not None:
+                raise RuntimeError(
+                    "Cannot append to a finalized report. Await resetDump() first."
+                )
+            return self._report_finalized or None
+        if execution_dump is not None:
+            self._last_execution = execution_dump
+        name = self._report_name()
+        json_path = self._get_report_builder().write_to_disk(name)
+        from .report_viewer import write_report_html
+
+        html_path = write_report_html(self._get_report_builder().to_dict(), name)
+        return html_path or json_path or None
+
+    def add_dump_update_listener(self, listener: Callable) -> Callable[[], None]:
+        """Subscribe to dump updates; returns a remove function."""
+        self._dump_update_listeners.append(listener)
+
+        def remove() -> None:
+            self.remove_dump_update_listener(listener)
+
+        return remove
+
+    def remove_dump_update_listener(self, listener: Callable) -> None:
+        try:
+            self._dump_update_listeners.remove(listener)
+        except ValueError:
+            pass
+
+    def clear_dump_update_listeners(self) -> None:
+        self._dump_update_listeners.clear()
+
+    def _notify_dump_update_listeners(
+        self, execution: Optional[Dict[str, Any]] = None
+    ) -> None:
+        if not self._dump_update_listeners:
+            return
+        dump_string = self.dump_data_string()
+        for listener in list(self._dump_update_listeners):
+            try:
+                result = listener(dump_string, execution)
+                if asyncio.iscoroutine(result):
+                    asyncio.ensure_future(result)
+            except Exception as e:  # listeners must never break execution
+                logger.warning(f"dump update listener threw, ignoring: {e}")
+
+    async def evaluate_javascript(self, script: str) -> Any:
+        """Evaluate JavaScript through the interface (upstream evaluateJavaScript)."""
+        self._check_not_destroyed()
+        for method_name in (
+            "evaluate_javascript",
+            "evaluate_script",
+            "execute_script",
+        ):
+            method = getattr(self.interface, method_name, None)
+            if callable(method):
+                result = method(script)
+                if asyncio.iscoroutine(result):
+                    result = await result
+                return result
+        raise NotImplementedError(
+            "evaluateJavaScript is not supported in current agent"
+        )
+
+    async def run_markdown(
+        self,
+        markdown_path: str,
+        opt: Optional[Dict[str, Any]] = None,
+    ) -> Optional[str]:
+        """Run a Markdown prompt file; images become reference images."""
+        self._check_not_destroyed()
+        path = Path(markdown_path)
+        markdown = path.read_text(encoding="utf-8")
+        prompt = _markdown_to_ai_act_prompt(markdown, str(path))
+        opt = dict(opt or {})
+        opt.setdefault(
+            "_internal_report_display",
+            {"type": "Markdown", "prompt": path.name},
+        )
+        return await self.ai_act(prompt, opt)
 
     def flush_cache(self, options: Optional[Dict[str, Any]] = None) -> None:
         if self._task_cache is None:
@@ -1495,10 +2349,11 @@ class Agent:
         cache_yaml: Optional[str] = None,
     ) -> Optional[str]:
         """Persist the upstream-shaped execution dump for one aiAct run."""
-        if not getattr(self.options, "generate_report", True):
-            return None
-        if not getattr(self.options, "persist_execution_dump", True):
-            return None
+        generate_report = bool(getattr(self.options, "generate_report", True))
+        persist_json = bool(
+            generate_report
+            and getattr(self.options, "persist_execution_dump", False)
+        )
         try:
             if cache_yaml is not None:
                 # Matches upstream loadYamlFlowAsPlanning task metadata.
@@ -1525,6 +2380,17 @@ class Agent:
                 )
                 if error is not None:
                     planning_task["errorMessage"] = str(error)
+            execution = self._get_report_builder().add_execution(
+                prompt_str, [planning_task, *action_tasks]
+            )
+            self._last_execution = execution
+        except Exception as e:
+            logger.warning(f"Failed to build execution dump: {e}")
+            return None
+        if not generate_report:
+            self._notify_dump_update_listeners(execution)
+            return None
+        try:
             tag = getattr(self.interface_type, "value", self.interface_type)
             name = getattr(self.options, "report_file_name", None)
             if name:
@@ -1533,24 +2399,32 @@ class Agent:
                     name = name.rsplit(".", 1)[0]
             else:
                 name = get_report_file_name(tag)
-            builder = ExecutionDumpBuilder(
-                group_name=getattr(self.options, "group_name", "Midscene Report"),
-                group_description=getattr(
-                    self.options, "group_description", ""
-                ),
-                device_type=tag,
-            )
-            attributes = getattr(self.options, "report_attributes", None)
-            if attributes:
-                builder.dump.update(attributes)
-            builder.add_execution(prompt_str, [planning_task, *action_tasks])
-            json_path = builder.write_to_disk(name)
+            if persist_json:
+                builder = ExecutionDumpBuilder(
+                    group_name=getattr(self.options, "group_name", "Midscene Report"),
+                    group_description=getattr(
+                        self.options, "group_description", ""
+                    ),
+                    device_type=tag,
+                )
+                attributes = getattr(self.options, "report_attributes", None)
+                if attributes:
+                    builder.dump.update(attributes)
+                builder.add_execution(prompt_str, [planning_task, *action_tasks])
+                json_path = builder.write_to_disk(name)
+            else:
+                json_path = None
             from .report_viewer import write_report_html
 
-            write_report_html(builder.to_dict(), name)
+            # The HTML report is the combined report stream: upstream writes it
+            # whenever generateReport is enabled, independent of the per-execution
+            # JSON dump (persistExecutionDump).
+            write_report_html(self._get_report_builder().to_dict(), name)
+            self._notify_dump_update_listeners(execution)
             return json_path
         except Exception as e:
             logger.warning(f"Failed to write execution report: {e}")
+            self._notify_dump_update_listeners(execution)
             return None
 
     # ------------------------------------------------------------------
@@ -1601,14 +2475,14 @@ class Agent:
         if self.destroyed:
             raise RuntimeError("Agent has been destroyed")
 
-    def _time_string(self) -> str:
+    async def _time_string(self) -> str:
         if getattr(self.options, "use_device_time", False):
             device_time = getattr(self.interface, "get_device_time", None)
             if device_time is not None:
                 try:
                     result = device_time()
                     if asyncio.iscoroutine(result):
-                        return asyncio.get_event_loop().run_until_complete(result)
+                        result = await result
                     return str(result)
                 except NotImplementedError:
                     pass

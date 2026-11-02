@@ -4,6 +4,8 @@ Playwright integration for Midscene
 
 import asyncio
 import base64
+import math
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from playwright.async_api import async_playwright, Page, Browser, BrowserContext
@@ -11,9 +13,55 @@ from loguru import logger
 
 from ..core.types import (
     AbstractInterface, InterfaceType, UIContext, BaseElement, UINode, UITree,
-    Size, Rect, NodeType
+    Size, Rect, NodeType, FileChooserHandler, FileChooserRegistration
 )
 from ..core.ai_model.workflows.order_sensitive import resolve_order_sensitive
+
+INPUT_STRATEGIES = ("legacy", "sequential", "bulk")
+_CHROME_SELECT_STYLE_ID = "midscene-force-select-rendering"
+_CHROME_SELECT_INIT_SCRIPT = """
+(() => {
+  const addStyle = () => {
+    if (document.getElementById('%s')) return;
+    const style = document.createElement('style');
+    style.id = '%s';
+    style.textContent =
+      'select, select::picker(select) { appearance: base-select !important; }';
+    document.head && document.head.appendChild(style);
+  };
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', addStyle, { once: true });
+  } else {
+    addStyle();
+  }
+})();
+""" % (_CHROME_SELECT_STYLE_ID, _CHROME_SELECT_STYLE_ID)
+
+
+def _resolve_text_input_options(
+    input_strategy: Optional[str], keyboard_type_delay: Optional[float]
+) -> "tuple[str, Optional[float]]":
+    """Validate the text typing options (upstream resolveInputStrategy)."""
+    if keyboard_type_delay is not None:
+        delay: Optional[float] = float(keyboard_type_delay)
+        if not math.isfinite(delay) or delay < 0:
+            raise ValueError(
+                "keyboardTypeDelay must be a finite non-negative number"
+            )
+    else:
+        delay = None
+    strategy = "legacy" if input_strategy is None else input_strategy
+    if strategy not in INPUT_STRATEGIES:
+        raise ValueError(
+            "inputStrategy must be one of: "
+            f"{', '.join(INPUT_STRATEGIES)}; received {strategy}"
+        )
+    if strategy == "bulk" and delay is not None and delay > 0:
+        raise ValueError(
+            'inputStrategy "bulk" requires keyboardTypeDelay to be omitted or '
+            'set to 0; use inputStrategy "sequential" for delayed input'
+        )
+    return strategy, delay
 
 # Locate-cache feature extraction, mirroring upstream getElementXpath:
 # leaf elements use their normalized text, ancestors use sibling indexes.
@@ -193,6 +241,11 @@ class PlaywrightWebPage(AbstractInterface):
         context: BrowserContext,
         browser: Browser,
         playwright: Optional[Any] = None,
+        keyboard_type_delay: Optional[float] = None,
+        input_strategy: Optional[str] = None,
+        force_same_tab_navigation: bool = True,
+        auto_follow_new_page: bool = False,
+        force_chrome_select_rendering: bool = True,
     ):
         """Initialize with Playwright page
         
@@ -201,11 +254,38 @@ class PlaywrightWebPage(AbstractInterface):
             context: Browser context
             browser: Browser instance
             playwright: Playwright instance started by create(), stopped on close
+            keyboard_type_delay: Per-character typing delay in milliseconds
+            input_strategy: "legacy" | "sequential" | "bulk"
+            force_same_tab_navigation: Keep target=_blank navigation in this tab
+            auto_follow_new_page: Switch self.page to the newest opened page
+            force_chrome_select_rendering: Force base-select rendering for selects
         """
         self.page = page
         self.context = context
         self.browser = browser
         self._playwright = playwright
+        self.keyboard_type_delay = keyboard_type_delay
+        self.input_strategy = input_strategy
+        self.force_same_tab_navigation = bool(force_same_tab_navigation)
+        self.auto_follow_new_page = bool(auto_follow_new_page)
+        self._force_chrome_select_rendering = bool(force_chrome_select_rendering)
+        self._initial_page = page
+        self._popup_handler = None
+        self._new_page_handler = None
+
+        if self.auto_follow_new_page:
+            if self.force_same_tab_navigation:
+                logger.warning(
+                    "autoFollowNewPage cannot be used with "
+                    "forceSameTabNavigation: true; forceSameTabNavigation is "
+                    "disabled."
+                )
+                self.force_same_tab_navigation = False
+            self._new_page_handler = self._on_new_page
+            self.context.on("page", self._new_page_handler)
+        elif self.force_same_tab_navigation:
+            self._popup_handler = self._on_popup
+            self.page.on("popup", self._popup_handler)
     
     @classmethod
     async def create(
@@ -214,40 +294,124 @@ class PlaywrightWebPage(AbstractInterface):
         viewport_size: tuple[int, int] = (1920, 1080),
         user_data_dir: Optional[str] = None,
         user_agent: Optional[str] = None,
+        device_scale_factor: Optional[float] = None,
+        accept_insecure_certs: bool = False,
+        cookie_file: Optional[str] = None,
+        extra_http_headers: Optional[Dict[str, str]] = None,
+        keyboard_type_delay: Optional[float] = None,
+        input_strategy: Optional[str] = None,
+        force_same_tab_navigation: bool = True,
+        auto_follow_new_page: bool = False,
+        force_chrome_select_rendering: bool = True,
         **browser_options
     ) -> 'PlaywrightWebPage':
         """Create new Playwright page instance
-        
+
         Args:
             headless: Run in headless mode
             viewport_size: Browser viewport size
             user_data_dir: Browser user data directory
             user_agent: Browser User-Agent string
+            device_scale_factor: Device pixel ratio (upstream deviceScaleFactor)
+            accept_insecure_certs: Ignore HTTPS errors
+            cookie_file: JSON file with cookies loaded before navigation
+            extra_http_headers: Extra HTTP headers for every request
+            keyboard_type_delay: Per-character typing delay in milliseconds
+            input_strategy: "legacy" | "sequential" | "bulk"
+            force_same_tab_navigation: Keep target=_blank navigation in this tab
+            auto_follow_new_page: Switch to the newest opened page
+            force_chrome_select_rendering: Force base-select rendering for selects
             **browser_options: Additional browser launch options (e.g. args)
-            
+
         Returns:
             PlaywrightWebPage instance
         """
         playwright = await async_playwright().start()
-        
+
         launch_options = {
             "headless": headless,
             **browser_options
         }
-        
+
         if user_data_dir:
             launch_options["user_data_dir"] = user_data_dir
-        
+
         browser = await playwright.chromium.launch(**launch_options)
-        
-        context = await browser.new_context(
-            viewport={"width": viewport_size[0], "height": viewport_size[1]},
-            user_agent=user_agent,
-        )
-        
+
+        context_options: Dict[str, Any] = {
+            "viewport": {
+                "width": viewport_size[0],
+                "height": viewport_size[1],
+            },
+            "user_agent": user_agent,
+            "ignore_https_errors": accept_insecure_certs,
+        }
+        if device_scale_factor is not None:
+            context_options["device_scale_factor"] = float(device_scale_factor)
+        if extra_http_headers:
+            context_options["extra_http_headers"] = {
+                str(key): str(value)
+                for key, value in extra_http_headers.items()
+            }
+        context = await browser.new_context(**context_options)
+
+        if cookie_file:
+            import json as _json
+
+            raw = _json.loads(Path(cookie_file).read_text(encoding="utf-8"))
+            cookies = raw.get("cookies") if isinstance(raw, dict) else raw
+            if isinstance(cookies, list) and cookies:
+                await context.add_cookies(cookies)
+
         page = await context.new_page()
-        
-        return cls(page, context, browser, playwright)
+
+        instance = cls(
+            page,
+            context,
+            browser,
+            playwright,
+            keyboard_type_delay=keyboard_type_delay,
+            input_strategy=input_strategy,
+            force_same_tab_navigation=force_same_tab_navigation,
+            auto_follow_new_page=auto_follow_new_page,
+            force_chrome_select_rendering=force_chrome_select_rendering,
+        )
+        await instance._install_force_chrome_select_rendering()
+        return instance
+
+    async def _install_force_chrome_select_rendering(self) -> None:
+        if not self._force_chrome_select_rendering:
+            return
+        try:
+            await self.page.add_init_script(_CHROME_SELECT_INIT_SCRIPT)
+            await self.page.evaluate(_CHROME_SELECT_INIT_SCRIPT)
+        except Exception as e:
+            logger.debug(f"Failed to add base-select style: {e}")
+
+    async def _on_popup(self, popup: Any) -> None:
+        """Keep target=_blank navigation in the current tab (upstream
+        forceClosePopup)."""
+        try:
+            url = popup.url
+        except Exception:
+            url = ""
+        logger.info(f"Popup opened: {url}")
+        try:
+            if not popup.is_closed():
+                await popup.close()
+        except Exception as e:
+            logger.debug(f"Failed to close popup {url}: {e}")
+        if url and not self._initial_page.is_closed():
+            try:
+                await self._initial_page.goto(
+                    url, wait_until="domcontentloaded", timeout=10000
+                )
+            except Exception as e:
+                logger.debug(f"Failed to open popup url {url} in current tab: {e}")
+
+    async def _on_new_page(self, page: Any) -> None:
+        """Follow the newest page (upstream autoFollowNewPage)."""
+        self.page = page
     
     @property
     def interface_type(self) -> InterfaceType:
@@ -440,18 +604,63 @@ class PlaywrightWebPage(AbstractInterface):
             logger.error(f"Failed to clear input: {e}")
             raise
 
-    async def replace_input(self, text: str) -> None:
+    def _text_input_options(
+        self,
+        keyboard_type_delay: Optional[float],
+        input_strategy: Optional[str],
+    ) -> "tuple[str, Optional[float]]":
+        delay = (
+            self.keyboard_type_delay
+            if keyboard_type_delay is None
+            else keyboard_type_delay
+        )
+        strategy = self.input_strategy if input_strategy is None else input_strategy
+        return _resolve_text_input_options(strategy, delay)
+
+    async def _type_text(
+        self, text: str, strategy: str, delay: Optional[float]
+    ) -> None:
+        if strategy == "bulk":
+            await self.page.keyboard.insert_text(text)
+            return
+        if strategy == "sequential":
+            characters = list(text)
+            for index, character in enumerate(characters):
+                await self.page.keyboard.type(character, delay=0)
+                if delay and delay > 0 and index < len(characters) - 1:
+                    await asyncio.sleep(delay / 1000)
+            return
+        options = {} if delay is None else {"delay": delay}
+        await self.page.keyboard.type(text, **options)
+
+    async def replace_input(
+        self,
+        text: str,
+        keyboard_type_delay: Optional[float] = None,
+        input_strategy: Optional[str] = None,
+    ) -> None:
         try:
+            strategy, delay = self._text_input_options(
+                keyboard_type_delay, input_strategy
+            )
             await self.page.keyboard.press("Control+A")
-            await self.page.keyboard.type(text)
+            await self._type_text(text, strategy, delay)
         except Exception as e:
             logger.error(f"Failed to replace input: {e}")
             raise
 
-    async def input_text(self, text: str) -> None:
+    async def input_text(
+        self,
+        text: str,
+        keyboard_type_delay: Optional[float] = None,
+        input_strategy: Optional[str] = None,
+    ) -> None:
         """Input text to focused element"""
         try:
-            await self.page.keyboard.type(text)
+            strategy, delay = self._text_input_options(
+                keyboard_type_delay, input_strategy
+            )
+            await self._type_text(text, strategy, delay)
         except Exception as e:
             logger.error(f"Failed to input text: {e}")
             raise
@@ -526,6 +735,34 @@ class PlaywrightWebPage(AbstractInterface):
             logger.error(f"Failed to scroll {direction}: {e}")
             raise
     
+    async def register_file_chooser_listener(
+        self, handler: Any
+    ) -> FileChooserRegistration:
+        """Accept files when the page opens a native file chooser dialog
+        (upstream PlaywrightWebPage.registerFileChooserListener)."""
+        captured: Dict[str, Optional[BaseException]] = {"error": None}
+
+        async def _on_file_chooser(chooser: Any) -> None:
+            async def accept(files: List[str]) -> None:
+                await chooser.set_files(list(files))
+
+            try:
+                await handler(FileChooserHandler(accept=accept))
+            except BaseException as e:  # noqa: BLE001 - surfaced via get_error
+                captured["error"] = e
+
+        self.page.on("filechooser", _on_file_chooser)
+
+        def dispose() -> None:
+            try:
+                self.page.remove_listener("filechooser", _on_file_chooser)
+            except Exception as e:
+                logger.warning(f"Error removing file chooser listener: {e}")
+
+        return FileChooserRegistration(
+            dispose=dispose, get_error=lambda: captured["error"]
+        )
+
     async def navigate_to(self, url: str) -> None:
         """Navigate to URL"""
         try:
@@ -533,6 +770,34 @@ class PlaywrightWebPage(AbstractInterface):
         except Exception as e:
             logger.error(f"Failed to navigate to {url}: {e}")
             raise
+
+    async def reload(self) -> None:
+        """Reload the current page."""
+        await self.page.reload()
+
+    async def go_back(self) -> None:
+        """Navigate back in browser history."""
+        await self.page.go_back()
+
+    async def go_forward(self) -> None:
+        """Navigate forward in browser history."""
+        await self.page.go_forward()
+
+    async def execute_script(self, script: str, *args) -> Any:
+        """Evaluate JavaScript in the page and return its value."""
+        if args:
+            argument = args[0] if len(args) == 1 else list(args)
+            return await self.page.evaluate(script, argument)
+        return await self.page.evaluate(script)
+
+    async def cursor_move(self, direction: str, times: int = 1) -> None:
+        """Move the caret inside the focused field (upstream web cursorMove)."""
+        if direction not in ("left", "right"):
+            raise ValueError(f"Invalid cursor direction: {direction}")
+        arrow_key = "ArrowLeft" if direction == "left" else "ArrowRight"
+        for _ in range(max(1, int(times))):
+            await self.page.keyboard.press(arrow_key)
+            await asyncio.sleep(0.1)
     
     async def wait_for_element(
         self, 
@@ -551,6 +816,18 @@ class PlaywrightWebPage(AbstractInterface):
     
     async def close(self) -> None:
         """Close the browser and the Playwright driver started by create()."""
+        if self._popup_handler is not None:
+            try:
+                self._initial_page.remove_listener("popup", self._popup_handler)
+            except Exception:
+                pass
+            self._popup_handler = None
+        if self._new_page_handler is not None:
+            try:
+                self.context.remove_listener("page", self._new_page_handler)
+            except Exception:
+                pass
+            self._new_page_handler = None
         try:
             await self.context.close()
             await self.browser.close()

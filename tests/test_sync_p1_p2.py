@@ -519,6 +519,52 @@ tasks:
         assert agent._report_builder is not None
         assert agent._report_builder.dump["executions"][0]["name"] == "Log - checkpoint"
 
+    @pytest.mark.asyncio
+    async def test_record_error_to_report(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("MIDSCENE_RUN_DIR", str(tmp_path))
+        agent = _agent()
+        await agent.record_error_to_report(
+            "boom", {"error": ValueError("bad state"), "content": "step failed"}
+        )
+
+        execution = agent._report_builder.dump["executions"][-1]
+        task = execution["tasks"][0]
+        assert execution["name"] == "boom"
+        assert execution["description"] == "step failed"
+        assert task["type"] == "Log"
+        assert task["subType"] == "Error"
+        assert task["status"] == "failed"
+        assert task["errorMessage"] == "bad state"
+        assert "ValueError" in task["error"]["name"]
+        assert task["output"]
+
+    @pytest.mark.asyncio
+    async def test_yaml_task_failure_records_error(self, tmp_path, monkeypatch):
+        from midscene.core.yaml_runner import ScriptPlayer, parse_yaml_script
+
+        monkeypatch.setenv("MIDSCENE_RUN_DIR", str(tmp_path))
+        script = parse_yaml_script(
+            """
+tasks:
+  - name: t
+    flow:
+      - aiAct: do something
+"""
+        )
+        agent = _agent()
+
+        async def fail(*args, **kwargs):
+            raise RuntimeError("model failed")
+
+        monkeypatch.setattr(agent, "ai_act", fail)
+        player = ScriptPlayer(script, agent)
+        await player.run()
+
+        assert player.status == "error"
+        assert player.failed_tasks[0]["error"] == "model failed"
+        names = [execution["name"] for execution in agent._report_builder.dump["executions"]]
+        assert names == ["YAML task failed - t"]
+
 
 # ---------------------------------------------------------------------------
 # P2-3 / P2-5 agent options
@@ -610,7 +656,381 @@ class TestAgentOptions:
         assert not list((tmp_path / "report").glob("*.json"))
 
 
+# ---------------------------------------------------------------------------
+# P2-6 file chooser + abortSignal
+# ---------------------------------------------------------------------------
+
+
+class FileChooserInterface(MockInterface):
+    def __init__(self):
+        super().__init__()
+        self.handlers: List[Any] = []
+
+    async def register_file_chooser_listener(self, handler):
+        from midscene.core.types import FileChooserRegistration
+
+        def dispose():
+            if handler in self.handlers:
+                self.handlers.remove(handler)
+
+        self.accepted_files: List[str] = []
+        self.handlers.append(handler)
+        return FileChooserRegistration(dispose=dispose, get_error=lambda: None)
+
+
+def _file_chooser_agent():
+    from midscene.core.agent import Agent
+    from midscene.core.types import AgentOptions
+
+    config = {
+        "MIDSCENE_MODEL_NAME": "mock-model",
+        "MIDSCENE_MODEL_API_KEY": "sk-test",
+        "MIDSCENE_MODEL_BASE_URL": "https://example.com/v1",
+        "MIDSCENE_MODEL_FAMILY": "gpt-5",
+    }
+    return Agent(FileChooserInterface(), AgentOptions(model_config=config))
+
+
+class TestFileChooser:
+    def test_action_space_includes_register_action_only_when_supported(self):
+        assert "RegisterFileChooserAccept" not in [
+            a.name for a in _agent().action_space
+        ]
+        assert "RegisterFileChooserAccept" in [
+            a.name for a in _file_chooser_agent().action_space
+        ]
+
+    @pytest.mark.asyncio
+    async def test_ai_tap_accepts_files_then_disposes(self, tmp_path):
+        from midscene.core.types import FileChooserHandler
+
+        upload = tmp_path / "upload.txt"
+        upload.write_text("payload")
+        agent = _file_chooser_agent()
+        calls: List[tuple] = []
+
+        async def fake_call(action_type, param):
+            calls.append((action_type, param))
+            async def accept(files):
+                agent.interface.accepted_files = list(files)
+
+            await agent.interface.handlers[0](FileChooserHandler(accept=accept))
+
+        with patch.object(agent, "_call_action_in_action_space", new=fake_call):
+            await agent.ai_tap("the upload button", {"fileChooserAccept": str(upload)})
+
+        assert calls == [("Tap", {"locate": {"prompt": "the upload button"}})]
+        assert agent.interface.accepted_files == [str(upload.resolve())]
+        assert agent.interface.handlers == []
+
+    @pytest.mark.asyncio
+    async def test_ai_act_disposes_file_chooser_on_error(self, tmp_path):
+        upload = tmp_path / "upload.txt"
+        upload.write_text("payload")
+        agent = _file_chooser_agent()
+
+        async def failing_impl(*args, **kwargs):
+            raise RuntimeError("boom")
+
+        with patch.object(agent, "_ai_act_impl", new=failing_impl):
+            with pytest.raises(RuntimeError, match="boom"):
+                await agent.ai_act("upload", {"fileChooserAccept": str(upload)})
+
+        assert agent.interface.handlers == []
+        assert agent._active_file_chooser_accepter is None
+
+    @pytest.mark.asyncio
+    async def test_register_action_requires_allowed_dir(self):
+        agent = _file_chooser_agent()
+        action = next(
+            a for a in agent.action_space
+            if a.name == "RegisterFileChooserAccept"
+        )
+        from midscene.core.agent import _FileChooserAccepter
+
+        agent._active_file_chooser_accepter = _FileChooserAccepter(agent.interface)
+        with pytest.raises(RuntimeError, match="fileChooserAllowedDir"):
+            await action.execute({"files": "a.txt"}, agent.interface, None)
+        agent._active_file_chooser_accepter = None
+        with pytest.raises(RuntimeError, match="only be used while aiAct"):
+            await action.execute({"files": "a.txt"}, agent.interface, None)
+
+    @pytest.mark.asyncio
+    async def test_register_action_uses_allowed_dir(self, tmp_path):
+        from midscene.core.agent import _FileChooserAccepter
+        from midscene.core.types import FileChooserHandler
+
+        (tmp_path / "doc.pdf").write_text("pdf")
+        agent = _file_chooser_agent()
+        action = next(
+            a for a in agent.action_space
+            if a.name == "RegisterFileChooserAccept"
+        )
+        agent._active_file_chooser_accepter = _FileChooserAccepter(agent.interface)
+        agent._active_file_chooser_allowed_dir = str(tmp_path)
+        await action.execute({"files": "doc.pdf"}, agent.interface, None)
+        assert len(agent.interface.handlers) == 1
+
+        recorded: List[str] = []
+
+        async def accept(files):
+            recorded.extend(files)
+
+        await agent.interface.handlers[0](FileChooserHandler(accept=accept))
+        assert recorded == [str((tmp_path / "doc.pdf").resolve())]
+        agent._active_file_chooser_accepter = None
+
+    def test_allowed_dir_rejects_escape(self, tmp_path):
+        from midscene.core.agent import _normalize_file_chooser_accept_in_allowed_dir
+
+        (tmp_path.parent / "outside.txt").write_text("x")
+        with pytest.raises(ValueError, match="fileChooserAllowedDir"):
+            _normalize_file_chooser_accept_in_allowed_dir(
+                "../outside.txt", str(tmp_path)
+            )
+
+    def test_missing_file_raises(self, tmp_path):
+        from midscene.core.agent import _normalize_file_paths
+
+        with pytest.raises(FileNotFoundError, match="File not found"):
+            _normalize_file_paths(str(tmp_path / "missing.txt"))
+
+    @pytest.mark.asyncio
+    async def test_abort_signal_pre_aborted(self):
+        from midscene.core.types import AbortError, AbortSignal
+
+        signal = AbortSignal()
+        signal.abort("user cancelled")
+        with pytest.raises(AbortError, match="aiAct aborted: user cancelled"):
+            await _agent().ai_act("run", {"abortSignal": signal})
+
+    @pytest.mark.asyncio
+    async def test_asyncio_event_signal_aborted(self):
+        from midscene.core.types import AbortError
+
+        event = asyncio.Event()
+        event.set()
+        with pytest.raises(AbortError, match="aiAct aborted"):
+            await _agent().ai_act("run", {"abortSignal": event})
+
+
+class _FakeChooser:
+    def __init__(self):
+        self.files: List[str] = []
+
+    async def set_files(self, files):
+        self.files = list(files)
+
+
+class _FakeBrowserPage:
+    def __init__(self):
+        self.handlers: Dict[str, List[Any]] = {}
+
+    def on(self, event, handler):
+        self.handlers.setdefault(event, []).append(handler)
+
+    def remove_listener(self, event, handler):
+        self.handlers.get(event, []).remove(handler)
+
+
+class TestPlaywrightFileChooser:
+    def _page(self):
+        from midscene.web.playwright_page import PlaywrightWebPage
+
+        fake = _FakeBrowserPage()
+        return PlaywrightWebPage(page=fake, context=Mock(), browser=Mock()), fake
+
+    @pytest.mark.asyncio
+    async def test_accepts_files_and_disposes(self):
+        page, fake = self._page()
+        chooser = _FakeChooser()
+
+        async def handler(file_chooser):
+            await file_chooser.accept(["/tmp/upload.txt"])
+
+        registration = await page.register_file_chooser_listener(handler)
+        await fake.handlers["filechooser"][0](chooser)
+        assert chooser.files == ["/tmp/upload.txt"]
+        assert registration.get_error() is None
+        registration.dispose()
+        assert fake.handlers.get("filechooser") == []
+
+    @pytest.mark.asyncio
+    async def test_captures_handler_error(self):
+        page, fake = self._page()
+
+        async def failing(file_chooser):
+            raise RuntimeError("upload failed")
+
+        registration = await page.register_file_chooser_listener(failing)
+        await fake.handlers["filechooser"][0](_FakeChooser())
+        error = registration.get_error()
+        assert isinstance(error, RuntimeError)
+
+
+class _FakeKeyboard:
+    def __init__(self):
+        self.typed: List[tuple] = []
+        self.inserted: List[str] = []
+        self.presses: List[str] = []
+
+    async def type(self, text, **kwargs):
+        self.typed.append((text, kwargs.get("delay")))
+
+    async def insert_text(self, text):
+        self.inserted.append(text)
+
+    async def press(self, key):
+        self.presses.append(key)
+
+
+class _FakeTypingPage:
+    def __init__(self):
+        self.keyboard = _FakeKeyboard()
+        self.handlers: Dict[str, Any] = {}
+
+    def on(self, event, handler):
+        self.handlers[event] = handler
+
+    def remove_listener(self, event, handler):
+        self.handlers.pop(event, None)
+
+
+class TestTextInputStrategy:
+    def test_rejects_invalid_options(self):
+        from midscene.web.playwright_page import _resolve_text_input_options
+
+        with pytest.raises(ValueError, match="non-negative"):
+            _resolve_text_input_options(None, -1)
+        with pytest.raises(ValueError, match="must be one of"):
+            _resolve_text_input_options("typo", None)
+        with pytest.raises(ValueError, match='"bulk" requires'):
+            _resolve_text_input_options("bulk", 10)
+
+    @pytest.mark.asyncio
+    async def test_bulk_uses_single_insert_text(self):
+        from midscene.web.playwright_page import PlaywrightWebPage
+
+        web = PlaywrightWebPage(_FakeTypingPage(), Mock(), Mock())
+        await web.input_text("hello", input_strategy="bulk")
+        assert web.page.keyboard.inserted == ["hello"]
+        assert web.page.keyboard.typed == []
+
+    @pytest.mark.asyncio
+    async def test_sequential_types_one_code_point_at_a_time(self):
+        from midscene.web.playwright_page import PlaywrightWebPage
+
+        web = PlaywrightWebPage(_FakeTypingPage(), Mock(), Mock())
+        await web.input_text("ab", input_strategy="sequential", keyboard_type_delay=0)
+        assert web.page.keyboard.typed == [("a", 0), ("b", 0)]
+
+    @pytest.mark.asyncio
+    async def test_legacy_uses_platform_delay(self):
+        from midscene.web.playwright_page import PlaywrightWebPage
+
+        web = PlaywrightWebPage(
+            _FakeTypingPage(), Mock(), Mock(), keyboard_type_delay=25
+        )
+        await web.input_text("hi")
+        assert web.page.keyboard.typed == [("hi", 25)]
+
+    @pytest.mark.asyncio
+    async def test_replace_selects_all_before_bulk_insert(self):
+        from midscene.web.playwright_page import PlaywrightWebPage
+
+        web = PlaywrightWebPage(_FakeTypingPage(), Mock(), Mock())
+        await web.replace_input("next", input_strategy="bulk")
+        assert web.page.keyboard.presses == ["Control+A"]
+        assert web.page.keyboard.inserted == ["next"]
+
+    def test_force_same_tab_navigation_registers_popup_listener(self):
+        from midscene.web.playwright_page import PlaywrightWebPage
+
+        fake = _FakeTypingPage()
+        PlaywrightWebPage(fake, Mock(), Mock())
+        assert "popup" in fake.handlers
+
+    def test_auto_follow_new_page_disables_force_same_tab(self):
+        from midscene.web.playwright_page import PlaywrightWebPage
+
+        context = Mock()
+        web = PlaywrightWebPage(
+            _FakeTypingPage(),
+            context,
+            Mock(),
+            force_same_tab_navigation=True,
+            auto_follow_new_page=True,
+        )
+        assert web.force_same_tab_navigation is False
+        context.on.assert_called_once()
+        new_page = Mock()
+        asyncio.run(web._on_new_page(new_page))
+        assert web.page is new_page
+
+
 from tests.test_core import patch_model_call  # noqa: E402
+
+
+async def _stream_lines(lines):
+    for line in lines:
+        yield line
+
+
+class TestStreamingGeneration:
+    @pytest.mark.asyncio
+    async def test_chat_stream_emits_incremental_chunks(self):
+        from midscene.core.ai_model.caller import _aggregate_stream_lines
+
+        chunks: List[Dict[str, Any]] = []
+        result = await _aggregate_stream_lines(
+            _stream_lines(
+                [
+                    'data: {"choices":[{"delta":{"content":"Hel"}}]}',
+                    'data: {"choices":[{"delta":{"content":"lo"}}]}',
+                    'data: {"choices":[],"usage":{"prompt_tokens":1,'
+                    '"completion_tokens":2,"total_tokens":3}}',
+                    "data: [DONE]",
+                ]
+            ),
+            chunks.append,
+        )
+
+        assert result["content"] == "Hello"
+        assert [chunk["content"] for chunk in chunks[:-1]] == ["Hel", "lo"]
+        assert chunks[-1]["isComplete"] is True
+        assert chunks[-1]["accumulated"] == "Hello"
+        assert chunks[-1]["usage"]["total_tokens"] == 3
+
+    @pytest.mark.asyncio
+    async def test_responses_stream_emits_chunks(self):
+        from midscene.core.ai_model.caller import _aggregate_stream_lines
+
+        chunks: List[Dict[str, Any]] = []
+        result = await _aggregate_stream_lines(
+            _stream_lines(
+                [
+                    'data: {"type":"response.output_text.delta","delta":"ab"}',
+                    'data: {"type":"response.output_text.delta","delta":"c"}',
+                    'data: {"type":"response.completed","response":'
+                    '{"id":"r1","model":"m","output":[{"type":"message",'
+                    '"content":[{"type":"output_text","text":"abc"}]}],'
+                    '"usage":{"input_tokens":1,"output_tokens":2,'
+                    '"total_tokens":3}}}',
+                ]
+            ),
+            chunks.append,
+        )
+
+        assert result["content"] == "abc"
+        assert chunks[-1]["isComplete"] is True
+
+    def test_recorder_stream_options_require_on_chunk(self):
+        from midscene.core.recorder_generation import _recorder_stream_options
+
+        assert _recorder_stream_options({"stream": True}) is None
+        callback = Mock()
+        options = _recorder_stream_options({"stream": True, "onChunk": callback})
+        assert options == {"stream": True, "onChunk": callback}
 
 
 if __name__ == "__main__":

@@ -167,6 +167,56 @@ ElementById = Callable[[str], Optional[BaseElement]]
 OnTaskStartTip = Callable[[str], Union[None, Awaitable[None]]]
 
 
+class AbortError(RuntimeError):
+    """Raised when an operation observes an aborted signal."""
+
+
+class AbortSignal:
+    """Python counterpart of the upstream `AbortSignal` used by aiAct.
+
+    `asyncio.Event` / `threading.Event` instances are accepted as well (see
+    `midscene.core.agent`), so callers can drive cancellation with either API.
+    """
+
+    def __init__(self) -> None:
+        self._aborted = False
+        self._reason: Any = None
+
+    @property
+    def aborted(self) -> bool:
+        return self._aborted
+
+    @property
+    def reason(self) -> Any:
+        return self._reason
+
+    def abort(self, reason: Any = None) -> None:
+        if not self._aborted:
+            self._aborted = True
+            self._reason = reason
+
+    def throw_if_aborted(self) -> None:
+        if self._aborted:
+            raise AbortError(
+                f"aiAct aborted: {self._reason or 'signal already aborted'}"
+            )
+
+
+@dataclass
+class FileChooserHandler:
+    """Handle passed to a file chooser listener (upstream FileChooserHandler)."""
+
+    accept: Callable[[List[str]], Awaitable[None]]
+
+
+@dataclass
+class FileChooserRegistration:
+    """Result of registering a file chooser listener."""
+
+    dispose: Callable[[], None]
+    get_error: Callable[[], Optional[BaseException]]
+
+
 # Abstract interface for device/platform implementations
 class AbstractInterface(ABC):
     """Abstract interface for platform implementations.
@@ -247,6 +297,35 @@ class AbstractInterface(ABC):
     async def long_press(self, x: float, y: float, duration: int = 1000) -> None:
         raise NotImplementedError("long_press is not supported on this interface")
 
+    async def cursor_move(self, direction: str, times: int = 1) -> None:
+        raise NotImplementedError("cursor_move is not supported on this interface")
+
+    # Browser navigation primitives (upstream AbstractWebPage navigate/reload/
+    # goBack/goForward; only interfaces with a history expose them).
+    async def navigate_to(self, url: str) -> None:
+        raise NotImplementedError("navigate_to is not supported on this interface")
+
+    async def reload(self) -> None:
+        raise NotImplementedError("reload is not supported on this interface")
+
+    async def go_back(self) -> None:
+        raise NotImplementedError("go_back is not supported on this interface")
+
+    async def go_forward(self) -> None:
+        raise NotImplementedError("go_forward is not supported on this interface")
+
+    async def get_device_time(self) -> str:
+        """Device-local wall clock, used by planning feedback messages."""
+        raise NotImplementedError("get_device_time is not supported on this interface")
+
+    async def register_file_chooser_listener(
+        self, handler: Callable[[FileChooserHandler], Awaitable[None]]
+    ) -> FileChooserRegistration:
+        """Listen for file chooser dialogs and let `handler` accept files."""
+        raise NotImplementedError(
+            "register_file_chooser_listener is not supported on this interface"
+        )
+
     # Optional element locate-cache hooks -----------------------------------
 
     async def cache_feature_for_point(
@@ -324,8 +403,16 @@ class AgentOptions:
     on_llm_usage: Optional[Callable] = None
     # Extra attributes merged into the report dump top level
     report_attributes: Optional[Dict[str, Any]] = None
+    # Output format hint forwarded to model runtimes (upstream
+    # AgentOpt.outputFormat: 'string' | 'object')
+    output_format: Optional[Any] = None
+    # Custom OpenAI client factory (upstream AgentOpt.createOpenAIClient)
+    create_openai_client: Optional[Callable] = None
+    # Extra context text used by aiAct only (upstream AgentOpt.aiActContext)
+    ai_act_context: Optional[str] = None
     # When False, skip writing the execution dump report file
-    persist_execution_dump: bool = True
+    # (upstream withAgentDefaults defaults this to false)
+    persist_execution_dump: bool = False
     # Use the device-reported time in planning feedback messages (android)
     use_device_time: bool = False
 

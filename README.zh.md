@@ -128,9 +128,9 @@ agent = Agent(page, AgentOptions(
 - **模型回退**：无法执行某类任务的模型（例如 jev 之于数据提取）自动回退到默认模型。
 - **YAML 自动化**：`midscene run script.yaml` 支持上游同款 flow 指令（`aiAct / aiAssert / aiWaitFor / aiQuery / aiTap / aiInput / aiKeyboardPress / aiScroll / aiDragAndDrop / sleep / javascript` 等）、`${VAR}` 环境变量插值、任务级 `continueOnError`，结果输出到 `midscene_run/output/`。
 - **连通性测试**：`midscene model connect` 并行执行规划文本、理解视觉、aiLocate、默认文本四项检查。
-- **执行报告**：每次进入规划阶段的 `ai_act` 运行都会写入上游格式的 JSON 报告 `midscene_run/report/<tag>-<YYYY-MM-DD_HH-MM-SS>-<8 位随机串>.json`，并生成同名单文件 HTML 查看器（tag 默认取接口类型，可用 `MIDSCENE_REPORT_TAG_NAME` 覆盖；`generateReport: false` 可关闭）。报告记录规划输出、每个动作的墙钟耗时/状态/错误；缓存回放时写入上游同款 `LoadYaml` 任务（含 `cache.hit` / `hitBy`）。`AgentOptions` 的 `generate_report`、`report_file_name`、`group_name` 与 `group_description` 均会生效。`midscene.core.dump` 对齐上游 `IReportActionDump` 字段结构。
+- **执行报告**：每次进入规划阶段的 `ai_act` 运行都会更新 `midscene_run/report/` 下的合并单文件 HTML 查看器（tag 默认取接口类型，可用 `MIDSCENE_REPORT_TAG_NAME` 覆盖）；上游格式的单次执行 JSON dump 仅在开启 `persistExecutionDump`（`AgentOptions.persist_execution_dump`）时写入，`generateReport: false` 可关闭所有报告文件。报告记录规划输出、每个动作的墙钟耗时/状态/错误；缓存回放时写入上游同款 `LoadYaml` 任务（含 `cache.hit` / `hitBy`）。`AgentOptions` 的 `generate_report`、`report_file_name`、`group_name` 与 `group_description` 均会生效。`midscene.core.dump` 对齐上游 `IReportActionDump` 字段结构。
 
-未从上游移植：官方 React 报告可视化器（本 SDK 写入上游格式的 JSON dump，并自带单文件 HTML 查看器）、Midscene Test 框架的 YAML 生命周期钩子与 TypeScript Nodes、Puppeteer。
+未从上游移植：官方 React 报告可视化器（本 SDK 写入上游格式的 JSON dump，并自带单文件 HTML 查看器）、Midscene Test 框架的 YAML 生命周期钩子与 TypeScript Nodes、Puppeteer、Chrome 扩展内的事件录制器 `EventRecorder`（录制好的事件序列可通过 `generate_yaml_test` / `generate_markdown_replay` / `generate_playwright_test` 生成用例）、面向 AI 编码助手的 agent-tools/skill CLI（含 Playwright `AiFixture`）。
 
 ## 规划循环与缓存
 

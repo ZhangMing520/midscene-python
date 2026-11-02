@@ -6,9 +6,11 @@ structure with a self-contained vanilla-JS template, so reports stay
 viewable without a Node build.
 """
 
+import base64
 import json
+import re
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from loguru import logger
 
@@ -106,6 +108,28 @@ if (!dump.executions || !dump.executions.length) {
 """
 
 
+def render_report_html(
+    dump: Dict[str, Any],
+    file_name: Optional[str] = None,
+) -> str:
+    """Render the dump as a self-contained HTML string (upstream
+    reportHTMLString)."""
+    name = file_name or "report"
+    if name.lower().endswith((".html", ".json")):
+        name = name.rsplit(".", 1)[0]
+    group = str(dump.get("groupName", "Midscene Report"))
+    title = f"{group} - {name}"
+    safe_dump = json.dumps(dump, ensure_ascii=False).replace("</", "<\\/")
+    return (
+        _TEMPLATE.replace("__TITLE__", title)
+        .replace("__SDK__", str(dump.get("sdkVersion", "?")))
+        .replace("__DEVICE__", str(dump.get("deviceType", "-")))
+        .replace("__GROUP__", esc_html(group))
+        .replace("__COUNT__", str(len(dump.get("executions", []))))
+        .replace("__DUMP__", safe_dump)
+    )
+
+
 def write_report_html(
     dump: Dict[str, Any],
     file_name: Optional[str] = None,
@@ -124,17 +148,7 @@ def write_report_html(
             )
         name = file_name.rsplit(".", 1)[0] if file_name.lower().endswith((".html", ".json")) else file_name
 
-        group = str(dump.get("groupName", "Midscene Report"))
-        title = f"{group} - {name}"
-        safe_dump = json.dumps(dump, ensure_ascii=False).replace("</", "<\\/")
-        html = (
-            _TEMPLATE.replace("__TITLE__", title)
-            .replace("__SDK__", str(dump.get("sdkVersion", "?")))
-            .replace("__DEVICE__", str(dump.get("deviceType", "-")))
-            .replace("__GROUP__", esc_html(group))
-            .replace("__COUNT__", str(len(dump.get("executions", []))))
-            .replace("__DUMP__", safe_dump)
-        )
+        html = render_report_html(dump, name)
         path = report_dir / f"{name}.html"
         path.write_text(html, encoding="utf-8")
         logger.info(f"Midscene - HTML report written: {path}")
@@ -151,3 +165,330 @@ def esc_html(text: str) -> str:
         .replace("<", "&lt;")
         .replace(">", "&gt;")
     )
+
+
+# ---------------------------------------------------------------------------
+# report-tool (upstream core/src/report-cli.ts + report.ts helpers)
+# ---------------------------------------------------------------------------
+
+_REPORT_DUMP_PATTERN = re.compile(
+    r'<script id="midscene_report_dump" type="application/json">(.*?)</script>',
+    re.DOTALL,
+)
+_DATA_URI_PATTERN = re.compile(
+    r"^data:image/(png|jpeg|jpg|webp|gif);base64,(.*)$", re.IGNORECASE | re.DOTALL
+)
+_BASE64_PATTERN = re.compile(r"^[A-Za-z0-9+/=\s]{200,}$")
+_IMAGE_KEYS = {
+    "base64",
+    "imagebase64",
+    "screenshot",
+    "screenshots",
+    "screenshot_base64",
+}
+_DUMP_HEADER_KEYS = (
+    "sdkVersion",
+    "groupName",
+    "groupDescription",
+    "modelBriefs",
+    "deviceType",
+)
+
+
+def resolve_report_html_path(html_path: str) -> Path:
+    """Accept a report HTML file or a directory containing index.html."""
+    path = Path(html_path)
+    if not path.exists():
+        raise ValueError(f"report-tool: --htmlPath does not exist: {html_path}")
+    if path.is_dir():
+        index = path / "index.html"
+        if not index.exists():
+            raise ValueError(
+                f'report-tool: "{html_path}" is not an HTML report file, and no '
+                "index.html was found under this directory."
+            )
+        return index
+    return path
+
+
+def read_report_dump(html_path: str) -> Dict[str, Any]:
+    """Extract the embedded report dump JSON from a Midscene report HTML."""
+    path = resolve_report_html_path(html_path)
+    content = path.read_text(encoding="utf-8")
+    match = _REPORT_DUMP_PATTERN.search(content)
+    if not match:
+        raise ValueError(f"No report dump found in {path}")
+    try:
+        dump = json.loads(match.group(1))
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid report dump JSON in {path}: {e}") from e
+    if not isinstance(dump, dict):
+        raise ValueError(f"Report dump in {path} must be a mapping")
+    return dump
+
+
+def _dedupe_executions(executions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Deduplicate executions by id, keeping the latest entry; id-less
+    executions are always kept (upstream dedupeExecutionsKeepLatest)."""
+    latest: Dict[str, int] = {}
+    for index, execution in enumerate(executions):
+        if isinstance(execution, dict) and execution.get("id"):
+            latest[execution["id"]] = index
+    result = []
+    for index, execution in enumerate(executions):
+        execution_id = execution.get("id") if isinstance(execution, dict) else None
+        if execution_id and latest.get(execution_id) != index:
+            continue
+        result.append(execution)
+    return result
+
+
+def collect_report_executions(
+    html_path: str,
+) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
+    dump = read_report_dump(html_path)
+    executions = dump.get("executions") or []
+    if not isinstance(executions, list):
+        raise ValueError(f"Report executions in {html_path} must be an array")
+    return dump, _dedupe_executions(executions)
+
+
+def _is_image_string(value: str, key: Optional[str]) -> bool:
+    if value.startswith("data:image/"):
+        return True
+    if not key or key.lower() not in _IMAGE_KEYS:
+        return False
+    return bool(_BASE64_PATTERN.match(value))
+
+
+def _save_image(
+    value: str,
+    screenshots_dir: Path,
+    written: set,
+    state: Dict[str, int],
+    prefix: str,
+) -> Dict[str, Any]:
+    data_uri = _DATA_URI_PATTERN.match(value)
+    if data_uri:
+        raw = data_uri.group(2)
+        extension = "jpg" if data_uri.group(1).lower() in ("jpeg", "jpg") else data_uri.group(1).lower()
+    else:
+        raw = value
+        extension = "png"
+    state["counter"] += 1
+    name = f"{prefix}-{state['counter']:03d}.{extension}"
+    if name not in written:
+        screenshots_dir.mkdir(parents=True, exist_ok=True)
+        (screenshots_dir / name).write_bytes(base64.b64decode(raw))
+        written.add(name)
+    return {
+        "id": name.rsplit(".", 1)[0],
+        "storage": "file",
+        "path": f"./screenshots/{name}",
+    }
+
+
+def _externalize_images(
+    value: Any,
+    key: Optional[str],
+    screenshots_dir: Path,
+    written: set,
+    state: Dict[str, int],
+    prefix: str,
+) -> Any:
+    if isinstance(value, dict):
+        return {
+            item_key: _externalize_images(
+                item_value, item_key, screenshots_dir, written, state, prefix
+            )
+            for item_key, item_value in value.items()
+        }
+    if isinstance(value, list):
+        return [
+            _externalize_images(item, key, screenshots_dir, written, state, prefix)
+            for item in value
+        ]
+    if isinstance(value, str) and _is_image_string(value, key):
+        return _save_image(value, screenshots_dir, written, state, prefix)
+    return value
+
+
+def split_report_file(html_path: str, output_dir: str) -> Dict[str, List[str]]:
+    """Split one report HTML into per-execution JSON files + screenshots."""
+    dump, executions = collect_report_executions(html_path)
+    out_dir = Path(output_dir)
+    screenshots_dir = out_dir / "screenshots"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    execution_json_files: List[str] = []
+    written: set = set()
+    for index, execution in enumerate(executions, 1):
+        processed = _externalize_images(
+            execution, None, screenshots_dir, written, {"counter": 0}, f"execution-{index}"
+        )
+        single = {
+            key: dump[key] for key in _DUMP_HEADER_KEYS if key in dump
+        }
+        single["executions"] = [processed]
+        json_path = out_dir / f"{index}.execution.json"
+        json_path.write_text(
+            json.dumps(single, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        execution_json_files.append(str(json_path))
+
+    return {
+        "executionJsonFiles": execution_json_files,
+        "screenshotFiles": [str(screenshots_dir / name) for name in sorted(written)],
+    }
+
+
+def _format_json(value: Any) -> str:
+    return "```json\n" + json.dumps(value, ensure_ascii=False, indent=2) + "\n```"
+
+
+def _collect_file_images(value: Any) -> List[str]:
+    paths: List[str] = []
+    if isinstance(value, dict):
+        if value.get("storage") == "file" and isinstance(value.get("path"), str):
+            paths.append(value["path"])
+        else:
+            for item in value.values():
+                paths.extend(_collect_file_images(item))
+    elif isinstance(value, list):
+        for item in value:
+            paths.extend(_collect_file_images(item))
+    return paths
+
+
+def _execution_status(execution: Dict[str, Any]) -> str:
+    tasks = execution.get("tasks") or []
+    for task in tasks:
+        if isinstance(task, dict) and task.get("status") in ("failed", "cancelled"):
+            return "failed"
+    return "success"
+
+
+def report_to_markdown(dump: Dict[str, Any]) -> str:
+    """Render a report dump as Markdown (upstream reportToMarkdown subset)."""
+    lines: List[str] = []
+    group_name = str(dump.get("groupName") or "Midscene Report")
+    lines.append(f"# {group_name}")
+    lines.append("")
+    description = dump.get("groupDescription")
+    if description:
+        lines.append(str(description))
+        lines.append("")
+    lines.append(f"- SDK version: {dump.get('sdkVersion', '?')}")
+    lines.append(f"- Device type: {dump.get('deviceType', '-')}")
+    executions = dump.get("executions") or []
+    lines.append(f"- Executions: {len(executions)}")
+    lines.append("")
+
+    for index, execution in enumerate(executions, 1):
+        name = execution.get("name") or execution.get("id") or f"execution {index}"
+        lines.append(f"## {index}. {name}")
+        lines.append("")
+        lines.append(f"- Status: {_execution_status(execution)}")
+        if execution.get("description"):
+            lines.append(f"- Description: {execution['description']}")
+        if execution.get("logTime") is not None:
+            lines.append(f"- Log time: {execution['logTime']}")
+        lines.append("")
+
+        for task in execution.get("tasks") or []:
+            if not isinstance(task, dict):
+                continue
+            task_type = task.get("type") or "Task"
+            sub_type = f" / {task['subType']}" if task.get("subType") else ""
+            status = task.get("status") or "finished"
+            lines.append(f"### {task_type}{sub_type} — {status}")
+            lines.append("")
+            if task.get("param") not in (None, {}, []):
+                lines.append("**Param**")
+                lines.append("")
+                lines.append(_format_json(task["param"]))
+                lines.append("")
+            if task.get("output") not in (None, {}, []):
+                lines.append("**Output**")
+                lines.append("")
+                lines.append(_format_json(task["output"]))
+                lines.append("")
+            if task.get("errorMessage"):
+                lines.append(f"**Error**: {task['errorMessage']}")
+                lines.append("")
+            for image_path in _collect_file_images(task):
+                lines.append(f"![screenshot]({image_path})")
+                lines.append("")
+
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def report_file_to_markdown(
+    html_path: str, output_dir: str
+) -> Dict[str, List[str]]:
+    """Convert a report HTML into report.md plus externalized screenshots."""
+    dump, executions = collect_report_executions(html_path)
+    out_dir = Path(output_dir)
+    screenshots_dir = out_dir / "screenshots"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    written: set = set()
+    processed = [
+        _externalize_images(
+            execution, None, screenshots_dir, written, {"counter": 0}, f"execution-{index}"
+        )
+        for index, execution in enumerate(executions, 1)
+    ]
+    merged = {key: dump[key] for key in _DUMP_HEADER_KEYS if key in dump}
+    merged["executions"] = processed
+
+    md_path = out_dir / "report.md"
+    md_path.write_text(report_to_markdown(merged), encoding="utf-8")
+    return {
+        "markdownFiles": [str(md_path)],
+        "screenshotFiles": [str(screenshots_dir / name) for name in sorted(written)],
+    }
+
+
+def merge_report_files(
+    html_paths: List[str],
+    output_dir: Optional[str] = None,
+    output_name: Optional[str] = None,
+    overwrite: bool = False,
+) -> Dict[str, str]:
+    """Merge multiple report HTMLs into one HTML report."""
+    if not html_paths:
+        raise ValueError("mergeReportFiles: htmlPaths is required")
+    from .dump import get_report_file_name
+
+    executions: List[Dict[str, Any]] = []
+    base_dump: Optional[Dict[str, Any]] = None
+    for html_path in html_paths:
+        dump, current = collect_report_executions(html_path)
+        if base_dump is None:
+            base_dump = dump
+        executions.extend(current)
+    executions = _dedupe_executions(executions)
+
+    target_dir = Path(output_dir or get_midscene_run_dir("report"))
+    target_dir.mkdir(parents=True, exist_ok=True)
+    name = (
+        get_report_file_name("merged-report")
+        if not output_name or output_name == "AUTO"
+        else output_name
+    )
+    output_path = target_dir / f"{name}.html"
+    if output_path.exists() and not overwrite:
+        raise ValueError(
+            f"Report file already exists: {output_path}\n"
+            "Set overwrite to true to overwrite this file."
+        )
+
+    # Preserve every top-level key from the base dump (including custom report
+    # attributes), only replacing the executions list with the merged set.
+    merged: Dict[str, Any] = dict(base_dump)
+    merged["executions"] = executions
+    result = write_report_html(merged, name, str(target_dir))
+    if not result:
+        raise ValueError("mergeReportFiles: failed to produce a merged report")
+    return {"mergedReportPath": result}

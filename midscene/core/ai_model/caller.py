@@ -13,6 +13,7 @@ a clear error.
 """
 
 import asyncio
+import inspect
 import json
 import time
 import uuid
@@ -434,6 +435,7 @@ async def _post_json(
     effective_timeout: Optional[float],
     proxy: Optional[str],
     stream: bool,
+    on_chunk: Optional[Any] = None,
 ):
     timeout_seconds = (
         effective_timeout / 1000 if effective_timeout is not None else None
@@ -449,10 +451,9 @@ async def _post_json(
                     if response.status_code >= 400:
                         body = (await response.aread()).decode("utf-8", "ignore")
                         _raise_http_error(response.status_code, body)
-                    lines = []
-                    async for line in response.aiter_lines():
-                        lines.append(line)
-                    return _aggregate_stream_lines(lines)
+                    return await _aggregate_stream_lines(
+                        response.aiter_lines(), on_chunk
+                    )
             response = await client.post(url, headers=headers, json=request_body)
     except httpx.TimeoutException as e:
         raise RuntimeError(
@@ -467,7 +468,32 @@ async def _post_json(
         raise RuntimeError(f"invalid JSON response from LLM service: {e}") from e
 
 
-def _aggregate_stream_lines(lines: List[str]) -> Dict[str, Any]:
+async def _emit_stream_chunk(
+    on_chunk: Optional[Any],
+    content: str,
+    reasoning_content: str,
+    accumulated: str,
+    is_complete: bool = False,
+    usage: Optional[Dict[str, Any]] = None,
+) -> None:
+    """Deliver a CodeGenerationChunk to the caller (upstream onChunk)."""
+    if on_chunk is None:
+        return
+    chunk = {
+        "content": content,
+        "reasoning_content": reasoning_content,
+        "accumulated": accumulated,
+        "isComplete": is_complete,
+        "usage": usage,
+    }
+    result = on_chunk(chunk)
+    if inspect.isawaitable(result):
+        await result
+
+
+async def _aggregate_stream_lines(
+    lines, on_chunk: Optional[Any] = None
+) -> Dict[str, Any]:
     """Aggregate an SSE stream (chat-completion or responses) into a full
     payload, then reuse the non-stream parsers."""
     is_responses = False
@@ -475,12 +501,14 @@ def _aggregate_stream_lines(lines: List[str]) -> Dict[str, Any]:
     completed_output: Optional[List[Dict[str, Any]]] = None
     content_parts: List[str] = []
     reasoning_parts: List[str] = []
+    accumulated = ""
+    accumulated_reasoning = ""
     usage: Optional[Dict[str, Any]] = None
     response_model: Optional[str] = None
     response_id: Optional[str] = None
     responses_output: List[Dict[str, Any]] = []
 
-    for line in lines:
+    async for line in lines:
         line = line.strip()
         if not line.startswith("data:"):
             continue
@@ -528,10 +556,16 @@ def _aggregate_stream_lines(lines: List[str]) -> Dict[str, Any]:
                 responses_output.append(item)
             continue
         if event_type == "response.output_text.delta":
-            content_parts.append(event.get("delta", ""))
+            piece = event.get("delta", "") or ""
+            content_parts.append(piece)
+            accumulated += piece
+            await _emit_stream_chunk(on_chunk, piece, "", accumulated)
             continue
         if event_type == "response.reasoning_summary_text.delta":
-            reasoning_parts.append(event.get("delta", ""))
+            piece = event.get("delta", "") or ""
+            reasoning_parts.append(piece)
+            accumulated_reasoning += piece
+            await _emit_stream_chunk(on_chunk, "", piece, accumulated)
             continue
         choices = event.get("choices")
         if not choices:
@@ -541,23 +575,42 @@ def _aggregate_stream_lines(lines: List[str]) -> Dict[str, Any]:
                 response_model = event["model"]
             continue
         delta = choices[0].get("delta") or {}
+        content_piece = ""
         piece = delta.get("content")
         if isinstance(piece, str):
+            content_piece = piece
             content_parts.append(piece)
         elif isinstance(piece, list):
+            content_piece = "".join(
+                part.get("text", "")
+                for part in piece
+                if isinstance(part, dict) and part.get("type") == "text"
+            )
             content_parts.extend(
                 part.get("text", "")
                 for part in piece
                 if isinstance(part, dict) and part.get("type") == "text"
             )
+        reasoning_piece = ""
         for key in ("reasoning_content", "reasoning"):
             value = delta.get(key)
             if isinstance(value, str) and value:
+                reasoning_piece += value
                 reasoning_parts.append(value)
+        if content_piece or reasoning_piece:
+            accumulated += content_piece
+            accumulated_reasoning += reasoning_piece
+            await _emit_stream_chunk(
+                on_chunk, content_piece, reasoning_piece, accumulated
+            )
         if event.get("usage"):
             usage = event["usage"]
         if event.get("model"):
             response_model = event["model"]
+
+    await _emit_stream_chunk(
+        on_chunk, "", "", accumulated or "".join(content_parts), True, usage
+    )
 
     if is_responses:
         if not completed:
@@ -667,6 +720,19 @@ async def call_generative_ai(
         options.get("stream") is True
         or model_config.get("streamMode") == "stream"
     )
+    on_chunk = options.get("onChunk") or options.get("on_chunk")
+    if options.get("stream") is True and on_chunk is None:
+        raise RuntimeError(
+            "onChunk is required when stream: true is explicitly specified"
+        )
+    chunk_delivered = False
+
+    def _track_chunk(chunk: Dict[str, Any]) -> Any:
+        nonlocal chunk_delivered
+        chunk_delivered = True
+        return on_chunk(chunk)
+
+    chunk_callback = _track_chunk if on_chunk is not None else None
 
     if protocol == "openai-responses":
         prepared = prepare_responses(messages, model_runtime, options)
@@ -696,6 +762,7 @@ async def call_generative_ai(
                 effective_timeout=effective_timeout,
                 proxy=proxy,
                 stream=stream_requested,
+                on_chunk=chunk_callback,
             )
             if protocol == "openai-responses" and not isinstance(payload, dict):
                 raise RuntimeError("invalid responses payload")
@@ -762,7 +829,7 @@ async def call_generative_ai(
             continue
         except AIResponseParseError:
             # A structurally invalid/empty completion is retryable upstream.
-            if attempt >= max_attempts:
+            if chunk_delivered or attempt >= max_attempts:
                 raise
             logger.warning(
                 f"AI response parsing failed (attempt {attempt}/{max_attempts}), "
@@ -770,6 +837,9 @@ async def call_generative_ai(
             )
             await asyncio.sleep(retry_interval / 1000)
         except Exception as error:
+            # Once a chunk has been delivered, retrying would duplicate output.
+            if chunk_delivered:
+                raise
             attempt_errors.append(str(error))
             if attempt >= max_attempts:
                 retries = max(0, len(attempt_errors) - 1)

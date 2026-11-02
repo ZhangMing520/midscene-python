@@ -343,6 +343,7 @@ async def standard_plan(
     effort: str = "normal",  # 'normal' | 'fast' | 'deepThink'
     action_context: Optional[str] = None,
     planning_advice: Optional[str] = None,
+    reference_images: Optional[List[str]] = None,
     images_include_count: int = 2,
 ) -> Dict[str, Any]:
     """Run one standard planning turn and return the parsed planning response."""
@@ -415,6 +416,11 @@ async def standard_plan(
             ],
         }
     ]
+
+    if reference_images:
+        instruction[0]["content"].extend(
+            {"type": "image", "url": url} for url in reference_images
+        )
 
     execution_progress_text = (
         conversation_history.sub_goals_to_text()

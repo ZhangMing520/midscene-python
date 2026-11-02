@@ -118,6 +118,8 @@ class AndroidDevice(AbstractInterface):
         self.config = config or AndroidDeviceConfig(device_id=device_id)
         self._connected = False
         self._screen_size: Optional[Size] = None
+        self._physical_size: Optional[Size] = None
+        self._device_pixel_ratio: float = 1.0
         self._yadb_pushed = False
         self._yadb_bin_path: Optional[str] = None
     
@@ -221,21 +223,35 @@ class AndroidDevice(AbstractInterface):
         ]
     
     async def tap(self, x: float, y: float) -> None:
-        """Tap at coordinates"""
+        """Tap at logical coordinates (converted to physical for adb)."""
         try:
+            px, py = self._to_physical(x, y)
             await self._run_adb_command([
-                "-s", self.device_id, "shell", "input", "tap", str(int(x)), str(int(y))
+                "-s", self.device_id, "shell", "input", "tap", str(px), str(py)
             ])
         except Exception as e:
             logger.error(f"Failed to tap at ({x}, {y}): {e}")
             raise
+
+    def _to_physical(self, x: float, y: float) -> tuple[int, int]:
+        """Logical (AI) coordinates -> physical adb coordinates.
+
+        Android reports physical pixels while the screenshot/size pair exposed
+        to the model is logical (upstream adjustCoordinates).
+        """
+        if not self._physical_size or not self._screen_size:
+            return int(round(x)), int(round(y))
+        scale_x = self._physical_size.width / self._screen_size.width
+        scale_y = self._physical_size.height / self._screen_size.height
+        return int(round(x * scale_x)), int(round(y * scale_y))
     
     async def long_press(self, x: float, y: float, duration: int = 1000) -> None:
         """Long press at coordinates"""
         try:
+            px, py = self._to_physical(x, y)
             await self._run_adb_command([
                 "-s", self.device_id, "shell", "input", "swipe", 
-                str(int(x)), str(int(y)), str(int(x)), str(int(y)), str(duration)
+                str(px), str(py), str(px), str(py), str(duration)
             ])
         except Exception as e:
             logger.error(f"Failed to long press at ({x}, {y}): {e}")
@@ -262,10 +278,11 @@ class AndroidDevice(AbstractInterface):
                 await self._swipe_direction(direction_or_start_x, distance)
                 return
             start_x = direction_or_start_x
+            fx, fy = self._to_physical(start_x, start_y)
+            tx, ty = self._to_physical(end_x, end_y)
             await self._run_adb_command([
                 "-s", self.device_id, "shell", "input", "swipe",
-                str(int(start_x)), str(int(start_y)),
-                str(int(end_x)), str(int(end_y)), str(duration)
+                str(fx), str(fy), str(tx), str(ty), str(duration)
             ])
         except Exception as e:
             logger.error(f"Failed to swipe: {e}")
@@ -276,48 +293,54 @@ class AndroidDevice(AbstractInterface):
         direction: str,
         distance: Optional[int] = None,
         point: Optional[Sequence[float]] = None,
+        duration: int = 300,
     ) -> None:
         if not self._screen_size:
             await self._get_screen_size()
-
-        center_x = int(point[0]) if point else self._screen_size.width // 2
-        center_y = int(point[1]) if point else self._screen_size.height // 2
-        distance = distance or 500
-
-        half = distance // 2
-        center_x = min(
-            max(center_x, half), max(half, self._screen_size.width - half)
-        )
-        center_y = min(
-            max(center_y, half), max(half, self._screen_size.height - half)
-        )
-
-        if direction == "down":
-            await self._run_adb_command([
-                "-s", self.device_id, "shell", "input", "swipe",
-                str(center_x), str(center_y - distance // 2),
-                str(center_x), str(center_y + distance // 2), "300",
-            ])
-        elif direction == "up":
-            await self._run_adb_command([
-                "-s", self.device_id, "shell", "input", "swipe",
-                str(center_x), str(center_y + distance // 2),
-                str(center_x), str(center_y - distance // 2), "300",
-            ])
-        elif direction == "left":
-            await self._run_adb_command([
-                "-s", self.device_id, "shell", "input", "swipe",
-                str(center_x + distance // 2), str(center_y),
-                str(center_x - distance // 2), str(center_y), "300",
-            ])
-        elif direction == "right":
-            await self._run_adb_command([
-                "-s", self.device_id, "shell", "input", "swipe",
-                str(center_x - distance // 2), str(center_y),
-                str(center_x + distance // 2), str(center_y), "300",
-            ])
-        else:
+        if direction not in ("up", "down", "left", "right"):
             raise ValueError(f"Invalid swipe direction: {direction}")
+
+        width, height = self._screen_size.width, self._screen_size.height
+        if distance is None and point is None:
+            # Upstream scrollDefault: the finger crosses the central 70%
+            # (0.85 <-> 0.15) slowly enough to keep the release velocity low.
+            horizontal = direction in ("left", "right")
+            forward = direction in ("down", "right")
+            extent = width if horizontal else height
+            start = round(extent * (0.85 if forward else 0.15))
+            end = round(extent * (0.15 if forward else 0.85))
+            center_x, center_y = width // 2, height // 2
+            if horizontal:
+                from_point, to_point = (start, center_y), (end, center_y)
+            else:
+                from_point, to_point = (center_x, start), (center_x, end)
+            duration = 1000
+        else:
+            center_x = int(point[0]) if point else width // 2
+            center_y = int(point[1]) if point else height // 2
+            distance = distance or 500
+            vectors = {
+                "down": (0, distance),
+                "up": (0, -distance),
+                "left": (-distance, 0),
+                "right": (distance, 0),
+            }
+            dx, dy = vectors[direction]
+            from_point = (center_x - dx // 2, center_y - dy // 2)
+            to_point = (center_x + dx // 2, center_y + dy // 2)
+            # Keep the gesture inside the viewport like calculateScrollEndPoint.
+            margin = min(width, height) // 10
+            to_point = (
+                min(max(to_point[0], margin), width - margin),
+                min(max(to_point[1], margin), height - margin),
+            )
+
+        fx, fy = self._to_physical(*from_point)
+        tx, ty = self._to_physical(*to_point)
+        await self._run_adb_command([
+            "-s", self.device_id, "shell", "input", "swipe",
+            str(fx), str(fy), str(tx), str(ty), str(duration),
+        ])
 
     async def drag_and_drop(self, from_point, to_point, duration: int = 1000) -> None:
         """Drag an element from one point to another (upstream dragPoint)."""
@@ -493,8 +516,9 @@ class AndroidDevice(AbstractInterface):
             if finger_direction is None:
                 raise ValueError(f"Invalid scroll direction: {direction}")
 
-            repeats = 10 if (scroll_type or "").startswith("scrollTo") else 1
-            if repeats > 1:
+            if (scroll_type or "").startswith("scrollTo"):
+                # Upstream scrollUntil*: 10 fast drags toward the edge, then a
+                # 1s settle window before the next observation.
                 if not self._screen_size:
                     await self._get_screen_size()
                 axis = (
@@ -502,13 +526,41 @@ class AndroidDevice(AbstractInterface):
                     if direction in ("up", "down")
                     else self._screen_size.width
                 )
-                distance = int(axis * 0.8)
-            for _ in range(repeats):
-                await self._swipe_direction(finger_direction, distance, point=point)
+                scroll_distance = int(distance) if distance else int(axis * 0.8)
+                for _ in range(10):
+                    await self._swipe_direction(
+                        finger_direction,
+                        scroll_distance,
+                        point=point,
+                        duration=100,
+                    )
+                await asyncio.sleep(1)
+                return
+
+            await self._swipe_direction(
+                finger_direction,
+                distance,
+                point=point,
+                duration=1000 if distance is None and point is None else 300,
+            )
 
         except Exception as e:
             logger.error(f"Failed to scroll {direction}: {e}")
             raise
+
+    async def cursor_move(self, direction: str, times: int = 1) -> None:
+        """Move the caret left/right with DPAD arrow key events (upstream)."""
+        arrow_key = "ArrowLeft" if direction == "left" else "ArrowRight"
+        for _ in range(max(1, int(times))):
+            await self.keyboard_press(arrow_key)
+
+    async def get_device_time(self) -> str:
+        """Device wall clock as HH:MM:SS (upstream useDeviceTime)."""
+        result = await self._run_adb_command(
+            ["-s", self.device_id, "shell", "date", "+%H:%M:%S"],
+            capture_output=True,
+        )
+        return result.stdout.decode("utf-8").strip()
     
     async def clear_input(self) -> None:
         """Clear text in focused field (alias of clear_text)"""
@@ -723,27 +775,65 @@ class AndroidDevice(AbstractInterface):
         return UITree(node=root_node, children=[])
     
     async def _get_screen_size(self) -> None:
-        """Get device screen size"""
+        """Resolve physical size + display density.
+
+        Upstream `size()` returns logical pixels: physical / (density / 160).
+        Gestures convert back with `_to_physical`.
+        """
         try:
             result = await self._run_adb_command([
                 "-s", self.device_id, "shell", "wm", "size"
             ], capture_output=True)
-            
+
             output = result.stdout.decode('utf-8').strip()
-            # Parse output like "Physical size: 1080x1920"
-            if ":" in output:
+            physical: Optional[Size] = None
+            for line in output.splitlines():
+                if "Physical size:" in line and "x" in line:
+                    size_str = line.split(":")[-1].strip()
+                    width, height = map(int, size_str.split("x"))
+                    physical = Size(width=width, height=height)
+                    break
+            if physical is None and ":" in output:
                 size_str = output.split(":")[-1].strip()
                 if "x" in size_str:
                     width, height = map(int, size_str.split("x"))
-                    self._screen_size = Size(width=width, height=height)
-                    return
-            
-            # Fallback
-            self._screen_size = Size(width=1080, height=1920)
-            
+                    physical = Size(width=width, height=height)
+            if physical is None:
+                physical = Size(width=1080, height=1920)
+
+            density = await self._get_screen_density()
+            self._device_pixel_ratio = density / 160 if density else 1.0
+            self._physical_size = physical
+            self._screen_size = Size(
+                width=max(1, round(physical.width / self._device_pixel_ratio)),
+                height=max(1, round(physical.height / self._device_pixel_ratio)),
+            )
+
         except Exception as e:
             logger.warning(f"Failed to get screen size: {e}")
+            self._physical_size = Size(width=1080, height=1920)
             self._screen_size = Size(width=1080, height=1920)
+            self._device_pixel_ratio = 1.0
+
+    async def _get_screen_density(self) -> int:
+        """Display density (upstream getDisplayDensity, default 160)."""
+        try:
+            result = await self._run_adb_command(
+                ["-s", self.device_id, "shell", "wm", "density"],
+                capture_output=True,
+            )
+            import re as _re
+
+            text = result.stdout.decode("utf-8", errors="ignore")
+            override = _re.search(r"Override density:\s*(\d+)", text)
+            if override:
+                return int(override.group(1))
+            physical = _re.search(r"Physical density:\s*(\d+)", text)
+            if physical:
+                return int(physical.group(1))
+        except Exception as e:
+            logger.debug(f"Failed to read display density: {e}")
+        return 160
     
     async def _setup_ime(self) -> None:
         """No IME setup required: text injection uses the Yadb tool

@@ -182,6 +182,7 @@ async def prepare_jev_planning_context(
     action_space: List[Any],
     conversation_history: Any,
     action_context: Optional[str] = None,
+    reference_images: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     screenshot = prepare_jev_image(get_screenshot_base64(context))
     state = {
@@ -195,7 +196,15 @@ async def prepare_jev_planning_context(
             for action in action_space
         ],
     }
-    return {"state": state, "images": {"screenshot": screenshot}}
+    images = {"screenshot": screenshot}
+    reference_keys = []
+    for _index, _url in enumerate(reference_images or []):
+        _key = f"reference_{_index}"
+        images[_key] = _url
+        reference_keys.append(_key)
+    if reference_keys:
+        state["referenceImages"] = reference_keys
+    return {"state": state, "images": images}
 
 
 async def decide_jev_action(
@@ -337,6 +346,7 @@ async def jev_plan(
     conversation_history: Any,
     include_locate_in_planning: bool = False,
     action_context: Optional[str] = None,
+    reference_images: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """Jev planning via System One choice questions."""
     if len(action_space) + 2 > 255:
@@ -351,6 +361,7 @@ async def jev_plan(
         action_space,
         conversation_history,
         action_context,
+        reference_images,
     )
     decision = await decide_jev_action(
         jev_context, model_runtime, action_space, include_locate_in_planning

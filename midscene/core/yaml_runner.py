@@ -117,15 +117,13 @@ def parse_yaml_script(content: str) -> Dict[str, Any]:
 
     # Upstream counts declared targets by presence, not truthiness, so an empty
     # `computer: {}` still conflicts with a web block.
-    declared = [
-        key
-        for key in ("web", "browser", "page", "target", "android", "computer")
-        if obj.get(key) is not None
-    ]
+    target_keys = (
+        "web", "browser", "page", "target",
+        "android", "ios", "harmony", "computer", "interface",
+    )
+    declared = [key for key in target_keys if obj.get(key) is not None]
     if len(declared) > 1:
-        raise ValueError(
-            "only one of web/browser/page/target/android/computer can be set"
-        )
+        raise ValueError(f"only one of {'/'.join(target_keys)} can be set")
 
     tasks = obj.get("tasks")
     if not tasks:
@@ -138,7 +136,7 @@ def parse_yaml_script(content: str) -> Dict[str, Any]:
         "config": obj.get("config") or {},
         "agent": obj.get("agent") or {},
     }
-    for key in ("web", "browser", "page", "target", "android", "computer"):
+    for key in target_keys:
         if obj.get(key) is not None:
             script[key] = obj[key]
     return script
@@ -172,8 +170,11 @@ class ScriptPlayer:
             for task in self.script["tasks"]:
                 name = task.get("name", "unnamed")
                 flow = task.get("flow") or []
+                execution_count_before = _execution_count(self.agent)
+                flow_index = 0
                 try:
                     for index, flow_item in enumerate(flow):
+                        flow_index = index
                         if not isinstance(flow_item, dict) or len(flow_item) == 0:
                             raise ValueError(
                                 f"invalid flow item at index {index} in task {name}"
@@ -187,6 +188,9 @@ class ScriptPlayer:
                 except Exception as e:
                     logger.error(f"task {name} failed: {e}")
                     self.failed_tasks.append({"name": name, "error": str(e)})
+                    await _record_yaml_task_error(
+                        self.agent, name, flow_index, e, execution_count_before
+                    )
                     if not task.get("continueOnError"):
                         self.status = "error"
                         break
@@ -344,6 +348,54 @@ class ScriptPlayer:
 
 
 _NO_RESULT = object()
+
+
+def _execution_count(agent: Any) -> int:
+    """Number of executions already recorded on the agent's report."""
+    builder = getattr(agent, "_report_builder", None)
+    if builder is None:
+        return 0
+    return len(builder.dump.get("executions") or [])
+
+
+def _has_failed_execution_since(agent: Any, execution_count_before: int) -> bool:
+    builder = getattr(agent, "_report_builder", None)
+    if builder is None:
+        return False
+    executions = builder.dump.get("executions") or []
+    for execution in executions[execution_count_before:]:
+        for task in execution.get("tasks") or []:
+            if task.get("status") == "failed":
+                return True
+    return False
+
+
+async def _record_yaml_task_error(
+    agent: Any,
+    task_name: str,
+    flow_index: int,
+    error: BaseException,
+    execution_count_before: int,
+) -> None:
+    """Mirror upstream recordYamlTaskError: log the failure unless a failed
+    execution was already recorded by the failing step."""
+    recorder = getattr(agent, "record_error_to_report", None)
+    if recorder is None or _has_failed_execution_since(agent, execution_count_before):
+        return
+    try:
+        await recorder(
+            f"YAML task failed - {task_name}",
+            {
+                "error": error,
+                "content": (
+                    f'Step {flow_index} failed while running YAML task "{task_name}".'
+                ),
+            },
+        )
+    except Exception as record_error:
+        logger.debug(f"failed to record yaml error to report: {record_error}")
+
+
 _INSIGHT_OPTION_KEYS = (
     "domIncluded",
     "screenshotIncluded",

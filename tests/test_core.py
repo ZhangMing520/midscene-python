@@ -1659,7 +1659,11 @@ class TestAiActExecutionDump:
             "midscene.core.ai_model.workflows.planning", planning_handler
         ):
             agent = Agent(
-                mock_interface, AgentOptions(model_config=self.MODEL_CONFIG)
+                mock_interface,
+                AgentOptions(
+                    model_config=self.MODEL_CONFIG,
+                    persist_execution_dump=True,
+                ),
             )
             assert await agent.ai_action("tap the test button") == "finished"
 
@@ -1704,7 +1708,11 @@ class TestAiActExecutionDump:
             },
         ):
             agent = Agent(
-                mock_interface, AgentOptions(model_config=self.MODEL_CONFIG)
+                mock_interface,
+                AgentOptions(
+                    model_config=self.MODEL_CONFIG,
+                    persist_execution_dump=True,
+                ),
             )
             with pytest.raises(AssertionError):
                 await agent.ai_action("do the impossible")
@@ -1734,7 +1742,11 @@ class TestAiActExecutionDump:
         )
         agent = Agent(
             mock_interface,
-            AgentOptions(cache_id="report-replay", model_config=self.MODEL_CONFIG),
+            AgentOptions(
+                cache_id="report-replay",
+                model_config=self.MODEL_CONFIG,
+                persist_execution_dump=True,
+            ),
         )
         agent._get_task_cache().append_plan_cache("cached prompt", yaml_workflow)
 
@@ -1823,6 +1835,7 @@ class TestAiActExecutionDump:
                     report_file_name="suite-report.html",
                     group_name="My Suite",
                     group_description="Regression run",
+                    persist_execution_dump=True,
                 ),
             )
             assert await agent.ai_action("custom report") == "done"
