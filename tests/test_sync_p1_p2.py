@@ -1033,5 +1033,14 @@ class TestStreamingGeneration:
         assert options == {"stream": True, "onChunk": callback}
 
 
+class TestGetActionSpace:
+    @pytest.mark.asyncio
+    async def test_get_action_space_matches_property(self):
+        """get_action_space() is the upstream getActionSpace() parity alias
+        of the action_space property and must not diverge from it."""
+        agent = _agent()
+        assert await agent.get_action_space() is agent.action_space
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

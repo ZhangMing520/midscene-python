@@ -533,9 +533,12 @@ class Agent:
 
     async def get_action_space(self) -> List[DeviceAction]:
         """Return the full device action space for this agent
-        (upstream `agent.getActionSpace()`)."""
-        return self.action_space
+        (upstream `agent.getActionSpace()`).
 
+        The sync spelling is the `action_space` property; this async method
+        exists only for upstream API parity and returns the same live list
+        the planning/dispatch path consumes — treat it as read-only."""
+        return self.action_space
 
     def _build_file_chooser_action(self) -> DeviceAction:
         """File-chooser action only exposed when the interface implements the
