@@ -819,7 +819,11 @@ async def call_generative_ai(
             if not current_key:
                 raise RuntimeError("Missing rejected SIWC access token")
             refreshed_key = await siwc_token_manager.refresh_access_token(
-                current_key
+                current_key,
+                {
+                    "httpProxy": model_config.get("httpProxy"),
+                    "socksProxy": model_config.get("socksProxy"),
+                },
             )
             siwc_refreshed = True
             headers["Authorization"] = f"Bearer {refreshed_key}"

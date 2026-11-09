@@ -115,9 +115,12 @@ class TestWebDriverAgentBackend:
 
     @pytest.mark.asyncio
     async def test_clear_active_element_refuses_unverified_clear(self):
-        """The field still reads its old text: typing would append to it."""
+        """A stale clear left the old text in place: typing would append to it."""
         backend, _ = _backend({
             "GET /session/X/element/active": {"value": {"ELEMENT": "e1"}},
+            "POST /session/X/element/e1/clear": WebDriverRequestError(
+                "stale", 500, "stale element reference"
+            ),
             "GET /session/X/element/e1/attribute/value": {"value": "old text"},
         })
         with pytest.raises(RuntimeError, match="refusing to append text"):
@@ -143,6 +146,133 @@ class TestWebDriverAgentBackend:
             ),
         })
         assert await backend.clear_active_element() is False
+
+    @pytest.mark.asyncio
+    async def test_clear_active_element_trusts_successful_clear_response(self):
+        """A successful clear proves the field was emptied even when the
+        accessibility value still reads the placeholder or stale text."""
+        backend, _ = _backend({
+            "GET /session/X/element/active": {"value": {"ELEMENT": "e1"}},
+            "GET /session/X/element/e1/attribute/value": {"value": "stale text"},
+        })
+        assert await backend.clear_active_element() is True
+
+    @pytest.mark.asyncio
+    async def test_clear_active_element_reacquires_stale_field_by_name(self):
+        """A stale clear/click re-identifies the unique same-named text input
+        before restoring focus (upstream identifiedInputs)."""
+        stale = WebDriverRequestError("stale", 500, "stale element reference")
+        backend, transport = _backend({
+            "GET /session/X/element/active": [
+                {"value": {"ELEMENT": "e1"}},
+                {"value": {"ELEMENT": "e2"}},
+                {"value": {"ELEMENT": "e2"}},
+            ],
+            "GET /session/X/element/e1/attribute/name": {"value": "Search"},
+            "GET /session/X/element/e1/attribute/type": {
+                "value": "XCUIElementTypeSearchField"
+            },
+            "POST /session/X/elements": [
+                {"value": [{"ELEMENT": "e1"}]},
+                {"value": [{"ELEMENT": "e2"}]},
+            ],
+            "POST /session/X/element/e1/clear": stale,
+            "POST /session/X/element/e1/click": stale,
+            "GET /session/X/element/e2/attribute/value": {"value": ""},
+        })
+        assert await backend.clear_active_element() is True
+        search = transport.calls_for("/elements")
+        assert search[0][2]["using"] == "predicate string"
+        assert 'name == "Search"' in search[0][2]["value"]
+        assert "name != label" in search[0][2]["value"]
+        assert 'type == "XCUIElementTypeSearchField"' in search[0][2]["value"]
+        assert transport.calls_for("/element/e2/click")
+
+    @pytest.mark.asyncio
+    async def test_clear_active_element_tolerates_failed_reidentify_lookup(self):
+        """Re-identification is a recovery hint: an unsupported predicate-string
+        search must not stop the clear from being attempted."""
+        backend, _ = _backend({
+            "GET /session/X/element/active": {"value": {"ELEMENT": "e1"}},
+            "GET /session/X/element/e1/attribute/name": {"value": "Search"},
+            "GET /session/X/element/e1/attribute/type": {
+                "value": "XCUIElementTypeSearchField"
+            },
+            "POST /session/X/elements": WebDriverRequestError(
+                "invalid selector", 500, "invalid selector"
+            ),
+        })
+        assert await backend.clear_active_element() is True
+
+    @pytest.mark.asyncio
+    async def test_clear_active_element_retries_clear_on_reacquired_field(self):
+        """A stale clear must be retried once on the re-identified element,
+        otherwise a field re-created with its old text can never be cleared."""
+        stale = WebDriverRequestError("stale", 500, "stale element reference")
+        backend, transport = _backend({
+            "GET /session/X/element/active": [
+                {"value": {"ELEMENT": "e1"}},
+                {"value": {"ELEMENT": "e2"}},
+                {"value": {"ELEMENT": "e2"}},
+                {"value": {"ELEMENT": "e2"}},
+            ],
+            "GET /session/X/element/e1/attribute/name": {"value": "Search"},
+            "GET /session/X/element/e1/attribute/type": {
+                "value": "XCUIElementTypeSearchField"
+            },
+            "POST /session/X/elements": [
+                {"value": [{"ELEMENT": "e1"}]},
+                {"value": [{"ELEMENT": "e2"}]},
+            ],
+            "POST /session/X/element/e1/clear": stale,
+            "POST /session/X/element/e1/click": stale,
+            "POST /session/X/element/e2/clear": {},
+            "GET /session/X/element/e2/attribute/value": {"value": "old text"},
+        })
+        assert await backend.clear_active_element() is True
+        assert len(transport.calls_for("/element/e1/clear")) == 1
+        assert len(transport.calls_for("/element/e2/clear")) == 1
+
+    @pytest.mark.asyncio
+    async def test_clear_active_element_refuses_ambiguous_reacquire(self):
+        stale = WebDriverRequestError("stale", 500, "stale element reference")
+        backend, _ = _backend({
+            "GET /session/X/element/active": [
+                {"value": {"ELEMENT": "e1"}},
+                {"value": {"ELEMENT": "e2"}},
+            ],
+            "GET /session/X/element/e1/attribute/name": {"value": "Search"},
+            "GET /session/X/element/e1/attribute/type": {
+                "value": "XCUIElementTypeSearchField"
+            },
+            "POST /session/X/elements": [
+                {"value": [{"ELEMENT": "e1"}]},
+                {"value": [{"ELEMENT": "e2"}, {"ELEMENT": "e3"}]},
+            ],
+            "POST /session/X/element/e1/clear": stale,
+            "POST /session/X/element/e1/click": stale,
+        })
+        with pytest.raises(RuntimeError, match="Cannot uniquely identify input"):
+            await backend.clear_active_element()
+
+    @pytest.mark.asyncio
+    async def test_clear_active_element_retries_ambiguous_placeholder(self):
+        stale = WebDriverRequestError("stale", 500, "stale element reference")
+        backend, transport = _backend({
+            "GET /session/X/element/active": {"value": {"ELEMENT": "e1"}},
+            "GET /session/X/element/e1/attribute/name": {"value": "Search"},
+            "GET /session/X/element/e1/attribute/type": {
+                "value": "XCUIElementTypeSearchField"
+            },
+            "POST /session/X/elements": {"value": [{"ELEMENT": "e1"}]},
+            "POST /session/X/element/e1/clear": [stale, {}],
+            "GET /session/X/element/e1/attribute/value": {"value": "Search"},
+            "GET /session/X/element/e1/attribute/placeholderValue": {
+                "value": "Search"
+            },
+        })
+        assert await backend.clear_active_element() is True
+        assert len(transport.calls_for("/element/e1/clear")) == 2
 
     @pytest.mark.asyncio
     async def test_swipe_uses_w3c_actions(self):

@@ -5,6 +5,7 @@ YAML runner, dump structure, connectivity, model fallback.
 """
 
 import asyncio
+import base64
 import json
 from typing import Any, Dict, List
 from unittest.mock import AsyncMock, patch
@@ -111,12 +112,14 @@ class TestJevWorkflows:
     async def test_jev_locate(self):
         from midscene.core.ai_model.workflows.jev import jev_locate
 
+        captured = {}
+
         async def fake_call_system_one(runtime, request):
+            captured.update(request)
             return {
                 "content": "raw",
                 "usage": None,
                 "answers": {
-                    "present": {"type": "noul", "noul": 0.95},
                     "target": {
                         "type": "box",
                         "box": {"left": 0.25, "top": 0.25, "right": 0.75, "bottom": 0.75},
@@ -135,9 +138,12 @@ class TestJevWorkflows:
             )
         # normalized 0-1 edges box on a 320x240 image
         assert result["locatedPixelResult"]["center"] == (160, 120)
+        # upstream #3347: no presence pre-check, only the target box question
+        assert set(captured["questions"]) == {"target"}
+        assert captured["state"]["references"] == []
 
     @pytest.mark.asyncio
-    async def test_jev_locate_not_present(self):
+    async def test_jev_locate_returns_box_without_presence_check(self):
         from midscene.core.ai_model.workflows.jev import jev_locate
 
         async def fake_call_system_one(runtime, request):
@@ -145,7 +151,6 @@ class TestJevWorkflows:
                 "content": "raw",
                 "usage": None,
                 "answers": {
-                    "present": {"type": "noul", "noul": 0.2},
                     "target": {
                         "type": "box",
                         "box": {"left": 0.1, "top": 0.1, "right": 0.5, "bottom": 0.5},
@@ -158,10 +163,114 @@ class TestJevWorkflows:
             new=fake_call_system_one,
         ):
             result = await jev_locate(
-                "missing", {"imageBase64": make_png_base64(), "width": 320, "height": 240}, None
+                "maybe missing",
+                {"imageBase64": make_png_base64(), "width": 320, "height": 240},
+                None,
             )
-        assert "errors" in result
-        assert "locatedPixelResult" not in result
+        assert "errors" not in result
+        assert result["locatedPixelResult"]["center"] == (96, 72)
+
+    @pytest.mark.asyncio
+    async def test_jev_locate_with_reference_images(self):
+        from midscene.core.ai_model.workflows.jev import jev_locate
+
+        captured = {}
+
+        async def fake_call_system_one(runtime, request):
+            captured.update(request)
+            return {
+                "content": "raw",
+                "usage": None,
+                "answers": {
+                    "target": {
+                        "type": "box",
+                        "box": {"left": 0.0, "top": 0.0, "right": 1.0, "bottom": 1.0},
+                    },
+                },
+            }
+
+        png = make_png_base64()
+        with patch(
+            "midscene.core.ai_model.workflows.jev.call_system_one",
+            new=fake_call_system_one,
+        ):
+            await jev_locate(
+                {"prompt": "the button", "images": [{"name": "ref", "url": png}]},
+                {"imageBase64": png, "width": 320, "height": 240},
+                None,
+            )
+        assert captured["state"]["references"] == [
+            {"image": "`reference_0`", "name": "ref"}
+        ]
+        assert "reference_0" in captured["images"]
+
+    @pytest.mark.asyncio
+    async def test_jev_locate_skips_reference_without_url(self):
+        from midscene.core.ai_model.workflows.jev import jev_locate
+
+        captured = {}
+
+        async def fake_call_system_one(runtime, request):
+            captured.update(request)
+            return {
+                "content": "raw",
+                "usage": None,
+                "answers": {
+                    "target": {
+                        "type": "box",
+                        "box": {"left": 0.0, "top": 0.0, "right": 1.0, "bottom": 1.0},
+                    },
+                },
+            }
+
+        with patch(
+            "midscene.core.ai_model.workflows.jev.call_system_one",
+            new=fake_call_system_one,
+        ):
+            await jev_locate(
+                {"prompt": "the button", "images": [{"name": "broken"}]},
+                {"imageBase64": make_png_base64(), "width": 320, "height": 240},
+                None,
+            )
+
+        assert captured["state"]["references"] == []
+        assert set(captured["images"]) == {"screenshot"}
+
+    @pytest.mark.asyncio
+    async def test_jev_locate_inlines_local_reference_path(self, tmp_path):
+        from midscene.core.ai_model.workflows.jev import jev_locate
+
+        captured = {}
+
+        async def fake_call_system_one(runtime, request):
+            captured.update(request)
+            return {
+                "content": "raw",
+                "usage": None,
+                "answers": {
+                    "target": {
+                        "type": "box",
+                        "box": {"left": 0.0, "top": 0.0, "right": 1.0, "bottom": 1.0},
+                    },
+                },
+            }
+
+        reference = tmp_path / "ref.png"
+        reference.write_bytes(base64.b64decode(make_png_base64()))
+        with patch(
+            "midscene.core.ai_model.workflows.jev.call_system_one",
+            new=fake_call_system_one,
+        ):
+            await jev_locate(
+                {"prompt": "the button", "images": [{"name": "ref", "url": str(reference)}]},
+                {"imageBase64": make_png_base64(), "width": 320, "height": 240},
+                None,
+            )
+
+        assert captured["state"]["references"] == [
+            {"image": "`reference_0`", "name": "ref"}
+        ]
+        assert captured["images"]["reference_0"].startswith("data:image/png")
 
     @pytest.mark.asyncio
     async def test_jev_boolean(self):
@@ -441,6 +550,332 @@ class TestDeepLocate:
         assert element["center"][0] > 0
         assert result["deep_locate"] is True
         assert result["search_area"] is not None
+
+
+class TestLocatePromptOrder:
+    def _input(self, references=None):
+        return {
+            "instructions": "rules",
+            "screenshot": "screen",
+            "task": "target",
+            "references": references or [],
+        }
+
+    def test_default_keeps_trailing_references(self):
+        from midscene.core.ai_model.locate_prompt_order import (
+            build_locate_messages,
+            parse_locate_prompt_order,
+        )
+
+        reference = {"role": "user", "content": "reference"}
+        assert build_locate_messages(
+            parse_locate_prompt_order(), self._input([reference])
+        ) == [
+            {"role": "system", "content": "rules"},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image", "url": "screen"},
+                    {"type": "text", "text": "target"},
+                ],
+            },
+            reference,
+        ]
+
+    def test_user_each_emits_separate_messages_and_skips_absent_references(self):
+        from midscene.core.ai_model.locate_prompt_order import (
+            build_locate_messages,
+            parse_locate_prompt_order,
+        )
+
+        for layout in (
+            "userEach(screenshot:instructions:task:references)",
+            "userEach(screenshot:instructions:references:task)",
+        ):
+            assert build_locate_messages(
+                parse_locate_prompt_order(layout), self._input()
+            ) == [
+                {"role": "user", "content": [{"type": "image", "url": "screen"}]},
+                {"role": "user", "content": "rules"},
+                {"role": "user", "content": "target"},
+            ]
+
+    def test_preserves_reference_boundaries_in_the_middle(self):
+        from midscene.core.ai_model.locate_prompt_order import (
+            build_locate_messages,
+            parse_locate_prompt_order,
+        )
+
+        reference = {"role": "user", "content": "reference"}
+        assert build_locate_messages(
+            parse_locate_prompt_order(
+                "userEach(screenshot:references:instructions:task)"
+            ),
+            self._input([reference]),
+        ) == [
+            {"role": "user", "content": [{"type": "image", "url": "screen"}]},
+            reference,
+            {"role": "user", "content": "rules"},
+            {"role": "user", "content": "target"},
+        ]
+
+    def test_flattens_reference_blocks_and_keeps_group_boundaries(self):
+        from midscene.core.ai_model.locate_prompt_order import (
+            build_locate_messages,
+            parse_locate_prompt_order,
+        )
+
+        reference = {"role": "user", "content": "reference"}
+        reference_image = {"role": "user", "content": [{"type": "image", "url": "ref"}]}
+        assert build_locate_messages(
+            parse_locate_prompt_order(
+                "userTogether(screenshot):userTogether(instructions:references:task)"
+            ),
+            self._input([reference, reference_image]),
+        ) == [
+            {"role": "user", "content": [{"type": "image", "url": "screen"}]},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "rules"},
+                    {"type": "text", "text": "reference"},
+                    {"type": "image", "url": "ref"},
+                    {"type": "text", "text": "target"},
+                ],
+            },
+        ]
+
+    def test_skips_empty_references_only_group(self):
+        from midscene.core.ai_model.locate_prompt_order import (
+            build_locate_messages,
+            parse_locate_prompt_order,
+        )
+
+        assert build_locate_messages(
+            parse_locate_prompt_order(
+                "userEach(instructions):userTogether(references):"
+                "userTogether(task:screenshot)"
+            ),
+            self._input(),
+        ) == [
+            {"role": "user", "content": "rules"},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "target"},
+                    {"type": "image", "url": "screen"},
+                ],
+            },
+        ]
+
+    def test_system_can_hold_the_task(self):
+        from midscene.core.ai_model.locate_prompt_order import (
+            build_locate_messages,
+            parse_locate_prompt_order,
+        )
+
+        assert build_locate_messages(
+            parse_locate_prompt_order(
+                "system(task):userTogether(screenshot:instructions):"
+                "userEach(references)"
+            ),
+            self._input(),
+        ) == [
+            {"role": "system", "content": "target"},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image", "url": "screen"},
+                    {"type": "text", "text": "rules"},
+                ],
+            },
+        ]
+
+    def test_preserves_text_order_and_system_positions(self):
+        from midscene.core.ai_model.locate_prompt_order import (
+            build_locate_messages,
+            parse_locate_prompt_order,
+        )
+
+        for parts, content in (
+            ("instructions:task", "rules\n\ntarget"),
+            ("task:instructions", "target\n\nrules"),
+        ):
+            assert build_locate_messages(
+                parse_locate_prompt_order(
+                    f"system({parts}):userEach(screenshot:references)"
+                ),
+                self._input(),
+            ) == [
+                {"role": "system", "content": content},
+                {"role": "user", "content": [{"type": "image", "url": "screen"}]},
+            ]
+
+        reference = {"role": "user", "content": "reference"}
+        assert build_locate_messages(
+            parse_locate_prompt_order(
+                "userEach(screenshot):system(task):userEach(references):"
+                "system(instructions)"
+            ),
+            self._input([reference]),
+        ) == [
+            {"role": "user", "content": [{"type": "image", "url": "screen"}]},
+            {"role": "system", "content": "target"},
+            reference,
+            {"role": "system", "content": "rules"},
+        ]
+
+    @pytest.mark.parametrize("part", ["screenshot", "references"])
+    def test_rejects_image_parts_in_system(self, part):
+        from midscene.core.ai_model.locate_prompt_order import (
+            parse_locate_prompt_order,
+        )
+
+        with pytest.raises(
+            ValueError, match=f'system cannot contain image part "{part}"'
+        ):
+            parse_locate_prompt_order(f"system({part}):userEach(instructions:task)")
+
+    @pytest.mark.parametrize(
+        "order",
+        [
+            "userEach(screenshot):userTogether(task:references:screenshot)",
+            "system(task):userEach(instructions:task:screenshot:references)",
+            "system(instructions):system(instructions):"
+            "userEach(task:screenshot:references)",
+            "system():userEach(instructions:task:screenshot:references)",
+            "userEach():userTogether(instructions:task:references:screenshot)",
+            "userEach(screenshot:task:references)",
+            "userEach(instructions:task:references:task)",
+            "userEach(instructions:screenshot:task:other)",
+        ],
+    )
+    def test_rejects_invalid_orders(self, order):
+        from midscene.core.ai_model.locate_prompt_order import (
+            parse_locate_prompt_order,
+        )
+
+        with pytest.raises(ValueError, match="Invalid locate promptOrder"):
+            parse_locate_prompt_order(order)
+
+    @pytest.mark.asyncio
+    async def test_element_locate_respects_prompt_order(self, mock_interface):
+        from midscene.core.ai_model.adapters import ModelAdapter, ModelRuntime
+        from midscene.core.ai_model.workflows import ai_locate_element
+
+        captured = {}
+
+        async def handler(messages, runtime, options=None):
+            captured["messages"] = messages
+            return {"content": '{"bbox": [100, 100, 199, 199]}', "usage": None}
+
+        adapter = ModelAdapter(
+            "test-prompt-first",
+            locate_prompt_order=(
+                "system(instructions):userEach(task:screenshot:references)"
+            ),
+        )
+        runtime = ModelRuntime(
+            {
+                "modelName": "mock-model",
+                "modelFamily": "qwen2.5-vl",
+                "retryCount": 0,
+                "retryInterval": 0,
+            },
+            adapter,
+        )
+        with patch_model_call(
+            "midscene.core.ai_model.workflows.grounding", handler
+        ):
+            context = await mock_interface.get_context()
+            await ai_locate_element("the Submit button", context, runtime)
+
+        messages = captured["messages"]
+        assert [message["role"] for message in messages] == [
+            "system",
+            "user",
+            "user",
+        ]
+        assert "the Submit button" in messages[1]["content"]
+        assert messages[2]["content"][0]["type"] == "image"
+
+    @pytest.mark.asyncio
+    async def test_section_locate_respects_prompt_order(self, mock_interface):
+        from midscene.core.ai_model.adapters import ModelAdapter, ModelRuntime
+        from midscene.core.ai_model.workflows.locate_service import (
+            ai_locate_section,
+        )
+
+        captured = {}
+
+        async def handler(messages, runtime, options=None):
+            captured["messages"] = messages
+            return {"content": '{"bbox": [0, 0, 500, 500]}', "usage": None}
+
+        adapter = ModelAdapter(
+            "test-prompt-first",
+            locate_prompt_order=(
+                "system(instructions):userEach(task:screenshot:references)"
+            ),
+        )
+        runtime = ModelRuntime(
+            {
+                "modelName": "mock-model",
+                "modelFamily": "gpt-5",
+                "retryCount": 0,
+                "retryInterval": 0,
+            },
+            adapter,
+        )
+        with patch_model_call(
+            "midscene.core.ai_model.workflows.locate_service", handler
+        ):
+            context = await mock_interface.get_context()
+            await ai_locate_section(context, "the row containing Apollo", runtime)
+
+        messages = captured["messages"]
+        assert [message["role"] for message in messages] == [
+            "system",
+            "user",
+            "user",
+        ]
+        assert "the row containing Apollo" in messages[1]["content"]
+        assert messages[2]["content"][0]["type"] == "image"
+
+    @pytest.mark.asyncio
+    async def test_element_locate_appends_reference_images(self, mock_interface):
+        from midscene.core.ai_model.workflows import ai_locate_element
+
+        captured = {}
+
+        async def handler(messages, runtime, options=None):
+            captured["messages"] = messages
+            return {"content": '{"bbox": [100, 100, 199, 199]}', "usage": None}
+
+        png = "data:image/png;base64," + make_png_base64()
+        with patch_model_call(
+            "midscene.core.ai_model.workflows.grounding", handler
+        ):
+            context = await mock_interface.get_context()
+            await ai_locate_element(
+                {
+                    "prompt": "the Submit button",
+                    "images": [{"name": "ref", "url": png}],
+                },
+                context,
+                _make_runtime(modelFamily="qwen2.5-vl"),
+            )
+
+        messages = captured["messages"]
+        assert messages[0]["role"] == "system"
+        assert messages[1]["role"] == "user"
+        reference_messages = messages[2:]
+        assert "reference images" in reference_messages[0]["content"][0]["text"]
+        assert "named 'ref'" in reference_messages[1]["content"][0]["text"]
+        assert reference_messages[2]["content"][0] == {
+            "type": "image",
+            "url": png,
+        }
 
 
 def _make_runtime(**overrides):
@@ -803,6 +1238,222 @@ class TestSiwc:
         with pytest.raises(Exception):
             parse_siwc_callback(callback_url, attempt)
 
+    def test_resolve_proxy_precedence(self, monkeypatch):
+        from midscene.core.ai_model.siwc import _siwc_proxy
+
+        # Explicit config wins over the environment; HTTP beats SOCKS.
+        monkeypatch.setenv("MIDSCENE_MODEL_HTTP_PROXY", "http://env:8080")
+        monkeypatch.setenv("MIDSCENE_MODEL_SOCKS_PROXY", "socks5://env:1080")
+        assert (
+            _siwc_proxy({"httpProxy": "http://explicit:1", "socksProxy": None})
+            == "http://explicit:1"
+        )
+        assert _siwc_proxy({"httpProxy": None, "socksProxy": "socks5://s:2"}) == (
+            "socks5://s:2"
+        )
+        # An explicit (even empty) config disables the env fallback, like upstream.
+        assert _siwc_proxy({}) is None
+        # No config at all resolves from the environment.
+        assert _siwc_proxy() == "http://env:8080"
+        monkeypatch.setenv("MIDSCENE_MODEL_HTTP_PROXY", "  ")
+        assert _siwc_proxy() == "socks5://env:1080"
+
+    @pytest.mark.asyncio
+    async def test_refresh_request_uses_configured_proxy(self):
+        from midscene.core.ai_model import siwc
+
+        captured: Dict[str, Any] = {}
+
+        class _Client:
+            def __init__(self, **kwargs):
+                captured.update(kwargs)
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                return False
+
+            async def post(self, *args, **kwargs):
+                return FakeResponse(
+                    {
+                        "access_token": "new-access",
+                        "refresh_token": "new-refresh",
+                        "expires_in": 3600,
+                        "token_type": "Bearer",
+                        "scope": "chatgpt.tokens.use.direct",
+                    }
+                )
+
+        with patch.object(siwc.httpx, "AsyncClient", _Client):
+            refreshed = await siwc.refresh_siwc_credentials(
+                {
+                    "client_id": "client-1",
+                    "refresh_token": "refresh-1",
+                    "subject": "subject-1",
+                },
+                {"httpProxy": "http://proxy:8080", "socksProxy": None},
+            )
+
+        assert captured["proxy"] == "http://proxy:8080"
+        assert refreshed["access_token"] == "new-access"
+
+    @pytest.mark.asyncio
+    async def test_refresh_request_falls_back_to_env_proxy(self, monkeypatch):
+        from midscene.core.ai_model import siwc
+
+        monkeypatch.setenv("MIDSCENE_MODEL_HTTP_PROXY", "http://env:8080")
+        monkeypatch.delenv("MIDSCENE_MODEL_SOCKS_PROXY", raising=False)
+        captured: Dict[str, Any] = {}
+
+        class _Client:
+            def __init__(self, **kwargs):
+                captured.update(kwargs)
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                return False
+
+            async def post(self, *args, **kwargs):
+                return FakeResponse(
+                    {
+                        "access_token": "new-access",
+                        "refresh_token": "new-refresh",
+                        "expires_in": 3600,
+                        "token_type": "Bearer",
+                        "scope": "chatgpt.tokens.use.direct",
+                    }
+                )
+
+        with patch.object(siwc.httpx, "AsyncClient", _Client):
+            await siwc.refresh_siwc_credentials(
+                {"client_id": "client-1", "refresh_token": "refresh-1"}
+            )
+
+        assert captured["proxy"] == "http://env:8080"
+
+    @pytest.mark.asyncio
+    async def test_jwks_fetched_once_and_reused(self, monkeypatch):
+        from midscene.core.ai_model import siwc
+
+        calls = []
+        keys = [object()]
+
+        async def fake_fetch(proxy=None):
+            calls.append(proxy)
+            return keys
+
+        monkeypatch.setattr(siwc, "_fetch_jwks", fake_fetch)
+        monkeypatch.setattr(siwc, "_jwks_cache", None)
+        assert await siwc._load_jwks(None) == keys
+        # Cached keys are proxy-independent, so the second load is free.
+        assert await siwc._load_jwks({"httpProxy": "http://proxy:8080"}) == keys
+        assert len(calls) == 1
+
+    @pytest.mark.asyncio
+    async def test_jwks_force_refetch_replaces_cache(self, monkeypatch):
+        from midscene.core.ai_model import siwc
+
+        rotated = [object(), object()]
+        calls = []
+
+        async def fake_fetch(proxy=None):
+            calls.append(proxy)
+            return rotated if len(calls) > 1 else [rotated[0]]
+
+        monkeypatch.setattr(siwc, "_fetch_jwks", fake_fetch)
+        monkeypatch.setattr(siwc, "_jwks_cache", None)
+        assert await siwc._load_jwks(None) == [rotated[0]]
+        assert await siwc._load_jwks(None, force=True) == rotated
+        assert await siwc._load_jwks(None) == rotated
+        assert len(calls) == 2
+
+    @pytest.mark.asyncio
+    async def test_token_manager_threads_proxy_into_refresh(self):
+        from midscene.core.ai_model import siwc
+
+        record = {
+            "credentials": {
+                "access_token": "old",
+                "client_id": "client-1",
+                "refresh_token": "refresh-1",
+            }
+        }
+        refresh = AsyncMock(return_value={**record["credentials"], "access_token": "new"})
+        manager = siwc.SiwcTokenManager()
+        proxy = {"httpProxy": "http://proxy:8080", "socksProxy": None}
+
+        with patch.object(siwc, "_read_credentials", lambda: record), patch.object(
+            siwc, "_save_credentials", lambda _record: None
+        ), patch.object(siwc, "refresh_siwc_credentials", refresh):
+            token = await manager.refresh_access_token("old", proxy)
+
+        assert token == "new"
+        refresh.assert_awaited_once_with(record["credentials"], proxy)
+
+    @pytest.mark.asyncio
+    async def test_exchange_uses_configured_proxy(self):
+        from midscene.core.ai_model import siwc
+
+        captured: Dict[str, Any] = {}
+
+        class _Client:
+            def __init__(self, **kwargs):
+                captured.update(kwargs)
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                return False
+
+            async def post(self, *args, **kwargs):
+                return FakeResponse(
+                    {
+                        "access_token": "access",
+                        "refresh_token": "refresh",
+                        "id_token": "id-token",
+                        "expires_in": 3600,
+                        "token_type": "Bearer",
+                        "scope": "chatgpt.tokens.use.direct",
+                    }
+                )
+
+        attempt = {
+            "host_id": "urn:uuid:host",
+            "redirect_uri": "http://127.0.0.1:9999/auth/callback",
+            "nonce": "nonce-1",
+            "verifier": "verifier-1",
+        }
+        verify = AsyncMock(
+            return_value={"sub": "subject-1", "nonce": "nonce-1", "email": "a@b.c"}
+        )
+        with patch.object(siwc.httpx, "AsyncClient", _Client), patch.object(
+            siwc, "_verify_id_token", verify
+        ):
+            credentials = await siwc.exchange_siwc_code(
+                attempt,
+                {"code": "code-1", "client_id": "client-1"},
+                {"httpProxy": "http://proxy:8080", "socksProxy": None},
+            )
+
+        assert captured["proxy"] == "http://proxy:8080"
+        assert credentials["subject"] == "subject-1"
+
+    def test_public_entry_reexports_existing_implementation(self):
+        import midscene.siwc as public
+        from midscene.core.ai_model import siwc as internals
+
+        assert public.refresh_siwc_credentials is internals.refresh_siwc_credentials
+        assert public.create_siwc_authorization is internals.create_siwc_authorization
+        assert public.exchange_siwc_code is internals.exchange_siwc_code
+        assert public.parse_siwc_callback is internals.parse_siwc_callback
+        error = public.SiwcError("fixture")
+        assert type(error).__name__ == "SiwcError"
+        assert isinstance(error, internals.SiwcError)
+
 
 # ---------------------------------------------------------------------------
 # Caller / adapter / prompt parity regressions
@@ -858,6 +1509,7 @@ class TestCallerParity:
                 {
                     "modelName": "mock-model",
                     "openaiApiKey": "old-token",
+                    "httpProxy": "http://model-proxy:3128",
                     "retryCount": 0,
                     "retryInterval": 0,
                 }
@@ -867,7 +1519,10 @@ class TestCallerParity:
             )
 
         assert result["content"] == "ok"
-        refresh.assert_awaited_once_with("old-token")
+        refresh.assert_awaited_once_with(
+            "old-token",
+            {"httpProxy": "http://model-proxy:3128", "socksProxy": None},
+        )
 
     @pytest.mark.asyncio
     async def test_timeout_passed_to_httpx_in_seconds(self):
@@ -1103,6 +1758,30 @@ class TestActionSpaceParity:
             "AndroidHomeButton",
             "AndroidRecentAppsButton",
         } <= names
+
+    def test_scroll_action_descriptions_match_upstream(self):
+        from midscene.core.actions import build_android_action_space
+
+        scroll = next(
+            action
+            for action in build_android_action_space()
+            if action.name == "Scroll"
+        )
+        assert "browse content outside the current viewport" in scroll.description
+        assert "scrollToBottom/scrollToTop" in scroll.description
+        locate_description = scroll.param_schema["locate"]["description"]
+        assert (
+            'Do NOT provide a general intent like "scroll to find some element"'
+            in locate_description
+        )
+        assert (
+            "screen-coordinate units"
+            in scroll.param_schema["distance"]["description"]
+        )
+        assert (
+            "Only effective when scrollType"
+            in scroll.param_schema["direction"]["description"]
+        )
 
     @pytest.mark.asyncio
     async def test_scroll_drops_unsupported_kwargs(self):

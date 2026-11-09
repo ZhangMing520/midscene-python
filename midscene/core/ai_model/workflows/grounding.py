@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional
 from loguru import logger
 
 from ..caller import AIResponseParseError, call_generative_ai
+from ..locate_prompt_order import build_locate_messages, multimodal_prompt_to_messages
 from ..prompts.locate import build_element_locate_system_prompt
 from ..semantic_retry import call_ai_and_parse_with_retry, with_semantic_retry_feedback
 from ..adapters import ModelRuntime
@@ -43,6 +44,35 @@ async def ai_locate_element(
         }
 
     adapter = model_runtime.adapter
+    if adapter.locate_kind == "custom":
+        if adapter.locate_fn is None:
+            raise ValueError(
+                f"Custom locate adapter {adapter.family} has no locate_fn bound"
+            )
+        response = await adapter.locate_fn(
+            target_element_description=target_element_description,
+            locate_image=locate_image,
+            model_runtime=model_runtime,
+        )
+        located = response.get("locatedPixelResult")
+        element = None
+        if located and located.get("center"):
+            element = {
+                "center": located["center"],
+                "rect": located.get("rect"),
+                "description": description_text,
+            }
+        return {
+            "parse_result": {
+                "element": element,
+                "errors": response.get("errors") or [],
+            },
+            "raw_response": response.get("raw_response"),
+            "usage": response.get("usage"),
+            "reasoning_content": response.get("reasoningContent")
+            or response.get("reasoning_content"),
+        }
+
     protocol = adapter.locate_protocol["element"]
     result_codec = adapter.locate_result_codec
 
@@ -65,19 +95,15 @@ async def ai_locate_element(
         ),
     )
 
-    messages = [
-        {"role": "system", "content": system_prompt},
+    messages = build_locate_messages(
+        adapter.locate_prompt_order,
         {
-            "role": "user",
-            "content": [
-                {
-                    "type": "image",
-                    "url": prepared_image["image_base64"],
-                },
-                {"type": "text", "text": user_instruction_prompt},
-            ],
+            "instructions": system_prompt,
+            "screenshot": prepared_image["image_base64"],
+            "task": user_instruction_prompt,
+            "references": multimodal_prompt_to_messages(target_element_description),
         },
-    ]
+    )
 
     def build_base(
         raw_response: str,

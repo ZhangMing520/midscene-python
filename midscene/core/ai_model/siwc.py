@@ -12,7 +12,7 @@ import os
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, TypedDict
 from urllib.parse import urlencode, urlparse
 
 import httpx
@@ -20,7 +20,6 @@ from loguru import logger
 
 try:
     import jwt as pyjwt
-    from jwt import PyJWKClient
 
     _HAS_PYJWT = True
 except ImportError:  # pragma: no cover
@@ -37,8 +36,38 @@ REAUTHORIZATION_HINT = (
 )
 
 
+def _siwc_proxy(
+    proxy: Optional[Dict[str, Optional[str]]] = None,
+) -> Optional[str]:
+    """Resolve the proxy for SIWC requests (upstream fetchSiwc).
+
+    Explicit ``{"httpProxy", "socksProxy"}`` config wins over
+    MIDSCENE_MODEL_HTTP_PROXY / MIDSCENE_MODEL_SOCKS_PROXY; an HTTP proxy
+    takes precedence over a SOCKS proxy."""
+    if proxy is None:
+        proxy = {
+            "httpProxy": (os.environ.get("MIDSCENE_MODEL_HTTP_PROXY") or "").strip()
+            or None,
+            "socksProxy": (os.environ.get("MIDSCENE_MODEL_SOCKS_PROXY") or "").strip()
+            or None,
+        }
+    return proxy.get("httpProxy") or proxy.get("socksProxy") or None
+
+
 class SiwcError(Exception):
     pass
+
+
+class SiwcLoginAttempt(TypedDict):
+    """Pending OAuth login state (upstream SiwcLoginAttempt)."""
+
+    host_id: str
+    redirect_uri: str
+    client_id: Optional[str]
+    state: str
+    nonce: str
+    verifier: str
+    expires_at: float
 
 
 class SiwcTokenExpiredError(Exception):
@@ -93,19 +122,72 @@ async def _token_response_error(response: httpx.Response) -> SiwcError:
     )
 
 
-def _verify_id_token(id_token: str, audience: str, required_claims: Tuple[str, ...]):
+_JWKS_TTL_SECONDS = 3600.0
+_jwks_cache: Optional[Dict[str, Any]] = None
+
+
+def _select_jwk(keys: List[Any], kid: Optional[str]) -> List[Any]:
+    if kid:
+        return [key for key in keys if key.key_id == kid]
+    # Without a kid only a single-key set is unambiguous.
+    return list(keys) if len(keys) == 1 else []
+
+
+async def _fetch_jwks(
+    proxy: Optional[Dict[str, Optional[str]]] = None,
+) -> List[Any]:
+    async with httpx.AsyncClient(
+        timeout=30.0, proxy=_siwc_proxy(proxy)
+    ) as client:
+        jwks_response = await client.get(
+            f"{ISSUER}/.well-known/jwks.json", follow_redirects=False
+        )
+    if jwks_response.status_code >= 400:
+        raise SiwcError(
+            f"Failed to fetch OpenAI JWKS: HTTP {jwks_response.status_code}"
+        )
+    return pyjwt.PyJWKSet.from_dict(jwks_response.json()).keys
+
+
+async def _load_jwks(
+    proxy: Optional[Dict[str, Optional[str]]] = None,
+    force: bool = False,
+) -> List[Any]:
+    """Signing keys from the JWKS, cached like PyJWKClient did."""
+    global _jwks_cache
+    if not force and _jwks_cache is not None:
+        if time.time() - _jwks_cache["fetched_at"] <= _JWKS_TTL_SECONDS:
+            return _jwks_cache["keys"]
+    keys = await _fetch_jwks(proxy)
+    _jwks_cache = {"fetched_at": time.time(), "keys": keys}
+    return keys
+
+
+async def _verify_id_token(
+    id_token: str,
+    audience: str,
+    required_claims: Tuple[str, ...],
+    proxy: Optional[Dict[str, Optional[str]]] = None,
+):
     if not _HAS_PYJWT:
         logger.warning(
             "PyJWT is not installed; skipping SIWC id-token signature verification"
         )
         return {}
     try:
-        jwks_client = PyJWKClient(f"{ISSUER}/.well-known/jwks.json")
-        signing_key = jwks_client.get_signing_key_from_jwt(id_token)
+        kid = pyjwt.get_unverified_header(id_token).get("kid")
+        keys = await _load_jwks(proxy)
+        candidates = _select_jwk(keys, kid)
+        if not candidates and kid:
+            # The signing key may have rotated since the cache was filled.
+            keys = await _load_jwks(proxy, force=True)
+            candidates = _select_jwk(keys, kid)
+        if not candidates:
+            raise SiwcError("No matching signing key in OpenAI JWKS.")
         # clockTolerance=inf upstream: CI machines may have skewed clocks.
         payload = pyjwt.decode(
             id_token,
-            signing_key.key,
+            candidates[0].key,
             algorithms=["RS256"],
             issuer=ISSUER,
             audience=audience,
@@ -124,13 +206,18 @@ def _verify_id_token(id_token: str, audience: str, required_claims: Tuple[str, .
 # Refresh (refresh.ts)
 # ---------------------------------------------------------------------------
 
-async def refresh_siwc_credentials(saved: Dict[str, Any]) -> Dict[str, Any]:
+async def refresh_siwc_credentials(
+    saved: Dict[str, Any],
+    proxy: Optional[Dict[str, Optional[str]]] = None,
+) -> Dict[str, Any]:
     client_id = saved.get("client_id")
     refresh_token = saved.get("refresh_token")
     if not client_id or not refresh_token:
         raise SiwcError("Missing client ID or refresh token.")
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(
+        timeout=30.0, proxy=_siwc_proxy(proxy)
+    ) as client:
         try:
             response = await client.post(
                 f"{ISSUER}/api/accounts/oauth/token",
@@ -170,7 +257,9 @@ async def refresh_siwc_credentials(saved: Dict[str, Any]) -> Dict[str, Any]:
     if tokens.get("id_token") is not None:
         if not isinstance(tokens["id_token"], str) or not tokens["id_token"]:
             raise SiwcError("Invalid refreshed ID token.")
-        payload = _verify_id_token(tokens["id_token"], client_id, ("sub", "exp", "iat"))
+        payload = await _verify_id_token(
+            tokens["id_token"], client_id, ("sub", "exp", "iat"), proxy
+        )
         if payload and payload.get("sub") != saved.get("subject"):
             raise SiwcError("Refreshed identity does not match the saved account.")
 
@@ -195,23 +284,31 @@ class SiwcTokenManager:
         # Let the server reject expired tokens instead of trusting local clocks.
         return record["credentials"]["access_token"]
 
-    def refresh_access_token(self, previous_access_token: str) -> "asyncio.Task":
+    def refresh_access_token(
+        self,
+        previous_access_token: str,
+        proxy: Optional[Dict[str, Optional[str]]] = None,
+    ) -> "asyncio.Task":
         if self._pending_refresh is None:
             self._pending_refresh = asyncio.create_task(
-                self._refresh_and_save(previous_access_token)
+                self._refresh_and_save(previous_access_token, proxy)
             )
             self._pending_refresh.add_done_callback(
                 lambda _t: setattr(self, "_pending_refresh", None)
             )
         return self._pending_refresh
 
-    async def _refresh_and_save(self, previous_access_token: str) -> str:
+    async def _refresh_and_save(
+        self,
+        previous_access_token: str,
+        proxy: Optional[Dict[str, Optional[str]]] = None,
+    ) -> str:
         record = await asyncio.to_thread(_read_credentials)
         saved = record.get("credentials", {})
         if saved.get("access_token") != previous_access_token:
             return saved["access_token"]
         try:
-            credentials = await refresh_siwc_credentials(saved)
+            credentials = await refresh_siwc_credentials(saved, proxy)
         except Exception as cause:
             raise SiwcError(
                 f"Unable to refresh SIWC credentials: {cause} {REAUTHORIZATION_HINT}"
@@ -334,10 +431,14 @@ def parse_siwc_callback(callback_url: str, attempt: Dict[str, Any]) -> Optional[
 
 
 async def exchange_siwc_code(
-    attempt: Dict[str, Any], callback: Dict[str, str]
+    attempt: Dict[str, Any],
+    callback: Dict[str, str],
+    proxy: Optional[Dict[str, Optional[str]]] = None,
 ) -> Dict[str, Any]:
     """Exchange the OAuth code for tokens and verify the ID token."""
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(
+        timeout=30.0, proxy=_siwc_proxy(proxy)
+    ) as client:
         try:
             response = await client.post(
                 f"{ISSUER}/api/accounts/oauth/token",
@@ -374,8 +475,11 @@ async def exchange_siwc_code(
     if "chatgpt.tokens.use.direct" not in scopes:
         raise SiwcError("ChatGPT plan usage was not authorized.")
 
-    payload = _verify_id_token(
-        tokens["id_token"], callback["client_id"], ("sub", "exp", "iat", "nonce")
+    payload = await _verify_id_token(
+        tokens["id_token"],
+        callback["client_id"],
+        ("sub", "exp", "iat", "nonce"),
+        proxy,
     )
     if payload.get("nonce") != attempt["nonce"] or not payload.get("sub"):
         raise SiwcError("OpenAI login identity or nonce did not match.")
@@ -395,6 +499,7 @@ async def exchange_siwc_code(
 
 __all__ = [
     "SiwcError",
+    "SiwcLoginAttempt",
     "SiwcTokenExpiredError",
     "siwc_token_manager",
     "prepare_siwc_call",

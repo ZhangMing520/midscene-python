@@ -13,15 +13,32 @@ from typing import Any, Dict, Optional, Sequence
 
 
 def extract_json_from_code_block(response: str) -> str:
-    """Extract the JSON portion from a model response."""
+    """Extract the JSON portion from a model response.
+
+    Keep array boundaries intact, including when the contents need repair.
+    For prose mixed with JSON, fall back to extracting the first through last
+    object brace; arbitrary prose with arrays is not a supported format.
+    """
     try:
-        json_match = re.match(r"^\s*(\{[\s\S]*\})\s*$", response)
+        json.loads(response)
+        return response.strip()
+    except ValueError:
+        # Invalid JSON may still be recoverable after extraction and repair.
+        pass
+
+    try:
+        json_match = re.match(r"^\s*(\{[\s\S]*\}|\[[\s\S]*\])\s*$", response)
         if json_match:
             return json_match.group(1)
 
-        code_block_match = re.search(r"```(?:json)?\s*(\{[\s\S]*?\})\s*```", response)
-        if code_block_match:
-            return code_block_match.group(1)
+        # Only a fenced block that starts with JSON wins: a model may echo a
+        # code sample (e.g. ```python) before the actual JSON payload.
+        for code_block_match in re.finditer(
+            r"```(?:json)?\s*([\s\S]*?)\s*```", response, re.IGNORECASE
+        ):
+            fenced = code_block_match.group(1).strip()
+            if fenced[:1] in ("{", "["):
+                return fenced
 
         json_like_match = re.search(r"\{[\s\S]*\}", response)
         if json_like_match:

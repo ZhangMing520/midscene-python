@@ -801,8 +801,11 @@ class TestFileChooser:
 
         signal = AbortSignal()
         signal.abort("user cancelled")
-        with pytest.raises(AbortError, match="aiAct aborted: user cancelled"):
+        with pytest.raises(
+            AbortError, match="Operation interrupted by an external abort signal"
+        ) as excinfo:
             await _agent().ai_act("run", {"abortSignal": signal})
+        assert "Reason: user cancelled" in str(excinfo.value)
 
     @pytest.mark.asyncio
     async def test_asyncio_event_signal_aborted(self):
@@ -810,7 +813,9 @@ class TestFileChooser:
 
         event = asyncio.Event()
         event.set()
-        with pytest.raises(AbortError, match="aiAct aborted"):
+        with pytest.raises(
+            AbortError, match="Operation interrupted by an external abort signal"
+        ):
             await _agent().ai_act("run", {"abortSignal": event})
 
 

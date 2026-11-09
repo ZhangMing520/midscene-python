@@ -11,6 +11,7 @@ from loguru import logger
 from ..adapters import ModelRuntime
 from ..caller import AIResponseParseError, call_generative_ai
 from ..env_config import model_family_required_for_locate_message
+from ..locate_prompt_order import build_locate_messages, multimodal_prompt_to_messages
 from ..prompts.locate import build_search_area_locate_system_prompt
 from ..semantic_retry import call_ai_and_parse_with_retry, with_semantic_retry_feedback
 from .context_utils import (
@@ -64,16 +65,15 @@ async def ai_locate_section(
         ),
     )
 
-    messages = [
-        {"role": "system", "content": system_prompt},
+    messages = build_locate_messages(
+        adapter.locate_prompt_order,
         {
-            "role": "user",
-            "content": [
-                {"type": "image", "url": prepared_image["image_base64"]},
-                {"type": "text", "text": user_instruction_prompt},
-            ],
+            "instructions": system_prompt,
+            "screenshot": prepared_image["image_base64"],
+            "task": user_instruction_prompt,
+            "references": multimodal_prompt_to_messages(section_description),
         },
-    ]
+    )
 
     def parse_response(response: Dict[str, Any]) -> Dict[str, Any]:
         raw_response = response["content"]

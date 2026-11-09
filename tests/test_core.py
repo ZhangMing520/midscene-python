@@ -396,6 +396,36 @@ class TestXmlJsonUtils:
         with pytest.raises(ValueError):
             assert_json_object([1, 2])
 
+    def test_parse_json_preserves_array_of_objects(self):
+        from midscene.core.ai_model.json_utils import parse_model_response_json
+
+        raw = '[{"index": 1}, {"index": 2}]'
+        assert parse_model_response_json(raw) == [{"index": 1}, {"index": 2}]
+
+    def test_parse_json_preserves_fenced_array(self):
+        from midscene.core.ai_model.json_utils import parse_model_response_json
+
+        raw = '```json\n[{"name": "a"}, {"name": "b"}]\n```'
+        assert parse_model_response_json(raw) == [{"name": "a"}, {"name": "b"}]
+
+    def test_parse_json_repairs_array_trailing_comma(self):
+        from midscene.core.ai_model.json_utils import parse_model_response_json
+
+        raw = '[{"index": 1}, {"index": 2},]'
+        assert parse_model_response_json(raw) == [{"index": 1}, {"index": 2}]
+
+    def test_parse_json_ignores_non_json_code_block_before_payload(self):
+        from midscene.core.ai_model.json_utils import parse_model_response_json
+
+        raw = 'Here is the script:\n```python\nprint(1)\n```\n{"bbox": [1, 2]}'
+        assert parse_model_response_json(raw) == {"bbox": [1, 2]}
+
+    def test_parse_json_prose_fallback_still_extracts_object(self):
+        from midscene.core.ai_model.json_utils import parse_model_response_json
+
+        raw = 'Here is the result: {"bbox": [1, 2, 3, 4]} hope it helps'
+        assert parse_model_response_json(raw) == {"bbox": [1, 2, 3, 4]}
+
 
 # ---------------------------------------------------------------------------
 # protocols
@@ -753,6 +783,40 @@ class TestGroundingWorkflow:
         assert calls["count"] == 2
         # Normalized 0-1000 input: midpoint 4.5 -> ~1.44 x 1.08 px -> (1, 1)
         assert result["parse_result"]["element"]["center"] == (1, 1)
+
+    @pytest.mark.asyncio
+    async def test_custom_locate_dispatches_to_adapter_fn(self, mock_interface):
+        from midscene.core.ai_model.workflows import ai_locate_element
+
+        async def fake_system_one(runtime, request):
+            return {
+                "content": "raw",
+                "usage": None,
+                "answers": {
+                    "target": {
+                        "type": "box",
+                        "box": {"left": 0.0, "top": 0.0, "right": 0.5, "bottom": 0.5},
+                    }
+                },
+            }
+
+        with patch(
+            "midscene.core.ai_model.workflows.jev.call_system_one",
+            new=fake_system_one,
+        ), patch_model_call(
+            "midscene.core.ai_model.workflows.grounding",
+            AsyncMock(side_effect=AssertionError("standard locate path should not run")),
+        ):
+            context = await mock_interface.get_context()
+            result = await ai_locate_element(
+                target_element_description="the test button",
+                context=context,
+                model_runtime=make_runtime(modelFamily="jev"),
+            )
+
+        element = result["parse_result"]["element"]
+        assert element["center"] == (80, 60)
+        assert element["description"] == "the test button"
 
 
 class TestInsightWorkflow:

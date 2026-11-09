@@ -198,7 +198,8 @@ class AbortSignal:
     def throw_if_aborted(self) -> None:
         if self._aborted:
             raise AbortError(
-                f"aiAct aborted: {self._reason or 'signal already aborted'}"
+                "Operation interrupted by an external abort signal.\n"
+                f"Reason: {self._reason or 'signal already aborted'}"
             )
 
 

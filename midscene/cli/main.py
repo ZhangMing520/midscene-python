@@ -545,6 +545,7 @@ def siwc_login(
     client_id: Optional[str] = typer.Option(None, "--client-id", help="OAuth client ID"),
 ):
     """Sign in with your ChatGPT plan (SIWC) and store credentials."""
+    _load_dotenv()
     import threading
     import time as time_module
     import uuid
@@ -643,6 +644,7 @@ def siwc_login(
 @siwc_app.command("refresh")
 def siwc_refresh():
     """Refresh the stored ChatGPT (SIWC) credentials without signing in again."""
+    _load_dotenv()
     from midscene.core.ai_model.siwc import (
         SiwcError,
         _read_credentials,

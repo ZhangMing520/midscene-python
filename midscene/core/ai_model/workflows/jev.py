@@ -13,7 +13,11 @@ from typing import Any, Dict, List, Optional
 
 from ..adapters import ModelRuntime
 from ..system_one import SystemOneError, call_system_one, validate_system_one_response
-from .context_utils import get_screenshot_base64, get_shot_size
+from .context_utils import (
+    get_screenshot_base64,
+    get_shot_size,
+    resolve_reference_image,
+)
 from ..locate_result import create_locate_result_codec
 
 # Jev boxes are normalized 0-1 with edges semantics.
@@ -69,13 +73,43 @@ def _parse_answers(content: str) -> Dict[str, Any]:
 # Locate (jev/locate.ts)
 # ---------------------------------------------------------------------------
 
+def _prepare_jev_references(prompt: Any) -> Dict[str, Any]:
+    """Reference images from a multimodal prompt (jev/image.ts prepareReferences)."""
+    images = prompt.get("images") if isinstance(prompt, dict) else None
+    convert_http = (
+        bool(prompt.get("convertHttpImage2Base64", False))
+        if isinstance(prompt, dict)
+        else False
+    )
+    references: List[Dict[str, Any]] = []
+    image_map: Dict[str, str] = {}
+    for index, item in enumerate(images or []):
+        key = f"reference_{index}"
+        url = item.get("url") if isinstance(item, dict) else item
+        if not isinstance(url, str) or not url:
+            continue
+        if not url.startswith("data:"):
+            # Local file paths (and opted-in HTTP URLs) need inlining first.
+            resolved = resolve_reference_image(item, convert_http)
+            if resolved:
+                url = resolved
+        name = item.get("name") if isinstance(item, dict) else None
+        reference: Dict[str, Any] = {"image": f"`{key}`"}
+        if name:
+            reference["name"] = name
+        references.append(reference)
+        image_map[key] = prepare_jev_image(url)
+    return {"references": references, "images": image_map}
+
+
 async def jev_locate(
     target_element_description: Any,
     locate_image: Dict[str, Any],
     model_runtime: ModelRuntime,
 ) -> Dict[str, Any]:
-    """Jev locate: returns {locatedPixelResult?} | {errors?}, plus raw/usage."""
+    """Jev locate: returns {locatedPixelResult}, plus raw/usage."""
     image = prepare_jev_image(locate_image["imageBase64"])
+    references = _prepare_jev_references(target_element_description)
     target = (
         target_element_description
         if isinstance(target_element_description, str)
@@ -84,17 +118,9 @@ async def jev_locate(
     response = await call_system_one(
         model_runtime,
         {
-            "state": {"target": target},
-            "images": {"screenshot": image},
+            "state": {"target": target, "references": references["references"]},
+            "images": {"screenshot": image, **references["images"]},
             "questions": {
-                "present": {
-                    "type": "noul",
-                    "instructions": (
-                        "Is the target described in `target` present in "
-                        "`screenshot`? Reference images, if any, describe the "
-                        "target; they are not the screenshot."
-                    ),
-                },
                 "target": {
                     "type": "box",
                     "instructions": (
@@ -105,21 +131,17 @@ async def jev_locate(
         },
     )
     answers = response["answers"]
-    if answers["present"]["type"] != "noul" or answers["target"]["type"] != "box":
-        raise SystemOneError("Invalid Jev locate answers")
+    if answers.get("target", {}).get("type") != "box":
+        raise SystemOneError("Invalid Jev locate answer")
 
-    result: Dict[str, Any] = {
+    return {
         "raw_response": response["content"],
         "usage": response["usage"],
-    }
-    if answers["present"]["noul"] >= 0.5:
-        result["locatedPixelResult"] = map_jev_box(
+        "locatedPixelResult": map_jev_box(
             answers["target"]["box"],
             {"width": locate_image["width"], "height": locate_image["height"]},
-        )
-    else:
-        result["errors"] = ["The target is not present in the screenshot"]
-    return result
+        ),
+    }
 
 
 # ---------------------------------------------------------------------------

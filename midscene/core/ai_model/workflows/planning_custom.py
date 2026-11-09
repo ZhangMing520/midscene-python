@@ -707,18 +707,18 @@ def create_auto_glm_planning_tap_locator(is_multilingual: bool) -> Dict[str, Any
 
 async def auto_glm_locate(
     target_element_description: Any,
-    context: Any,
+    locate_image: Dict[str, Any],
     model_runtime: ModelRuntime,
 ) -> Dict[str, Any]:
     """Auto-GLM planning-tap-locator (models/auto-glm/locate.ts)."""
     is_multilingual = model_runtime.adapter.family == "auto-glm-multilingual"
     locator = create_auto_glm_planning_tap_locator(is_multilingual)
 
-    from .context_utils import get_shot_size, prepare_model_image, ensure_data_url
+    from .context_utils import prepare_model_image, ensure_data_url
 
-    shot_size = get_shot_size(context)
+    shot_size = {"width": locate_image["width"], "height": locate_image["height"]}
     prepared = prepare_model_image(
-        ensure_data_url(get_screenshot_base64(context)),
+        ensure_data_url(locate_image["imageBase64"]),
         shot_size["width"],
         shot_size["height"],
         None,
@@ -739,7 +739,9 @@ async def auto_glm_locate(
         actions = transform_auto_glm_action(
             parsed["action"],
             [],
-            _coordinate_distance_to_pixels_for(context, model_runtime, AUTO_GLM_COORDINATES),
+            _coordinate_distance_to_pixels_for(
+                {"shotSize": shot_size}, model_runtime, AUTO_GLM_COORDINATES
+            ),
         )
         _normalize_custom_locate_fields(
             actions,

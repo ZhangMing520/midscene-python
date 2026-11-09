@@ -545,28 +545,64 @@ def build_web_action_space() -> List[DeviceAction]:
             name="Scroll",
             description=(
                 "Scroll a page or scrollable region to reveal off-screen content. "
-                "For direct gesture interactions, use Swipe instead if available. "
-                "Default: direction `down`, scrollType `singleAction`, distance `null`."
+                "Use Scroll when the goal is to browse content outside the current "
+                "viewport. For direct gesture interactions, such as adjusting a "
+                "slider or wheel picker, switching between paged cards or images, "
+                "following an on-screen swipe gesture to continue or dismiss, or "
+                "swiping an item to delete it, use Swipe instead if available in "
+                "the current Action Space. Supports scrollToBottom/scrollToTop for "
+                "boundary navigation. Default: direction `down`, scrollType "
+                "`singleAction`, distance `null`."
             ),
             param_schema={
                 "scrollType": {
                     "type": '"singleAction" | "scrollToBottom" | "scrollToTop" | "scrollToRight" | "scrollToLeft"',
-                    "description": "The scroll behavior. Default: singleAction",
+                    "description": (
+                        'The scroll behavior: "singleAction" for a single scroll '
+                        'action, "scrollToBottom" for scrolling all the way to the '
+                        "bottom by rapidly scrolling 5-10 times (skipping "
+                        'intermediate content until reaching the bottom), '
+                        '"scrollToTop" for scrolling all the way to the top by '
+                        "rapidly scrolling 5-10 times (skipping intermediate "
+                        'content until reaching the top), "scrollToRight" for '
+                        "scrolling all the way to the right by rapidly scrolling "
+                        'multiple times, "scrollToLeft" for scrolling all the way '
+                        "to the left by rapidly scrolling multiple times"
+                    ),
                     "optional": True,
                 },
                 "direction": {
                     "type": '"down" | "up" | "right" | "left"',
-                    "description": "The direction toward the off-screen content to reveal. Default: down",
+                    "description": (
+                        'The direction toward the off-screen content to reveal. '
+                        '"down" reveals content below the current viewport, "up" '
+                        'reveals content above, "right" reveals content to the '
+                        'right, and "left" reveals content to the left. This does '
+                        "not describe the movement direction of the content "
+                        "currently visible on the screen. Only effective when "
+                        'scrollType is "singleAction".'
+                    ),
                     "optional": True,
                 },
                 "distance": {
                     "type": "number",
-                    "description": "Positive requested scroll amount in pixels",
+                    "description": (
+                        "Positive requested scroll amount in screen-coordinate "
+                        "units. On touch platforms, it controls the length of the "
+                        "swipe gesture used to scroll; on web and desktop "
+                        "platforms, it controls or approximates the wheel scroll "
+                        'delta. Only effective when scrollType is "singleAction".'
+                    ),
                     "optional": True,
                 },
                 "locate": {
                     "type": "locate",
-                    "description": "The target element to be scrolled on",
+                    "description": (
+                        'Describe the target element to be scrolled on, like "the '
+                        'table" or "the list" or "the content area" or "the '
+                        'scrollable area". Do NOT provide a general intent like '
+                        '"scroll to find some element"'
+                    ),
                     "optional": True,
                 },
             },

@@ -762,6 +762,7 @@ class ModelAdapter:
         planning_plan_fn: Optional[Callable] = None,
         locate_kind: str = "standard",
         locate_fn: Optional[Callable] = None,
+        locate_prompt_order: Optional[str] = None,
         replay_raw_assistant_message: bool = False,
         supports_action_deep_locate: Optional[bool] = None,
         insight_boolean_fn: Optional[Callable] = None,
@@ -786,6 +787,8 @@ class ModelAdapter:
         self.planning_plan_fn = planning_plan_fn
         self.locate_kind = locate_kind
         self.locate_fn = locate_fn
+        self._locate_prompt_order_source = locate_prompt_order
+        self._locate_prompt_order: Optional[Dict[str, Any]] = None
         self.replay_raw_assistant_message = replay_raw_assistant_message
         self.supports_action_deep_locate = (
             supports_action_deep_locate
@@ -846,6 +849,20 @@ class ModelAdapter:
                 self._locate_element_format
             )
         return self._locate_codec
+
+    @property
+    def locate_prompt_order(self) -> Dict[str, Any]:
+        """Parsed locate prompt ordering (adapter-definition level)."""
+        if self._locate_prompt_order is None:
+            from .locate_prompt_order import (
+                DEFAULT_LOCATE_PROMPT_ORDER,
+                parse_locate_prompt_order,
+            )
+
+            self._locate_prompt_order = parse_locate_prompt_order(
+                self._locate_prompt_order_source or DEFAULT_LOCATE_PROMPT_ORDER
+            )
+        return self._locate_prompt_order
 
     @property
     def search_area_result_codec(self):
@@ -1039,6 +1056,7 @@ def _adapter_registry() -> Dict[str, ModelAdapter]:
             allowed_task_types=["locate", "boolean", "planning"],
             supported_protocols=[],
             locate_kind="custom",
+            locate_fn=_jev_locate_fn(),
             planning_kind="custom",
             cache_enabled=False,
             replanning_cycle_limit=20,
@@ -1056,6 +1074,12 @@ def _jev_boolean_fn() -> Callable:
     from .workflows.jev import jev_boolean
 
     return jev_boolean
+
+
+def _jev_locate_fn() -> Callable:
+    from .workflows.jev import jev_locate
+
+    return jev_locate
 
 
 def get_model_adapter(model_family: Optional[str] = None) -> ModelAdapter:

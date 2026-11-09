@@ -12,7 +12,6 @@ Fully aligned with upstream web-infra-dev/midscene v1.17.4 (packages/core/src/ag
 """
 
 import asyncio
-import base64
 import inspect
 import json
 import os
@@ -42,7 +41,10 @@ from .ai_model.workflows import (
     ai_extract_element_info,
     standard_plan,
 )
-from .ai_model.workflows.context_utils import user_prompt_to_string
+from .ai_model.workflows.context_utils import (
+    resolve_reference_images,
+    user_prompt_to_string,
+)
 from .ai_model.workflows.jev import jev_plan
 from .ai_model.workflows.locate_service import locate_service
 from .task_cache import TaskCache
@@ -208,7 +210,9 @@ def _throw_if_aborted(signal: Any) -> None:
         thrower()
         return
     reason = getattr(signal, "reason", None) or "signal already aborted"
-    raise AbortError(f"aiAct aborted: {reason}")
+    raise AbortError(
+        f"Operation interrupted by an external abort signal.\nReason: {reason}"
+    )
 
 
 async def _read_registration_error(registration: Any) -> Optional[BaseException]:
@@ -351,58 +355,10 @@ def _markdown_to_ai_act_prompt(
     }
 
 
-_REFERENCE_IMAGE_MIME = {
-    "png": "image/png",
-    "jpg": "image/jpeg",
-    "jpeg": "image/jpeg",
-    "gif": "image/gif",
-    "webp": "image/webp",
-    "bmp": "image/bmp",
-}
-
-
-def _resolve_reference_image(image, convert_http):
-    """Resolve one markdown reference image to a model-ingestable URL."""
-    url = image.get("url") if isinstance(image, dict) else None
-    if not url or not isinstance(url, str):
-        return None
-    if url.startswith("data:"):
-        return url
-    if url.startswith("http://") or url.startswith("https://"):
-        if not convert_http:
-            return url
-        try:
-            import urllib.request
-
-            with urllib.request.urlopen(url, timeout=15) as resp:
-                raw = resp.read()
-            mime = getattr(resp.headers, "get_content_type", lambda: "image/png")()
-            return f"data:{mime};base64,{base64.b64encode(raw).decode('ascii')}"
-        except Exception as e:
-            logger.warning(f"Failed to inline reference image {url}: {e}")
-            return url
-    path = Path(url)
-    if path.exists():
-        suffix = path.suffix.lstrip(".").lower() or "png"
-        mime = _REFERENCE_IMAGE_MIME.get(suffix, "image/png")
-        return f"data:{mime};base64,{base64.b64encode(path.read_bytes()).decode('ascii')}"
-    return None
-
-
-def _resolve_reference_images(images, convert_http):
-    """Resolve a list of markdown reference images to model-ingestable URLs."""
-    resolved = []
-    for item in images or []:
-        url = _resolve_reference_image(item, convert_http)
-        if url:
-            resolved.append(url)
-    return resolved
-
-
 def _reference_images_from_prompt(task_prompt):
     """Pull reference images out of a markdown-style prompt dict."""
     if isinstance(task_prompt, dict) and task_prompt.get("images"):
-        return _resolve_reference_images(
+        return resolve_reference_images(
             task_prompt["images"],
             bool(task_prompt.get("convertHttpImage2Base64", False)),
         )
@@ -2209,32 +2165,10 @@ class Agent:
         plan_located_element: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         runtime = self._resolve_runtime(TASK_TYPE_LOCATE)
-        if runtime.adapter.locate_kind == "custom" and runtime.adapter.locate_fn is not None:
-            response = await runtime.adapter.locate_fn(
-                target_element_description=prompt,
-                locate_image={
-                    "imageBase64": context.screenshot_base64,
-                    "width": context.size.width,
-                    "height": context.size.height,
-                },
-                model_runtime=runtime,
-            )
-            located = response.get("locatedPixelResult")
-            if located and located.get("center"):
-                return {
-                    "center": list(located["center"]),
-                    "rect": located.get("rect"),
-                    "description": user_prompt_to_string(prompt),
-                }
-            errors = response.get("errors") or ["element not found"]
-            raise LocateFailureError(
-                f"Element not found : {user_prompt_to_string(prompt)}"
-                + (f" ({'; '.join(errors)})" if errors else "")
-            )
         response = await locate_service(
             query_prompt=prompt,
             context=context,
-            model_runtime=self._resolve_runtime(TASK_TYPE_LOCATE),
+            model_runtime=runtime,
             deep_locate=deep_locate,
             plan_located_element=plan_located_element,
         )
