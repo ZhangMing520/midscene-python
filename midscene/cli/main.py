@@ -343,6 +343,14 @@ def run(
     summary: Optional[str] = typer.Option(
         None, "--summary", help="Path for the summary output file"
     ),
+    artifact_dir: Optional[str] = typer.Option(
+        None,
+        "--artifact-dir",
+        help="Write a directory report artifact (report.json + data/)",
+    ),
+    namespace: Optional[str] = typer.Option(
+        None, "--namespace", help="Name for the report artifact group"
+    ),
     concurrent: Optional[int] = typer.Option(
         None, "--concurrent", help="Number of concurrent executions"
     ),
@@ -391,6 +399,8 @@ def run(
         for key, value in (
             ("setup", setup),
             ("summary", summary),
+            ("artifactDir", artifact_dir),
+            ("namespace", namespace),
             ("concurrent", concurrent),
             ("retry", retry),
             ("continueOnError", continue_on_error),
@@ -506,6 +516,8 @@ def run(
                 agent = Agent(page, options)
             else:
                 agent = created
+            if artifact_dir:
+                agent.options.report_artifact_dir = artifact_dir
             player = ScriptPlayer(script, agent)
             try:
                 await player.run()
@@ -784,6 +796,35 @@ def report_tool(
     except ValueError as e:
         console.print(f"[red]{e}[/red]")
         raise typer.Exit(1)
+
+
+@app.command("mcp")
+def mcp_command(
+    log_level: str = typer.Option("INFO", "--log-level", help="Log level for stderr logs"),
+):
+    """Serve Midscene tools over MCP (stdio) for AI coding assistants.
+
+    Add this command as an MCP server, then let the assistant drive a browser
+    through midscene_init / midscene_act / midscene_query / web_tabs.
+    """
+    import asyncio
+
+    from midscene.agent_tools import AgentTools
+    from midscene.mcp_server import McpServer, serve
+    from midscene.shared.logger import setup_logger
+
+    _load_dotenv()
+    setup_logger(level=log_level.upper())
+    tools = AgentTools()
+    server = McpServer(tools.tool_definitions())
+
+    async def _serve() -> None:
+        try:
+            await serve(server)
+        finally:
+            await tools.close()
+
+    asyncio.run(_serve())
 
 
 @app.command()

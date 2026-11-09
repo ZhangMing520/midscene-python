@@ -540,6 +540,96 @@ class PlaywrightWebPage(AbstractInterface):
         finally:
             await cdp.detach()
 
+    async def swipe(
+        self,
+        direction: str,
+        distance: Optional[int] = None,
+        duration: Optional[int] = None,
+    ) -> None:
+        """Mouse swipe that honors an explicit duration (upstream base-page swipe).
+
+        `up` drags the pointer towards the top, matching the finger-movement
+        convention used by the Swipe action. Durations are never capped: a slow
+        gesture is not a long press.
+        """
+        if direction not in ("up", "down", "left", "right"):
+            raise ValueError(f"Invalid swipe direction: {direction}")
+        viewport = self.page.viewport_size or {"width": 1280, "height": 720}
+        width, height = viewport["width"], viewport["height"]
+        span = int(min(distance or min(width, height) // 2, width, height))
+        offsets = {
+            "up": (0, -span),
+            "down": (0, span),
+            "left": (-span, 0),
+            "right": (span, 0),
+        }
+        dx, dy = offsets[direction]
+        start_x = min(max(width / 2 - dx / 2, 1), width - 1)
+        start_y = min(max(height / 2 - dy / 2, 1), height - 1)
+        end_x = min(max(start_x + dx, 1), width - 1)
+        end_y = min(max(start_y + dy, 1), height - 1)
+        await self._mouse_swipe(start_x, start_y, end_x, end_y, duration)
+
+    async def _mouse_swipe(
+        self,
+        start_x: float,
+        start_y: float,
+        end_x: float,
+        end_y: float,
+        duration: Optional[int] = None,
+    ) -> None:
+        """Press, move in 30 steps and release; the pointer is always released."""
+        duration_ms = max(int(duration or 100), 150)
+        steps = 30
+        await self.page.mouse.move(start_x, start_y)
+        await self.page.mouse.down()
+        completed = False
+        try:
+            for step in range(1, steps + 1):
+                ratio = step / steps
+                await self.page.mouse.move(
+                    start_x + (end_x - start_x) * ratio,
+                    start_y + (end_y - start_y) * ratio,
+                )
+                await asyncio.sleep(duration_ms / steps / 1000)
+            completed = True
+        finally:
+            if completed:
+                await self.page.mouse.up()
+            else:
+                try:
+                    await self.page.mouse.up()
+                except Exception:
+                    pass
+    async def list_tabs(self) -> List[Dict[str, Any]]:
+        """Browser tabs of the current context (upstream BrowserTabSummary)."""
+        tabs = []
+        for index, page in enumerate(self.context.pages):
+            try:
+                title = await page.title()
+            except Exception:
+                title = ""
+            tabs.append(
+                {
+                    "id": str(index),
+                    "title": title,
+                    "url": page.url,
+                    "active": page is self.page,
+                }
+            )
+        return tabs
+
+    async def switch_tab(self, tab_id: str) -> None:
+        """Make the tab with the given id the one later actions operate on."""
+        pages = self.context.pages
+        try:
+            index = int(tab_id)
+        except (TypeError, ValueError):
+            raise ValueError(f"Unknown tab id: {tab_id}") from None
+        if index < 0 or index >= len(pages):
+            raise ValueError(f"Unknown tab id: {tab_id}")
+        self.page = pages[index]
+        await self.page.bring_to_front()
     async def drag_and_drop(self, from_point, to_point) -> None:
         """Drag from one point to another (upstream page.mouse.drag)."""
         try:

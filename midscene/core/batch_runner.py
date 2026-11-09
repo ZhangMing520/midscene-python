@@ -35,7 +35,10 @@ def parse_batch_config(config: Dict[str, Any]) -> Dict[str, Any]:
     if not isinstance(files, list) or not all(isinstance(f, str) for f in files):
         raise ValueError('"files" must be a list of file paths')
 
-    concurrent = int(config.get("concurrent") or 1)
+    concurrent_value = config.get("concurrent")
+    if concurrent_value is None:
+        concurrent_value = config.get("maxConcurrentFiles")
+    concurrent = int(concurrent_value or 1)
     if concurrent < 1:
         raise ValueError('"concurrent" must be >= 1')
 
@@ -50,13 +53,37 @@ def parse_batch_config(config: Dict[str, Any]) -> Dict[str, Any]:
     if retry < 0:
         raise ValueError('"retry" must be >= 0')
 
+    def _hook(name: str) -> Optional[str]:
+        value = config.get(name)
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise ValueError(f'"{name}" must be a YAML file path')
+        return value
+
+    before_all = _hook("beforeAll") or config.get("setup")
+    if before_all is not None and not isinstance(before_all, str):
+        raise ValueError('"setup" must be a YAML file path')
+    namespace = config.get("namespace") or config.get("name")
+    if namespace is not None and not isinstance(namespace, str):
+        raise ValueError('"namespace" must be a string')
+    artifact_dir = config.get("artifactDir") or config.get("output")
+    if artifact_dir is not None and not isinstance(artifact_dir, str):
+        raise ValueError('"artifactDir" must be a directory path')
+
     return {
         "files": files,
         "concurrent": concurrent,
         "continueOnError": bool(config.get("continueOnError", True)),
         "retry": retry,
         "summary": config.get("summary"),
-        "setup": config.get("setup"),
+        "setup": before_all,
+        "before_all": before_all,
+        "after_all": _hook("afterAll"),
+        "before_each": _hook("beforeEach"),
+        "after_each": _hook("afterEach"),
+        "namespace": namespace,
+        "artifact_dir": artifact_dir,
         "share_browser_context": share_browser_context,
         "reuse_page": reuse_page,
         "web_overrides": _web_overrides(config),
@@ -133,19 +160,23 @@ class BatchRunner:
         self.config = parse_batch_config(config)
         self._player_factory = player_factory
         self.results: List[Dict[str, Any]] = []
+        self.hook_error: Optional[str] = None
 
     async def run(self) -> List[Dict[str, Any]]:
         cfg = self.config
         self.results = []
+        self.hook_error = None
 
-        # Setup script: failure aborts the whole batch.
-        if cfg["setup"]:
-            setup_path = cfg["setup"]
-            setup_result = await self._run_one(setup_path, retries=0)
+        # beforeAll (alias: setup): failure aborts the whole batch.
+        if cfg["before_all"]:
+            setup_result = await self._run_one(cfg["before_all"], retries=0)
             self.results.append(setup_result)
             if not setup_result["success"]:
+                self.hook_error = f"beforeAll failed: {setup_result.get('error')}"
                 for file_path in cfg["files"]:
                     self.results.append(self._not_executed(file_path))
+                self._write_summary()
+                self._write_artifact()
                 return self.results
 
         if cfg["concurrent"] > 1:
@@ -153,7 +184,7 @@ class BatchRunner:
 
             async def bounded(file_path: str) -> Dict[str, Any]:
                 async with semaphore:
-                    return await self._run_one(
+                    return await self._run_file(
                         file_path,
                         retries=cfg["retry"],
                         overrides=cfg["web_overrides"],
@@ -167,7 +198,7 @@ class BatchRunner:
         else:
             shared_page = None
             for index, file_path in enumerate(cfg["files"]):
-                result = await self._run_one(
+                result = await self._run_file(
                     file_path,
                     retries=cfg["retry"],
                     overrides=cfg["web_overrides"],
@@ -182,8 +213,82 @@ class BatchRunner:
                         self.results.append(self._not_executed(remaining_path))
                     break
 
+        if cfg["after_all"]:
+            after_all = await self._run_one(
+                cfg["after_all"],
+                retries=0,
+                overrides=cfg["web_overrides"],
+                native_overrides=cfg["native_overrides"],
+            )
+            if not after_all["success"]:
+                self.hook_error = f"afterAll failed: {after_all.get('error')}"
+                logger.warning(self.hook_error)
+
         self._write_summary()
+        self._write_artifact()
         return self.results
+
+    async def _run_file(
+        self,
+        file_path: str,
+        retries: int = 0,
+        overrides: Optional[Dict[str, Any]] = None,
+        native_overrides: Optional[Dict[str, Any]] = None,
+        shared_page: Any = None,
+    ) -> Dict[str, Any]:
+        """Run one file with the beforeEach / afterEach lifecycle hooks."""
+        cfg = self.config
+        kwargs = {
+            "retries": retries,
+            "overrides": overrides,
+            "native_overrides": native_overrides,
+        }
+        if shared_page is not None:
+            kwargs["shared_page"] = shared_page
+
+        if cfg["before_each"]:
+            pre = await self._run_one(
+                cfg["before_each"],
+                retries=0,
+                overrides=overrides,
+                native_overrides=native_overrides,
+            )
+            if not pre["success"]:
+                return self._hook_failure(file_path, "beforeEach", pre)
+
+        result = await self._run_one(file_path, **kwargs)
+
+        if cfg["after_each"]:
+            post = await self._run_one(
+                cfg["after_each"],
+                retries=0,
+                overrides=overrides,
+                native_overrides=native_overrides,
+            )
+            if not post["success"]:
+                result = self._hook_failure(file_path, "afterEach", post, result)
+        return result
+
+    @staticmethod
+    def _hook_failure(
+        file_path: str,
+        hook: str,
+        hook_result: Dict[str, Any],
+        result: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        failed = {
+            "file": file_path,
+            "success": False,
+            "executed": True,
+            "error": f"{hook} failed: {hook_result.get('error')}",
+            "resultType": "failed",
+            "duration": (result or {}).get("duration", 0),
+        }
+        if result is not None:
+            failed["attempts"] = result.get("attempts", [])
+            if "_shared_page" in result:
+                failed["_shared_page"] = result["_shared_page"]
+        return failed
 
     async def _run_one(
         self,
@@ -322,6 +427,45 @@ class BatchRunner:
         )
         logger.info(f"Batch summary written to {summary_path}")
 
+    def _write_artifact(self) -> None:
+        """Publish a directory report artifact when artifactDir is configured."""
+        artifact_dir = self.config.get("artifact_dir")
+        if not artifact_dir:
+            return
+        import re
+
+        from .report_artifact import ReportArtifactStore
+
+        namespace = self.config.get("namespace") or "batch-report"
+        report_id = re.sub(r"[^A-Za-z0-9_-]+", "-", namespace).strip("-") or "batch-report"
+        try:
+            store = ReportArtifactStore(
+                artifact_dir,
+                report_id,
+                kind="test",
+                reuse_existing_report=True,
+            )
+            for index, result in enumerate(self.results, start=1):
+                file_path = result.get("file") or f"file-{index}"
+                store.write_execution(str(file_path), result, {"file": file_path})
+            store.write_runner(
+                {
+                    "namespace": self.config.get("namespace"),
+                    "results": self.results,
+                    "hookError": self.hook_error,
+                    "passed": self.passed,
+                }
+            )
+            store.finalize()
+        except Exception as error:
+            # The run itself already finished; do not turn a failed artifact
+            # write (permissions, lock timeout) into a crash after the results.
+            logger.warning(
+                f"Failed to write report artifact to {artifact_dir}: {error}"
+            )
+            return
+        logger.info(f"Batch report artifact written to {artifact_dir}")
+
     # -- summary helpers (upstream execution-summary) -----------------------
 
     def get_failed_files(self) -> List[str]:
@@ -335,4 +479,4 @@ class BatchRunner:
 
     @property
     def passed(self) -> bool:
-        return all(r["success"] for r in self.results)
+        return self.hook_error is None and all(r["success"] for r in self.results)

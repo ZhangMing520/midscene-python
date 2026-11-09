@@ -553,6 +553,14 @@ class BridgeWebPage(AbstractInterface):
             BRIDGE_EVENT_SET_ACTIVE_TAB_ID, [tab_id]
         )
 
+    async def list_tabs(self) -> Any:
+        """Browser tabs reported by the connected extension."""
+        return await self.get_browser_tab_list()
+
+    async def switch_tab(self, tab_id: str) -> None:
+        """Focus the tab with the given id for later calls."""
+        await self.set_active_tab_id(tab_id)
+
     async def connect_new_tab_with_url(self, url: str) -> None:
         await self._require_server().call(
             BRIDGE_EVENT_CONNECT_NEW_TAB_WITH_URL, [url, self.connect_options]

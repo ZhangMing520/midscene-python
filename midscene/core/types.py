@@ -404,6 +404,10 @@ class AgentOptions:
     on_llm_usage: Optional[Callable] = None
     # Extra attributes merged into the report dump top level
     report_attributes: Optional[Dict[str, Any]] = None
+    # Directory that receives a directory report artifact (report.json +
+    # data/<reportId>/*.json) on every report flush, in addition to the
+    # single-file HTML/JSON report (upstream report artifact store)
+    report_artifact_dir: Optional[str] = None
     # Output format hint forwarded to model runtimes (upstream
     # AgentOpt.outputFormat: 'string' | 'object')
     output_format: Optional[Any] = None

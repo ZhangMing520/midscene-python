@@ -2,7 +2,7 @@
 
 **像人一样理解界面。用自然语言驱动 Web、Android 与桌面的 UI 自动化与端到端测试。**
 
-Midscene Python 是 [Midscene](https://github.com/web-infra-dev/midscene) 的 Python SDK。它截取当前屏幕，交给视觉语言模型判断下一步该做什么，再通过 Playwright、Selenium、Chrome Bridge、ADB 或 pyautogui 执行动作。AI 模型层（提示词、规划/定位/理解协议、多模型插槽、坐标解析）与上游 Midscene v1.17.4 保持同步。
+Midscene Python 是 [Midscene](https://github.com/web-infra-dev/midscene) 的 Python SDK。它截取当前屏幕，交给视觉语言模型判断下一步该做什么，再通过 Playwright、Selenium、Chrome Bridge、ADB 或 pyautogui 执行动作。AI 模型层（提示词、规划/定位/理解协议、多模型插槽、坐标解析）与上游 Midscene v1.17.7 保持同步。
 
 [English](README.md) | [简体中文](README.zh.md)
 
@@ -118,7 +118,7 @@ agent = Agent(page, AgentOptions(
 
 `openai-chat` 与 `openai-responses` 两种协议均支持流式与非流式模式。SIWC（ChatGPT 订阅登录）可通过 `midscene model siwc login` 配合 `MIDSCENE_MODEL_AUTH_MODE=siwc` 使用。
 
-## 与上游 v1.17.4 对齐
+## 与上游 v1.17.7 对齐
 
 与官方 TypeScript SDK 保持一致的能力：
 
@@ -129,8 +129,14 @@ agent = Agent(page, AgentOptions(
 - **YAML 自动化**：`midscene run script.yaml` 支持上游同款 flow 指令（`aiAct / aiAssert / aiWaitFor / aiQuery / aiTap / aiInput / aiKeyboardPress / aiScroll / aiDragAndDrop / sleep / javascript` 等）、`${VAR}` 环境变量插值、任务级 `continueOnError`，结果输出到 `midscene_run/output/`。
 - **连通性测试**：`midscene model connect` 并行执行规划文本、理解视觉、aiLocate、默认文本四项检查。
 - **执行报告**：每次进入规划阶段的 `ai_act` 运行都会更新 `midscene_run/report/` 下的合并单文件 HTML 查看器（tag 默认取接口类型，可用 `MIDSCENE_REPORT_TAG_NAME` 覆盖）；上游格式的单次执行 JSON dump 仅在开启 `persistExecutionDump`（`AgentOptions.persist_execution_dump`）时写入，`generateReport: false` 可关闭所有报告文件。报告记录规划输出、每个动作的墙钟耗时/状态/错误；缓存回放时写入上游同款 `LoadYaml` 任务（含 `cache.hit` / `hitBy`）。`AgentOptions` 的 `generate_report`、`report_file_name`、`group_name` 与 `group_description` 均会生效。`midscene.core.dump` 对齐上游 `IReportActionDump` 字段结构。
+- **定位提示词顺序**：适配器级 `locate_prompt_order` DSL（`system(...)`、`userTogether(...)`、`userEach(...)`）可按上游 `locate-prompt-order.ts` 重排指令、截图、任务文本与参考图；参考图支持 data URL、本地文件与 HTTP。    
+- **元素描述器**：`describe_element_at_point`、`verify_element_description_at_point`、`verify_locator` 会先在截图上绘制上游同款圆环 + 十字标记（或矩形边框），可选追加放大的局部细节图（`deepDescribe`），再通过重新定位校验描述并按需自动切换深度模式重试。    
+- **MCP 服务**：`midscene mcp` 通过 stdio JSON-RPC 暴露 `midscene_init / midscene_act / midscene_query / midscene_assert / midscene_locate / web_tabs / web_switch-tab / midscene_close`；进程内也可用 `midscene.agent_tools.AgentTools`。    
+- **目录化报告产物**：`AgentOptions(report_artifact_dir=...)` 与 `midscene run --artifact-dir <dir>` 会额外写入多文件布局（`report.json` 清单 + `data/<reportId>/*.json`），原子写入、发布锁，并提供 `read_report_artifact` 读取。    
+- **批跑生命周期钩子**：批跑配置支持 `maxConcurrentFiles`（`concurrent` 别名）、`namespace`、`beforeAll` / `afterAll` / `beforeEach` / `afterEach` YAML 脚本，以及 `artifactDir` 统一测试报告。    
+- **Web 滑动**：Playwright 与 Selenium 支持 `Swipe`；显式设置的慢速 `duration` 不会被当作长按截断，失败时也会释放鼠标。    
 
-未从上游移植：官方 React 报告可视化器（本 SDK 写入上游格式的 JSON dump，并自带单文件 HTML 查看器）、Midscene Test 框架的 YAML 生命周期钩子与 TypeScript Nodes、Puppeteer、Chrome 扩展内的事件录制器 `EventRecorder`（录制好的事件序列可通过 `generate_yaml_test` / `generate_markdown_replay` / `generate_playwright_test` 生成用例）、面向 AI 编码助手的 agent-tools/skill CLI（含 Playwright `AiFixture`）。
+未从上游移植：官方 React 报告可视化器与 Studio 应用（本 SDK 提供上游格式的 JSON dump、单文件 HTML 查看器以及上面的目录化产物）、Midscene Test 框架的 TypeScript Nodes 与 `midscene.config.ts` 工程运行器（YAML 批跑已提供生命周期钩子、namespace 与并发）、Puppeteer（请使用 Playwright 或 Selenium）、Chrome 扩展内的事件录制器 `EventRecorder`（录制好的事件序列可通过 `generate_yaml_test` / `generate_markdown_replay` / `generate_playwright_test` 生成用例）、Playwright `AiFixture`，以及 Codex app-server 传输（`codex://` base URL 会抛 `CodexAppServerNotSupportedError`）。
 
 ## 规划循环与缓存
 
@@ -153,7 +159,8 @@ pip install "midscene-python[desktop]"
 
 | 命令 | 用途 |
 | --- | --- |
-| `midscene run script.yaml [--headed] [--device ID] [--verbose]` | 运行 YAML 自动化脚本 |
+| `midscene run script.yaml [--headed] [--device ID] [--verbose] [--artifact-dir DIR]` | 运行 YAML 自动化脚本 |
+| `midscene mcp` | 以 MCP（stdio）方式向 AI 编码助手提供 Midscene 工具 |
 | `midscene model connect` | 测试已配置的模型 |
 | `midscene model siwc login` | 使用 ChatGPT 订阅登录（SIWC） |
 | `midscene version` | 显示已安装版本 |

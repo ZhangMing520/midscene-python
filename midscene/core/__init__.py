@@ -33,6 +33,16 @@ from .yaml_runner import ScriptPlayer, parse_yaml_script
 from .dump import ExecutionDumpBuilder, build_execution_task, build_service_dump
 from .ui_observer import UIObserver, UIObservation
 from .gherkin import run_gherkin_scenario, parse_gherkin_scenario
+from .element_describer import (
+    describe_element_at_point,
+    verify_element_description_at_point,
+    verify_locator,
+)
+from .report_artifact import (
+    ReportArtifactStore,
+    publish_report_artifact,
+    read_report_artifact,
+)
 
 __all__ = [
     "Agent",
@@ -62,4 +72,10 @@ __all__ = [
     "UIObservation",
     "run_gherkin_scenario",
     "parse_gherkin_scenario",
+    "describe_element_at_point",
+    "verify_element_description_at_point",
+    "verify_locator",
+    "ReportArtifactStore",
+    "publish_report_artifact",
+    "read_report_artifact",
 ]

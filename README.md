@@ -2,7 +2,7 @@
 
 **See interfaces like a human. UI automation and E2E testing in natural language for Web, Android, and Desktop.**
 
-Midscene Python is the Python SDK for [Midscene](https://github.com/web-infra-dev/midscene). It captures a screenshot, asks a vision-language model what to do next, and executes the action through Playwright, Selenium, the Chrome Bridge, ADB, or pyautogui. The AI model layer (prompts, planning/locate/insight protocols, multi-slot configuration and coordinate parsing) is synced with upstream Midscene v1.17.4.
+Midscene Python is the Python SDK for [Midscene](https://github.com/web-infra-dev/midscene). It captures a screenshot, asks a vision-language model what to do next, and executes the action through Playwright, Selenium, the Chrome Bridge, ADB, or pyautogui. It can also serve the same capabilities over MCP for AI coding assistants. The AI model layer (prompts, planning/locate/insight protocols, multi-slot configuration and coordinate parsing) is synced with upstream Midscene v1.17.7.
 
 [English](README.md) | [简体中文](README.zh.md)
 
@@ -118,7 +118,7 @@ agent = Agent(page, AgentOptions(
 
 Both `openai-chat` and `openai-responses` protocols support streaming and non-streaming modes. SIWC (ChatGPT plan sign-in) is available through `midscene model siwc login` and `MIDSCENE_MODEL_AUTH_MODE=siwc`.
 
-## Upstream v1.17.4 parity
+## Upstream v1.17.7 parity
 
 Aligned with the official TypeScript SDK:
 
@@ -129,8 +129,14 @@ Aligned with the official TypeScript SDK:
 - **YAML automation**: `midscene run script.yaml` supports the upstream flow commands (`aiAct / aiAssert / aiWaitFor / aiQuery / aiTap / aiInput / aiKeyboardPress / aiScroll / aiDragAndDrop / sleep / javascript`, and more), `${VAR}` interpolation, per-task `continueOnError`, and results under `midscene_run/output/`.
 - **Connectivity test**: `midscene model connect` runs the planning text, insight vision, aiLocate, and default text checks in parallel.
 - **Execution reports**: every `ai_act` run that reaches planning updates the combined single-file HTML viewer under `midscene_run/report/` (tag defaults to the interface type, overridable via `MIDSCENE_REPORT_TAG_NAME`); per-execution JSON dumps in the upstream `IReportActionDump` shape are written only when `persistExecutionDump` is enabled (`AgentOptions.persist_execution_dump`), and all report files are skipped with `generateReport: false`. It records the planning output, per-action wall-clock timing/status/errors and, for cache replays, an upstream `LoadYaml` task with `cache.hit` / `hitBy`. `AgentOptions` honors `generate_report`, `report_file_name`, `group_name` and `group_description`. `midscene.core.dump` mirrors the upstream `IReportActionDump` layout.
+- **Locate prompt order**: adapter-level `locate_prompt_order` DSL (`system(...)`, `userTogether(...)`, `userEach(...)`) reorders instructions, screenshot, task text and reference images exactly like upstream `locate-prompt-order.ts`; reference images are resolved from data URLs, local files or HTTP.    
+- **Element describer**: `describe_element_at_point`, `verify_element_description_at_point` and `verify_locator` annotate the screenshot with the upstream ring/crosshair marker (or a bordered rect), optionally add a zoomed detail crop (`deepDescribe`), verify the description by re-locating it and retry with deep modes.    
+- **MCP server**: `midscene mcp` serves `midscene_init / midscene_act / midscene_query / midscene_assert / midscene_locate / web_tabs / web_switch-tab / midscene_close` over stdio JSON-RPC, and the same tools are available in-process through `midscene.agent_tools.AgentTools`.    
+- **Directory report artifacts**: `AgentOptions(report_artifact_dir=...)` and `midscene run --artifact-dir <dir>` also write the multi-file layout (`report.json` manifest + `data/<reportId>/*.json`), with atomic writes, a publisher lock and `read_report_artifact`.    
+- **Batch lifecycle hooks**: the batch config accepts `maxConcurrentFiles` (alias of `concurrent`), `namespace`, `beforeAll` / `afterAll` / `beforeEach` / `afterEach` YAML scripts and `artifactDir` for a unified test report.    
+- **Web swipe**: `Swipe` is available on Playwright and Selenium; explicit slow `duration` values are honored (never capped as a long press) and the pointer is always released.    
 
-Not ported from upstream: the official React report visualizer (this SDK writes upstream-shaped JSON dumps plus its own single-file HTML viewer), the Midscene Test framework's YAML lifecycle hooks and TypeScript nodes, Puppeteer, the Chrome-extension in-page `EventRecorder` (recorded event lists are supported through `generate_yaml_test` / `generate_markdown_replay` / `generate_playwright_test`), and the agent-tools/skill CLIs for AI coding assistants (including the Playwright `AiFixture`).
+Not ported from upstream: the official React report visualizer and Studio app (this SDK writes upstream-shaped JSON dumps plus its own single-file HTML viewer and the directory artifact layout above), the Midscene Test framework's TypeScript Nodes and `midscene.config.ts` project runner (the YAML batch runner provides its lifecycle hooks, namespaces and concurrency), Puppeteer (use Playwright or Selenium), the Chrome-extension in-page `EventRecorder` (recorded event lists are supported through `generate_yaml_test` / `generate_markdown_replay` / `generate_playwright_test`), the Playwright `AiFixture`, and the Codex app-server transport (`codex://` base URLs raise `CodexAppServerNotSupportedError`).
 
 ## Planning loop and caching
 
@@ -153,7 +159,9 @@ pip install "midscene-python[desktop]"
 
 | Command | Purpose |
 | --- | --- |
-| `midscene run script.yaml [--headed] [--device ID] [--verbose]` | Run a YAML automation script |
+| `midscene run script.yaml [--headed] [--device ID] [--verbose] [--artifact-dir DIR]` | Run a YAML automation script |
+| `midscene mcp` | Serve Midscene tools over MCP (stdio) for AI coding assistants |
+| `midscene report-tool --action split\|to-markdown\|merge-html` | Transform report artifacts |
 | `midscene model connect` | Test the configured models |
 | `midscene model siwc login` | Sign in with a ChatGPT plan (SIWC) |
 | `midscene version` | Show the installed version |

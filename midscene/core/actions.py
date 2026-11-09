@@ -253,11 +253,29 @@ async def _execute_go_forward(param: Dict[str, Any], device: Any, locate_fn) -> 
     await device.go_forward()
 
 
+def _accepts_keyword(fn: Any, name: str) -> bool:
+    """True when fn can be called with the keyword name."""
+    import inspect
+
+    try:
+        parameters = inspect.signature(fn).parameters
+    except (TypeError, ValueError):
+        return False
+    return name in parameters or any(
+        parameter.kind is inspect.Parameter.VAR_KEYWORD
+        for parameter in parameters.values()
+    )
+
+
 async def _execute_swipe(param: Dict[str, Any], device: Any, locate_fn) -> None:
     direction = param.get("direction") or "up"
     distance = param.get("distance")
+    duration = param.get("duration")
     if _supports(device, "swipe"):
-        await device.swipe(direction, distance=distance)
+        kwargs: Dict[str, Any] = {"distance": distance}
+        if duration is not None and _accepts_keyword(device.swipe, "duration"):
+            kwargs["duration"] = int(duration)
+        await device.swipe(direction, **kwargs)
     else:
         await device.scroll(direction, distance=distance)
 
@@ -835,6 +853,14 @@ def _swipe_action() -> DeviceAction:
                 "description": "Swipe distance in pixels",
                 "optional": True,
             },
+            "duration": {
+                "type": "number",
+                "description": (
+                    "Gesture duration in milliseconds. Slow durations are "
+                    "honored as-is; they are not treated as a long press."
+                ),
+                "optional": True,
+            },
         },
         locate_fields=[],
         sample={"direction": "up", "distance": 400},
@@ -1131,4 +1157,8 @@ def build_action_space_for(interface_type: str) -> List[DeviceAction]:
         return [
             a for a in build_web_action_space() if a.name != "Pinch"
         ] + [_swipe_action()]
+    if interface_type == "web":
+        # Upstream web integration exposes the pointer swipe; the Playwright and
+        # Selenium pages implement it as a mouse drag with an explicit duration.
+        return build_web_action_space() + [_swipe_action()]
     return build_web_action_space()

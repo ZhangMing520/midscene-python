@@ -220,3 +220,68 @@ class TestBatchRunner:
         content = "computer: {}\ntasks:\n  - name: t\n    flow:\n      - sleep: 1\n"
         runner = BatchRunner({"files": ["x.yml"]}, lambda c, f: FakePlayer("ok"))
         assert runner._apply_web_overrides(content, {"url": "https://x"}) == content
+
+class TestBatchLifecycleAndArtifact:
+    def test_max_concurrent_files_is_an_alias_for_concurrent(self):
+        config = parse_batch_config({"files": ["a.yml"], "maxConcurrentFiles": 3})
+        assert config["concurrent"] == 3
+
+    @pytest.mark.asyncio
+    async def test_before_each_failure_fails_the_file(self, scripts):
+        behaviors = {str(scripts / "setup.yml"): "explode"}
+        config = {
+            "files": [str(scripts / "a.yml")],
+            "beforeEach": str(scripts / "setup.yml"),
+        }
+        runner = BatchRunner(config, _factory(behaviors))
+        results = await runner.run()
+
+        assert results[0]["resultType"] == "failed"
+        assert "beforeEach failed" in results[0]["error"]
+
+    @pytest.mark.asyncio
+    async def test_after_each_failure_fails_the_file(self, scripts):
+        behaviors = {str(scripts / "setup.yml"): "explode"}
+        config = {
+            "files": [str(scripts / "a.yml")],
+            "afterEach": str(scripts / "setup.yml"),
+        }
+        runner = BatchRunner(config, _factory(behaviors))
+        results = await runner.run()
+
+        assert results[0]["resultType"] == "failed"
+        assert "afterEach failed" in results[0]["error"]
+
+    @pytest.mark.asyncio
+    async def test_after_all_failure_fails_the_run(self, scripts):
+        behaviors = {str(scripts / "setup.yml"): "explode"}
+        config = {
+            "files": [str(scripts / "a.yml")],
+            "afterAll": str(scripts / "setup.yml"),
+        }
+        runner = BatchRunner(config, _factory(behaviors))
+        await runner.run()
+
+        assert runner.passed is False
+        assert "afterAll failed" in runner.hook_error
+
+    @pytest.mark.asyncio
+    async def test_writes_directory_report_artifact(self, scripts, tmp_path):
+        artifact_dir = tmp_path / "artifact"
+        config = {
+            "files": [str(scripts / "a.yml"), str(scripts / "b.yml")],
+            "namespace": "nightly",
+            "artifactDir": str(artifact_dir),
+        }
+        runner = BatchRunner(config, _factory({}))
+        await runner.run()
+
+        from midscene.core.report_artifact import read_report_artifact
+
+        artifact = read_report_artifact(artifact_dir)
+        assert artifact["manifest"]["kind"] == "test"
+        assert artifact["manifest"]["status"] == "complete"
+        assert artifact["manifest"]["groups"][0]["id"] == "nightly"
+        assert len(artifact["executions"]) == 2
+        assert artifact["runner"]["namespace"] == "nightly"
+        assert artifact["runner"]["passed"] is True

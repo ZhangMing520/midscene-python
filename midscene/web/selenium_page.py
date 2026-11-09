@@ -336,6 +336,109 @@ class SeleniumWebPage(AbstractInterface):
             logger.error(f"Failed to hover at ({x}, {y}): {e}")
             raise
 
+    async def swipe(
+        self,
+        direction: str,
+        distance: Optional[int] = None,
+        duration: Optional[int] = None,
+    ) -> None:
+        """Mouse swipe honoring an explicit duration (upstream base-page swipe).
+
+        Uses W3C pointer actions with viewport coordinates so the gesture starts
+        at a predictable point; `up` drags towards the top of the page.
+        """
+        if direction not in ("up", "down", "left", "right"):
+            raise ValueError(f"Invalid swipe direction: {direction}")
+        viewport = await asyncio.to_thread(
+            self.driver.execute_script,
+            "return {width: window.innerWidth, height: window.innerHeight}",
+        )
+        width = int(viewport.get("width") or 1280)
+        height = int(viewport.get("height") or 720)
+        span = int(min(distance or min(width, height) // 2, width, height))
+        offsets = {
+            "up": (0, -span),
+            "down": (0, span),
+            "left": (-span, 0),
+            "right": (span, 0),
+        }
+        dx, dy = offsets[direction]
+        start_x = min(max(width / 2 - dx / 2, 1), width - 1)
+        start_y = min(max(height / 2 - dy / 2, 1), height - 1)
+        end_x = min(max(start_x + dx, 1), width - 1)
+        end_y = min(max(start_y + dy, 1), height - 1)
+        duration_ms = max(int(duration or 100), 150)
+        steps = 30
+
+        def _perform() -> None:
+            from selenium.webdriver.common.actions import interaction
+            from selenium.webdriver.common.actions.action_builder import ActionBuilder
+            from selenium.webdriver.common.actions.pointer_input import PointerInput
+
+            pointer = PointerInput(interaction.POINTER_MOUSE, "mouse")
+            builder = ActionBuilder(self.driver, mouse=pointer)
+            builder.pointer_action.move_to_location(int(start_x), int(start_y))
+            builder.pointer_action.click_and_hold()
+            for step in range(1, steps + 1):
+                ratio = step / steps
+                builder.pointer_action.move_to_location(
+                    int(start_x + (end_x - start_x) * ratio),
+                    int(start_y + (end_y - start_y) * ratio),
+                )
+                builder.pointer_action.pause(duration_ms / steps / 1000)
+            builder.pointer_action.release()
+            try:
+                builder.perform()
+            except Exception:
+                # Release with a fresh builder: replaying this one would send
+                # the whole move sequence a second time.
+                try:
+                    release = ActionBuilder(
+                        self.driver,
+                        mouse=PointerInput(interaction.POINTER_MOUSE, "mouse"),
+                    )
+                    release.pointer_action.release()
+                    release.perform()
+                except Exception:
+                    pass
+                raise
+
+        await asyncio.to_thread(_perform)
+
+    async def list_tabs(self) -> List[Dict[str, Any]]:
+        """Browser windows/tabs of the current session."""
+        handles = await asyncio.to_thread(lambda: list(self.driver.window_handles))
+        current = await asyncio.to_thread(lambda: self.driver.current_window_handle)
+        tabs = []
+        try:
+            for index, handle in enumerate(handles):
+                await asyncio.to_thread(self.driver.switch_to.window, handle)
+                title = await asyncio.to_thread(lambda: self.driver.title)
+                url = await asyncio.to_thread(lambda: self.driver.current_url)
+                tabs.append(
+                    {
+                        "id": str(index),
+                        "title": title,
+                        "url": url,
+                        "active": handle == current,
+                    }
+                )
+        finally:
+            # Reading titles switches windows; always leave the original tab
+            # active so later actions do not run against the wrong page.
+            await asyncio.to_thread(self.driver.switch_to.window, current)
+        return tabs
+
+    async def switch_tab(self, tab_id: str) -> None:
+        """Switch to the tab with the given id and keep it active."""
+        handles = await asyncio.to_thread(lambda: list(self.driver.window_handles))
+        try:
+            index = int(tab_id)
+        except (TypeError, ValueError):
+            raise ValueError(f"Unknown tab id: {tab_id}") from None
+        if index < 0 or index >= len(handles):
+            raise ValueError(f"Unknown tab id: {tab_id}")
+        await asyncio.to_thread(self.driver.switch_to.window, handles[index])
     async def drag_and_drop(self, from_point, to_point) -> None:
         """Drag from one point to another with the mouse."""
         try:

@@ -422,6 +422,7 @@ class Agent:
         self._progress_sequence = 0
         self._report_finalized: Optional[str] = None
         self._report_file_name: Optional[str] = None
+        self._report_artifact_store: Optional[Any] = None
         self._last_execution: Optional[Dict[str, Any]] = None
         self._execution_index_by_runner: Dict[int, int] = {}
         # File chooser state for the running aiAct (upstream
@@ -1689,6 +1690,11 @@ class Agent:
             if self._task_cache:
                 self._task_cache.flush()
             await self.flush_report()
+            if self._report_artifact_store is not None:
+                try:
+                    self._report_artifact_store.finalize()
+                except Exception as error:  # never block interface teardown
+                    logger.warning(f"Failed to finalize report artifact: {error}")
             # Not every interface owns a transport; those that do (WDA session,
             # browser context) release it here.
             interface_destroy = getattr(self.interface, "destroy", None)
@@ -1828,8 +1834,35 @@ class Agent:
         json_path = self._report_builder.write_to_disk(name)
         from .report_viewer import write_report_html
 
-        html_path = write_report_html(self._report_builder.to_dict(), name)
+        dump = self._report_builder.to_dict()
+        html_path = write_report_html(dump, name)
+        self._write_report_artifact(name, dump)
         return html_path or json_path or None
+
+    def _write_report_artifact(self, name: str, dump: Dict[str, Any]) -> None:
+        """Mirror the report into a directory artifact when configured.
+
+        Artifact publishing is secondary to the single-file report: a failure
+        here must not make ai_act / destroy fail.
+        """
+        artifact_dir = getattr(self.options, "report_artifact_dir", None)
+        if not artifact_dir:
+            return
+        from .report_artifact import ReportArtifactStore
+
+        try:
+            if self._report_artifact_store is None:
+                report_id = re.sub(r"[^A-Za-z0-9_-]+", "-", Path(name).stem).strip("-")
+                self._report_artifact_store = ReportArtifactStore(
+                    artifact_dir,
+                    report_id or "report",
+                    reuse_existing_report=True,
+                )
+            self._report_artifact_store.write_execution(
+                name, dump, {"reportName": name}
+            )
+        except Exception as error:
+            logger.warning(f"Failed to write report artifact to {artifact_dir}: {error}")
 
     # ------------------------------------------------------------------
     # Report APIs (upstream resetDump / finalizeReport / dumpDataString ...)

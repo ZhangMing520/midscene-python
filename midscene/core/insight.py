@@ -12,9 +12,9 @@ from loguru import logger
 
 from .ai_model.adapters import ModelRuntime, get_model_runtime
 from .ai_model.env_config import ModelConfigManager, get_global_model_config_manager
-from .ai_model.workflows import ai_extract_element_info, ai_locate_element
-from .ai_model.prompts.describe import element_describer_instruction
-from .ai_model.workflows.context_utils import ensure_data_url
+from .ai_model.workflows import ai_extract_element_info
+from .ai_model.workflows.describe import ai_describe_element
+from .ai_model.workflows.locate_service import locate_service
 from .types import (
     AssertResult,
     ExtractOption,
@@ -81,15 +81,18 @@ class Insight:
         options: Optional[LocateOption] = None,
     ) -> LocateResult:
         """Locate a UI element by description (vision grounding)."""
+        options = options or LocateOption()
         try:
-            context = await self._get_context(InsightAction.LOCATE)
-            response = await ai_locate_element(
-                target_element_description=prompt,
+            context = options.ui_context or await self._get_context(
+                InsightAction.LOCATE
+            )
+            response = await locate_service(
+                query_prompt=prompt,
                 context=context,
                 model_runtime=self.model_runtime("locate"),
+                deep_locate=bool(options.deep_think),
             )
-            parse_result = response.get("parse_result", {})
-            element = parse_result.get("element")
+            element = response.get("element")
             await self._notify_dump_subscribers(
                 {
                     "type": "locate",
@@ -182,42 +185,30 @@ class Insight:
             logger.error(f"Assert failed: {e}")
             raise
 
-    async def describe(self, point: tuple) -> Dict[str, Any]:
+    async def describe(
+        self,
+        point: tuple,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         """Describe the element at the given coordinates.
 
-        Uses the upstream element-describer prompt with the insight model.
+        The screenshot is annotated with the upstream ring + crosshair marker
+        before it is sent. options: {deepDescribe: bool, context: UIContext}.
         """
+        options = options or {}
         try:
-            context = await self._get_context(InsightAction.EXTRACT)
-            screenshot = ensure_data_url(
-                getattr(context, "screenshot_base64", "")
+            context = options.get("context") or await self._get_context(
+                InsightAction.EXTRACT
             )
-            system_prompt = element_describer_instruction()
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": (
-                                "Describe the element at the marker. The marker is "
-                                f"located at pixel ({point[0]}, {point[1]}) in the "
-                                "screenshot below (a ring with a crosshair)."
-                            ),
-                        },
-                        {"type": "image", "url": screenshot},
-                    ],
-                },
-            ]
-            from .ai_model.caller import call_generative_ai
-
-            response = await call_generative_ai(
-                messages, self.model_runtime("insight")
+            result = await ai_describe_element(
+                context,
+                [float(point[0]), float(point[1])],
+                self.model_runtime("insight"),
+                deep_describe=bool(options.get("deepDescribe", False)),
             )
             return {
-                "description": response.get("content"),
-                "usage": response.get("usage"),
+                "description": result["description"],
+                "usage": result.get("usage"),
             }
         except Exception as e:
             logger.error(f"Describe failed: {e}")
