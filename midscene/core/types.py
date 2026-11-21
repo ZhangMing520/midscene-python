@@ -351,11 +351,12 @@ class AbstractInterface(ABC):
 
     async def pinch(
         self,
-        direction: str,
-        point: Optional[List[float]] = None,
-        distance: Optional[int] = None,
+        center: List[float],
+        start_distance: float,
+        end_distance: float,
         duration: Optional[int] = None,
     ) -> None:
+        """Two-finger pinch around `center` (upstream pinch primitive)."""
         raise NotImplementedError("pinch is not supported on this interface")
 
     async def drag_and_drop(self, from_point, to_point) -> None:

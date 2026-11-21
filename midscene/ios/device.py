@@ -379,33 +379,18 @@ class IOSDevice(AbstractInterface):
 
     async def pinch(
         self,
-        direction: str,
-        point: Optional[List[float]] = None,
-        distance: Optional[int] = None,
+        center: List[float],
+        start_distance: float,
+        end_distance: float,
         duration: Optional[int] = None,
     ) -> None:
-        """Two-finger pinch (upstream normalizePinchParam): "in" pinches the
-        fingers together (zoom out / shrink), "out" spreads them apart
-        (zoom in / enlarge).
-
-        The fingers start min(width, height)/4 apart and each travels
-        `distance` (default: that same base) from there.
-        """
-        if direction not in ("in", "out"):
-            raise ValueError(f'Invalid pinch direction: {direction}. Use "in" or "out"')
-        size = await self.size()
-        width, height = size["width"], size["height"]
-        base = round(min(width, height) / 4)
-        finger = int(distance) if distance else base
-        center_x = float(point[0]) if point else width / 2
-        center_y = float(point[1]) if point else height / 2
-        end_distance = base + finger if direction == "out" else max(10, base - finger)
+        """Two-finger pinch around `center` (upstream pinch primitive)."""
         await self._ensure_connected()
         await self.wda.pinch(
-            center_x,
-            center_y,
-            base,
-            end_distance,
+            float(center[0]),
+            float(center[1]),
+            float(start_distance),
+            float(end_distance),
             500.0 if duration is None else float(duration),
         )
 

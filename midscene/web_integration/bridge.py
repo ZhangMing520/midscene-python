@@ -499,28 +499,20 @@ class BridgeWebPage(AbstractInterface):
 
     async def pinch(
         self,
-        direction: str,
-        point: Optional[List[float]] = None,
-        distance: Optional[int] = None,
+        center: List[float],
+        start_distance: float,
+        end_distance: float,
         duration: Optional[int] = None,
     ) -> None:
-        if direction not in ("in", "out"):
-            raise ValueError('pinch direction must be "in" or "out"')
+        """Two-finger pinch around `center` (upstream pinch primitive)."""
         server = self._require_server()
-        if point is None:
-            size = await server.call("size", [])
-            point = [size["width"] / 2, size["height"] / 2]
-        spread = float(distance if distance is not None else 100)
-        # extension signature: pinch(centerX, centerY, startDistance,
-        # endDistance, duration); 'in' brings the fingers together
-        start, end = (spread, 20.0) if direction == "in" else (20.0, spread)
         await server.call(
             "pinch",
             [
-                point[0],
-                point[1],
-                start,
-                end,
+                center[0],
+                center[1],
+                start_distance,
+                end_distance,
                 duration if duration is not None else 500,
             ],
         )

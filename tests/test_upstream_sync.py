@@ -2613,12 +2613,10 @@ class TestBridgeProtocol:
         """Upstream labels: 'in' pinches the fingers together, 'out' spreads
         them apart."""
         page, recorder = self._connected_page()
-        await page.pinch("in", point=[10, 20], distance=120)
+        await page.pinch([10, 20], 120.0, 20.0)
         assert recorder.calls[-1] == ("pinch", [10, 20, 120.0, 20.0, 500])
-        await page.pinch("out", point=[10, 20], distance=120)
-        assert recorder.calls[-1] == ("pinch", [10, 20, 20.0, 120.0, 500])
-        with pytest.raises(ValueError):
-            await page.pinch("sideways")
+        await page.pinch([10, 20], 20.0, 120.0, duration=800)
+        assert recorder.calls[-1] == ("pinch", [10, 20, 20.0, 120.0, 800])
 
     def test_bridge_action_space_matches_extension_primitives(self):
         from midscene.web_integration.bridge import BridgeWebPage
@@ -3113,3 +3111,107 @@ class TestPullGesture:
 
         with pytest.raises(ValueError, match="Unknown pull direction"):
             await device.pull_gesture("left")
+
+
+# ---------------------------------------------------------------------------
+# Pinch normalization (upstream normalizePinchParam)
+# ---------------------------------------------------------------------------
+
+
+class _RecordingPinchDevice:
+    def __init__(self):
+        self.calls: List[tuple] = []
+
+    async def size(self) -> Dict[str, int]:
+        return {"width": 1000, "height": 600}
+
+    async def pinch(self, center, start_distance, end_distance, duration=None):
+        self.calls.append((list(center), start_distance, end_distance, duration))
+
+
+class TestPinch:
+    def _normalize(self, param: Dict[str, Any]) -> Dict[str, Any]:
+        from midscene.core.device import normalize_pinch_param
+
+        return normalize_pinch_param(param, {"width": 1000, "height": 600})
+
+    def test_defaults_and_outward_spread(self):
+        assert self._normalize({"direction": "out"}) == {
+            "center_x": 500,
+            "center_y": 300,
+            "start_distance": 150,
+            "end_distance": 300,
+            "duration": 500,
+        }
+
+    def test_locate_center_is_rounded(self):
+        result = self._normalize(
+            {"direction": "in", "locate": {"center": [10.4, 20.6]}}
+        )
+        assert (result["center_x"], result["center_y"]) == (10, 21)
+
+    def test_inward_spread_keeps_a_minimum_gap(self):
+        assert self._normalize({"direction": "in", "distance": 1000})[
+            "end_distance"
+        ] == 10
+
+    def test_rejects_unknown_direction(self):
+        with pytest.raises(ValueError, match="direction"):
+            self._normalize({"direction": "sideways"})
+
+    def test_android_action_space_includes_pinch(self):
+        from midscene.core.device import build_action_space_for
+
+        android = [a.name for a in build_action_space_for("android")]
+        assert android.count("Pinch") == 1
+        harmony = [a.name for a in build_action_space_for("harmony")]
+        assert "Pinch" not in harmony
+
+    @pytest.mark.asyncio
+    async def test_executor_normalizes_and_forwards(self):
+        from midscene.core.device import _execute_pinch
+
+        device = _RecordingPinchDevice()
+        await _execute_pinch(
+            {
+                "direction": "in",
+                "locate": {"prompt": "a"},
+                "distance": 100,
+                "duration": 700,
+            },
+            device,
+            _swipe_locate_fn,
+        )
+        assert device.calls == [([200, 150], 150, 50, 700)]
+
+    @pytest.mark.asyncio
+    async def test_android_pinch_uses_yadb(self, monkeypatch):
+        from midscene.android.device import AndroidDevice
+
+        device = AndroidDevice("emulator-5554")
+        commands: List[list] = []
+
+        async def record(command):
+            commands.append(command)
+            return ""
+
+        async def no_yadb():
+            return None
+
+        monkeypatch.setattr(device, "_ensure_yadb", no_yadb)
+        monkeypatch.setattr(device, "_run_adb_command", record)
+
+        await device.pinch([100, 200], 300, 500, duration=700)
+        assert commands[-1][-6:] == [
+            "-pinch", "100", "200", "300", "500", "700"
+        ]
+
+    @pytest.mark.asyncio
+    async def test_android_pinch_rejects_non_default_display(self):
+        from midscene.android.device import AndroidDevice, AndroidDeviceConfig
+
+        device = AndroidDevice(
+            "d", AndroidDeviceConfig(device_id="d", display_id=2)
+        )
+        with pytest.raises(RuntimeError, match="non-default display"):
+            await device.pinch([1, 2], 10, 20)

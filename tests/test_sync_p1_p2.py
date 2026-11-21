@@ -643,7 +643,7 @@ class TestCacheStrategy:
 
 
 class TestPinch:
-    def test_pinch_in_web_space_only(self):
+    def test_pinch_in_web_space(self):
         from midscene.core.device import build_web_action_space
 
         assert "Pinch" in [a.name for a in build_web_action_space()]
@@ -653,13 +653,14 @@ class TestPinch:
 
         assert hasattr(PlaywrightWebPage, "pinch")
 
-    def test_android_pinch_not_supported(self):
-        """Android only inherits the base stub, so Pinch is filtered out of
-        its action space."""
+    def test_android_pinch_supported(self):
+        """Android implements pinch through yadb and advertises it."""
         from midscene.android.device import AndroidDevice
+        from midscene.core.device import build_action_space_for
         from midscene.core.types import AbstractInterface
 
-        assert AndroidDevice.pinch is AbstractInterface.pinch
+        assert AndroidDevice.pinch is not AbstractInterface.pinch
+        assert "Pinch" in [a.name for a in build_action_space_for("android")]
 
     def test_pinch_filtered_when_interface_lacks_primitive(self):
         from midscene.core.device import _supports
@@ -671,9 +672,16 @@ class TestPinch:
     async def test_pinch_executor_validates_direction(self):
         from midscene.core.device import build_web_action_space, find_action_in_action_space_or_throw
 
+        class _PinchDevice:
+            async def size(self):
+                return {"width": 100, "height": 100}
+
+            async def pinch(self, *args, **kwargs):
+                pass
+
         definition = find_action_in_action_space_or_throw("Pinch", build_web_action_space())
         with pytest.raises(ValueError):
-            await definition.execute({"direction": "sideways"}, Mock(), None)
+            await definition.execute({"direction": "sideways"}, _PinchDevice(), None)
 
     @pytest.mark.asyncio
     async def test_ai_pinch_param_assembly(self):

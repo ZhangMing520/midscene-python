@@ -497,7 +497,7 @@ class TestIOSDevice:
         base = round(min(390, 844) / 4)
 
         device, transport = self._device()
-        await device.pinch("out", point=[100, 200], distance=150, duration=800)
+        await device.pinch([100, 200], base, base + 150, duration=800)
         fingers = transport.calls_for("/actions")[0][2]["actions"]
         moves = [a for a in fingers[0]["actions"] if a["type"] == "pointerMove"]
         assert moves[0]["y"] == round(200 + base / 2)
@@ -505,7 +505,7 @@ class TestIOSDevice:
         assert moves[-1]["duration"] == 800
 
         device, transport = self._device()
-        await device.pinch("in", point=[100, 200], distance=150)
+        await device.pinch([100, 200], base, max(10, base - 150))
         moves = [
             a
             for a in transport.calls_for("/actions")[0][2]["actions"][0]["actions"]

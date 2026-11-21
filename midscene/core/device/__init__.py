@@ -112,6 +112,11 @@ def _is_finite_number(value: Any) -> bool:
     )
 
 
+def _js_round(value: float) -> int:
+    """JavaScript Math.round: halves round towards +infinity."""
+    return int(math.floor(value + 0.5))
+
+
 def _swipe_center(locate: Any, name: str) -> Dict[str, float]:
     center = locate.get("center") if isinstance(locate, dict) else None
     if not center or len(center) < 2:
@@ -198,6 +203,59 @@ def normalize_swipe_param(
         "end_point": end_point,
         "duration": duration,
         "repeat_count": 10 if repeat_count == 0 else int(repeat_count),
+    }
+
+
+def normalize_pinch_param(
+    param: Dict[str, Any], screen_size: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Resolve Pinch params into a center point and finger distances.
+
+    Mirrors upstream `normalizePinchParam`: the center defaults to the middle
+    of the screen, the fingers start a quarter of the shorter dimension apart
+    and the optional distance is how much that gap changes.
+    """
+    width = float(screen_size["width"])
+    height = float(screen_size["height"])
+
+    direction = param.get("direction")
+    if direction not in ("in", "out"):
+        raise ValueError('Pinch direction must be "in" or "out"')
+
+    duration = param.get("duration")
+    if duration is None:
+        duration = 500
+    if not _is_finite_number(duration) or duration <= 0:
+        raise ValueError("duration must be a positive finite number")
+
+    locate = param.get("locate")
+    if locate:
+        center = _swipe_center(locate, "locate")
+        center_x = _js_round(center["x"])
+        center_y = _js_round(center["y"])
+    else:
+        center_x = _js_round(width / 2)
+        center_y = _js_round(height / 2)
+
+    base_distance = _js_round(min(width, height) / 4)
+    finger_distance = param.get("distance")
+    if finger_distance is None:
+        finger_distance = base_distance
+    if not _is_finite_number(finger_distance) or finger_distance <= 0:
+        raise ValueError("distance must be a positive finite number")
+
+    end_distance = (
+        base_distance + finger_distance
+        if direction == "out"
+        else max(10, base_distance - finger_distance)
+    )
+
+    return {
+        "center_x": center_x,
+        "center_y": center_y,
+        "start_distance": base_distance,
+        "end_distance": end_distance,
+        "duration": int(duration),
     }
 
 
@@ -945,20 +1003,19 @@ async def _execute_terminate(param: Dict[str, Any], device: Any, locate_fn) -> N
 
 
 async def _execute_pinch(param: Dict[str, Any], device: Any, locate_fn) -> None:
-    direction = param.get("direction")
-    if direction not in ("in", "out"):
-        raise ValueError('Pinch direction must be "in" or "out"')
-    locate = param.get("locate")
-    point = None
-    if locate is not None:
-        point_result = await _resolve_locate_point(locate, locate_fn)
-        point = point_result["center"]
-    kwargs: Dict[str, Any] = {}
-    if param.get("distance") is not None:
-        kwargs["distance"] = param["distance"]
-    if param.get("duration") is not None:
-        kwargs["duration"] = param["duration"]
-    await device.pinch(direction, point=point, **kwargs)
+    if not _supports(device, "pinch"):
+        raise NotImplementedError("Pinch is not supported on this interface")
+    resolved = dict(param)
+    if resolved.get("locate"):
+        point_result = await _resolve_locate_point(resolved["locate"], locate_fn)
+        resolved["locate"] = {"center": list(point_result["center"])}
+    normalized = normalize_pinch_param(resolved, await _resolve_screen_size(device))
+    await device.pinch(
+        [normalized["center_x"], normalized["center_y"]],
+        normalized["start_distance"],
+        normalized["end_distance"],
+        duration=normalized["duration"],
+    )
 
 
 async def _execute_run_hdc_shell(param: Dict[str, Any], device: Any, locate_fn) -> Any:
@@ -1009,6 +1066,7 @@ _ANDROID_SHARED_ACTIONS = (
     "Scroll",
     "ClearInput",
     "DragAndDrop",
+    "Pinch",
     "Sleep",
 )
 

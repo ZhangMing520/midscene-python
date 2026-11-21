@@ -462,6 +462,42 @@ class AndroidDevice(AbstractInterface):
         await self.swipe(start_x, start_y, start_x, end_y, duration=duration_ms)
         await asyncio.sleep(0.2 if direction == "down" else 0.1)
 
+    async def pinch(
+        self,
+        center: List[float],
+        start_distance: float,
+        end_distance: float,
+        duration: Optional[int] = None,
+    ) -> None:
+        """Two-finger pinch through yadb (upstream Android touch.pinch).
+
+        yadb only injects gestures into the default display, so fail fast on
+        other displays instead of silently pinching the main screen.
+        """
+        if self.config.display_id != 0:
+            raise RuntimeError(
+                "Pinch is not supported on a non-default display "
+                f"(displayId={self.config.display_id}). The underlying yadb "
+                "tool only injects gestures into the default display."
+            )
+        await self._ensure_yadb()
+        center_x, center_y = self._to_physical(center[0], center[1])
+        ratio = center_x / center[0] if center_x != 0 and center[0] != 0 else 1
+        duration_ms = int(duration if duration is not None else 500)
+        await self._run_adb_command([
+            "-s", self.device_id, "shell",
+            "app_process",
+            f"-Djava.class.path={YADB_DEVICE_PATH}",
+            YADB_DEVICE_PATH,
+            "com.ysbing.yadb.Main",
+            "-pinch",
+            str(center_x),
+            str(center_y),
+            str(_round_half_up(start_distance * ratio)),
+            str(_round_half_up(end_distance * ratio)),
+            str(duration_ms),
+        ])
+
     async def _swipe_direction(
         self,
         direction: str,
