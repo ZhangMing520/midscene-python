@@ -1,8 +1,4 @@
-"""Locate prompts.
-
-Synced from upstream packages/core/src/ai-model/prompt/locate/*
-"""
-
+"""Locate grounding rules (upstream prompt/locate/grounding-rules.ts)."""
 
 
 def locate_grounding_rules() -> str:
@@ -16,21 +12,4 @@ def locate_grounding_rules() -> str:
 - If the same text appears in multiple regions, obey the described owner region first, such as filter bar vs table header."""
 
 
-def build_element_locate_system_prompt(
-    system_prompt_introduction: str, response_instructions: str
-) -> str:
-    return f"""
-{system_prompt_introduction}
-
-{locate_grounding_rules()}
-
-{response_instructions}"""
-
-
-def build_search_area_locate_system_prompt(
-    system_prompt_introduction: str, response_instructions: str
-) -> str:
-    return f"""
-{system_prompt_introduction}
-
-{response_instructions}"""
+__all__ = ["locate_grounding_rules"]

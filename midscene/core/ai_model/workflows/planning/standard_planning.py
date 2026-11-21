@@ -5,8 +5,7 @@ Synced from upstream packages/core/src/ai-model/workflows/planning/
 locate-normalization.ts, planning-action-log.ts).
 """
 
-import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
@@ -16,12 +15,29 @@ from midscene.core.ai_model.prompt.planning import build_standard_planning_syste
 from midscene.core.ai_model.service_caller.semantic_retry import call_ai_and_parse_with_retry, with_semantic_retry_feedback
 from midscene.core.ai_model.models.registry import ModelRuntime
 from midscene.shared.env import planning_model_family_required_for_locate_message
-from midscene.core.ai_model.shared.xml import extract_raw_xml_fragment, extract_xml_tag
 from midscene.core.ai_model.shared.multimodal_prompt import (
     ensure_data_url,
     get_screenshot_base64,
     get_shot_size,
     prepare_model_image,
+)
+from midscene.core.ai_model.workflows.planning.conversation_history import (
+    ConversationHistory,
+)
+from midscene.core.ai_model.workflows.planning.locate_normalization import (
+    normalize_planning_locate_parameter,
+)
+from midscene.core.ai_model.workflows.planning.parse_planning_actions import (
+    parse_planning_actions,
+)
+from midscene.core.ai_model.workflows.planning.planning_action_log import (
+    build_planning_action_log,
+)
+from midscene.core.ai_model.workflows.planning.standard_planning_parser import (
+    parse_mark_finished_indexes,
+    parse_standard_planning_response,
+    parse_sub_goals_from_xml,
+    parse_xml_planning_response,
 )
 
 NO_PREVIOUS_ACTIONS_TEXT = (
@@ -29,310 +45,6 @@ NO_PREVIOUS_ACTIONS_TEXT = (
     "instruction asks for actions, choose the first action to execute."
 )
 
-
-# ---------------------------------------------------------------------------
-# Response parsing (standard-planning-parser.ts)
-# ---------------------------------------------------------------------------
-
-_SUB_GOAL_RE = re.compile(
-    r'<sub-goal\s+index="(\d+)"\s+status="(pending|finished)"(?:\s*/>|>([\s\S]*?)</sub-goal>)',
-    re.IGNORECASE,
-)
-_MARK_SUB_GOAL_DONE_RE = re.compile(
-    r'<sub-goal\s+index="(\d+)"\s+status="finished"\s*/>', re.IGNORECASE
-)
-_COMPLETE_RE = re.compile(r'<complete\s+success="(true|false)">([\s\S]*?)</complete>', re.IGNORECASE)
-
-
-def parse_sub_goals_from_xml(xml_content: str) -> List[Dict[str, Any]]:
-    sub_goals: List[Dict[str, Any]] = []
-    for match in _SUB_GOAL_RE.finditer(xml_content):
-        sub_goals.append(
-            {
-                "index": int(match.group(1)),
-                "status": match.group(2),
-                "description": (match.group(3) or "").strip(),
-            }
-        )
-    return sub_goals
-
-
-def parse_mark_finished_indexes(xml_content: str) -> List[int]:
-    return [int(match.group(1)) for match in _MARK_SUB_GOAL_DONE_RE.finditer(xml_content)]
-
-
-def parse_xml_planning_response(
-    xml_string: str,
-    action_output_tag_names: Tuple[str, ...],
-    include_thought: bool,
-) -> Tuple[Dict[str, Any], str]:
-    """Parse common XML fields and retain the raw action-protocol XML."""
-    thought = extract_xml_tag(xml_string, "planning") if include_thought else None
-    memory = extract_xml_tag(xml_string, "memory")
-    log = extract_xml_tag(xml_string, "log") or ""
-    error = extract_xml_tag(xml_string, "error")
-
-    complete_match = _COMPLETE_RE.search(xml_string)
-    finalize_message: Optional[str] = None
-    finalize_success: Optional[bool] = None
-    if complete_match:
-        finalize_success = complete_match.group(1) == "true"
-        finalize_message = complete_match.group(2).strip() or None
-
-    update_plan_content = extract_xml_tag(xml_string, "update-plan-content")
-    mark_sub_goal_done = extract_xml_tag(xml_string, "mark-sub-goal-done")
-    update_sub_goals = (
-        parse_sub_goals_from_xml(update_plan_content) if update_plan_content else None
-    )
-    mark_finished_indexes = (
-        parse_mark_finished_indexes(mark_sub_goal_done) if mark_sub_goal_done else None
-    )
-
-    parsed: Dict[str, Any] = {"log": log}
-    if thought:
-        parsed["thought"] = thought
-    if memory:
-        parsed["memory"] = memory
-    if error:
-        parsed["error"] = error
-    if finalize_message is not None:
-        parsed["finalize_message"] = finalize_message
-    if finalize_success is not None:
-        parsed["finalize_success"] = finalize_success
-    if update_sub_goals:
-        parsed["update_sub_goals"] = update_sub_goals
-    if mark_finished_indexes:
-        parsed["mark_finished_indexes"] = mark_finished_indexes
-
-    raw_action_output = extract_raw_xml_fragment(xml_string, action_output_tag_names)
-    return parsed, raw_action_output
-
-
-def _build_non_action_planning_log(response: Dict[str, Any]) -> str:
-    if response.get("error"):
-        return f"Error - {response['error']}"
-    if response.get("finalize_success") is not None:
-        parts = [f"Complete - success: {str(response['finalize_success']).lower()}"]
-        if response.get("finalize_message"):
-            parts.append(f"message: {response['finalize_message']}")
-        return ", ".join(parts)
-    return "No action"
-
-
-def build_planning_action_log(action: Dict[str, Any], action_space: List[Any]) -> str:
-    """Build a human-readable log line for an executed planning action."""
-    action_dict = next(
-        (
-            (a if isinstance(a, dict) else a.to_prompt_dict())
-            for a in action_space
-            if (a if isinstance(a, dict) else a.to_prompt_dict())["name"]
-            == action["type"]
-        ),
-        None,
-    )
-    param = action.get("param") or {}
-    locate = param.get("locate") or {}
-    target = (
-        locate.get("prompt") if isinstance(locate, dict) else None
-    ) or param.get("value") or param.get("keyName") or ""
-    interface_alias = (action_dict or {}).get("interface_alias")
-    return f"{interface_alias or action['type']}({target})"
-
-
-def parse_standard_planning_response(
-    xml_string: str,
-    action_output_protocol: Dict[str, Any],
-    action_space: List[Any],
-    include_thought: bool,
-    log_source: str = "model",
-) -> Dict[str, Any]:
-    parsed, raw_action_output = parse_xml_planning_response(
-        xml_string, action_output_protocol["action_output_tag_names"], include_thought
-    )
-    response = dict(parsed)
-    response["action"] = action_output_protocol["parse_action_output"](
-        raw_action_output, action_space
-    )
-
-    if log_source == "model":
-        return response
-
-    if response.get("action"):
-        response["log"] = build_planning_action_log(response["action"], action_space)
-    else:
-        response["log"] = _build_non_action_planning_log(response)
-    return response
-
-
-# ---------------------------------------------------------------------------
-# Planning action parameter normalization (parse-planning-actions.ts +
-# locate-normalization.ts)
-# ---------------------------------------------------------------------------
-
-def normalize_planning_locate_parameter(
-    locate: Dict[str, Any],
-    locate_result_codec: Optional[Any],
-    locate_result_context: Optional[Dict[str, Any]],
-    include_locate_in_planning: bool,
-) -> Dict[str, Any]:
-    """Normalize a planning locate parameter into {prompt, ...}.
-
-    When the planning model returned coordinates (includeLocateInPlanning) they
-    are mapped to pixels and attached as `locatedPixelResult`; otherwise the
-    parameter keeps only the prompt and locate runs at execution time.
-    """
-    prompt = locate.get("prompt")
-    if not include_locate_in_planning:
-        return {"prompt": prompt}
-
-    if locate_result_codec is None:
-        raise ValueError(
-            "planning locate normalization requires a locate result codec"
-        )
-
-    spec = locate_result_codec.prompt_spec
-    raw_keys = [spec["resultKey"], *(spec.get("resultKeyAliases") or [])]
-    raw_value = next(
-        (locate[key] for key in raw_keys if key in locate), None
-    )
-    # Drop raw coordinate fields after converting them.
-    normalized = {key: value for key, value in locate.items() if key not in raw_keys}
-    normalized["locatedPixelResult"] = locate_result_codec.to_pixel_result(
-        raw_value, locate_result_context or {}
-    )
-    return normalized
-
-
-def parse_planning_actions(
-    actions: List[Dict[str, Any]],
-    action_space: List[Any],
-    parse_raw_locate_parameter,
-    include_locate_in_planning: bool,
-    locate_result_codec: Optional[Any] = None,
-    locate_result_context: Optional[Dict[str, Any]] = None,
-) -> None:
-    """Validate and normalize planning actions in place."""
-    from midscene.core.device import find_action_in_action_space_or_throw
-
-    for action in actions:
-        definition = find_action_in_action_space_or_throw(action["type"], action_space)
-        locate_fields = list(definition.locate_fields) if not isinstance(definition, dict) else list(
-            definition.get("locate_fields", [])
-        )
-        try:
-            param = action.get("param")
-            if param is None:
-                param = {}
-                action["param"] = param
-
-            for field in locate_fields:
-                raw_locate = param.get(field)
-                if raw_locate is not None:
-                    param[field] = parse_raw_locate_parameter(raw_locate)
-
-            for field in locate_fields:
-                locate = param.get(field)
-                if locate is None:
-                    continue
-                if not isinstance(locate, dict):
-                    raise ValueError(f"{field}: Expected an object with a prompt field")
-                if locate.get("prompt") is None:
-                    raise ValueError(f"{field}.prompt: Required")
-                if not isinstance(locate["prompt"], str) and not isinstance(
-                    locate["prompt"], dict
-                ):
-                    raise ValueError(
-                        f"{field}.prompt: Expected a string or an object with a prompt field"
-                    )
-                param[field] = normalize_planning_locate_parameter(
-                    locate,
-                    locate_result_codec,
-                    locate_result_context,
-                    include_locate_in_planning,
-                )
-        except Exception as error:
-            raise ValueError(
-                f"Invalid parameters for action {action['type']}: {error}"
-            ) from error
-
-
-# ---------------------------------------------------------------------------
-# Conversation history (conversation-history.ts, simplified subset)
-# ---------------------------------------------------------------------------
-
-class ConversationHistory:
-    """Track messages, historical logs and memories across planning turns."""
-
-    def __init__(self, images_include_count: int = 2):
-        self.messages: List[Dict[str, Any]] = []
-        self.historical_logs: List[str] = []
-        self.memories: List[str] = []
-        self.sub_goals: List[Dict[str, Any]] = []
-        self.pending_feedback_message: Optional[str] = None
-        self.images_include_count = images_include_count
-
-    def append_message(self, message: Dict[str, Any]) -> None:
-        self.messages.append(message)
-
-    def append_historical_log(self, log: str) -> None:
-        if log:
-            self.historical_logs.append(log)
-
-    def append_memory(self, memory: str) -> None:
-        if memory:
-            self.memories.append(memory)
-
-    def reset_pending_feedback_message_if_exists(self) -> None:
-        self.pending_feedback_message = None
-
-    def historical_logs_to_text(self) -> str:
-        if not self.historical_logs:
-            return ""
-        lines = "\n".join(f"- {log}" for log in self.historical_logs)
-        return f"### Historical execution logs\n{lines}"
-
-    def memories_to_text(self) -> str:
-        if not self.memories:
-            return ""
-        lines = "\n".join(f"- {memory}" for memory in self.memories)
-        return f"### Memories\n{lines}"
-
-    def sub_goals_to_text(self) -> str:
-        from midscene.core.ai_model.prompt.planning import build_sub_goals_text
-
-        return build_sub_goals_text(self.sub_goals)
-
-    def snapshot(self, images_include_count: Optional[int] = None) -> List[Dict[str, Any]]:
-        """Return recent history, keeping at most N images."""
-        limit = (
-            images_include_count
-            if images_include_count is not None
-            else self.images_include_count
-        )
-        result: List[Dict[str, Any]] = []
-        image_count = 0
-        for message in reversed(self.messages):
-            content = message.get("content")
-            has_image = isinstance(content, list) and any(
-                part.get("type") == "image" for part in content
-            )
-            if has_image:
-                if image_count >= limit:
-                    continue
-                image_count += 1
-            result.append(message)
-        result.reverse()
-        return result
-
-    def compress_history(self, threshold: int = 50, keep: int = 20) -> None:
-        if len(self.messages) <= threshold:
-            return
-        self.messages = self.messages[-keep:]
-
-
-# ---------------------------------------------------------------------------
-# standardPlan (standard-planning.ts)
-# ---------------------------------------------------------------------------
 
 async def standard_plan(
     user_instruction: str,
@@ -662,3 +374,17 @@ def build_yaml_flow_from_plans(
             param = scale_action_distances(param, definition, distance_ratio)
         flow.append({"type": action["type"], **param})
     return yaml.dump(flow, allow_unicode=True, sort_keys=False, width=10**6).strip()
+
+
+__all__ = [
+    "ConversationHistory",
+    "build_planning_action_log",
+    "build_yaml_flow_from_plans",
+    "normalize_planning_locate_parameter",
+    "parse_mark_finished_indexes",
+    "parse_planning_actions",
+    "parse_standard_planning_response",
+    "parse_sub_goals_from_xml",
+    "parse_xml_planning_response",
+    "standard_plan",
+]

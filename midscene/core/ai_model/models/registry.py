@@ -80,6 +80,7 @@ from midscene.core.ai_model.models.ui_tars import (
     UI_TARS_LOCATE_FORMAT,
     _build_ui_tars_params,
 )
+from midscene.core.ai_model.models.utils.intent import is_locate_intent
 
 _ALL_PROTOCOLS = ["openai-chat", "openai-responses"]
 
@@ -516,5 +517,10 @@ def get_model_runtime(config: Dict[str, Any]) -> ModelRuntime:
     )
 
 
-def is_locate_intent(intent: Optional[str]) -> bool:
-    return intent == "locate"
+__all__ = [
+    "ModelAdapter",
+    "ModelRuntime",
+    "get_model_adapter",
+    "get_model_runtime",
+    "is_locate_intent",
+]

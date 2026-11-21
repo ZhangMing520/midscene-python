@@ -1,4 +1,4 @@
-"""UI-TARS adapter (upstream ai-model/models/ui-tars/*)."""
+"""UI-TARS adapter (upstream ai-model/models/ui-tars/adapter.ts)."""
 
 from typing import Any, Dict, List
 
@@ -12,6 +12,7 @@ from midscene.core.ai_model.model_adapter.temperature_with_semantic_retry import
 from midscene.core.ai_model.model_adapter.types import (
     ModelRequestUserConfig,
 )
+
 
 def _build_ui_tars_params(
     midscene_defaults: Dict[str, Any],
@@ -33,6 +34,9 @@ UI_TARS_POINT_COORDS = {
 }
 
 
+# UI-TARS has not received active updates for a long time, so this parser is
+# intentionally kept separate from Doubao even though the current logic is the
+# same. This avoids coupling UI-TARS behavior to future Doubao adapter changes.
 def _parse_ui_tars_raw_locate_value(input_value: Any) -> Dict[str, Any]:
     import re as _re
 
@@ -75,3 +79,11 @@ UI_TARS_LOCATE_FORMAT = {
     "coordinates": UI_TARS_BBOX_COORDS,
     "parseRawLocateValue": _parse_ui_tars_raw_locate_value,
 }
+
+
+__all__ = [
+    "UI_TARS_BBOX_COORDS",
+    "UI_TARS_LOCATE_FORMAT",
+    "UI_TARS_POINT_COORDS",
+    "_build_ui_tars_params",
+]

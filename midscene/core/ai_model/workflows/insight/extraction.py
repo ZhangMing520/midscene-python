@@ -15,7 +15,9 @@ from midscene.core.ai_model.prompt.insight import build_insight_system_prompt, e
 from midscene.core.ai_model.model_adapter.default_insight_protocol import create_default_insight_protocol
 from midscene.core.ai_model.service_caller.semantic_retry import call_ai_and_parse_with_retry, with_semantic_retry_feedback
 from midscene.core.ai_model.models.registry import ModelRuntime
-from midscene.core.ai_model.shared.xml import extract_raw_xml_fragment, extract_xml_tag
+from midscene.core.ai_model.workflows.insight.insight_response_parser import (
+    parse_insight_response,
+)
 from midscene.core.ai_model.shared.multimodal_prompt import (
     ensure_data_url,
     get_screenshot_base64,
@@ -29,37 +31,6 @@ def get_default_insight_protocol() -> Dict[str, Any]:
     if _default_insight_protocol is None:
         _default_insight_protocol = create_default_insight_protocol()
     return _default_insight_protocol
-
-
-def parse_insight_response(
-    content: str, data_output_protocol: Dict[str, Any]
-) -> Dict[str, Any]:
-    """Parse an insight XML response into {thought?, data, errors?}."""
-    observation = extract_xml_tag(content, "observation")
-    errors_content = extract_xml_tag(content, "errors")
-    raw_data_output = extract_raw_xml_fragment(content, data_output_protocol["tag_names"])
-    data = data_output_protocol["parse"](raw_data_output)
-
-    errors: Optional[List[str]] = None
-    if errors_content:
-        try:
-            from midscene.core.ai_model.shared.json import parse_model_response_json
-
-            parsed_errors = parse_model_response_json(
-                errors_content, source="generic-object"
-            )
-            if isinstance(parsed_errors, list):
-                errors = parsed_errors
-        except Exception:
-            # Error details are optional and must not discard valid extracted data.
-            pass
-
-    result: Dict[str, Any] = {"data": data}
-    if observation:
-        result["thought"] = observation
-    if errors:
-        result["errors"] = errors
-    return result
 
 
 async def ai_extract_element_info(
