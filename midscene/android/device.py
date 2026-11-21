@@ -6,13 +6,25 @@ import asyncio
 import base64
 import math
 import subprocess
-import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from loguru import logger
 from pydantic import BaseModel
 
+from midscene.android.adb_shell import (
+    YADB_DEVICE_PATH,
+    YADB_VERSION,
+    escape_for_shell,
+    shell_escape_arg,
+    should_use_yadb_for_text,
+)
+from midscene.android.ui_tree import parse_ui_automator_xml
+from midscene.android.utils import (
+    parse_adb_devices_output,
+    parse_screen_density,
+    parse_screen_size_output,
+)
 from midscene.core.device.mobile_scroll import resolve_default_mobile_scroll
 from midscene.core.types import (
     AbstractInterface, InterfaceType, UIContext, BaseElement, UINode, UITree,
@@ -180,40 +192,6 @@ def warn_scroll_distance_clamped(
         f"clamped. If you want to scroll to the {edge_label[direction]}, use "
         f"{scroll_to_suggestion[direction]} instead."
     )
-YADB_VERSION = "v1.1.1"
-YADB_DEVICE_PATH = "/data/local/tmp/yadb"
-
-
-def escape_for_shell(text: str) -> str:
-    """Escape text for safe use inside single-quoted shell strings.
-
-    In single quotes all characters are literal except ' itself; newlines are
-    converted to literal \n (yadb interprets them back to real newlines).
-    """
-    return text.replace("'", "'\\''").replace("\n", "\\n")
-
-
-def shell_escape_arg(text: str) -> str:
-    """Escape a string as a single `adb shell input text` argument.
-
-    Wraps the value in single quotes so the device shell does not interpret
-    spaces, &, ;, |, $, ` etc. Internal single quotes use the '\'' sequence.
-    """
-    return "'" + text.replace("'", "'\\''") + "'"
-
-
-def should_use_yadb_for_text(text: str) -> bool:
-    """True when `adb shell input text` cannot reliably deliver this text:
-    non-ASCII (Chinese etc.), format specifiers, shell-special characters, or
-    mixed quotes (upstream shouldUseYadbForText)."""
-    import re as _re
-
-    has_non_ascii = any(ord(ch) >= 0x80 for ch in text)
-    has_format_specifiers = bool(_re.search(r"%[a-zA-Z]", text))
-    has_shell_special_chars = bool(_re.search(r"[\\`$]", text))
-    has_both_quotes = '"' in text and "'" in text
-    return has_non_ascii or has_format_specifiers or has_shell_special_chars or has_both_quotes
-
 
 
 class AndroidDeviceConfig(BaseModel):
@@ -271,16 +249,7 @@ class AndroidDevice(AbstractInterface):
         """List available Android devices"""
         try:
             result = await cls._run_adb_command(["devices"])
-            lines = result.stdout.strip().split('\n')[1:]  # Skip header
-            
-            devices = []
-            for line in lines:
-                if '\t' in line:
-                    device_id = line.split('\t')[0]
-                    if device_id:
-                        devices.append(device_id)
-            
-            return devices
+            return parse_adb_devices_output(result.stdout.strip())
             
         except Exception as e:
             logger.error(f"Failed to list devices: {e}")
@@ -950,79 +919,21 @@ class AndroidDevice(AbstractInterface):
             ], capture_output=True)
             
             xml_content = result.stdout.decode('utf-8')
-            
-            # Parse XML
-            root = ET.fromstring(xml_content)
-            elements = []
-            
-            def parse_node(node, index=0):
-                if node.tag == "node":
-                    bounds = node.get("bounds", "")
-                    if bounds:
-                        # Parse bounds [x1,y1][x2,y2]
-                        coords = bounds.replace('][', ',').replace('[', '').replace(']', '').split(',')
-                        if len(coords) == 4:
-                            x1, y1, x2, y2 = map(int, coords)
-                            
-                            rect = Rect(
-                                left=x1, top=y1,
-                                width=x2-x1, height=y2-y1
-                            )
-                            
-                            content = node.get("text", "") or node.get("content-desc", "")
-                            class_name = node.get("class", "")
-                            
-                            # Determine node type
-                            node_type = self._get_android_node_type(class_name)
-                            
-                            element = AndroidElement(
-                                device=self,
-                                id=f"element_{index}",
-                                content=content,
-                                rect=rect,
-                                center=(x1 + (x2-x1)/2, y1 + (y2-y1)/2),
-                                node_type=node_type,
-                                attributes={
-                                    "class": class_name,
-                                    "package": node.get("package", ""),
-                                    "clickable": node.get("clickable", "false") == "true",
-                                    "enabled": node.get("enabled", "false") == "true",
-                                    "focused": node.get("focused", "false") == "true",
-                                    "selected": node.get("selected", "false") == "true",
-                                },
-                                is_visible=rect.width > 0 and rect.height > 0
-                            )
-                            
-                            if element.is_visible:
-                                elements.append(element)
-                
-                # Process children
-                for child in node:
-                    parse_node(child, len(elements))
-            
-            parse_node(root)
-            return elements
+
+            return [
+                AndroidElement(
+                    device=self,
+                    id=f"element_{index}",
+                    **descriptor,
+                )
+                for index, descriptor in enumerate(
+                    parse_ui_automator_xml(xml_content)
+                )
+            ]
             
         except Exception as e:
             logger.error(f"Failed to get UI elements: {e}")
             return []
-    
-    def _get_android_node_type(self, class_name: str) -> NodeType:
-        """Determine node type from Android class name"""
-        class_name = class_name.lower()
-        
-        if "button" in class_name:
-            return NodeType.BUTTON
-        elif "edittext" in class_name or "textfield" in class_name:
-            return NodeType.INPUT
-        elif "textview" in class_name or "text" in class_name:
-            return NodeType.TEXT
-        elif "imageview" in class_name or "image" in class_name:
-            return NodeType.IMAGE
-        elif "linearlayout" in class_name or "relativelayout" in class_name or "framelayout" in class_name:
-            return NodeType.CONTAINER
-        else:
-            return NodeType.OTHER
     
     async def _build_ui_tree(self) -> UITree:
         """Build UI tree structure"""
@@ -1053,18 +964,7 @@ class AndroidDevice(AbstractInterface):
             ], capture_output=True)
 
             output = result.stdout.decode('utf-8').strip()
-            physical: Optional[Size] = None
-            for line in output.splitlines():
-                if "Physical size:" in line and "x" in line:
-                    size_str = line.split(":")[-1].strip()
-                    width, height = map(int, size_str.split("x"))
-                    physical = Size(width=width, height=height)
-                    break
-            if physical is None and ":" in output:
-                size_str = output.split(":")[-1].strip()
-                if "x" in size_str:
-                    width, height = map(int, size_str.split("x"))
-                    physical = Size(width=width, height=height)
+            physical = parse_screen_size_output(output)
             if physical is None:
                 physical = Size(width=1080, height=1920)
 
@@ -1089,15 +989,8 @@ class AndroidDevice(AbstractInterface):
                 ["-s", self.device_id, "shell", "wm", "density"],
                 capture_output=True,
             )
-            import re as _re
-
             text = result.stdout.decode("utf-8", errors="ignore")
-            override = _re.search(r"Override density:\s*(\d+)", text)
-            if override:
-                return int(override.group(1))
-            physical = _re.search(r"Physical density:\s*(\d+)", text)
-            if physical:
-                return int(physical.group(1))
+            return parse_screen_density(text)
         except Exception as e:
             logger.debug(f"Failed to read display density: {e}")
         return 160
