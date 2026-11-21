@@ -3,6 +3,15 @@
 import base64 as _base64
 from typing import Any, Dict, Optional
 
+from midscene.shared.img.info import (
+    encoded_image_info_of_buffer,
+    image_info_of_base64,
+    is_valid_image_buffer,
+    is_valid_jpeg_image_buffer,
+    is_valid_png_image_buffer,
+    validate_screenshot_buffer,
+)
+
 _IMAGE_MAGIC = (
     (b"\x89PNG\r\n\x1a\n", "image/png"),
     (b"\xff\xd8", "image/jpeg"),
@@ -53,5 +62,11 @@ def parse_base64(full_base64_string: str) -> Dict[str, Any]:
 
 __all__ = [
     "detect_image_mime_type_from_buffer",
+    "encoded_image_info_of_buffer",
+    "image_info_of_base64",
+    "is_valid_image_buffer",
+    "is_valid_jpeg_image_buffer",
+    "is_valid_png_image_buffer",
     "parse_base64",
+    "validate_screenshot_buffer",
 ]

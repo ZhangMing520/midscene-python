@@ -5,35 +5,20 @@ Runs four checks in parallel: planning text, insight vision, aiLocate
 (grounding pipeline), default text.
 """
 
-import base64
-import io
 import time
 from typing import Any, Callable, Dict, List
 
 from loguru import logger
 
+from midscene.core.ai_model.connectivity.fixture import (
+    CONNECTIVITY_FIXTURE_SHOT_SIZE,
+    connectivity_fixture_image,
+)
 from midscene.core.ai_model.models.registry import ModelRuntime, get_model_runtime
 from midscene.core.ai_model.service_caller.call_ai import call_generative_ai
 from midscene.core.ai_model.service_caller.system_one import call_system_one
 
 TEXT_EXPECTED_TOKEN = "CONNECTIVITY_OK"
-
-
-def _fixture_png_data_url(width: int = 320, height: int = 100) -> str:
-    """A synthetic form-like fixture image (upstream embeds a form screenshot)."""
-    from PIL import Image, ImageDraw
-
-    image = Image.new("RGB", (width, height), (245, 245, 245))
-    draw = ImageDraw.Draw(image)
-    draw.rectangle([16, 20, 200, 44], outline=(120, 120, 120), width=2)
-    draw.rectangle([16, 60, 280, 84], outline=(120, 120, 120), width=2)
-    buffer = io.BytesIO()
-    image.save(buffer, format="PNG")
-    return "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode()
-
-
-CONNECTIVITY_FIXTURE_IMAGE = None
-CONNECTIVITY_FIXTURE_SHOT_SIZE = {"width": 320, "height": 100}
 
 
 async def _text_check(model_runtime: ModelRuntime) -> Dict[str, Any]:
@@ -68,15 +53,13 @@ async def _jev_text_check(model_runtime: ModelRuntime) -> Dict[str, Any]:
 
 
 async def _vision_check(model_runtime: ModelRuntime) -> Dict[str, Any]:
-    global CONNECTIVITY_FIXTURE_IMAGE
-    if CONNECTIVITY_FIXTURE_IMAGE is None:
-        CONNECTIVITY_FIXTURE_IMAGE = _fixture_png_data_url()
+    fixture_image = connectivity_fixture_image()
     if model_runtime.config.get("modelFamily") == "jev":
         response = await call_system_one(
             model_runtime,
             {
                 "state": {},
-                "images": {"screenshot": CONNECTIVITY_FIXTURE_IMAGE},
+                "images": {"screenshot": fixture_image},
                 "questions": {
                     "result": {
                         "type": "noul",
@@ -96,7 +79,7 @@ async def _vision_check(model_runtime: ModelRuntime) -> Dict[str, Any]:
                         "type": "text",
                         "text": "What is the main content of this image ? It is a photo or a form ?",
                     },
-                    {"type": "image", "url": CONNECTIVITY_FIXTURE_IMAGE},
+                    {"type": "image", "url": fixture_image},
                 ],
             }
         ],
@@ -106,13 +89,11 @@ async def _vision_check(model_runtime: ModelRuntime) -> Dict[str, Any]:
 
 
 async def _ai_locate_check(model_runtime: ModelRuntime) -> Dict[str, Any]:
-    global CONNECTIVITY_FIXTURE_IMAGE
-    if CONNECTIVITY_FIXTURE_IMAGE is None:
-        CONNECTIVITY_FIXTURE_IMAGE = _fixture_png_data_url()
+    fixture_image = connectivity_fixture_image()
     from midscene.core.service import locate_service
 
     class _FixtureContext:
-        screenshot_base64 = CONNECTIVITY_FIXTURE_IMAGE
+        screenshot_base64 = fixture_image
         size = type(
             "Size",
             (),

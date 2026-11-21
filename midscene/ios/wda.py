@@ -5,10 +5,21 @@ specific endpoints layered on the shared W3C client from `midscene.webdriver`.
 """
 
 import asyncio
-from typing import Any, Dict, Optional
+import json
+import math
+import time
+from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
+from midscene.ios.keyboard_dismiss import (
+    KeyboardAccessoryButton,
+    is_keyboard_accessory_toolbar,
+    is_named_dismiss_button_near_keyboard,
+    keyboard_accessory_toolbar_gap,
+    select_keyboard_accessory_dismiss_button,
+)
+from midscene.shared.constants import WEBDRIVER_ELEMENT_ID_KEY
 from midscene.webdriver import (
     WebDriverClient,
     WebDriverRequestError,
@@ -19,6 +30,37 @@ from midscene.webdriver import (
 WDA_MJPEG_SCREENSHOT_QUALITY = 50
 WDA_MJPEG_FRAMERATE = 30
 WDA_MJPEG_SCALING_FACTOR = 100
+
+KEYBOARD_DISMISS_DEADLINE_MS = 5000
+KEYBOARD_DISMISS_POLL_INTERVAL_MS = 100
+
+
+def _now_ms() -> float:
+    return time.monotonic() * 1000
+
+
+def _response_value(response: Any) -> Any:
+    if isinstance(response, dict) and "value" in response:
+        return response["value"]
+    return response
+
+
+def _element_ids_from_response(response: Any) -> List[str]:
+    elements = _response_value(response)
+    if not isinstance(elements, list):
+        raise RuntimeError(f"Unexpected WDA elements response: {json.dumps(response)}")
+    element_ids = []
+    for index, element in enumerate(elements):
+        element_id = None
+        if isinstance(element, dict):
+            element_id = element.get(WEBDRIVER_ELEMENT_ID_KEY) or element.get("ELEMENT")
+        if not isinstance(element_id, str):
+            raise RuntimeError(
+                f"WDA element at index {index} has no element ID: "
+                f"{json.dumps(element)}"
+            )
+        element_ids.append(element_id)
+    return element_ids
 
 
 class WebDriverAgentBackend(WebDriverClient):
@@ -261,6 +303,221 @@ class WebDriverAgentBackend(WebDriverClient):
             "/actions",
             {"actions": [finger("finger1", 1), finger("finger2", -1)]},
         )
+
+    # -- keyboard dismissal -----------------------------------------------------
+
+    async def type_raw_keys(self, chars: List[str]) -> None:
+        """Send raw key events without trimming whitespace (typeRawKeys)."""
+        await self._request("POST", "/wda/keys", {"value": list(chars)})
+
+    async def find_element_ids(
+        self,
+        using: str,
+        value: str,
+        *,
+        root_element_id: Optional[str] = None,
+        deadline: Optional[float] = None,
+    ) -> List[str]:
+        endpoint = (
+            f"/element/{root_element_id}/elements"
+            if root_element_id
+            else "/elements"
+        )
+        response = await self._keyboard_dismiss_request(
+            "POST", endpoint, {"using": using, "value": value}, deadline
+        )
+        return _element_ids_from_response(response)
+
+    async def get_element_rect(
+        self, element_id: str, deadline: Optional[float] = None
+    ) -> Dict[str, float]:
+        response = await self._keyboard_dismiss_request(
+            "GET", f"/element/{element_id}/rect", None, deadline
+        )
+        rect = _response_value(response)
+        if not isinstance(rect, dict) or not all(
+            isinstance(rect.get(key), (int, float))
+            for key in ("x", "y", "width", "height")
+        ):
+            raise RuntimeError(f"Unexpected WDA element rect response: {response}")
+        return {key: float(rect[key]) for key in ("x", "y", "width", "height")}
+
+    async def click_element(
+        self, element_id: str, deadline: Optional[float] = None
+    ) -> None:
+        await self._keyboard_dismiss_request(
+            "POST", f"/element/{element_id}/click", None, deadline
+        )
+
+    async def _keyboard_dismiss_request(
+        self,
+        method: str,
+        endpoint: str,
+        data: Optional[Dict[str, Any]],
+        deadline: Optional[float],
+    ) -> Dict[str, Any]:
+        self._ensure_session()
+        timeout = None
+        if deadline is not None:
+            remaining = deadline - _now_ms()
+            if remaining <= 0:
+                raise RuntimeError(
+                    "iOS keyboard dismissal exceeded its "
+                    f"{KEYBOARD_DISMISS_DEADLINE_MS}ms deadline"
+                )
+            timeout = max(1, math.ceil(remaining)) / 1000
+        return await self.make_request(
+            method,
+            f"/session/{self.session_id}{endpoint}",
+            data,
+            timeout=timeout,
+        )
+
+    async def find_visible_keyboard_ids(
+        self, deadline: Optional[float] = None
+    ) -> List[str]:
+        return await self.find_element_ids(
+            "predicate string",
+            'type == "XCUIElementTypeKeyboard" AND visible == true',
+            deadline=deadline,
+        )
+
+    async def get_visible_keyboard_rect(
+        self, deadline: Optional[float] = None
+    ) -> Optional[Dict[str, float]]:
+        keyboard_ids = await self.find_visible_keyboard_ids(deadline)
+        if not keyboard_ids:
+            return None
+        rects = []
+        for keyboard_id in keyboard_ids:
+            rect = await self.get_element_rect(keyboard_id, deadline)
+            if rect["width"] > 0 and rect["height"] > 0:
+                rects.append(rect)
+        if not rects:
+            raise RuntimeError("WDA reported a visible keyboard without a valid rect")
+        return max(rects, key=lambda rect: rect["width"] * rect["height"])
+
+    async def _dismiss_keyboard_by_name(
+        self,
+        key_names: List[str],
+        keyboard_rect: Dict[str, float],
+        deadline: float,
+    ) -> bool:
+        predicate_names = ", ".join(
+            '"' + name.replace("\\", "\\\\").replace('"', '\\"') + '"'
+            for name in key_names
+        )
+        button_ids = await self.find_element_ids(
+            "predicate string",
+            "type IN {\"XCUIElementTypeButton\", \"XCUIElementTypeKey\"} "
+            "AND enabled == true AND visible == true AND "
+            f"(name IN {{{predicate_names}}} OR label IN {{{predicate_names}}})",
+            deadline=deadline,
+        )
+        nearby = []
+        for button_id in button_ids:
+            rect = await self.get_element_rect(button_id, deadline)
+            if is_named_dismiss_button_near_keyboard(rect, keyboard_rect):
+                nearby.append(
+                    (
+                        abs(rect["y"] + rect["height"] / 2 - keyboard_rect["y"]),
+                        button_id,
+                    )
+                )
+        if not nearby:
+            return False
+        nearby.sort(key=lambda item: item[0])
+        await self.click_element(nearby[0][1], deadline)
+        logger.debug(f"Dismissed keyboard using configured button: {', '.join(key_names)}")
+        return True
+
+    async def _dismiss_keyboard_using_accessory_toolbar(
+        self,
+        keyboard_rect: Dict[str, float],
+        deadline: float,
+    ) -> bool:
+        toolbar_ids = await self.find_element_ids(
+            "class name", "XCUIElementTypeToolbar", deadline=deadline
+        )
+        toolbar_candidates = []
+        for toolbar_id in toolbar_ids:
+            rect = await self.get_element_rect(toolbar_id, deadline)
+            if is_keyboard_accessory_toolbar(rect, keyboard_rect):
+                toolbar_candidates.append(
+                    (abs(keyboard_accessory_toolbar_gap(rect, keyboard_rect)), toolbar_id, rect)
+                )
+        toolbar_candidates.sort(key=lambda item: item[0])
+
+        for _, toolbar_id, toolbar_rect in toolbar_candidates:
+            button_ids = await self.find_element_ids(
+                "predicate string",
+                'type == "XCUIElementTypeButton" AND enabled == true AND visible == true',
+                root_element_id=toolbar_id,
+                deadline=deadline,
+            )
+            buttons: List[KeyboardAccessoryButton] = []
+            for button_id in button_ids:
+                buttons.append(
+                    {
+                        "id": button_id,
+                        "rect": await self.get_element_rect(button_id, deadline),
+                    }
+                )
+            dismiss_button = select_keyboard_accessory_dismiss_button(
+                toolbar_rect, buttons
+            )
+            if not dismiss_button:
+                logger.debug(
+                    f"Rejected keyboard accessory toolbar {toolbar_id}: expected "
+                    "left navigation controls and exactly one right-edge dismiss control"
+                )
+                continue
+            await self.click_element(dismiss_button["id"], deadline)
+            logger.debug("Dismissed keyboard using the accessory toolbar button")
+            return True
+        return False
+
+    async def _wait_for_keyboard_to_hide(self, deadline: float) -> bool:
+        while _now_ms() < deadline:
+            if not await self.find_visible_keyboard_ids(deadline):
+                return True
+            remaining = deadline - _now_ms()
+            if remaining <= 0:
+                return False
+            await asyncio.sleep(min(KEYBOARD_DISMISS_POLL_INTERVAL_MS, remaining) / 1000)
+        return False
+
+    async def dismiss_keyboard(self, key_names: Optional[List[str]] = None) -> bool:
+        """Hide the software keyboard and wait until WDA confirms it is gone."""
+        self._ensure_session()
+        started_at = _now_ms()
+        deadline = started_at + KEYBOARD_DISMISS_DEADLINE_MS
+
+        keyboard_rect = await self.get_visible_keyboard_rect(deadline)
+        if keyboard_rect is None:
+            return True
+
+        if key_names:
+            dismissal_started = await self._dismiss_keyboard_by_name(
+                key_names, keyboard_rect, deadline
+            )
+        else:
+            dismissal_started = await self._dismiss_keyboard_using_accessory_toolbar(
+                keyboard_rect, deadline
+            )
+        if not dismissal_started:
+            return False
+
+        hidden = await self._wait_for_keyboard_to_hide(deadline)
+        logger.debug(
+            f"Keyboard dismissal {'completed' if hidden else 'did not complete'} "
+            f"in {int(_now_ms() - started_at)}ms"
+        )
+        return hidden
+
+    async def is_keyboard_visible(self) -> bool:
+        self._ensure_session()
+        return bool(await self.find_visible_keyboard_ids())
 
     # -- screen -----------------------------------------------------------------
 

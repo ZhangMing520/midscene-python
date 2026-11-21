@@ -44,7 +44,7 @@ from midscene.core.agent import (
     progress,
     record_to_report as record_to_report_module,
     report_file_name,
-    report_manager,
+    agent_report_manager,
     screenshot_preparation,
     task_builder,
     ui_utils,
@@ -1451,7 +1451,7 @@ class Agent:
         return self.interface.interface_type
 
     def _get_report_builder(self):
-        return report_manager.get_report_builder(self)
+        return agent_report_manager.get_report_builder(self)
 
     def record_to_report(self, title, opt=None):
         return record_to_report_module.record_to_report(self, title, opt)
@@ -1463,40 +1463,40 @@ class Agent:
         return report_file_name.report_name(self)
 
     async def flush_report(self):
-        return await report_manager.flush_report(self)
+        return await agent_report_manager.flush_report(self)
 
     def _write_report_artifact(self, name, dump):
-        return report_manager.write_report_artifact(self, name, dump)
+        return agent_report_manager.write_report_artifact(self, name, dump)
 
     async def reset_dump(self):
-        return await report_manager.reset_dump(self)
+        return await agent_report_manager.reset_dump(self)
 
     async def finalize_report(self):
-        return await report_manager.finalize_report(self)
+        return await agent_report_manager.finalize_report(self)
 
     def append_execution_dump(self, execution, runner=None):
-        return report_manager.append_execution_dump(self, execution, runner)
+        return agent_report_manager.append_execution_dump(self, execution, runner)
 
     def dump_data_string(self, opt=None):
-        return report_manager.dump_data_string(self, opt)
+        return agent_report_manager.dump_data_string(self, opt)
 
     def report_html_string(self, opt=None):
-        return report_manager.report_html_string(self, opt)
+        return agent_report_manager.report_html_string(self, opt)
 
     def write_out_action_dumps(self, execution_dump=None):
-        return report_manager.write_out_action_dumps(self, execution_dump)
+        return agent_report_manager.write_out_action_dumps(self, execution_dump)
 
     def add_dump_update_listener(self, listener):
-        return report_manager.add_dump_update_listener(self, listener)
+        return agent_report_manager.add_dump_update_listener(self, listener)
 
     def remove_dump_update_listener(self, listener):
-        return report_manager.remove_dump_update_listener(self, listener)
+        return agent_report_manager.remove_dump_update_listener(self, listener)
 
     def clear_dump_update_listeners(self):
-        return report_manager.clear_dump_update_listeners(self)
+        return agent_report_manager.clear_dump_update_listeners(self)
 
     def _notify_dump_update_listeners(self, execution):
-        return report_manager.notify_dump_update_listeners(self, execution)
+        return agent_report_manager.notify_dump_update_listeners(self, execution)
 
 
     def log_screenshot(self, title, opt=None):

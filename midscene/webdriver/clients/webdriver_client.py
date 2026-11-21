@@ -77,11 +77,19 @@ class WebDriverClient:
             await client.aclose()
 
     async def make_request(
-        self, method: str, path: str, body: Optional[Dict[str, Any]] = None
+        self,
+        method: str,
+        path: str,
+        body: Optional[Dict[str, Any]] = None,
+        *,
+        timeout: Optional[float] = None,
     ) -> Dict[str, Any]:
         url = f"{self.base_url}{path}"
         client = await self._http()
-        response = await client.request(method, url, json=body)
+        if timeout is None:
+            response = await client.request(method, url, json=body)
+        else:
+            response = await client.request(method, url, json=body, timeout=timeout)
         if response.status_code >= 400:
             try:
                 error_body = response.json()

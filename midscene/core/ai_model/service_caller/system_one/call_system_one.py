@@ -8,7 +8,7 @@ import httpx
 from loguru import logger
 
 from midscene.core.ai_model.models.registry import ModelRuntime
-from midscene.core.ai_model.service_caller.system_one.prepare import (
+from midscene.core.ai_model.service_caller.system_one.prepare_system_one import (
     prepare_system_one,
 )
 from midscene.core.ai_model.service_caller.system_one.schema import (

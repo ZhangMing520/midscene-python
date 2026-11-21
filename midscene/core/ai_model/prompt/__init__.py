@@ -7,6 +7,10 @@ from midscene.core.ai_model.prompt.locate import (
     build_search_area_locate_system_prompt,
     locate_grounding_rules,
 )
+from midscene.core.ai_model.prompt.order_sensitive_judge import (
+    order_sensitive_judge_prompt,
+    system_prompt_to_judge_order_sensitive,
+)
 from midscene.core.ai_model.prompt.planning import build_standard_planning_system_prompt
 
 __all__ = [
@@ -17,5 +21,7 @@ __all__ = [
     "build_element_locate_system_prompt",
     "build_search_area_locate_system_prompt",
     "locate_grounding_rules",
+    "order_sensitive_judge_prompt",
+    "system_prompt_to_judge_order_sensitive",
     "build_standard_planning_system_prompt",
 ]
