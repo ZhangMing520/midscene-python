@@ -18,6 +18,10 @@ from midscene.core.types import (
     AbstractInterface, InterfaceType, UIContext, BaseElement, UINode, UITree,
     Size, Rect, NodeType
 )
+from midscene.shared.utils import (
+    merge_and_normalize_app_name_mapping,
+    normalize_for_comparison,
+)
 
 
 class AndroidElement(BaseElement):
@@ -240,6 +244,7 @@ class AndroidDevice(AbstractInterface):
         self._device_pixel_ratio: float = 1.0
         self._yadb_pushed = False
         self._yadb_bin_path: Optional[str] = None
+        self._app_name_mapping: Dict[str, str] = {}
     
     @classmethod
     async def create(cls, device_id: Optional[str] = None) -> 'AndroidDevice':
@@ -861,17 +866,43 @@ class AndroidDevice(AbstractInterface):
             logger.error(f"Failed to install app: {e}")
             raise
     
+    def set_app_name_mapping(self, mapping: Dict[str, str]) -> None:
+        """Set the friendly app name -> package name mapping (upstream
+        setAppNameMapping)."""
+        self._app_name_mapping = merge_and_normalize_app_name_mapping({}, mapping)
+
+    def _resolve_package_name(self, app_name: str) -> Optional[str]:
+        """Resolve a friendly app name to its package name, if mapped."""
+        return self._app_name_mapping.get(normalize_for_comparison(app_name))
+
     async def launch_app(self, package_name: str, activity: Optional[str] = None) -> None:
-        """Launch app"""
+        """Launch an app.
+
+        Accepts a friendly app name, a package name, ``package/activity`` or a
+        URI with a scheme, matching upstream ``launch(uri)``.
+        """
         try:
             if activity:
                 component = f"{package_name}/{activity}"
+                await self._run_adb_command([
+                    "-s", self.device_id, "shell", "am", "start", "-n", component
+                ])
+                return
+            resolved = self._resolve_package_name(package_name) or package_name
+            if "://" in resolved:
+                await self._run_adb_command([
+                    "-s", self.device_id, "shell", "am", "start",
+                    "-a", "android.intent.action.VIEW", "-d", resolved,
+                ])
+            elif "/" in resolved:
+                await self._run_adb_command([
+                    "-s", self.device_id, "shell", "am", "start", "-n", resolved
+                ])
             else:
-                component = package_name
-            
-            await self._run_adb_command([
-                "-s", self.device_id, "shell", "am", "start", "-n", component
-            ])
+                await self._run_adb_command([
+                    "-s", self.device_id, "shell", "monkey",
+                    "-p", resolved, "-c", "android.intent.category.LAUNCHER", "1",
+                ])
         except Exception as e:
             logger.error(f"Failed to launch app: {e}")
             raise
@@ -879,8 +910,10 @@ class AndroidDevice(AbstractInterface):
     async def stop_app(self, package_name: str) -> None:
         """Stop app"""
         try:
+            package_part = package_name.split("/", 1)[0]
+            resolved = self._resolve_package_name(package_part) or package_part
             await self._run_adb_command([
-                "-s", self.device_id, "shell", "am", "force-stop", package_name
+                "-s", self.device_id, "shell", "am", "force-stop", resolved
             ])
         except Exception as e:
             logger.error(f"Failed to stop app: {e}")

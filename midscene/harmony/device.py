@@ -8,6 +8,7 @@ from screen edges because uitest ignores boundary flings.
 import asyncio
 import base64
 import math
+import re
 import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence
@@ -28,6 +29,10 @@ from midscene.core.types import (
 from midscene.harmony.hdc import HdcClient
 from midscene.harmony.keycode import resolve_harmony_key_codes
 from midscene.harmony.swipe import resolve_swipe_speed
+from midscene.shared.utils import (
+    merge_and_normalize_app_name_mapping,
+    normalize_for_comparison,
+)
 
 SCREEN_EDGE_MARGIN = 50
 DEFAULT_FAST_SWIPE_SPEED = 2000
@@ -79,6 +84,7 @@ class HarmonyDevice(AbstractInterface):
         self.cached_screen_size: Optional[Dict[str, int]] = None
         self._remote_screenshot_path = "/data/local/tmp/midscene-screenshot.jpeg"
         self._local_screenshot_path: Optional[Path] = None
+        self._app_name_mapping: Dict[str, str] = {}
 
     @property
     def interface_type(self) -> InterfaceType:
@@ -386,13 +392,44 @@ class HarmonyDevice(AbstractInterface):
         # upstream recentApps gesture-free path
         await hdc.key_event("Power")
 
+    def set_app_name_mapping(self, mapping: Dict[str, str]) -> None:
+        """Set the friendly app name -> bundle/ability mapping (upstream
+        setAppNameMapping)."""
+        self._app_name_mapping = merge_and_normalize_app_name_mapping({}, mapping)
+
+    def _resolve_mapped_app_target(self, app_name: str) -> Optional[str]:
+        return self._app_name_mapping.get(normalize_for_comparison(app_name))
+
+    def _resolve_bundle_name_for_terminate(self, target: str) -> str:
+        mapped = self._resolve_mapped_app_target(target)
+        if mapped:
+            return mapped.split("/", 1)[0]
+        bundle_or_name = target.split("/", 1)[0]
+        return (
+            self._resolve_mapped_app_target(bundle_or_name) or bundle_or_name
+        ).split("/", 1)[0]
+
     async def launch_app(self, uri: str) -> None:
+        """Launch an app by friendly name, bundle, bundle/ability or URI."""
+        target = (
+            uri
+            if "://" in uri
+            else (self._resolve_mapped_app_target(uri) or uri)
+        )
         hdc = await self._get_hdc()
-        await hdc.launch(uri)
+        if "://" in target:
+            sanitized = re.sub(r"[`$\\;\"'|&<>(){}]", "", target)
+            await hdc.shell(f"aa start -U {sanitized}")
+        elif "/" in target:
+            bundle_name, ability_name = target.split("/", 1)
+            await hdc.start_ability(bundle_name, ability_name)
+        else:
+            await hdc.launch(target)
 
     async def stop_app(self, bundle_name: str) -> None:
+        resolved = self._resolve_bundle_name_for_terminate(bundle_name)
         hdc = await self._get_hdc()
-        await hdc.force_stop(bundle_name)
+        await hdc.force_stop(resolved)
 
     async def run_hdc_shell(self, command: str) -> str:
         if not command or not command.strip():

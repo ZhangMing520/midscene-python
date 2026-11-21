@@ -2,23 +2,37 @@
 Android Agent implementation
 """
 
-from typing import Optional
+from typing import Dict, Optional
 
 from midscene.core.agent.agent import Agent, AgentOptions
+from midscene.android.app_name_mapping import default_app_name_mapping
 from midscene.android.device import AndroidDevice
+from midscene.shared.utils import merge_and_normalize_app_name_mapping
 
 
 class AndroidAgent(Agent):
     """Android-specific agent implementation"""
     
-    def __init__(self, device: AndroidDevice, options: Optional[AgentOptions] = None):
+    def __init__(
+        self,
+        device: AndroidDevice,
+        options: Optional[AgentOptions] = None,
+        app_name_mapping: Optional[Dict[str, str]] = None,
+    ):
         """Initialize Android agent
         
         Args:
             device: AndroidDevice instance
             options: Agent options
+            app_name_mapping: Custom friendly-name -> package-name mapping;
+                user entries take precedence over the built-in mapping.
         """
         super().__init__(device, options)
+        device.set_app_name_mapping(
+            merge_and_normalize_app_name_mapping(
+                default_app_name_mapping, app_name_mapping
+            )
+        )
         
         # Validate that we have vision language model support for Android
         # Android requires VL models for UI understanding
@@ -27,19 +41,21 @@ class AndroidAgent(Agent):
     async def create(
         cls, 
         device_id: Optional[str] = None,
-        options: Optional[AgentOptions] = None
+        options: Optional[AgentOptions] = None,
+        app_name_mapping: Optional[Dict[str, str]] = None,
     ) -> 'AndroidAgent':
         """Create Android agent with device
         
         Args:
             device_id: Android device ID, if None uses first available
             options: Agent options
+            app_name_mapping: Custom friendly-name -> package-name mapping
             
         Returns:
             AndroidAgent instance
         """
         device = await AndroidDevice.create(device_id)
-        return cls(device, options)
+        return cls(device, options, app_name_mapping)
     
     async def launch_app(self, package_name: str, activity: Optional[str] = None) -> None:
         """Launch Android app
