@@ -605,7 +605,11 @@ async def standard_plan(
             }
         )
 
-    yaml_flow = build_yaml_flow_from_plans(actions)
+    yaml_flow = build_yaml_flow_from_plans(
+        actions,
+        action_space,
+        getattr(context, "shrunk_shot_to_logical_ratio", 1.0),
+    )
 
     return {
         **plan_from_ai,
@@ -630,11 +634,30 @@ def _merge_sub_goals(history: ConversationHistory, update_sub_goals: List[Dict[s
             history.sub_goals.append(dict(goal))
 
 
-def build_yaml_flow_from_plans(actions: List[Dict[str, Any]]) -> str:
-    """Serialize planned actions as a YAML workflow string (for cache/dump)."""
+def build_yaml_flow_from_plans(
+    actions: List[Dict[str, Any]],
+    action_space: Optional[List[Any]] = None,
+    distance_ratio: Optional[float] = None,
+) -> str:
+    """Serialize planned actions as a YAML workflow string (for cache/dump).
+
+    Replay reads distance as device-logical units, so export converts model
+    image-pixel distances with the planning screenshot ratio when provided.
+    """
     import yaml
 
-    flow = [
-        {"type": action["type"], **(action.get("param") or {})} for action in actions
-    ]
+    from ...actions import (
+        find_action_in_action_space_or_throw,
+        scale_action_distances,
+    )
+
+    flow = []
+    for action in actions:
+        param = action.get("param") or {}
+        if action_space is not None and distance_ratio is not None:
+            definition = find_action_in_action_space_or_throw(
+                action["type"], action_space
+            )
+            param = scale_action_distances(param, definition, distance_ratio)
+        flow.append({"type": action["type"], **param})
     return yaml.dump(flow, allow_unicode=True, sort_keys=False, width=10**6).strip()

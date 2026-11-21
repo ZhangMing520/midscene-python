@@ -1767,6 +1767,34 @@ class TestPromptParity:
         assert "|-\n" in dumped
         assert "\\n" not in dumped
 
+    def test_distance_fields_include_input_image_unit_note(self):
+        from midscene.core.actions import build_web_action_space
+        from midscene.core.ai_model.adapters import get_model_adapter
+        from midscene.core.ai_model.prompts.planning import (
+            build_standard_planning_system_prompt,
+        )
+
+        adapter = get_model_adapter("qwen3-vl")
+        prompt = build_standard_planning_system_prompt(
+            action_space=build_web_action_space(),
+            planning_protocol=adapter.planning_protocol,
+            include_locate_in_planning=True,
+            locate_prompt_spec=adapter.locate_result_codec.prompt_spec,
+        )
+        assert (
+            "Use pixels of the input image for this distance, even when "
+            "position coordinates are normalized." in prompt
+        )
+
+    @pytest.mark.asyncio
+    async def test_scroll_executor_passes_distance_unchanged(self):
+        from midscene.core.actions import _execute_scroll
+        from tests.test_core import MockInterface
+
+        interface = MockInterface()
+        await _execute_scroll({"direction": "down", "distance": 123}, interface, None)
+        assert interface.scrolled[-1][1] == 123
+
 
 class TestTypedQueryParity:
     @pytest.mark.asyncio

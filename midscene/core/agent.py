@@ -29,6 +29,7 @@ from .actions import (
     _supports,
     build_action_space_for,
     find_action_in_action_space_or_throw,
+    scale_action_distances,
 )
 from .ai_model.adapters import ModelRuntime, get_model_runtime, resolve_model_for_task_type
 from .ai_model.env_config import (
@@ -1068,7 +1069,10 @@ class Agent:
                 )
                 try:
                     _throw_if_aborted(abort_signal)
-                    await self._execute_planning_action(action)
+                    await self._execute_planning_action(
+                        action,
+                        getattr(context, "shrunk_shot_to_logical_ratio", 1.0),
+                    )
                     report_tasks.append(
                         self._build_action_report_task(
                             action, started_at, time.time()
@@ -2241,10 +2245,17 @@ class Agent:
             }
         return element
 
-    async def _execute_planning_action(self, action: Dict[str, Any]) -> None:
+    async def _execute_planning_action(
+        self,
+        action: Dict[str, Any],
+        distance_ratio: Optional[float] = None,
+    ) -> None:
         action_type = action.get("type")
         definition = find_action_in_action_space_or_throw(action_type, self.action_space)
         param = action.get("param") or {}
+        if distance_ratio is not None:
+            param = scale_action_distances(param, definition, distance_ratio)
+            action["param"] = param
         if definition.execute is None:
             raise NotImplementedError(f"Action {action_type} has no executor")
         logger.info(f"Executing action {action_type}: {param}")

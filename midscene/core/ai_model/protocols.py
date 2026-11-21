@@ -160,10 +160,20 @@ def _default_build_action_description(build_input: Dict[str, Any]) -> Dict[str, 
     if param_schema:
         param: Dict[str, Any] = {}
         locate_fields = list(action_dict.get("locate_fields", []))
+        distance_fields = list(action_dict.get("distance_fields", []))
         for key, field in param_schema.items():
             field = dict(field)
             if key in locate_fields:
                 field["type"] = locate_field_description
+            if key in distance_fields:
+                unit = (
+                    "Use pixels of the input image for this distance, even "
+                    "when position coordinates are normalized."
+                )
+                field_description = field.get("description")
+                field["description"] = (
+                    f"{unit} {field_description}" if field_description else unit
+                )
             param[key] = field
         if param:
             description["param"] = param

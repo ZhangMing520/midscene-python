@@ -6,6 +6,7 @@ Each action binds to device primitives exposed by the platform interface.
 """
 
 import asyncio
+import math
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
@@ -30,6 +31,7 @@ class DeviceAction:
     description: str
     param_schema: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     locate_fields: List[str] = field(default_factory=list)
+    distance_fields: List[str] = field(default_factory=list)
     sample: Optional[Dict[str, Any]] = None
     interface_alias: Optional[str] = None
     supported_by_system_one: bool = False
@@ -42,6 +44,7 @@ class DeviceAction:
             "description": self.description,
             "param_schema": self.param_schema,
             "locate_fields": self.locate_fields,
+            "distance_fields": self.distance_fields,
             "sample": self.sample,
             "interface_alias": self.interface_alias,
             "supported_by_system_one": self.supported_by_system_one,
@@ -60,6 +63,36 @@ def find_action_in_action_space_or_throw(
         f"Available actions: "
         f"{[a['name'] if isinstance(a, dict) else a.name for a in action_space]}"
     )
+
+
+def scale_action_distances(
+    param: Dict[str, Any], definition: Any, ratio: float
+) -> Dict[str, Any]:
+    """Convert model-input-image-pixel distances to device-logical units."""
+    distance_fields = (
+        definition.get("distance_fields")
+        if isinstance(definition, dict)
+        else definition.distance_fields
+    ) or []
+    if not distance_fields:
+        return param
+
+    result = dict(param or {})
+    for name in distance_fields:
+        value = result.get(name)
+        if value is None:
+            continue
+        if (
+            not isinstance(value, (int, float))
+            or isinstance(value, bool)
+            or not math.isfinite(value)
+            or value < 0
+        ):
+            raise ValueError(f"{name} must be a finite non-negative distance")
+        if not math.isfinite(ratio) or ratio <= 0:
+            raise ValueError("Invalid screenshot-to-logical coordinate ratio")
+        result[name] = value / ratio
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -420,8 +453,9 @@ def build_web_action_space() -> List[DeviceAction]:
                 "distance": {
                     "type": "number",
                     "description": (
-                        "How far each finger moves in pixels. Defaults to a "
-                        "quarter of the shorter screen dimension."
+                        "The amount by which the distance between the two "
+                        "fingers changes, in pixels. Defaults to a quarter of "
+                        "the shorter screen dimension."
                     ),
                     "optional": True,
                 },
@@ -432,6 +466,7 @@ def build_web_action_space() -> List[DeviceAction]:
                 },
             },
             locate_fields=["locate"],
+            distance_fields=["distance"],
             sample={"direction": "out", "distance": 200,
                     "locate": {"prompt": "the map area"}},
             interface_alias="aiPinch",
@@ -593,12 +628,12 @@ def build_web_action_space() -> List[DeviceAction]:
                     "type": '"down" | "up" | "right" | "left"',
                     "description": (
                         'The direction toward the off-screen content to reveal. '
-                        '"down" reveals content below the current viewport, "up" '
-                        'reveals content above, "right" reveals content to the '
-                        'right, and "left" reveals content to the left. This does '
-                        "not describe the movement direction of the content "
-                        "currently visible on the screen. Only effective when "
-                        'scrollType is "singleAction".'
+                        'Quick mapping: want to see content below the current '
+                        'viewport -> "down"; above -> "up"; to the left -> '
+                        '"left"; to the right -> "right". This does not describe '
+                        "the movement direction of the content currently visible "
+                        "on the screen. Only effective when scrollType is "
+                        '"singleAction".'
                     ),
                     "optional": True,
                 },
@@ -625,6 +660,7 @@ def build_web_action_space() -> List[DeviceAction]:
                 },
             },
             locate_fields=["locate"],
+            distance_fields=["distance"],
             sample={
                 "direction": "down",
                 "scrollType": "singleAction",
@@ -846,23 +882,29 @@ def _swipe_action() -> DeviceAction:
         param_schema={
             "direction": {
                 "type": '"up" | "down" | "left" | "right"',
-                "description": "The direction of the finger movement",
+                "description": (
+                    "Finger movement direction. Quick mapping: move the finger "
+                    'or content upward -> "up"; downward -> "down"; leftward -> '
+                    '"left"; rightward -> "right". Required together with a '
+                    "positive distance."
+                ),
             },
             "distance": {
                 "type": "number",
-                "description": "Swipe distance in pixels",
+                "description": (
+                    "Positive length of the finger movement in pixels. Required "
+                    "together with direction."
+                ),
                 "optional": True,
             },
             "duration": {
                 "type": "number",
-                "description": (
-                    "Gesture duration in milliseconds. Slow durations are "
-                    "honored as-is; they are not treated as a long press."
-                ),
+                "description": "Duration of the swipe gesture in milliseconds",
                 "optional": True,
             },
         },
         locate_fields=[],
+        distance_fields=["distance"],
         sample={"direction": "up", "distance": 400},
         interface_alias="aiSwipe",
         primitive="swipe",

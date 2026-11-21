@@ -313,6 +313,90 @@ class TestAndroidActions:
 # ---------------------------------------------------------------------------
 
 
+class TestDistanceUnits:
+    def test_scale_marks_scroll_swipe_and_pinch(self):
+        from midscene.core.actions import (
+            build_android_action_space,
+            build_web_action_space,
+            scale_action_distances,
+        )
+
+        action_space = build_web_action_space() + build_android_action_space()
+        for name in ("Scroll", "Swipe", "Pinch"):
+            definition = next(a for a in action_space if a.name == name)
+            assert definition.distance_fields == ["distance"], name
+            scaled = scale_action_distances({"distance": 100}, definition, 2.0)
+            assert scaled["distance"] == 50
+
+        definition = next(a for a in action_space if a.name == "Tap")
+        param = {"distance": 100}
+        assert scale_action_distances(param, definition, 2.0) is param
+
+    def test_scale_rejects_invalid_distance_and_ratio(self):
+        from midscene.core.actions import (
+            build_web_action_space,
+            scale_action_distances,
+        )
+
+        definition = next(
+            a for a in build_web_action_space() if a.name == "Scroll"
+        )
+        for bad in (-1, float("nan"), float("inf"), True, "100"):
+            with pytest.raises(ValueError):
+                scale_action_distances({"distance": bad}, definition, 2.0)
+        with pytest.raises(ValueError):
+            scale_action_distances({"distance": 10}, definition, 0)
+        assert scale_action_distances({}, definition, 2.0) == {}
+        assert scale_action_distances({"distance": None}, definition, 2.0) == {
+            "distance": None
+        }
+
+    @pytest.mark.asyncio
+    async def test_ai_act_execution_scales_model_pixels(self):
+        agent = _agent()
+        action = {
+            "type": "Scroll",
+            "param": {"direction": "down", "distance": 100},
+        }
+        await agent._execute_planning_action(action, distance_ratio=2.0)
+
+        direction, distance, _ = agent.interface.scrolled[-1]
+        assert direction == "down"
+        assert distance == 50
+        assert action["param"]["distance"] == 50
+
+    @pytest.mark.asyncio
+    async def test_replay_and_explicit_api_keep_logical_distance(self):
+        agent = _agent()
+        cached = {
+            "yamlWorkflow": (
+                "- type: Scroll\n"
+                "  direction: down\n"
+                "  distance: 100\n"
+            )
+        }
+        assert await agent._replay_cached_plan(cached) is True
+        assert agent.interface.scrolled[-1][1] == 100
+
+        await agent.ai_scroll(scroll_param={"direction": "down", "distance": 100})
+        assert agent.interface.scrolled[-1][1] == 100
+
+    def test_yaml_flow_scales_distance(self):
+        from midscene.core.actions import build_web_action_space
+        from midscene.core.ai_model.workflows import build_yaml_flow_from_plans
+
+        import yaml
+
+        flow = build_yaml_flow_from_plans(
+            [{"type": "Scroll", "param": {"direction": "down", "distance": 100}}],
+            build_web_action_space(),
+            2.0,
+        )
+        parsed = yaml.safe_load(flow)
+        assert parsed[0]["distance"] == 50
+        assert parsed[0]["direction"] == "down"
+
+
 class TestDomIncluded:
     def test_render_ai_context(self, mock_interface):
         from midscene.core.ai_model.workflows.context_utils import render_ai_context
