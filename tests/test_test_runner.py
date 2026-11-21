@@ -947,6 +947,87 @@ def test_compile_legacy_ai_input_and_document():
     )
 
 
+def test_create_legacy_yaml_execution_record():
+    import datetime
+
+    from midscene.core.yaml.legacy_yaml_execution_record import (
+        create_legacy_yaml_execution_record,
+    )
+
+    started = datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc)
+    ended = started + datetime.timedelta(seconds=1, milliseconds=500)
+    options = {
+        "runId": "run-1",
+        "attemptIndex": 0,
+        "projectName": "Project One",
+        "script": {"android": {}},
+        "document": _document([_step(prompt="hi")]),
+        "startedAt": started,
+        "endedAt": ended,
+        "cleanupErrors": [RuntimeError("teardown failed")],
+        "aborted": False,
+        "publicationErrors": [],
+        "outputs": {"answer": 42},
+        "reportFile": "/tmp/report.html",
+    }
+    record = create_legacy_yaml_execution_record(options)
+    assert record["platform"] == "android"
+    assert record["status"] == "failed"
+    assert record["startedAt"] == "2026-01-01T00:00:00.000Z"
+    assert record["endedAt"] == "2026-01-01T00:00:01.500Z"
+    assert record["durationMs"] == 1500
+    assert record["reportPaths"] == ["/tmp/report.html"]
+    assert record["outputs"] == {"answer": 42}
+    assert "publicationErrors" not in record
+
+    success = create_legacy_yaml_execution_record(
+        {**options, "script": {}, "cleanupErrors": [], "reportFile": None}
+    )
+    assert success["platform"] == "web"
+    assert success["status"] == "success"
+    assert success["reportPaths"] == []
+
+
+def test_calculate_test_run_health_classifies_retries():
+    from midscene.core.test_run_health import (
+        calculate_test_run_health,
+        classify_test_run_case,
+    )
+
+    assert classify_test_run_case({"status": "not-run"}) == "not-run"
+    assert classify_test_run_case({"status": "failed"}) == "failed"
+    assert classify_test_run_case({"status": "success"}) == "passed"
+    assert (
+        classify_test_run_case(
+            {"status": "success", "attempts": [{"attemptIndex": 0, "status": "failed"}]}
+        )
+        == "retry-passed"
+    )
+    assert (
+        classify_test_run_case({"status": "success", "retryCount": 1}) == "retry-passed"
+    )
+
+    health = calculate_test_run_health(
+        [
+            {"status": "success"},
+            {"status": "success", "run": {"attemptIndex": 1, "status": "success"}},
+            {"status": "failed"},
+            {"status": "not-run"},
+        ]
+    )
+    assert health == {
+        "total": 4,
+        "executed": 3,
+        "passed": 2,
+        "failed": 1,
+        "notRun": 1,
+        "firstPassed": 1,
+        "passedAfterRetry": 1,
+        "finalPassRate": 2 / 3,
+        "firstPassRate": 1 / 3,
+    }
+
+
 def test_build_agent_test_run_report_dump_indexes_executions():
     from midscene.core.test_runner.reporting.agent_report import (
         build_agent_test_run_report_dump,
