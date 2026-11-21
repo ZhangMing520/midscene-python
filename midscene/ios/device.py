@@ -24,6 +24,7 @@ from midscene.core.types import (
     UINode,
     NodeType,
 )
+from midscene.ios.utils import screenshots_similar as _screenshots_similar
 from midscene.ios.wda import WebDriverAgentBackend
 
 # upstream scrollUntilBoundary timings and geometry
@@ -36,25 +37,6 @@ SCROLL_BOUNDARY_DISTANCE_RATIO = 0.6
 SCROLL_UNCHANGED_TOLERANCE_PERCENT = 10
 # upstream waitForInputFocus deadline: the keyboard needs a moment after a tap
 INPUT_FOCUS_TIMEOUT_MS = 3000
-
-
-def _screenshots_similar(before: str, after: str, tolerance_percent: float) -> bool:
-    """Compare base64 screenshots while tolerating a little dynamic content.
-
-    Upstream compares the encoded text directly: animated clocks and badges
-    change a small fraction of the characters, so a threshold on the sampled
-    prefix is enough to tell "the page stopped moving" from "still scrolling".
-    """
-    if before == after:
-        return True
-    shortest = min(len(before), len(after))
-    if not shortest:
-        return False
-    if abs(len(before) - len(after)) > shortest * 0.1:
-        return False
-    sample = min(2000, shortest)
-    diff_count = sum(1 for i in range(sample) if before[i] != after[i])
-    return (diff_count / sample) * 100 <= tolerance_percent
 
 
 class IOSDevice(AbstractInterface):
