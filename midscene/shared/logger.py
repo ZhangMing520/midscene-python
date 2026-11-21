@@ -75,3 +75,26 @@ def get_logger(name: str):
         Logger instance
     """
     return logger.bind(name=name)
+
+
+_debug_namespaces: set = set()
+
+
+def enable_debug(namespace: str) -> None:
+    """Enable debug output for a namespace (upstream logger.enableDebug)."""
+    if not namespace:
+        return
+    _debug_namespaces.add(namespace)
+    # loguru filters by module name, so enabling the whole SDK is the closest
+    # equivalent to the upstream namespace switch.
+    logger.enable("midscene")
+
+
+def is_debug_enabled(namespace: str = "") -> bool:
+    """Whether debug output was enabled for a namespace."""
+    if not namespace:
+        return bool(_debug_namespaces)
+    return any(
+        namespace == item or namespace.startswith(f"{item}:")
+        for item in _debug_namespaces
+    )

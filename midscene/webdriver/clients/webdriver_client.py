@@ -11,13 +11,12 @@ from typing import Any, Dict, Optional, Tuple
 import httpx
 from loguru import logger
 
+from midscene.shared.constants import DEFAULT_WDA_PORT
 from midscene.webdriver.utils.base_url import normalize_webdriver_base_url
 from midscene.webdriver.utils.request import (
     WebDriverRequestError,
     protocol_error_code,
 )
-
-DEFAULT_WDA_PORT = 8100
 
 
 class WebDriverClient:

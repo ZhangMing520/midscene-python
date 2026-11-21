@@ -8,6 +8,7 @@ from midscene.webdriver.clients.webdriver_client import (
     DEFAULT_WDA_PORT,
     WebDriverClient,
 )
+from midscene.webdriver.managers import BaseServiceManager, WDAManager
 from midscene.webdriver.utils.base_url import normalize_webdriver_base_url
 from midscene.webdriver.utils.request import (
     W3C_ELEMENT_KEY,
@@ -21,8 +22,10 @@ from midscene.webdriver.utils.request import (
 __all__ = [
     "DEFAULT_WDA_PORT",
     "W3C_ELEMENT_KEY",
+    "BaseServiceManager",
     "WebDriverClient",
     "WebDriverRequestError",
+    "WDAManager",
     "element_id_from",
     "is_missing_endpoint",
     "normalize_webdriver_base_url",

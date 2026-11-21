@@ -26,6 +26,10 @@ from midscene.core.types import (
 )
 from midscene.ios.utils import screenshots_similar as _screenshots_similar
 from midscene.ios.wda import WebDriverAgentBackend
+from midscene.shared.utils import (
+    merge_and_normalize_app_name_mapping,
+    normalize_for_comparison,
+)
 
 # upstream scrollUntilBoundary timings and geometry
 SCROLL_MAX_ATTEMPTS = 20
@@ -56,6 +60,7 @@ class IOSDevice(AbstractInterface):
         )
         self._connected = False
         self._screen_scale: Optional[float] = None
+        self._app_name_mapping: Dict[str, str] = {}
 
     @property
     def interface_type(self) -> InterfaceType:
@@ -378,16 +383,29 @@ class IOSDevice(AbstractInterface):
 
     # -- apps ---------------------------------------------------------------------------
 
+    def set_app_name_mapping(self, mapping: Dict[str, str]) -> None:
+        """Set the friendly app name -> bundle id mapping (upstream
+        setAppNameMapping)."""
+        self._app_name_mapping = merge_and_normalize_app_name_mapping(
+            {}, mapping
+        )
+
+    def _resolve_bundle_id(self, app_name: str) -> Optional[str]:
+        """Resolve a friendly app name to its bundle id, if mapped."""
+        return self._app_name_mapping.get(normalize_for_comparison(app_name))
+
     async def launch_app(self, uri: str) -> None:
         await self._ensure_connected()
         if "://" in uri:
             await self.wda.open_url(uri)
         else:
-            await self.wda.launch_app(uri)
+            await self.wda.launch_app(self._resolve_bundle_id(uri) or uri)
 
     async def stop_app(self, bundle_id: str) -> None:
         await self._ensure_connected()
-        await self.wda.terminate_app(bundle_id)
+        await self.wda.terminate_app(
+            self._resolve_bundle_id(bundle_id) or bundle_id
+        )
 
     async def home(self) -> None:
         await self._ensure_connected()

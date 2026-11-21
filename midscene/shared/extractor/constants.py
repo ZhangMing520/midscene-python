@@ -1,8 +1,17 @@
 """Extraction constants (upstream extractor/constants.ts)."""
 
-from midscene.core.types import NodeType
+from midscene.shared.constants import (
+    CONTAINER_MINI_HEIGHT,
+    CONTAINER_MINI_WIDTH,
+    NodeType,
+    TEXT_MAX_SIZE,
+    TEXT_SIZE_THRESHOLD,
+)
 
-TEXT_SIZE_THRESHOLD = 9
-TEXT_MAX_SIZE = 40
-
-__all__ = ["NodeType", "TEXT_MAX_SIZE", "TEXT_SIZE_THRESHOLD"]
+__all__ = [
+    "CONTAINER_MINI_HEIGHT",
+    "CONTAINER_MINI_WIDTH",
+    "NodeType",
+    "TEXT_MAX_SIZE",
+    "TEXT_SIZE_THRESHOLD",
+]
