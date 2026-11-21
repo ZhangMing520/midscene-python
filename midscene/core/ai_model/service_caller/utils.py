@@ -1,8 +1,34 @@
-"""Message conversion and usage helpers (upstream service-caller/utils.ts)."""
+"""Shared caller helpers (upstream service-caller/utils.ts)."""
 
 from typing import Any, Dict, List, Optional
+import inspect
 import uuid
 from midscene.core.ai_model.models.registry import is_locate_intent
+
+
+async def emit_stream_chunk(
+    on_chunk: Optional[Any],
+    content: str,
+    reasoning_content: str,
+    accumulated: str,
+    is_complete: bool = False,
+    usage: Optional[Dict[str, Any]] = None,
+) -> None:
+    """Deliver a CodeGenerationChunk to the caller (upstream onChunk)."""
+    if on_chunk is None:
+        return
+    result = on_chunk(
+        {
+            "content": content,
+            "reasoning_content": reasoning_content,
+            "accumulated": accumulated,
+            "isComplete": is_complete,
+            "usage": usage,
+        }
+    )
+    if inspect.isawaitable(result):
+        await result
+
 
 def has_usable_text(content: Optional[str]) -> bool:
     return bool(content) and content.strip() != ""
@@ -25,74 +51,6 @@ def is_codex_app_server_provider(base_url: Optional[str]) -> bool:
     if not base_url:
         return False
     return base_url.strip().lower().startswith(CODEX_PROVIDER_SCHEME)
-
-
-def _ensure_data_url(url: str) -> str:
-    if url.startswith(("data:", "http://", "https://")):
-        return url
-    return f"data:image/jpeg;base64,{url}"
-
-
-def to_chat_messages(messages: List[dict], image_detail: str) -> List[dict]:
-    """Convert internal messages to OpenAI chat-completion wire format."""
-    wire_messages: List[dict] = []
-    for message in messages:
-        raw_assistant = message.get("raw_assistant_message")
-        if isinstance(raw_assistant, dict):
-            # Kimi K3 requires replaying the complete assistant message
-            # (reasoning_content / tool_calls) across turns.
-            wire_messages.append({**raw_assistant, "role": "assistant"})
-            continue
-        content = message.get("content")
-        if isinstance(content, str):
-            wire_messages.append({"role": message["role"], "content": content})
-            continue
-        parts: List[dict] = []
-        for part in content or []:
-            if part.get("type") == "text":
-                parts.append({"type": "text", "text": part.get("text", "")})
-            elif part.get("type") == "image":
-                parts.append(
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": _ensure_data_url(part.get("url", "")),
-                            "detail": part.get("detail", image_detail),
-                        },
-                    }
-                )
-            else:
-                parts.append(part)
-        wire_messages.append({"role": message["role"], "content": parts})
-    return wire_messages
-
-
-def to_responses_input(messages: List[dict], image_detail: str) -> List[dict]:
-    """Convert internal messages to the Responses API input format."""
-    input_items: List[dict] = []
-    for message in messages:
-        content = message.get("content")
-        if isinstance(content, str):
-            input_items.append({"role": message["role"], "content": content})
-            continue
-        if message["role"] == "assistant":
-            text = "".join(part.get("text", "") for part in content or [])
-            input_items.append({"role": "assistant", "content": text})
-            continue
-        parts: List[dict] = []
-        for part in content or []:
-            if part.get("type") == "text":
-                parts.append({"type": "input_text", "text": part.get("text", "")})
-            elif part.get("type") == "image":
-                parts.append(
-                    {
-                        "type": "input_image",
-                        "image_url": _ensure_data_url(part.get("url", "")),
-                        "detail": part.get("detail", image_detail),
-                    }
-                )
-        input_items.append({"role": message["role"], "content": parts})
-    return input_items
 
 
 def resolve_image_detail(

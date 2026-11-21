@@ -2,39 +2,40 @@
 
 from typing import Any, Dict, List, Optional
 import asyncio
-import json
 import time
 from loguru import logger
 from midscene.core.ai_model.models.registry import ModelRuntime
-from midscene.core.siwc import SiwcTokenExpiredError, prepare_siwc_call, siwc_token_manager
-
-from midscene.core.ai_model.service_caller.model_call import (
-    _finalize_result,
-    _post_json,
-    _request_headers,
-)
+from midscene.core.ai_model.service_caller.openai.call_openai import call_openai
 from midscene.core.ai_model.service_caller.openai.chat_completion import (
     prepare_chat_completion,
 )
 from midscene.core.ai_model.service_caller.openai.responses import (
-    _parse_responses_payload,
     prepare_responses,
 )
-from midscene.core.ai_model.service_caller.types import DEFAULT_MODEL_PROTOCOL
+from midscene.core.ai_model.service_caller.openai.siwc import (
+    SiwcTokenExpiredError,
+    prepare_siwc_call,
+    siwc_token_manager,
+)
+from midscene.core.ai_model.service_caller.model_call_recorder import (
+    is_model_call_recording_enabled,
+    record_model_call_event,
+)
 from midscene.core.ai_model.service_caller.request_timeout import (
     resolve_effective_timeout_ms,
 )
 from midscene.core.ai_model.service_caller.types import (
     AIResponseParseError,
     CodexAppServerNotSupportedError,
+    DEFAULT_MODEL_PROTOCOL,
 )
 from midscene.core.ai_model.service_caller.utils import (
     build_usage_info,
-    extract_content_and_reasoning,
     is_codex_app_server_provider,
     next_internal_call_id,
     normalize_retry_count,
 )
+
 
 async def call_generative_ai(
     messages: List[dict],
@@ -66,18 +67,6 @@ async def call_generative_ai(
         raise ValueError(f"Unsupported model protocol: {protocol}")
 
     api_key = model_config.get("openaiApiKey")
-    base_url = (
-        model_config.get("openaiBaseURL") or "https://api.openai.com/v1"
-    ).rstrip("/")
-    url = (
-        f"{base_url}/responses"
-        if protocol == "openai-responses"
-        else f"{base_url}/chat/completions"
-    )
-    proxy: Optional[str] = (
-        model_config.get("httpProxy") or model_config.get("socksProxy") or None
-    )
-    headers = _request_headers(model_config)
     effective_timeout = resolve_effective_timeout_ms(model_config.get("timeout"))
     internal_call_id = next_internal_call_id()
 
@@ -103,12 +92,6 @@ async def call_generative_ai(
         prepared = prepare_responses(messages, model_runtime, options)
     else:
         prepared = prepare_chat_completion(messages, model_runtime, options)
-    request_body = prepared["request_body"]
-    if stream_requested and protocol != "openai-responses":
-        request_body = {
-            **request_body,
-            "stream_options": {"include_usage": True},
-        }
 
     max_attempts = normalize_retry_count(model_config.get("retryCount")) + 1
     retry_interval = model_config.get("retryInterval") or 2000
@@ -116,48 +99,38 @@ async def call_generative_ai(
     start_time = time.time()
     attempt = 0
     siwc_refreshed = False
+    recording_enabled = is_model_call_recording_enabled()
+    execution_id = getattr(model_runtime, "execution_id", None)
 
     while attempt < max_attempts:
         attempt += 1
-        try:
-            payload = await _post_json(
-                url=url,
-                headers=headers,
-                request_body=request_body,
-                effective_timeout=effective_timeout,
-                proxy=proxy,
-                stream=stream_requested,
-                on_chunk=chunk_callback,
-            )
-            if protocol == "openai-responses" and not isinstance(payload, dict):
-                raise RuntimeError("invalid responses payload")
-            if "is_responses" in payload:
-                # aggregated stream result, already parsed
-                parsed = payload
-            elif protocol == "openai-responses":
-                parsed = _parse_responses_payload(payload)
-            else:
-                if not payload.get("choices"):
-                    raise RuntimeError(
-                        f"invalid response from LLM service: {json.dumps(payload)[:2000]}"
-                    )
-                raw_message = payload["choices"][0].get("message") or {}
-                parsed_message = extract_content_and_reasoning(
-                    raw_message, model_runtime.adapter.reasoning_content_keys
-                )
-                parsed = {
-                    "content": parsed_message["content"],
-                    "reasoningContent": parsed_message["reasoning_content"],
-                    "rawAssistantOutput": {
-                        "type": "chat-completion",
-                        "rawValue": raw_message,
-                    },
-                    "rawUsage": payload.get("usage"),
-                    "requestId": payload.get("id"),
-                    "responseModelName": payload.get("model"),
-                }
 
-            final = _finalize_result(parsed, model_runtime.adapter, model_config)
+        def record_event(event: Dict[str, Any], _attempt: int = attempt) -> None:
+            record_model_call_event(
+                {
+                    "executionId": execution_id,
+                    "callId": internal_call_id,
+                    "semanticRetryAttempt": options.get("semanticRetryAttempt"),
+                    "slot": model_config.get("slot"),
+                    "intent": model_config.get("intent"),
+                    "modelFamily": model_config.get("modelFamily"),
+                    "modelFallback": getattr(model_runtime, "model_fallback", None),
+                    **event,
+                    "attempt": _attempt,
+                }
+            )
+
+        try:
+            parsed = await call_openai(
+                model_runtime,
+                protocol,
+                prepared,
+                stream_requested,
+                on_chunk=chunk_callback,
+                effective_timeout=effective_timeout,
+                execution_id=execution_id,
+                record_event=record_event if recording_enabled else None,
+            )
             time_cost = int((time.time() - start_time) * 1000)
             usage = build_usage_info(
                 raw_usage=parsed.get("rawUsage"),
@@ -172,10 +145,15 @@ async def call_generative_ai(
             if usage and model_runtime.on_usage:
                 model_runtime.on_usage(usage)
             return {
-                **final,
+                "content": parsed.get("content"),
+                "reasoningContent": parsed.get("reasoningContent"),
+                "rawAssistantOutput": parsed.get("rawAssistantOutput"),
+                "rawUsage": parsed.get("rawUsage"),
+                "requestId": parsed.get("requestId"),
+                "responseModelName": parsed.get("responseModelName"),
                 "usage": usage,
-                "reasoning_content": final.get("reasoningContent"),
-                "raw_assistant_output": final.get("rawAssistantOutput"),
+                "reasoning_content": parsed.get("reasoningContent"),
+                "raw_assistant_output": parsed.get("rawAssistantOutput"),
             }
         except SiwcTokenExpiredError:
             # One authentication retry, independent of the normal retryCount.
@@ -192,8 +170,9 @@ async def call_generative_ai(
                 },
             )
             siwc_refreshed = True
-            headers["Authorization"] = f"Bearer {refreshed_key}"
             model_config = {**model_config, "openaiApiKey": refreshed_key}
+            # Keep adapter, usage callback and execution id on the same runtime.
+            model_runtime.config = model_config
             api_key = refreshed_key
             attempt -= 1
             continue

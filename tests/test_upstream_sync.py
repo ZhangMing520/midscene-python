@@ -1494,7 +1494,7 @@ class TestSiwc:
 
     @pytest.mark.asyncio
     async def test_jwks_fetched_once_and_reused(self, monkeypatch):
-        from midscene.core import siwc
+        from midscene.core.ai_model.service_caller.openai.siwc import network
 
         calls = []
         keys = [object()]
@@ -1503,16 +1503,16 @@ class TestSiwc:
             calls.append(proxy)
             return keys
 
-        monkeypatch.setattr(siwc, "_fetch_jwks", fake_fetch)
-        monkeypatch.setattr(siwc, "_jwks_cache", None)
-        assert await siwc._load_jwks(None) == keys
+        monkeypatch.setattr(network, "_fetch_jwks", fake_fetch)
+        monkeypatch.setattr(network, "_jwks_cache", None)
+        assert await network._load_jwks(None) == keys
         # Cached keys are proxy-independent, so the second load is free.
-        assert await siwc._load_jwks({"httpProxy": "http://proxy:8080"}) == keys
+        assert await network._load_jwks({"httpProxy": "http://proxy:8080"}) == keys
         assert len(calls) == 1
 
     @pytest.mark.asyncio
     async def test_jwks_force_refetch_replaces_cache(self, monkeypatch):
-        from midscene.core import siwc
+        from midscene.core.ai_model.service_caller.openai.siwc import network
 
         rotated = [object(), object()]
         calls = []
@@ -1521,16 +1521,19 @@ class TestSiwc:
             calls.append(proxy)
             return rotated if len(calls) > 1 else [rotated[0]]
 
-        monkeypatch.setattr(siwc, "_fetch_jwks", fake_fetch)
-        monkeypatch.setattr(siwc, "_jwks_cache", None)
-        assert await siwc._load_jwks(None) == [rotated[0]]
-        assert await siwc._load_jwks(None, force=True) == rotated
-        assert await siwc._load_jwks(None) == rotated
+        monkeypatch.setattr(network, "_fetch_jwks", fake_fetch)
+        monkeypatch.setattr(network, "_jwks_cache", None)
+        assert await network._load_jwks(None) == [rotated[0]]
+        assert await network._load_jwks(None, force=True) == rotated
+        assert await network._load_jwks(None) == rotated
         assert len(calls) == 2
 
     @pytest.mark.asyncio
     async def test_token_manager_threads_proxy_into_refresh(self):
-        from midscene.core import siwc
+        from midscene.core.ai_model.service_caller.openai.siwc import (
+            credential_storage,
+            refresh,
+        )
 
         record = {
             "credentials": {
@@ -1539,17 +1542,27 @@ class TestSiwc:
                 "refresh_token": "refresh-1",
             }
         }
-        refresh = AsyncMock(return_value={**record["credentials"], "access_token": "new"})
-        manager = siwc.SiwcTokenManager()
+        refresh_mock = AsyncMock(
+            return_value={**record["credentials"], "access_token": "new"}
+        )
+        from midscene.core.ai_model.service_caller.openai.siwc.token_manager import (
+            SiwcTokenManager,
+        )
+
+        manager = SiwcTokenManager()
         proxy = {"httpProxy": "http://proxy:8080", "socksProxy": None}
 
-        with patch.object(siwc, "_read_credentials", lambda: record), patch.object(
-            siwc, "_save_credentials", lambda _record: None
-        ), patch.object(siwc, "refresh_siwc_credentials", refresh):
+        with patch.object(
+            credential_storage, "_read_credentials", lambda: record
+        ), patch.object(
+            credential_storage, "_save_credentials", lambda _record: None
+        ), patch.object(
+            refresh, "refresh_siwc_credentials", refresh_mock
+        ):
             token = await manager.refresh_access_token("old", proxy)
 
         assert token == "new"
-        refresh.assert_awaited_once_with(record["credentials"], proxy)
+        refresh_mock.assert_awaited_once_with(record["credentials"], proxy)
 
     @pytest.mark.asyncio
     async def test_exchange_uses_configured_proxy(self):
@@ -1588,8 +1601,10 @@ class TestSiwc:
         verify = AsyncMock(
             return_value={"sub": "subject-1", "nonce": "nonce-1", "email": "a@b.c"}
         )
+        from midscene.core.ai_model.service_caller.openai.siwc import network
+
         with patch.object(siwc.httpx, "AsyncClient", _Client), patch.object(
-            siwc, "_verify_id_token", verify
+            network, "_verify_id_token", verify
         ):
             credentials = await siwc.exchange_siwc_code(
                 attempt,

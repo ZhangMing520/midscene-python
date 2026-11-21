@@ -1,4 +1,4 @@
-"""OpenAI chat-completion request body (upstream service-caller/openai/chat-completion)."""
+"""Chat-completion request preparation (upstream chat-completion/chat-completion.ts)."""
 
 from typing import Any, Dict, List
 
@@ -6,10 +6,10 @@ from midscene.core.ai_model.model_adapter.temperature_with_semantic_retry import
     _apply_semantic_retry_temperature,
 )
 from midscene.core.ai_model.models.registry import ModelRuntime
-from midscene.core.ai_model.service_caller.utils import (
-    resolve_image_detail,
+from midscene.core.ai_model.service_caller.openai.chat_completion.utils import (
     to_chat_messages,
 )
+from midscene.core.ai_model.service_caller.utils import resolve_image_detail
 
 
 def _adapter_user_config(model_config: Dict[str, Any]) -> Dict[str, Any]:
