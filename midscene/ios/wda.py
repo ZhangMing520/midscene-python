@@ -5,8 +5,6 @@ specific endpoints layered on the shared W3C client from `midscene.webdriver`.
 """
 
 import asyncio
-import json
-import time
 from typing import Any, Dict, Optional
 
 from loguru import logger
@@ -21,13 +19,6 @@ from midscene.webdriver import (
 WDA_MJPEG_SCREENSHOT_QUALITY = 50
 WDA_MJPEG_FRAMERATE = 30
 WDA_MJPEG_SCALING_FACTOR = 100
-
-TEXT_INPUT_TYPES = (
-    "XCUIElementTypeTextField",
-    "XCUIElementTypeSecureTextField",
-    "XCUIElementTypeTextView",
-    "XCUIElementTypeSearchField",
-)
 
 
 class WebDriverAgentBackend(WebDriverClient):
@@ -173,122 +164,15 @@ class WebDriverAgentBackend(WebDriverClient):
 
     async def wait_for_input_focus(self, timeout_ms: float = 3000.0) -> None:
         """Block until an element owns the keyboard, or fail loudly."""
-        deadline = time.monotonic() + timeout_ms / 1000.0
-        while not await self.get_active_element_id():
-            if time.monotonic() >= deadline:
-                raise RuntimeError(
-                    f"Timed out waiting for iOS input focus after {int(timeout_ms)}ms"
-                )
-            await asyncio.sleep(0.05)
+        from midscene.ios.input_focus import wait_for_input_focus
 
-    async def _find_identified_inputs(self, name: str, element_type: str) -> list:
-        """Elements whose name is a real identifier and whose type matches.
-
-        WDA falls back to label when the accessibility identifier is empty;
-        excluding that case proves the name identifies the field on both the
-        old and the current snapshot.
-        """
-        response = await self._request(
-            "POST",
-            "/elements",
-            {
-                "using": "predicate string",
-                "value": (
-                    f"name == {json.dumps(name)} AND name != label "
-                    f"AND type == {json.dumps(element_type)}"
-                ),
-            },
-        )
-        value = response.get("value")
-        if not isinstance(value, list):
-            raise RuntimeError("Invalid WDA input search response")
-        ids = [element_id_from(item) for item in value]
-        if any(element_id is None for element_id in ids):
-            raise RuntimeError("Missing WDA input element ID")
-        return ids
+        await wait_for_input_focus(self._request, timeout_ms)
 
     async def clear_active_element(self) -> bool:
-        """Clear the focused input and keep focus.
+        """Clear the focused input and keep focus (upstream input-focus)."""
+        from midscene.ios.input_focus import clear_input_with_focus
 
-        Returns False when there is nothing to clear or this WDA build has no
-        active-element API, so callers can fall back to plain typing. Raises
-        when a clear cannot be verified: appending text to a field still full
-        of the old value is worse than reporting failure.
-        """
-        try:
-            original_id = await self.get_active_element_id()
-        except WebDriverRequestError as e:
-            if e.error_code in ("unknown command", "unsupported operation"):
-                return False
-            raise
-        if not original_id:
-            return False
-
-        # Re-identification is only a recovery hint: a failed lookup must not
-        # stop the clear itself from being attempted.
-        name = ""
-        element_type: Any = None
-        try:
-            raw_name = await self.get_element_attribute(original_id, "name")
-            name = raw_name if isinstance(raw_name, str) else ""
-            element_type = await self.get_element_attribute(original_id, "type")
-        except WebDriverRequestError:
-            name = ""
-            element_type = None
-        is_text_input = (
-            isinstance(element_type, str) and element_type in TEXT_INPUT_TYPES
-        )
-        can_reacquire = False
-        if name and is_text_input:
-            try:
-                named = await self._find_identified_inputs(name, element_type)
-            except WebDriverRequestError:
-                named = []
-            can_reacquire = len(named) == 1 and named[0] == original_id
-        target_id = original_id
-
-        # One retry is allowed after a stale clear: the field may have been
-        # re-created, in which case the retry targets the re-identified id. A
-        # successful clear response proves the operation completed without
-        # guessing whether the accessibility value is text or placeholder text.
-        retries_left = 1
-        while True:
-            clear_error: Optional[BaseException] = None
-            try:
-                await self._request("POST", f"/element/{target_id}/clear")
-            except WebDriverRequestError as e:
-                if e.error_code != "stale element reference":
-                    raise
-                clear_error = e
-
-            if await self.get_active_element_id() != target_id:
-                try:
-                    await self._request("POST", f"/element/{target_id}/click")
-                except WebDriverRequestError as e:
-                    if e.error_code != "stale element reference" or not can_reacquire:
-                        raise
-                    matches = await self._find_identified_inputs(name, element_type)
-                    if len(matches) != 1:
-                        raise RuntimeError(
-                            "Cannot uniquely identify input after clearing the field"
-                        )
-                    target_id = matches[0]
-                    await self._request("POST", f"/element/{target_id}/click")
-                if await self.get_active_element_id() != target_id:
-                    raise RuntimeError(
-                        "Failed to restore input focus after clearing the field"
-                    )
-
-            if clear_error is None:
-                return True
-            value = await self.get_element_attribute(target_id, "value")
-            if value is None or value == "":
-                return True
-            if retries_left == 0:
-                raise RuntimeError(
-                    "Cannot verify that input was cleared; refusing to append text"
-                ) from clear_error
-            retries_left -= 1
+        return await clear_input_with_focus(self._request)
 
     # -- pointer ------------------------------------------------------------------
 

@@ -7,6 +7,8 @@ from midscene.core.ai_model.shared.xml import extract_xml_tag
 from midscene.core.ai_model.shared.model_locate_result import format_locate_example_value
 from typing import Any, Dict, List, Optional
 
+from midscene.core.distance_schema import find_distance_fields
+
 PLANNING_ACTION_OUTPUT_TAG_NAMES = ("action-type", "action-param-json")
 
 
@@ -153,7 +155,7 @@ def _default_build_action_description(build_input: Dict[str, Any]) -> Dict[str, 
     if param_schema:
         param: Dict[str, Any] = {}
         locate_fields = list(action_dict.get("locate_fields", []))
-        distance_fields = list(action_dict.get("distance_fields", []))
+        distance_fields = find_distance_fields(action_dict)
         for key, field in param_schema.items():
             field = dict(field)
             if key in locate_fields:

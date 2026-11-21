@@ -26,6 +26,8 @@ from midscene.android.utils import (
     parse_screen_size_output,
 )
 from midscene.core.device.mobile_scroll import resolve_default_mobile_scroll
+from midscene.android.adb import run_adb_command
+from midscene.android.ui_tree_capture import capture_android_ui_tree
 from midscene.core.types import (
     AbstractInterface, InterfaceType, UIContext, BaseElement, UINode, UITree,
     Size, Rect, NodeType
@@ -908,17 +910,9 @@ class AndroidDevice(AbstractInterface):
     async def _get_ui_elements(self) -> List[AndroidElement]:
         """Get UI elements using uiautomator dump"""
         try:
-            # Get UI dump
-            await self._run_adb_command([
-                "-s", self.device_id, "shell", "uiautomator", "dump", "/sdcard/ui_dump.xml"
-            ])
-            
-            # Pull dump file
-            result = await self._run_adb_command([
-                "-s", self.device_id, "shell", "cat", "/sdcard/ui_dump.xml"
-            ], capture_output=True)
-            
-            xml_content = result.stdout.decode('utf-8')
+            xml_content = await capture_android_ui_tree(
+                self._run_adb_command, self.device_id
+            )
 
             return [
                 AndroidElement(
@@ -1009,36 +1003,10 @@ class AndroidDevice(AbstractInterface):
         capture_output: bool = False,
         timeout: int = 30
     ) -> subprocess.CompletedProcess:
-        """Run ADB command"""
-        try:
-            if capture_output:
-                result = await asyncio.create_subprocess_exec(
-                    "adb", *args,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE
-                )
-                stdout, stderr = await asyncio.wait_for(result.communicate(), timeout=timeout)
-                
-                return subprocess.CompletedProcess(
-                    args=["adb"] + args,
-                    returncode=result.returncode,
-                    stdout=stdout,
-                    stderr=stderr
-                )
-            else:
-                result = await asyncio.create_subprocess_exec("adb", *args)
-                returncode = await asyncio.wait_for(result.wait(), timeout=timeout)
-                
-                return subprocess.CompletedProcess(
-                    args=["adb"] + args,
-                    returncode=returncode
-                )
-                
-        except asyncio.TimeoutError:
-            raise TimeoutError(f"ADB command timeout: {args}")
-        except Exception as e:
-            logger.error(f"ADB command failed: {args}, error: {e}")
-            raise
+        """Run one ADB command through the adb helper module."""
+        return await run_adb_command(
+            args, capture_output=capture_output, timeout=timeout
+        )
     
     async def disconnect(self) -> None:
         """Disconnect from device"""

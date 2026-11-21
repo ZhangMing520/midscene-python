@@ -13,7 +13,9 @@ from __future__ import annotations
 import base64
 import io
 import math
-from typing import Any, Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple
+
+from midscene.core.service.utils import clamp_rect
 
 POINT_MARKER_RADIUS = 14
 MARKER_THICKNESS = 3
@@ -97,18 +99,6 @@ def composite_rect_marker(image_base64: str, rect: Dict[str, float]) -> str:
     draw.line([(center_x - arm, center_y), (center_x + arm, center_y)], fill=MARKER_COLOR, width=2)
     draw.line([(center_x, center_y - arm), (center_x, center_y + arm)], fill=MARKER_COLOR, width=2)
     return _encode(Image.alpha_composite(image.convert("RGBA"), overlay))
-
-
-def clamp_rect(rect: Dict[str, float], size: Dict[str, Any]) -> Dict[str, float]:
-    """Clamp a rect into the image bounds."""
-    width = min(float(rect["width"]), float(size["width"]))
-    height = min(float(rect["height"]), float(size["height"]))
-    return {
-        "left": max(0.0, min(float(rect["left"]), float(size["width"]) - width)),
-        "top": max(0.0, min(float(rect["top"]), float(size["height"]) - height)),
-        "width": width,
-        "height": height,
-    }
 
 
 def crop_image(
