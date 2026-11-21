@@ -47,7 +47,7 @@ dependencies = [
 version = "0.2.0"
 
 [project.optional-dependencies]
-desktop = [
+computer = [
     "pyautogui>=0.9.54",
     "pyperclip>=1.8.0",
 ]

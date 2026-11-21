@@ -2,8 +2,8 @@
 Android integration module for Midscene Python
 """
 
-from .device import AndroidDevice
-from .agent import AndroidAgent
+from midscene.android.device import AndroidDevice
+from midscene.android.agent import AndroidAgent
 
 __all__ = [
     "AndroidDevice",

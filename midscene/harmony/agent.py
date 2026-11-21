@@ -2,9 +2,9 @@
 
 from typing import Optional
 
-from ..core.agent import Agent
-from ..core.types import AgentOptions
-from .device import HarmonyDevice
+from midscene.core.agent.agent import Agent
+from midscene.core.agent.agent_options import AgentOptions
+from midscene.harmony.device import HarmonyDevice
 
 
 class HarmonyAgent(Agent):

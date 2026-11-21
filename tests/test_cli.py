@@ -8,7 +8,7 @@ import pytest
 @pytest.mark.asyncio
 async def test_web_section_maps_to_playwright_options(monkeypatch):
     cli_main = importlib.import_module("midscene.cli.main")
-    from midscene.web import PlaywrightWebPage
+    from midscene.web_integration import PlaywrightWebPage
 
     captured = {}
 
@@ -51,14 +51,14 @@ async def test_web_section_maps_to_playwright_options(monkeypatch):
 @pytest.mark.asyncio
 async def test_computer_section_builds_desktop_agent():
     cli_main = importlib.import_module("midscene.cli.main")
-    from midscene.desktop import DesktopAgent
+    from midscene.computer import ComputerAgent
 
     agent = await cli_main._create_agent_for_script(
         {"computer": {"agent": {"groupName": "desktop run"}}},
         headed=False,
         device_id=None,
     )
-    assert isinstance(agent, DesktopAgent)
+    assert isinstance(agent, ComputerAgent)
     assert agent.interface_type.value == "computer"
 
 
@@ -85,8 +85,8 @@ async def test_computer_section_refuses_display_id():
 def test_run_exit_code_reflects_failed_tasks(
     tmp_path, monkeypatch, status, failed_tasks, expected_exit
 ):
-    import midscene.core.agent as agent_module
-    import midscene.core.yaml_runner as yaml_module
+    import midscene.core.agent.agent as agent_module
+    import midscene.core.yaml as yaml_module
     from typer.testing import CliRunner
 
     cli_main = importlib.import_module("midscene.cli.main")
@@ -173,12 +173,12 @@ def test_dotenv_loader_respects_override(tmp_path, monkeypatch):
 
 def test_report_tool_split_markdown_and_merge(tmp_path):
     from typer.testing import CliRunner
-    from midscene.core.report_viewer import (
+    from midscene.core.report import write_report_html
+    from midscene.core.report_cli import (
         merge_report_files,
-        report_file_to_markdown,
         split_report_file,
-        write_report_html,
     )
+    from midscene.core.report_markdown import report_file_to_markdown
 
     cli_main = importlib.import_module("midscene.cli.main")
     dump = {

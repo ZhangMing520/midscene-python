@@ -4,6 +4,7 @@ All WDA HTTP calls go through a fake transport; no device required.
 """
 
 import asyncio
+import math
 import re
 from typing import Any, Dict, List, Optional
 from unittest.mock import AsyncMock, patch
@@ -11,6 +12,11 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from midscene.ios.wda import WebDriverAgentBackend, WebDriverRequestError
+
+
+def _js_round(value: float) -> int:
+    # Upstream Math.round rounds .5 toward +infinity.
+    return math.floor(value + 0.5)
 
 
 class FakeWDARequests:
@@ -62,7 +68,7 @@ def _backend(responses: Optional[Dict[str, Any]] = None, session_id: str = "wda-
 
 def device_action_space(device):
     """The action space the planner would see for this device."""
-    from midscene.core.actions import build_action_space_for
+    from midscene.core.device import build_action_space_for
 
     return build_action_space_for(device.interface_type)
 
@@ -468,9 +474,9 @@ class TestIOSDevice:
             a for a in transport.calls_for("/actions")[0][2]["actions"][0]["actions"]
             if a["type"] == "pointerMove"
         ]
-        assert (moves[0]["x"], moves[0]["y"]) == (195, round(844 * 0.85))
-        assert moves[-1]["y"] == round(844 * 0.15)
-        travel = round(844 * 0.85) - round(844 * 0.15)
+        assert (moves[0]["x"], moves[0]["y"]) == (195, _js_round(844 * 0.85))
+        assert moves[-1]["y"] == _js_round(844 * 0.15)
+        travel = _js_round(844 * 0.85) - _js_round(844 * 0.15)
         assert moves[-1]["duration"] == max(1000, round(travel / 0.4))
 
         device, transport = self._device()
@@ -480,9 +486,9 @@ class TestIOSDevice:
             if a["type"] == "pointerMove"
         ]
         # scrollRight reveals what is off to the right: the finger goes left
-        assert moves[0]["x"] == round(390 * 0.85)
-        assert moves[-1]["x"] == round(390 * 0.15)
-        assert moves[0]["y"] == moves[-1]["y"] == round(844 / 2)
+        assert moves[0]["x"] == _js_round(390 * 0.85)
+        assert moves[-1]["x"] == _js_round(390 * 0.15)
+        assert moves[0]["y"] == moves[-1]["y"] == _js_round(844 / 2)
 
     @pytest.mark.asyncio
     async def test_pinch_contract_and_geometry(self):
@@ -513,7 +519,7 @@ class TestIOSDevice:
     async def test_gestures_run_through_the_action_space(self):
         """The executors resolve actions and call the primitives; a signature
         drift here used to raise TypeError."""
-        from midscene.core.actions import find_action_in_action_space_or_throw
+        from midscene.core.device import find_action_in_action_space_or_throw
 
         async def fake_locate(*args, **kwargs):
             return {"center": [120, 300]}
@@ -549,7 +555,7 @@ class TestIOSDevice:
 
     @pytest.mark.asyncio
     async def test_run_wda_request_action_validates_params(self):
-        from midscene.core.actions import find_action_in_action_space_or_throw
+        from midscene.core.device import find_action_in_action_space_or_throw
 
         device, transport = self._device()
         definition = find_action_in_action_space_or_throw(
@@ -566,7 +572,7 @@ class TestIOSDevice:
         assert transport.calls_for("/wda/unlock")[-1][0] == "POST"
 
     def test_ios_action_space_exposes_what_wda_implements(self):
-        from midscene.core.actions import build_action_space_for
+        from midscene.core.device import build_action_space_for
 
         names = {a.name for a in build_action_space_for("ios")}
         # upstream iOS advertises these, and the device implements them
@@ -658,7 +664,7 @@ class TestIOSDevice:
 
     @pytest.mark.asyncio
     async def test_input_action_replaces_when_the_device_can_clear(self):
-        from midscene.core.actions import find_action_in_action_space_or_throw
+        from midscene.core.device import find_action_in_action_space_or_throw
 
         device, transport = self._device(dict(self.FOCUSED))
         definition = find_action_in_action_space_or_throw(
@@ -774,7 +780,7 @@ class TestIOSDevice:
 
     @pytest.mark.asyncio
     async def test_run_wda_request_returns_the_wda_payload(self):
-        from midscene.core.actions import find_action_in_action_space_or_throw
+        from midscene.core.device import find_action_in_action_space_or_throw
 
         payload = {"value": {"bundleId": "com.example.app"}}
         device, _ = self._device({

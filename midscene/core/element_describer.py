@@ -9,11 +9,11 @@ import inspect
 import math
 from typing import Any, Callable, Dict, List, Optional, Sequence, Union
 
-from .ai_model.adapters import ModelRuntime
-from .ai_model.image_ops import image_size
-from .ai_model.workflows.describe import ai_describe_element
-from .ai_model.workflows.locate_service import locate_service
-from .types import NodeType, Rect, Size, UIContext, UINode, UITree
+from midscene.core.ai_model.models.registry import ModelRuntime
+from midscene.core.ai_model.model_adapter.image_preprocess import image_size
+from midscene.core.service.describe import ai_describe_element
+from midscene.core.service import locate_service
+from midscene.core.types import NodeType, Rect, Size, UIContext, UINode, UITree
 
 DEFAULT_CENTER_DISTANCE_THRESHOLD = 20
 DEFAULT_RETRY_LIMIT = 3

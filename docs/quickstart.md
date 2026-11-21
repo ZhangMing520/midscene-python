@@ -13,7 +13,7 @@ pip install midscene-python
 playwright install chromium
 
 # 桌面自动化（Windows / macOS / Linux）需要 GUI 依赖，单独安装
-pip install "midscene-python[desktop]"
+pip install "midscene-python[computer]"
 ```
 
 Selenium 模式需要本机安装 Chrome，Selenium Manager 会自动解析 chromedriver；Android 模式需要 `adb` 在 `PATH` 中，且设备已开启 USB 调试。
@@ -92,7 +92,7 @@ midscene model connect
 import asyncio
 
 from midscene import Agent, AgentOptions
-from midscene.web import SeleniumWebPage
+from midscene.web_integration import SeleniumWebPage
 
 
 async def main():
@@ -118,7 +118,7 @@ asyncio.run(main())
 import asyncio
 
 from midscene import Agent, AgentOptions
-from midscene.web import PlaywrightWebPage
+from midscene.web_integration import PlaywrightWebPage
 
 
 async def main():
@@ -148,7 +148,7 @@ Bridge 模式由本 SDK 启动一个 Socket.IO 服务端（默认 `127.0.0.1:376
 import asyncio
 
 from midscene import Agent
-from midscene.web import BridgeWebPage
+from midscene.web_integration import BridgeWebPage
 
 
 async def main():
@@ -209,12 +209,12 @@ asyncio.run(main())
 ```python
 import asyncio
 
-from midscene.desktop import DesktopAgent, DesktopDevice
+from midscene.computer import ComputerAgent, ComputerDevice
 
 
 async def main():
-    device = DesktopDevice()
-    agent = DesktopAgent(device)
+    device = ComputerDevice()
+    agent = ComputerAgent(device)
 
     await agent.ai_act("Open the Files app and sort by modification time")
     await agent.ai_tap("the close button at the top right")
@@ -233,7 +233,7 @@ asyncio.run(main())
 
 - 输入文本走剪贴板粘贴（保存旧剪贴板 → 写入 → `Ctrl/Cmd+V` → 还原），因此中文等非 ASCII 文本不受输入法干扰；缺少 `pyperclip` 时非 ASCII 输入会报错。
 - `scroll` 的 `distance` 是像素，内部按每 100 像素一个滚轮刻度换算并逐格发送；未指定距离时滚动视口轴的 70%。
-- 抓屏只覆盖主显示器：`DesktopDevice(display_id=...)`（对应 YAML 的 `displayId`）会直接抛 `NotImplementedError`，而不是假装切换成功。多屏需要 per-monitor 截图后端。
+- 抓屏只覆盖主显示器：`ComputerDevice(display_id=...)`（对应 YAML 的 `displayId`）会直接抛 `NotImplementedError`，而不是假装切换成功。多屏需要 per-monitor 截图后端。
 - `LongPress` 只在直接 API 中提供，未进入 AI 动作空间；`Pinch` 桌面不支持。
 - 键名会归一到 pyautogui 各平台的实际映射（`Command`/`Super`、`Page Down`、`Esc` 等都能用），未知键名会抛错而不是被静默忽略；单个字符保留大小写，`keyboard_press("A")` 等价于 Shift+a。
 
@@ -373,7 +373,7 @@ Computer（桌面）支持：
 | `agent` | Agent 选项 |
 
 ```yaml
-# desktop.yaml
+# computer.yaml
 computer: {}
 
 tasks:
@@ -384,7 +384,7 @@ tasks:
 ```
 
 ```bash
-midscene run desktop.yaml
+midscene run computer.yaml
 ```
 
 `agent` 下可配置 `groupName`、`groupDescription`、`generateReport`、`autoPrintReportMsg`、`reportFileName`、`cache`（字符串 id 或 `{id: ...}`）以及 `replanningCycleLimit`。

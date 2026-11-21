@@ -6,7 +6,7 @@ import io
 import pytest
 from PIL import Image
 
-from midscene.core.ai_model.image_ops import (
+from midscene.core.ai_model.model_adapter.image_preprocess import (
     composite_point_marker,
     composite_rect_marker,
     crop_image,
@@ -98,10 +98,10 @@ class TestImageOps:
 
 class TestDescribeMessages:
     def test_light_describe_sends_one_marked_screenshot(self, monkeypatch):
-        from midscene.core.ai_model.workflows import describe
+        from midscene.core.service import describe
 
         monkeypatch.setattr(
-            describe.image_ops,
+            describe.image_preprocess,
             "composite_point_marker",
             lambda image, point, radius=14: f"marked:{point['x']},{point['y']}",
         )
@@ -114,20 +114,20 @@ class TestDescribeMessages:
         assert content[1] == {"type": "image", "url": "marked:50.0,60.0"}
 
     def test_deep_describe_appends_a_marked_crop(self, monkeypatch):
-        from midscene.core.ai_model.workflows import describe
+        from midscene.core.service import describe
 
         monkeypatch.setattr(
-            describe.image_ops,
+            describe.image_preprocess,
             "composite_point_marker",
             lambda image, point, radius=14: f"marked:{image}",
         )
         monkeypatch.setattr(
-            describe.image_ops,
+            describe.image_preprocess,
             "crop_image",
             lambda image, rect: ("crop", {"width": 10, "height": 10}),
         )
         monkeypatch.setattr(
-            describe.image_ops, "resize_long_edge", lambda image, *args: "resized"
+            describe.image_preprocess, "resize_long_edge", lambda image, *args: "resized"
         )
         messages = describe.build_describe_messages(
             "shot", [50, 60], {"width": 100, "height": 100}, deep_describe=True

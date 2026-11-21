@@ -14,7 +14,8 @@ from typing import Dict, List, Optional, Sequence
 
 from loguru import logger
 
-from ..core.types import (
+from midscene.core.device.mobile_scroll import resolve_default_mobile_scroll
+from midscene.core.types import (
     AbstractInterface,
     InterfaceType,
     Rect,
@@ -24,9 +25,9 @@ from ..core.types import (
     UINode,
     NodeType,
 )
-from .hdc import HdcClient
-from .keycode import resolve_harmony_key_codes
-from .swipe import resolve_swipe_speed
+from midscene.harmony.hdc import HdcClient
+from midscene.harmony.keycode import resolve_harmony_key_codes
+from midscene.harmony.swipe import resolve_swipe_speed
 
 SCREEN_EDGE_MARGIN = 50
 DEFAULT_FAST_SWIPE_SPEED = 2000
@@ -241,16 +242,9 @@ class HarmonyDevice(AbstractInterface):
 
         if distance is None and not point:
             # Upstream scrollDefault: from 0.85 to 0.15 of the axis.
-            horizontal = direction in ("left", "right")
-            forward = direction in ("down", "right")
-            extent = width if horizontal else height
-            start = round(extent * (0.85 if forward else 0.15))
-            end = round(extent * (0.15 if forward else 0.85))
-            cx, cy = width // 2, height // 2
-            if horizontal:
-                fx, fy, tx, ty = start, cy, end, cy
-            else:
-                fx, fy, tx, ty = cx, start, cx, end
+            (fx, fy), (tx, ty) = resolve_default_mobile_scroll(
+                direction, {"width": width, "height": height}
+            )
             await hdc.fling(
                 fx, fy, tx, ty,
                 resolve_swipe_speed({"x": fx, "y": fy}, {"x": tx, "y": ty}, 1000),

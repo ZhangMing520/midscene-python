@@ -13,7 +13,8 @@ from typing import List, Optional, Sequence, Tuple
 from loguru import logger
 from pydantic import BaseModel
 
-from ..core.types import (
+from midscene.core.device.mobile_scroll import resolve_default_mobile_scroll
+from midscene.core.types import (
     AbstractInterface, InterfaceType, UIContext, BaseElement, UINode, UITree,
     Size, Rect, NodeType
 )
@@ -428,14 +429,11 @@ class AndroidDevice(AbstractInterface):
         end: Tuple[int, int]
 
         if distance is None and point is None:
-            # Upstream scrollDefault: the finger crosses the central 70%
-            # (0.85 <-> 0.15) slowly enough to keep the release velocity low.
-            start_axis = _round_half_up(axis_size * (0.85 if forward else 0.15))
-            end_axis = _round_half_up(axis_size * (0.15 if forward else 0.85))
-            if horizontal:
-                start, end = (start_axis, center_y), (end_axis, center_y)
-            else:
-                start, end = (center_x, start_axis), (center_x, end_axis)
+            # Upstream scrollDefault: the finger crosses the central 70% slowly
+            # enough to keep the release velocity low.
+            start, end = resolve_default_mobile_scroll(
+                direction, {"width": width, "height": height}
+            )
             duration = DEFAULT_NORMAL_SCROLL_DURATION
         elif point is not None:
             # Anchored gesture: start where the model pointed and travel toward
@@ -556,7 +554,7 @@ class AndroidDevice(AbstractInterface):
 
     def _resolve_yadb_bin_path(self) -> str:
         """Local Yadb binary path: <MIDSCENE_RUN_DIR>/bin/yadb."""
-        from ..core.ai_model.env_config import get_midscene_run_dir
+        from midscene.shared.env import get_midscene_run_dir
 
         if self._yadb_bin_path is None:
             self._yadb_bin_path = str(

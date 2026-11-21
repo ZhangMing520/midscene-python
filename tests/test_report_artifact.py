@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from midscene.core.report_artifact import (
+from midscene.shared.report_artifact import (
     ReportArtifactError,
     ReportArtifactStore,
     export_report_artifact,
@@ -147,7 +147,7 @@ class TestExportReportArtifact:
         return root
 
     def test_exports_directory_artifact_as_single_html(self, tmp_path):
-        from midscene.core.report_viewer import read_report_dump
+        from midscene.core.report_cli import read_report_dump
 
         source = self._make_artifact(tmp_path / "report")
         output = tmp_path / "out"
@@ -184,7 +184,7 @@ class TestExportReportArtifact:
         assert export_report_artifact(source, output, "exported", overwrite=True)
 
     def test_rejects_destination_equal_to_input(self, tmp_path):
-        from midscene.core.report_viewer import write_report_html
+        from midscene.core.report import write_report_html
 
         source = write_report_html(_dump(), "orig", str(tmp_path))
         with pytest.raises(ReportArtifactError, match="must differ"):
@@ -201,7 +201,7 @@ class TestExportReportArtifact:
                 export_report_artifact(source, tmp_path / "out", name)
 
     def test_reads_single_file_html_input(self, tmp_path):
-        from midscene.core.report_viewer import write_report_html
+        from midscene.core.report import write_report_html
 
         source = write_report_html(_dump("single"), "single", str(tmp_path))
         path = export_report_artifact(source, tmp_path / "out", "copy")
@@ -210,7 +210,7 @@ class TestExportReportArtifact:
         assert path.endswith("copy.html")
 
     def test_reexports_external_bundle_as_single_html(self, tmp_path):
-        from midscene.core.report_viewer import read_report_dump
+        from midscene.core.report_cli import read_report_dump
 
         source = self._make_artifact(tmp_path / "report")
         bundle = export_report_artifact(

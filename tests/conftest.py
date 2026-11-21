@@ -1,6 +1,6 @@
 import pytest
 
-from midscene.core.ai_model.env_config import MIDSCENE_RUN_DIR
+from midscene.shared.env import MIDSCENE_RUN_DIR
 
 
 @pytest.fixture(autouse=True)

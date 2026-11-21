@@ -2,7 +2,7 @@
 
 **像人一样理解界面。用自然语言驱动 Web、Android 与桌面的 UI 自动化与端到端测试。**
 
-Midscene Python 是 [Midscene](https://github.com/web-infra-dev/midscene) 的 Python SDK。它截取当前屏幕，交给视觉语言模型判断下一步该做什么，再通过 Playwright、Selenium、Chrome Bridge、ADB 或 pyautogui 执行动作。AI 模型层（提示词、规划/定位/理解协议、多模型插槽、坐标解析）与上游 Midscene v1.17.7 保持同步。
+Midscene Python 是 [Midscene](https://github.com/web-infra-dev/midscene) 的 Python SDK。它截取当前屏幕，交给视觉语言模型判断下一步该做什么，再通过 Playwright、Selenium、Chrome Bridge、ADB 或 pyautogui 执行动作。AI 模型层（提示词、规划/定位/理解协议、多模型插槽、坐标解析）与上游 Midscene v1.18.2 保持同步。
 
 [English](README.md) | [简体中文](README.zh.md)
 
@@ -14,7 +14,7 @@ Midscene Python 是 [Midscene](https://github.com/web-infra-dev/midscene) 的 Py
 import asyncio
 
 from midscene import Agent, AgentOptions
-from midscene.web import PlaywrightWebPage
+from midscene.web_integration import PlaywrightWebPage
 
 
 async def main():
@@ -77,7 +77,7 @@ await agent.ai_assert("The error message is visible below the email field")
 | Android | 通过 ADB 连接真机与模拟器 |
 | iOS | 通过 WebDriverAgent（WDA / Appium XCUITest）连接真机与模拟器 |
 | HarmonyOS | 通过 `hdc` + `uitest` 连接真机与模拟器 |
-| 桌面系统 | Windows / macOS / Linux 整屏截图与系统指针控制（pyautogui，仅主显示器），需 `pip install "midscene-python[desktop]"` |
+| 桌面系统 | Windows / macOS / Linux 整屏截图与系统指针控制（pyautogui，仅主显示器），需 `pip install "midscene-python[computer]"` |
 | 自定义接口 | 继承 `AbstractInterface`，提供截图与动作能力 |
 
 上游 Midscene 中的 Puppeteer **未移植**到本 SDK。iOS 与 HarmonyOS 层已移植，但尚未在真实设备上验收，目前由假 WDA / `hdc` 传输层的单元测试覆盖。
@@ -118,7 +118,7 @@ agent = Agent(page, AgentOptions(
 
 `openai-chat` 与 `openai-responses` 两种协议均支持流式与非流式模式。SIWC（ChatGPT 订阅登录）可通过 `midscene model siwc login` 配合 `MIDSCENE_MODEL_AUTH_MODE=siwc` 使用。
 
-## 与上游 v1.17.7 对齐
+## 与上游 v1.18.2 对齐
 
 与官方 TypeScript SDK 保持一致的能力：
 
@@ -131,11 +131,9 @@ agent = Agent(page, AgentOptions(
 - **执行报告**：每次进入规划阶段的 `ai_act` 运行都会更新 `midscene_run/report/` 下的合并单文件 HTML 查看器（tag 默认取接口类型，可用 `MIDSCENE_REPORT_TAG_NAME` 覆盖）；上游格式的单次执行 JSON dump 仅在开启 `persistExecutionDump`（`AgentOptions.persist_execution_dump`）时写入，`generateReport: false` 可关闭所有报告文件。报告记录规划输出、每个动作的墙钟耗时/状态/错误；缓存回放时写入上游同款 `LoadYaml` 任务（含 `cache.hit` / `hitBy`）。`AgentOptions` 的 `generate_report`、`report_file_name`、`group_name` 与 `group_description` 均会生效。`midscene.core.dump` 对齐上游 `IReportActionDump` 字段结构。
 - **定位提示词顺序**：适配器级 `locate_prompt_order` DSL（`system(...)`、`userTogether(...)`、`userEach(...)`）可按上游 `locate-prompt-order.ts` 重排指令、截图、任务文本与参考图；参考图支持 data URL、本地文件与 HTTP。    
 - **元素描述器**：`describe_element_at_point`、`verify_element_description_at_point`、`verify_locator` 会先在截图上绘制上游同款圆环 + 十字标记（或矩形边框），可选追加放大的局部细节图（`deepDescribe`），再通过重新定位校验描述并按需自动切换深度模式重试。    
-- **MCP 服务**：`midscene mcp` 通过 stdio JSON-RPC 暴露 `midscene_init / midscene_act / midscene_query / midscene_assert / midscene_locate / web_tabs / web_switch-tab / midscene_close`；进程内也可用 `midscene.agent_tools.AgentTools`。    
 - **目录化报告产物**：`AgentOptions(report_artifact_dir=...)` 与 `midscene run --artifact-dir <dir>` 会额外写入多文件布局（`report.json` 清单 + `data/<reportId>/*.json`），原子写入、发布锁，并提供 `read_report_artifact` 读取。    
 - **批跑生命周期钩子**：批跑配置支持 `maxConcurrentFiles`（`concurrent` 别名）、`namespace`、`beforeAll` / `afterAll` / `beforeEach` / `afterEach` YAML 脚本，以及 `artifactDir` 统一测试报告。    
 - **Web 滑动**：Playwright 与 Selenium 支持 `Swipe`；显式设置的慢速 `duration` 不会被当作长按截断，失败时也会释放鼠标。    
-
 未从上游移植：官方 React 报告可视化器与 Studio 应用（本 SDK 提供上游格式的 JSON dump、单文件 HTML 查看器以及上面的目录化产物）、Midscene Test 框架的 TypeScript Nodes 与 `midscene.config.ts` 工程运行器（YAML 批跑已提供生命周期钩子、namespace 与并发）、Puppeteer（请使用 Playwright 或 Selenium）、Chrome 扩展内的事件录制器 `EventRecorder`（录制好的事件序列可通过 `generate_yaml_test` / `generate_markdown_replay` / `generate_playwright_test` 生成用例）、Playwright `AiFixture`，以及 Codex app-server 传输（`codex://` base URL 会抛 `CodexAppServerNotSupportedError`）。
 
 ## 规划循环与缓存
@@ -154,36 +152,42 @@ agent = Agent(page, AgentOptions(
 pip install midscene-python
 
 # 桌面自动化需要 GUI 扩展依赖
-pip install "midscene-python[desktop]"
+pip install "midscene-python[computer]"
 ```
 
 | 命令 | 用途 |
 | --- | --- |
 | `midscene run script.yaml [--headed] [--device ID] [--verbose] [--artifact-dir DIR]` | 运行 YAML 自动化脚本 |
-| `midscene mcp` | 以 MCP（stdio）方式向 AI 编码助手提供 Midscene 工具 |
 | `midscene model connect` | 测试已配置的模型 |
 | `midscene model siwc login` | 使用 ChatGPT 订阅登录（SIWC） |
 | `midscene version` | 显示已安装版本 |
-
 ## 项目结构
 
 ```
 midscene-python/
 ├── midscene/
 │   ├── core/
-│   │   ├── agent.py          # Agent：规划、理解、报告、缓存
-│   │   ├── actions.py        # 动作空间与执行器
-│   │   ├── insight.py        # Insight（查询 / 断言）引擎
-│   │   ├── task_cache.py     # 规划缓存与定位缓存
-│   │   ├── yaml_runner.py    # YAML 脚本解析与回放
-│   │   ├── dump.py           # 报告 dump 结构
+│   │   ├── agent/            # Agent、选项、报告、任务、进度、缓存、观察器
+│   │   ├── ai_model/
+│   │   │   ├── models/       # 各模型家族适配器 + 注册表
+│   │   │   ├── model_adapter/# 协议、定位结果、OpenRouter reasoning
+│   │   │   ├── service_caller/# chat-completion 调用、语义重试、System One
+│   │   │   ├── prompt/       # 规划 / 定位 / 理解提示词
+│   │   │   ├── shared/       # JSON、XML、定位结果工具
+│   │   │   ├── connectivity/ # 连通性测试
+│   │   │   └── workflows/    # planning / grounding / insight / recorder 工作流
+│   │   ├── device/           # 动作空间、选项、输入策略、移动端滚动
+│   │   ├── dump/             # 报告 dump 结构
+│   │   ├── service/          # 定位 / 描述服务编排
+│   │   ├── yaml/             # YAML schema、回放器、构建、清理、报告策略
+│   │   ├── report.py         # 报告写入 + HTML 模板 + Markdown + CLI 辅助
 │   │   ├── types.py          # 接口、选项与数据模型
-│   │   └── ai_model/         # 模型适配器、提示词、协议、工作流
-│   ├── web/                  # Playwright、Selenium、Bridge 接口
+│   │   └── element_describer.py  # 元素描述辅助
+│   ├── web_integration/      # Playwright、Selenium、Bridge 接口
 │   ├── android/              # ADB 设备与 Android Agent
-│   ├── desktop/              # pyautogui 整屏截图与系统输入
-│   ├── cli/                  # `midscene` 命令行
-│   └── shared/               # 日志与共享工具
+│   ├── computer/             # pyautogui 整屏截图与系统输入
+│   ├── cli/                  # midscene 命令行
+│   └── shared/               # env 配置、日志、报告产物、Agent tools
 ├── examples/
 ├── tests/
 └── docs/

@@ -2,11 +2,10 @@
 Core module for Midscene Python
 """
 
-from .agent import Agent
-from .insight import Insight
-from .types import (
+from midscene.core.agent.agent import Agent
+from midscene.core.agent.insight import Insight
+from midscene.core.types import (
     AbstractInterface,
-    AgentOptions,
     AIUsageInfo,
     AssertResult,
     BaseElement,
@@ -27,18 +26,19 @@ from .types import (
     UINode,
     UITree,
 )
-from .actions import DeviceAction, build_web_action_space, build_android_action_space
-from .task_cache import TaskCache
-from .yaml_runner import ScriptPlayer, parse_yaml_script
-from .dump import ExecutionDumpBuilder, build_execution_task, build_service_dump
-from .ui_observer import UIObserver, UIObservation
-from .gherkin import run_gherkin_scenario, parse_gherkin_scenario
-from .element_describer import (
+from midscene.core.agent.agent_options import AgentOptions
+from midscene.core.device import DeviceAction, build_web_action_space, build_android_action_space
+from midscene.core.agent.task_cache import TaskCache
+from midscene.core.yaml import ScriptPlayer, parse_yaml_script
+from midscene.core.dump import ExecutionDumpBuilder, build_execution_task, build_service_dump
+from midscene.core.agent.ui_observer import UIObserver, UIObservation
+from midscene.core.agent.run_gherkin_scenario import run_gherkin_scenario, parse_gherkin_scenario
+from midscene.core.element_describer import (
     describe_element_at_point,
     verify_element_description_at_point,
     verify_locator,
 )
-from .report_artifact import (
+from midscene.shared.report_artifact import (
     ReportArtifactStore,
     export_report_artifact,
     publish_report_artifact,

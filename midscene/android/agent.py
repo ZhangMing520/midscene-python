@@ -4,8 +4,8 @@ Android Agent implementation
 
 from typing import Optional
 
-from ..core.agent import Agent, AgentOptions
-from .device import AndroidDevice
+from midscene.core.agent.agent import Agent, AgentOptions
+from midscene.android.device import AndroidDevice
 
 
 class AndroidAgent(Agent):

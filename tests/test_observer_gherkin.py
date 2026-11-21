@@ -18,8 +18,8 @@ def mock_interface():
 
 
 def _agent(**options):
-    from midscene.core.agent import Agent
-    from midscene.core.types import AgentOptions
+    from midscene.core.agent.agent import Agent
+    from midscene.core.agent.agent_options import AgentOptions
 
     return Agent(
         MockInterface(),
@@ -37,7 +37,7 @@ def _agent(**options):
 
 class TestGherkin:
     def test_parse_resolves_and_but(self):
-        from midscene.core.gherkin import parse_gherkin_scenario
+        from midscene.core.agent.run_gherkin_scenario import parse_gherkin_scenario
 
         parsed = parse_gherkin_scenario(
             """
@@ -58,21 +58,21 @@ Scenario: login
         ]
 
     def test_parse_rejects_feature_header(self):
-        from midscene.core.gherkin import parse_gherkin_scenario
+        from midscene.core.agent.run_gherkin_scenario import parse_gherkin_scenario
 
         with pytest.raises(ValueError) as exc:
             parse_gherkin_scenario("Feature: x\nGiven a thing")
         assert "does not support" in str(exc.value)
 
     def test_parse_rejects_orphan_and(self):
-        from midscene.core.gherkin import parse_gherkin_scenario
+        from midscene.core.agent.run_gherkin_scenario import parse_gherkin_scenario
 
         with pytest.raises(ValueError) as exc:
             parse_gherkin_scenario("And something else")
         assert "cannot resolve" in str(exc.value)
 
     def test_parse_rejects_multiple_scenarios(self):
-        from midscene.core.gherkin import parse_gherkin_scenario
+        from midscene.core.agent.run_gherkin_scenario import parse_gherkin_scenario
 
         with pytest.raises(ValueError) as exc:
             parse_gherkin_scenario(
@@ -179,13 +179,13 @@ Scenario: flow
 
 class TestYamlFlowItems:
     def _script(self, flow_yaml: str):
-        from midscene.core.yaml_runner import parse_yaml_script
+        from midscene.core.yaml import parse_yaml_script
 
         return parse_yaml_script(f"tasks:\n  - name: t\n    flow:\n{flow_yaml}")
 
     @pytest.mark.asyncio
     async def test_finalize_noop(self):
-        from midscene.core.yaml_runner import ScriptPlayer
+        from midscene.core.yaml import ScriptPlayer
 
         agent = _agent()
         player = ScriptPlayer(self._script("      - Finalize: true"), agent)
@@ -194,7 +194,7 @@ class TestYamlFlowItems:
 
     @pytest.mark.asyncio
     async def test_terminate_maps_to_action(self):
-        from midscene.core.yaml_runner import ScriptPlayer
+        from midscene.core.yaml import ScriptPlayer
 
         agent = _agent()
         calls: List[tuple] = []
@@ -211,7 +211,7 @@ class TestYamlFlowItems:
 
     @pytest.mark.asyncio
     async def test_launch_maps_to_action(self):
-        from midscene.core.yaml_runner import ScriptPlayer
+        from midscene.core.yaml import ScriptPlayer
 
         agent = _agent()
         calls: List[tuple] = []
@@ -229,7 +229,7 @@ class TestYamlFlowItems:
     @pytest.mark.asyncio
     @pytest.mark.parametrize("value", [True, 123, None, {"uri": {"a": 1}}, "  "])
     async def test_launch_rejects_non_string_uri(self, value):
-        from midscene.core.yaml_runner import ScriptPlayer
+        from midscene.core.yaml import ScriptPlayer
 
         agent = _agent()
         player = ScriptPlayer(self._script("      - launch: com.example.app"), agent)
@@ -239,7 +239,7 @@ class TestYamlFlowItems:
 
     @pytest.mark.asyncio
     async def test_bad_uri_fails_the_task(self):
-        from midscene.core.yaml_runner import ScriptPlayer
+        from midscene.core.yaml import ScriptPlayer
 
         agent = _agent()
         player = ScriptPlayer(self._script("      - terminate: true"), agent)
@@ -248,7 +248,7 @@ class TestYamlFlowItems:
 
     @pytest.mark.asyncio
     async def test_gherkin_flow_item(self):
-        from midscene.core.yaml_runner import ScriptPlayer
+        from midscene.core.yaml import ScriptPlayer
 
         agent = _agent()
         with patch.object(agent, "run_gherkin_scenario", new=AsyncMock()) as mock:

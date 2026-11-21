@@ -262,7 +262,7 @@ class TestHarmonyDevice:
 
     @pytest.mark.asyncio
     async def test_input_action_uses_coordinate_input(self):
-        from midscene.core.actions import (
+        from midscene.core.device import (
             build_action_space_for,
             find_action_in_action_space_or_throw,
         )
@@ -375,7 +375,7 @@ class TestHarmonyDevice:
         assert result == ""
 
     def test_harmony_action_space(self):
-        from midscene.core.actions import build_action_space_for
+        from midscene.core.device import build_action_space_for
 
         names = [a.name for a in build_action_space_for("harmony")]
         assert {

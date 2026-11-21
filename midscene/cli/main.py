@@ -14,7 +14,7 @@ import typer
 from rich.console import Console
 
 if TYPE_CHECKING:
-    from midscene.core.types import AgentOptions
+    from midscene.core.agent.agent_options import AgentOptions
 
 
 app = typer.Typer(
@@ -138,17 +138,17 @@ async def _create_agent_for_script(
         return HarmonyAgent(device, _build_agent_options(harmony_section))
 
     if script.get("computer"):
-        from midscene.desktop import DesktopAgent
-        from midscene.desktop.desktop import DesktopDevice
+        from midscene.computer import ComputerAgent
+        from midscene.computer.device import ComputerDevice
 
         computer_section = script["computer"] or {}
-        # DesktopDevice only grabs the primary display, so a declared displayId
+        # ComputerDevice only grabs the primary display, so a declared displayId
         # raises instead of being silently dropped.
-        device = DesktopDevice(display_id=computer_section.get("displayId"))
-        return DesktopAgent(device, _build_agent_options(computer_section))
+        device = ComputerDevice(display_id=computer_section.get("displayId"))
+        return ComputerAgent(device, _build_agent_options(computer_section))
 
     web_section = script.get("web") or script.get("browser") or script.get("page") or script.get("target") or {}
-    from midscene.web import PlaywrightWebPage
+    from midscene.web_integration import PlaywrightWebPage
 
     url = web_section.get("url")
     if not url:
@@ -214,7 +214,7 @@ async def _create_agent_for_script(
 
 
 def _build_agent_options(section: dict) -> "AgentOptions":
-    from midscene.core.types import AgentOptions
+    from midscene.core.agent.agent_options import AgentOptions
 
     agent_section = section.get("agent") or {}
     return AgentOptions(
@@ -384,8 +384,8 @@ def run(
 ):
     """Run a YAML script, a directory of scripts, or a batch config
 (upstream `midscene run`)."""
-    from midscene.core.agent import Agent
-    from midscene.core.yaml_runner import ScriptPlayer, parse_yaml_script
+    from midscene.core.agent.agent import Agent
+    from midscene.core.yaml import ScriptPlayer, parse_yaml_script
 
     if verbose:
         from midscene.shared.logger import setup_logger
@@ -419,7 +419,7 @@ def run(
         return batch_config
 
     def _run_batch_config(batch_config: dict, script_dir: Path) -> None:
-        from midscene.core.batch_runner import BatchRunner, parse_batch_config
+        from midscene.cli.batch_runner import BatchRunner, parse_batch_config
 
         batch_config = parse_batch_config(batch_config)
         file_paths = [
@@ -564,7 +564,7 @@ def siwc_login(
     import webbrowser
     from http.server import BaseHTTPRequestHandler, HTTPServer
 
-    from midscene.core.ai_model.siwc import (
+    from midscene.core.siwc import (
         create_siwc_authorization,
         exchange_siwc_code,
         parse_siwc_callback,
@@ -657,7 +657,7 @@ def siwc_login(
 def siwc_refresh():
     """Refresh the stored ChatGPT (SIWC) credentials without signing in again."""
     _load_dotenv()
-    from midscene.core.ai_model.siwc import (
+    from midscene.core.siwc import (
         SiwcError,
         _read_credentials,
         _save_credentials,
@@ -681,7 +681,7 @@ def siwc_refresh():
 def model_connect():
     """Run the model connectivity test (text / vision / aiLocate)."""
     from midscene.core.ai_model.connectivity import run_connectivity_test
-    from midscene.core.ai_model.env_config import ModelConfigManager
+    from midscene.shared.env import ModelConfigManager
 
     async def _run():
         manager = ModelConfigManager()
@@ -739,11 +739,11 @@ def report_tool(
     ),
 ):
     """Transform Midscene report artifacts (upstream `midscene report-tool`)."""
-    from midscene.core.report_viewer import (
+    from midscene.core.report_cli import (
         merge_report_files,
-        report_file_to_markdown,
         split_report_file,
     )
+    from midscene.core.report_markdown import report_file_to_markdown
 
     if action not in ("split", "to-markdown", "merge-html"):
         console.print(
@@ -796,35 +796,6 @@ def report_tool(
     except ValueError as e:
         console.print(f"[red]{e}[/red]")
         raise typer.Exit(1)
-
-
-@app.command("mcp")
-def mcp_command(
-    log_level: str = typer.Option("INFO", "--log-level", help="Log level for stderr logs"),
-):
-    """Serve Midscene tools over MCP (stdio) for AI coding assistants.
-
-    Add this command as an MCP server, then let the assistant drive a browser
-    through midscene_init / midscene_act / midscene_query / web_tabs.
-    """
-    import asyncio
-
-    from midscene.agent_tools import AgentTools
-    from midscene.mcp_server import McpServer, serve
-    from midscene.shared.logger import setup_logger
-
-    _load_dotenv()
-    setup_logger(level=log_level.upper())
-    tools = AgentTools()
-    server = McpServer(tools.tool_definitions())
-
-    async def _serve() -> None:
-        try:
-            await serve(server)
-        finally:
-            await tools.close()
-
-    asyncio.run(_serve())
 
 
 @app.command()

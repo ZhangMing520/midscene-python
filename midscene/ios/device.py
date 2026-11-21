@@ -9,11 +9,12 @@ physical pixels and the device pixel ratio comes from /wda/screen.
 
 import asyncio
 import math
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
-from ..core.types import (
+from midscene.core.device.mobile_scroll import resolve_default_mobile_scroll
+from midscene.core.types import (
     AbstractInterface,
     InterfaceType,
     Rect,
@@ -23,7 +24,7 @@ from ..core.types import (
     UINode,
     NodeType,
 )
-from .wda import WebDriverAgentBackend
+from midscene.ios.wda import WebDriverAgentBackend
 
 # upstream scrollUntilBoundary timings and geometry
 SCROLL_MAX_ATTEMPTS = 20
@@ -54,28 +55,6 @@ def _screenshots_similar(before: str, after: str, tolerance_percent: float) -> b
     sample = min(2000, shortest)
     diff_count = sum(1 for i in range(sample) if before[i] != after[i])
     return (diff_count / sample) * 100 <= tolerance_percent
-
-
-def _default_scroll_gesture(
-    direction: str, width: int, height: int
-) -> Tuple[Tuple[int, int], Tuple[int, int]]:
-    """Start and end of an untargeted scroll (upstream resolveDefaultMobileScroll).
-
-    The gesture crosses the central 70% of the axis so consecutive
-    observations keep overlapping content.
-    """
-    horizontal = direction in ("left", "right")
-    forward = direction in ("down", "right")
-    extent = width if horizontal else height
-    start = round(extent * (0.85 if forward else 0.15))
-    end = round(extent * (0.15 if forward else 0.85))
-    from_point = [round(width / 2), round(height / 2)]
-    to_point = [round(width / 2), round(height / 2)]
-    if horizontal:
-        from_point[0], to_point[0] = start, end
-    else:
-        from_point[1], to_point[1] = start, end
-    return tuple(from_point), tuple(to_point)
 
 
 class IOSDevice(AbstractInterface):
@@ -289,8 +268,8 @@ class IOSDevice(AbstractInterface):
             # upstream scrollDefault: cross the central 70% slowly, so the
             # release velocity stays below the point where iOS flings past the
             # viewport.
-            (from_x, from_y), (to_x, to_y) = _default_scroll_gesture(
-                direction, width, height
+            (from_x, from_y), (to_x, to_y) = resolve_default_mobile_scroll(
+                direction, {"width": width, "height": height}
             )
             await self._swipe_coordinates(
                 from_x,

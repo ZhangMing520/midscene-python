@@ -128,7 +128,7 @@ class TestRecorderGeneration:
         ]
 
     def test_validate_rejects_empty(self):
-        from midscene.core.recorder_generation import validate_events
+        from midscene.core.ai_model.workflows.recorder_generation import validate_events
 
         with pytest.raises(ValueError):
             validate_events([])
@@ -136,7 +136,7 @@ class TestRecorderGeneration:
             validate_events([{"timestamp": 1}])
 
     def test_event_counts(self):
-        from midscene.core.recorder_generation import create_event_counts
+        from midscene.core.ai_model.workflows.recorder_generation import create_event_counts
 
         counts = create_event_counts(self._events())
         assert counts["navigation"] == 1
@@ -146,7 +146,7 @@ class TestRecorderGeneration:
         assert counts["total"] == 4
 
     def test_semantic_ready_preferred(self):
-        from midscene.core.recorder_generation import process_events_for_llm
+        from midscene.core.ai_model.workflows.recorder_generation import process_events_for_llm
 
         events = [{
             "type": "click",
@@ -163,21 +163,21 @@ class TestRecorderGeneration:
         assert processed[0]["value"] == "click the cart"
 
     def test_default_web_target_from_navigation(self):
-        from midscene.core.recorder_generation import create_default_web_target
+        from midscene.core.ai_model.workflows.recorder_generation import create_default_web_target
 
         target = create_default_web_target(self._events(), {})
         assert target["platformId"] == "web"
         assert target["values"]["url"] == "https://shop.example"
 
     def test_normalize_strips_fences(self):
-        from midscene.core.recorder_generation import normalize_generated_yaml
+        from midscene.core.ai_model.workflows.recorder_generation import normalize_generated_yaml
 
         assert normalize_generated_yaml("```yaml\n- type: Tap\n```") == "- type: Tap\n"
         assert normalize_generated_yaml("- type: Tap") == "- type: Tap\n"
 
     @pytest.mark.asyncio
     async def test_generate_yaml_test(self):
-        from midscene.core.recorder_generation import generate_yaml_test
+        from midscene.core.ai_model.workflows.recorder_generation import generate_yaml_test
 
         captured: Dict[str, Any] = {}
 
@@ -187,7 +187,7 @@ class TestRecorderGeneration:
 
         runtime = Mock()
         with patch(
-            "midscene.core.recorder_generation.call_ai_with_string_response",
+            "midscene.core.ai_model.workflows.recorder_generation.yaml.call_ai_with_string_response",
             new=fake_call,
         ):
             yaml_out = await generate_yaml_test(self._events(), {}, runtime)
@@ -201,13 +201,13 @@ class TestRecorderGeneration:
 
     @pytest.mark.asyncio
     async def test_generate_wraps_errors(self):
-        from midscene.core.recorder_generation import generate_yaml_test
+        from midscene.core.ai_model.workflows.recorder_generation import generate_yaml_test
 
         async def fake_call(prompt, runtime):
             raise RuntimeError("model down")
 
         with patch(
-            "midscene.core.recorder_generation.call_ai_with_string_response",
+            "midscene.core.ai_model.workflows.recorder_generation.yaml.call_ai_with_string_response",
             new=fake_call,
         ):
             with pytest.raises(RuntimeError) as exc:
@@ -222,7 +222,7 @@ class TestRecorderGeneration:
 
 class TestReportViewer:
     def test_writes_viewable_html(self, tmp_path, monkeypatch):
-        from midscene.core.report_viewer import write_report_html
+        from midscene.core.report import write_report_html
 
         monkeypatch.setenv("MIDSCENE_RUN_DIR", str(tmp_path))
         dump = {
@@ -265,7 +265,7 @@ class TestReportViewer:
             return {"content": responses[calls["n"] - 1], "usage": None}
 
         with patch_model_call(
-            "midscene.core.ai_model.workflows.planning", planning_handler
+            "midscene.core.ai_model.workflows.planning.standard_planning", planning_handler
         ):
             await agent.ai_act("just finish")
         files = list((tmp_path / "report").glob("*.html"))
@@ -282,8 +282,8 @@ def mock_interface():
 
 
 def _simple_agent():
-    from midscene.core.agent import Agent
-    from midscene.core.types import AgentOptions
+    from midscene.core.agent.agent import Agent
+    from midscene.core.agent.agent_options import AgentOptions
     from tests.test_core import MockInterface
 
     return Agent(
@@ -342,7 +342,7 @@ class FakeRDPBackend:
 class TestRDPDevice:
     @pytest.mark.asyncio
     async def test_connect_and_context(self):
-        from midscene.desktop.rdp import RDPDevice
+        from midscene.computer.rdp import RDPDevice
 
         backend = FakeRDPBackend()
         device = RDPDevice({"host": "win-box"}, backend=backend)
@@ -354,7 +354,7 @@ class TestRDPDevice:
 
     @pytest.mark.asyncio
     async def test_input_primitives_delegate(self):
-        from midscene.desktop.rdp import RDPDevice
+        from midscene.computer.rdp import RDPDevice
 
         backend = FakeRDPBackend()
         device = RDPDevice({"host": "win-box"}, backend=backend)
@@ -375,7 +375,7 @@ class TestRDPDevice:
     async def test_default_backend_raises_not_implemented(self):
         """Faithful upstream state: the transport is unimplemented until a
         custom backend is injected."""
-        from midscene.desktop.rdp import RDPDevice
+        from midscene.computer.rdp import RDPDevice
 
         device = RDPDevice({"host": "win-box"})
         with pytest.raises(RuntimeError) as exc:
@@ -383,7 +383,7 @@ class TestRDPDevice:
         assert "not implemented yet" in str(exc.value)
 
     def test_helper_binary_missing_reports_platform(self):
-        from midscene.desktop.rdp import get_rdp_helper_binary_path
+        from midscene.computer.rdp import get_rdp_helper_binary_path
 
         with pytest.raises(RuntimeError) as exc:
             get_rdp_helper_binary_path(package_root="/nonexistent")
@@ -403,13 +403,13 @@ class TestRecorderMarkdownGeneration:
         ]
 
     def test_normalize_markdown_strips_fences(self):
-        from midscene.core.recorder_generation import normalize_generated_markdown
+        from midscene.core.ai_model.workflows.recorder_generation import normalize_generated_markdown
 
         assert normalize_generated_markdown("```md\n# Title\n```") == "# Title\n"
         assert normalize_generated_markdown("# Plain") == "# Plain\n"
 
     def test_payload_budget_limits_assets(self):
-        from midscene.core.recorder_generation import (
+        from midscene.core.ai_model.workflows.recorder_generation import (
             limit_screenshot_assets_for_markdown_replay,
         )
 
@@ -425,7 +425,7 @@ class TestRecorderMarkdownGeneration:
 
         from PIL import Image
 
-        from midscene.core.recorder_generation import (
+        from midscene.core.ai_model.workflows.recorder_generation import (
             prepare_screenshot_assets_for_markdown_replay,
         )
 
@@ -458,7 +458,7 @@ class TestRecorderMarkdownGeneration:
     def test_screenshot_entries_use_the_semantic_description(self):
         import json
 
-        from midscene.core.recorder_generation import (
+        from midscene.core.ai_model.workflows.recorder_generation import (
             create_recorder_markdown_replay_prompt,
             prepare_event_summary,
         )
@@ -504,7 +504,7 @@ class TestRecorderMarkdownGeneration:
         assert stale["eventIndex"] == 99
 
     def test_prompt_structure_and_screenshot_refs(self):
-        from midscene.core.recorder_generation import (
+        from midscene.core.ai_model.workflows.recorder_generation import (
             create_recorder_markdown_replay_prompt,
             prepare_event_summary,
         )
@@ -537,7 +537,7 @@ class TestRecorderMarkdownGeneration:
 
     @pytest.mark.asyncio
     async def test_generate_markdown_replay(self):
-        from midscene.core.recorder_generation import generate_markdown_replay
+        from midscene.core.ai_model.workflows.recorder_generation import generate_markdown_replay
 
         captured: Dict[str, Any] = {}
 
@@ -546,7 +546,7 @@ class TestRecorderMarkdownGeneration:
             return {"content": "```md\n# checkout\n## Steps\n1. tap search\n```"}
 
         with patch(
-            "midscene.core.recorder_generation.call_ai_with_string_response",
+            "midscene.core.ai_model.workflows.recorder_generation.markdown.call_ai_with_string_response",
             new=fake_call,
         ):
             result = await generate_markdown_replay(self._events(), {}, Mock())
@@ -557,13 +557,13 @@ class TestRecorderMarkdownGeneration:
 
     @pytest.mark.asyncio
     async def test_generate_markdown_wraps_errors(self):
-        from midscene.core.recorder_generation import generate_markdown_replay
+        from midscene.core.ai_model.workflows.recorder_generation import generate_markdown_replay
 
         async def fake_call(prompt, runtime):
             raise RuntimeError("down")
 
         with patch(
-            "midscene.core.recorder_generation.call_ai_with_string_response",
+            "midscene.core.ai_model.workflows.recorder_generation.markdown.call_ai_with_string_response",
             new=fake_call,
         ):
             with pytest.raises(RuntimeError) as exc:
@@ -574,7 +574,7 @@ class TestRecorderMarkdownGeneration:
 class TestRecorderPlaywrightGeneration:
     @pytest.mark.asyncio
     async def test_generate_playwright_test(self):
-        from midscene.core.recorder_generation import generate_playwright_test
+        from midscene.core.ai_model.workflows.recorder_generation import generate_playwright_test
 
         captured: Dict[str, Any] = {}
 
@@ -587,7 +587,7 @@ class TestRecorderPlaywrightGeneration:
             {"type": "click", "description": "buy", "timestamp": 2},
         ]
         with patch(
-            "midscene.core.recorder_generation.call_ai_with_string_response",
+            "midscene.core.ai_model.workflows.recorder_generation.playwright.call_ai_with_string_response",
             new=fake_call,
         ):
             result = await generate_playwright_test(events, {"testName": "buy-flow"}, Mock())
@@ -600,7 +600,7 @@ class TestRecorderPlaywrightGeneration:
 
     @pytest.mark.asyncio
     async def test_playwright_summary_options(self):
-        from midscene.core.recorder_generation import generate_playwright_test
+        from midscene.core.ai_model.workflows.recorder_generation import generate_playwright_test
 
         captured: Dict[str, Any] = {}
 
@@ -610,7 +610,7 @@ class TestRecorderPlaywrightGeneration:
 
         events = [{"type": "click", "timestamp": 1}]
         with patch(
-            "midscene.core.recorder_generation.call_ai_with_string_response",
+            "midscene.core.ai_model.workflows.recorder_generation.playwright.call_ai_with_string_response",
             new=fake_call,
         ):
             await generate_playwright_test(
@@ -625,7 +625,7 @@ class TestRecorderPlaywrightGeneration:
 
     @pytest.mark.asyncio
     async def test_playwright_screenshots_share_the_user_message(self):
-        from midscene.core.recorder_generation import generate_playwright_test
+        from midscene.core.ai_model.workflows.recorder_generation import generate_playwright_test
 
         captured: Dict[str, Any] = {}
 
@@ -636,7 +636,7 @@ class TestRecorderPlaywrightGeneration:
         events = [{"type": "click", "timestamp": 1}]
         shots = [{"eventIndex": 0, "dataUrl": "data:image/png;base64,AA"}]
         with patch(
-            "midscene.core.recorder_generation.call_ai_with_string_response",
+            "midscene.core.ai_model.workflows.recorder_generation.playwright.call_ai_with_string_response",
             new=fake_call,
         ):
             await generate_playwright_test(events, {"screenshotAssets": shots}, Mock())
@@ -651,7 +651,7 @@ class TestRecorderPlaywrightGeneration:
 
     @pytest.mark.asyncio
     async def test_playwright_normalizes_falsy_option_defaults(self):
-        from midscene.core.recorder_generation import generate_playwright_test
+        from midscene.core.ai_model.workflows.recorder_generation import generate_playwright_test
 
         captured: Dict[str, Any] = {}
 
@@ -660,7 +660,7 @@ class TestRecorderPlaywrightGeneration:
             return {"content": "// test"}
 
         with patch(
-            "midscene.core.recorder_generation.call_ai_with_string_response",
+            "midscene.core.ai_model.workflows.recorder_generation.playwright.call_ai_with_string_response",
             new=fake_call,
         ):
             # an empty YAML option leaves these as None/0, and a model reading
@@ -676,13 +676,13 @@ class TestRecorderPlaywrightGeneration:
 
     @pytest.mark.asyncio
     async def test_playwright_empty_response_raises(self):
-        from midscene.core.recorder_generation import generate_playwright_test
+        from midscene.core.ai_model.workflows.recorder_generation import generate_playwright_test
 
         async def fake_call(prompt, runtime):
             return {"content": "   "}
 
         with patch(
-            "midscene.core.recorder_generation.call_ai_with_string_response",
+            "midscene.core.ai_model.workflows.recorder_generation.playwright.call_ai_with_string_response",
             new=fake_call,
         ):
             with pytest.raises(RuntimeError) as exc:
@@ -691,7 +691,7 @@ class TestRecorderPlaywrightGeneration:
 
     @pytest.mark.asyncio
     async def test_playwright_screenshots_are_capped_and_bounded(self):
-        from midscene.core.recorder_generation import generate_playwright_test
+        from midscene.core.ai_model.workflows.recorder_generation import generate_playwright_test
 
         captured: Dict[str, Any] = {}
 
@@ -717,7 +717,7 @@ class TestRecorderPlaywrightGeneration:
             ]
 
         with patch(
-            "midscene.core.recorder_generation.call_ai_with_string_response",
+            "midscene.core.ai_model.workflows.recorder_generation.playwright.call_ai_with_string_response",
             new=fake_call,
         ):
             await generate_playwright_test(events, {"screenshotAssets": shots(1_000, 8)}, Mock())
@@ -725,7 +725,7 @@ class TestRecorderPlaywrightGeneration:
         assert len(images_of(captured["prompt"])) == 3
 
         with patch(
-            "midscene.core.recorder_generation.call_ai_with_string_response",
+            "midscene.core.ai_model.workflows.recorder_generation.playwright.call_ai_with_string_response",
             new=fake_call,
         ):
             await generate_playwright_test(
@@ -735,7 +735,7 @@ class TestRecorderPlaywrightGeneration:
         assert sum(len(part["url"]) for part in images_of(captured["prompt"])) <= 600_000
 
         with patch(
-            "midscene.core.recorder_generation.call_ai_with_string_response",
+            "midscene.core.ai_model.workflows.recorder_generation.playwright.call_ai_with_string_response",
             new=fake_call,
         ):
             await generate_playwright_test(

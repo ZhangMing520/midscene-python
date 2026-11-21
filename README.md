@@ -2,7 +2,7 @@
 
 **See interfaces like a human. UI automation and E2E testing in natural language for Web, Android, and Desktop.**
 
-Midscene Python is the Python SDK for [Midscene](https://github.com/web-infra-dev/midscene). It captures a screenshot, asks a vision-language model what to do next, and executes the action through Playwright, Selenium, the Chrome Bridge, ADB, or pyautogui. It can also serve the same capabilities over MCP for AI coding assistants. The AI model layer (prompts, planning/locate/insight protocols, multi-slot configuration and coordinate parsing) is synced with upstream Midscene v1.17.7.
+Midscene Python is the Python SDK for [Midscene](https://github.com/web-infra-dev/midscene). It captures a screenshot, asks a vision-language model what to do next, and executes the action through Playwright, Selenium, the Chrome Bridge, ADB, or pyautogui. It can also serve the same capabilities over MCP for AI coding assistants. The AI model layer (prompts, planning/locate/insight protocols, multi-slot configuration and coordinate parsing) is synced with upstream Midscene v1.18.2.
 
 [English](README.md) | [简体中文](README.zh.md)
 
@@ -14,7 +14,7 @@ Describe the goal; Midscene plans the steps, locates the elements on screen, and
 import asyncio
 
 from midscene import Agent, AgentOptions
-from midscene.web import PlaywrightWebPage
+from midscene.web_integration import PlaywrightWebPage
 
 
 async def main():
@@ -77,7 +77,7 @@ Visual localization does not depend on the UI rendering stack, so the same `Agen
 | Android | Devices and emulators through ADB |
 | iOS | Real devices and simulators through WebDriverAgent (WDA / Appium XCUITest) |
 | HarmonyOS | Devices and emulators through `hdc` + `uitest` |
-| Desktop | Windows / macOS / Linux screen and pointer control through pyautogui, primary display only (`pip install "midscene-python[desktop]"`) |
+| Desktop | Windows / macOS / Linux screen and pointer control through pyautogui, primary display only (`pip install "midscene-python[computer]"`) |
 | Custom interfaces | Subclass `AbstractInterface` and provide screenshots plus actions |
 
 Puppeteer from upstream Midscene is **not ported** in this SDK. The iOS and HarmonyOS layers are ported but have not been verified against real hardware yet; they are exercised by unit tests over a fake WDA / `hdc` transport.
@@ -118,7 +118,7 @@ agent = Agent(page, AgentOptions(
 
 Both `openai-chat` and `openai-responses` protocols support streaming and non-streaming modes. SIWC (ChatGPT plan sign-in) is available through `midscene model siwc login` and `MIDSCENE_MODEL_AUTH_MODE=siwc`.
 
-## Upstream v1.17.7 parity
+## Upstream v1.18.2 parity
 
 Aligned with the official TypeScript SDK:
 
@@ -131,11 +131,9 @@ Aligned with the official TypeScript SDK:
 - **Execution reports**: every `ai_act` run that reaches planning updates the combined single-file HTML viewer under `midscene_run/report/` (tag defaults to the interface type, overridable via `MIDSCENE_REPORT_TAG_NAME`); per-execution JSON dumps in the upstream `IReportActionDump` shape are written only when `persistExecutionDump` is enabled (`AgentOptions.persist_execution_dump`), and all report files are skipped with `generateReport: false`. It records the planning output, per-action wall-clock timing/status/errors and, for cache replays, an upstream `LoadYaml` task with `cache.hit` / `hitBy`. `AgentOptions` honors `generate_report`, `report_file_name`, `group_name` and `group_description`. `midscene.core.dump` mirrors the upstream `IReportActionDump` layout.
 - **Locate prompt order**: adapter-level `locate_prompt_order` DSL (`system(...)`, `userTogether(...)`, `userEach(...)`) reorders instructions, screenshot, task text and reference images exactly like upstream `locate-prompt-order.ts`; reference images are resolved from data URLs, local files or HTTP.    
 - **Element describer**: `describe_element_at_point`, `verify_element_description_at_point` and `verify_locator` annotate the screenshot with the upstream ring/crosshair marker (or a bordered rect), optionally add a zoomed detail crop (`deepDescribe`), verify the description by re-locating it and retry with deep modes.    
-- **MCP server**: `midscene mcp` serves `midscene_init / midscene_act / midscene_query / midscene_assert / midscene_locate / web_tabs / web_switch-tab / midscene_close` over stdio JSON-RPC, and the same tools are available in-process through `midscene.agent_tools.AgentTools`.    
 - **Directory report artifacts**: `AgentOptions(report_artifact_dir=...)` and `midscene run --artifact-dir <dir>` also write the multi-file layout (`report.json` manifest + `data/<reportId>/*.json`), with atomic writes, a publisher lock and `read_report_artifact`.    
 - **Batch lifecycle hooks**: the batch config accepts `maxConcurrentFiles` (alias of `concurrent`), `namespace`, `beforeAll` / `afterAll` / `beforeEach` / `afterEach` YAML scripts and `artifactDir` for a unified test report.    
 - **Web swipe**: `Swipe` is available on Playwright and Selenium; explicit slow `duration` values are honored (never capped as a long press) and the pointer is always released.    
-
 Not ported from upstream: the official React report visualizer and Studio app (this SDK writes upstream-shaped JSON dumps plus its own single-file HTML viewer and the directory artifact layout above), the Midscene Test framework's TypeScript Nodes and `midscene.config.ts` project runner (the YAML batch runner provides its lifecycle hooks, namespaces and concurrency), Puppeteer (use Playwright or Selenium), the Chrome-extension in-page `EventRecorder` (recorded event lists are supported through `generate_yaml_test` / `generate_markdown_replay` / `generate_playwright_test`), the Playwright `AiFixture`, and the Codex app-server transport (`codex://` base URLs raise `CodexAppServerNotSupportedError`).
 
 ## Planning loop and caching
@@ -154,37 +152,43 @@ When model output fails structural parsing (invalid coordinates / broken XML / t
 pip install midscene-python
 
 # Desktop automation needs the GUI extra
-pip install "midscene-python[desktop]"
+pip install "midscene-python[computer]"
 ```
 
 | Command | Purpose |
 | --- | --- |
 | `midscene run script.yaml [--headed] [--device ID] [--verbose] [--artifact-dir DIR]` | Run a YAML automation script |
-| `midscene mcp` | Serve Midscene tools over MCP (stdio) for AI coding assistants |
 | `midscene report-tool --action split\|to-markdown\|merge-html` | Transform report artifacts |
 | `midscene model connect` | Test the configured models |
 | `midscene model siwc login` | Sign in with a ChatGPT plan (SIWC) |
 | `midscene version` | Show the installed version |
-
 ## Project layout
 
 ```
 midscene-python/
 ├── midscene/
 │   ├── core/
-│   │   ├── agent.py          # Agent: planning, insight, reports, cache
-│   │   ├── actions.py        # Action space and executors
-│   │   ├── insight.py        # Insight (query / assert) engine
-│   │   ├── task_cache.py     # Plan and locate caches
-│   │   ├── yaml_runner.py    # YAML script parser and player
-│   │   ├── dump.py           # Report dump structures
+│   │   ├── agent/            # Agent, options, report, tasks, progress, cache, observer
+│   │   ├── ai_model/
+│   │   │   ├── models/       # Per-family adapters + registry
+│   │   │   ├── model_adapter/# Protocols, locate results, OpenRouter reasoning
+│   │   │   ├── service_caller/# Chat-completion callers, semantic retry, system one
+│   │   │   ├── prompt/       # Planning / locate / insight prompts
+│   │   │   ├── shared/       # JSON, XML and locate-result helpers
+│   │   │   ├── connectivity/ # Connectivity test
+│   │   │   └── workflows/    # planning / grounding / insight / recorder workflows
+│   │   ├── device/           # Action space, options, input strategy, mobile scroll
+│   │   ├── dump/             # Report dump structures
+│   │   ├── service/          # Locate / describe service orchestration
+│   │   ├── yaml/             # YAML schema, player, builder, cleanup, report policy
+│   │   ├── report.py         # report write + HTML template + markdown + CLI helpers
 │   │   ├── types.py          # Interfaces, options and data models
-│   │   └── ai_model/         # Model adapters, prompts, protocols, workflows
-│   ├── web/                  # Playwright, Selenium and Bridge interfaces
+│   │   └── element_describer.py  # Element description helpers
+│   ├── web_integration/      # Playwright, Selenium and Bridge interfaces
 │   ├── android/              # ADB device and Android agent
-│   ├── desktop/              # pyautogui screen capture and OS input
-│   ├── cli/                  # `midscene` command line
-│   └── shared/               # Logger and shared helpers
+│   ├── computer/             # pyautogui screen capture and OS input
+│   ├── cli/                  # midscene command line
+│   └── shared/               # env config, logger, report artifact, agent tools
 ├── examples/
 ├── tests/
 └── docs/

@@ -41,7 +41,7 @@ class TestSystemOne:
         }
 
     def test_validate_response_accepts_valid(self):
-        from midscene.core.ai_model.system_one import validate_system_one_response
+        from midscene.core.ai_model.service_caller.system_one import validate_system_one_response
 
         payload = self._response(
             {
@@ -56,7 +56,7 @@ class TestSystemOne:
         assert validated["answers"]["present"]["noul"] == 0.9
 
     def test_validate_response_rejects_bad_box(self):
-        from midscene.core.ai_model.system_one import SystemOneError, validate_system_one_response
+        from midscene.core.ai_model.service_caller.system_one import SystemOneError, validate_system_one_response
 
         payload = self._response(
             {
@@ -70,14 +70,14 @@ class TestSystemOne:
             validate_system_one_response(payload)
 
     def test_validate_response_rejects_probability_out_of_range(self):
-        from midscene.core.ai_model.system_one import SystemOneError, validate_system_one_response
+        from midscene.core.ai_model.service_caller.system_one import SystemOneError, validate_system_one_response
 
         payload = self._response({"present": {"type": "noul", "noul": 1.5}})
         with pytest.raises(SystemOneError):
             validate_system_one_response(payload)
 
     def test_encode_images_openrouter_inline(self):
-        from midscene.core.ai_model.system_one import encode_system_one_images
+        from midscene.core.ai_model.service_caller.system_one import encode_system_one_images
 
         data_url = "data:image/png;base64,AAAA"
         state, assets = encode_system_one_images({"shot": data_url}, True)
@@ -85,7 +85,7 @@ class TestSystemOne:
         assert assets == {}
 
     def test_encode_images_assets(self):
-        from midscene.core.ai_model.system_one import encode_system_one_images
+        from midscene.core.ai_model.service_caller.system_one import encode_system_one_images
 
         data_url = "data:image/jpeg;base64,BBBB"
         state, assets = encode_system_one_images({"shot": data_url}, False)
@@ -93,7 +93,7 @@ class TestSystemOne:
         assert list(assets.values())[0]["format"] == "jpg"
 
     def test_resolve_endpoint(self):
-        from midscene.core.ai_model.system_one import resolve_system_one_endpoint
+        from midscene.core.ai_model.service_caller.system_one import resolve_system_one_endpoint
 
         assert (
             resolve_system_one_endpoint({"openaiBaseURL": "https://x/v1/"})
@@ -102,7 +102,7 @@ class TestSystemOne:
         assert resolve_system_one_endpoint({"endpoint": "https://y"}) == "https://y"
 
     def test_prepare_includes_execution_id_header(self):
-        from midscene.core.ai_model.system_one import prepare_system_one
+        from midscene.core.ai_model.service_caller.system_one import prepare_system_one
 
         config = {
             "openaiApiKey": "sk-test",
@@ -118,7 +118,7 @@ class TestSystemOne:
 
     @pytest.mark.asyncio
     async def test_call_sends_stable_runtime_execution_id(self):
-        from midscene.core.ai_model import system_one
+        from midscene.core.ai_model.service_caller import system_one
 
         captured: List[Dict[str, str]] = []
         payload = self._response({"present": {"type": "noul", "noul": 0.9}})
@@ -156,8 +156,8 @@ class TestSystemOne:
 
     @pytest.mark.asyncio
     async def test_call_wraps_invalid_response_in_parse_error(self):
-        from midscene.core.ai_model import system_one
-        from midscene.core.ai_model.caller import AIResponseParseError
+        from midscene.core.ai_model.service_caller import system_one
+        from midscene.core.ai_model.service_caller.types import AIResponseParseError
 
         payload = {"answers": {"present": {"type": "noul", "noul": 1.5}}}
 
@@ -193,7 +193,7 @@ class TestSystemOne:
 class TestReferenceImages:
     @pytest.mark.asyncio
     async def test_prepare_dedupes_urls(self, monkeypatch):
-        from midscene.core.ai_model.workflows import context_utils
+        from midscene.core.ai_model.shared import multimodal_prompt as context_utils
 
         calls: List[Any] = []
 
@@ -211,7 +211,7 @@ class TestReferenceImages:
 
     @pytest.mark.asyncio
     async def test_prepare_drops_unresolved(self, monkeypatch):
-        from midscene.core.ai_model.workflows import context_utils
+        from midscene.core.ai_model.shared import multimodal_prompt as context_utils
 
         monkeypatch.setattr(
             context_utils,
@@ -234,7 +234,7 @@ class TestReferenceImages:
 class TestJevWorkflows:
     @pytest.mark.asyncio
     async def test_jev_locate(self):
-        from midscene.core.ai_model.workflows.jev import jev_locate
+        from midscene.core.ai_model.models.jev.locate import jev_locate
 
         captured = {}
 
@@ -252,7 +252,7 @@ class TestJevWorkflows:
             }
 
         with patch(
-            "midscene.core.ai_model.workflows.jev.call_system_one",
+            "midscene.core.ai_model.models.jev.locate.call_system_one",
             new=fake_call_system_one,
         ):
             result = await jev_locate(
@@ -268,7 +268,7 @@ class TestJevWorkflows:
 
     @pytest.mark.asyncio
     async def test_jev_locate_returns_box_without_presence_check(self):
-        from midscene.core.ai_model.workflows.jev import jev_locate
+        from midscene.core.ai_model.models.jev.locate import jev_locate
 
         async def fake_call_system_one(runtime, request):
             return {
@@ -283,7 +283,7 @@ class TestJevWorkflows:
             }
 
         with patch(
-            "midscene.core.ai_model.workflows.jev.call_system_one",
+            "midscene.core.ai_model.models.jev.locate.call_system_one",
             new=fake_call_system_one,
         ):
             result = await jev_locate(
@@ -296,7 +296,7 @@ class TestJevWorkflows:
 
     @pytest.mark.asyncio
     async def test_jev_locate_with_reference_images(self):
-        from midscene.core.ai_model.workflows.jev import jev_locate
+        from midscene.core.ai_model.models.jev.locate import jev_locate
 
         captured = {}
 
@@ -315,7 +315,7 @@ class TestJevWorkflows:
 
         png = make_png_base64()
         with patch(
-            "midscene.core.ai_model.workflows.jev.call_system_one",
+            "midscene.core.ai_model.models.jev.locate.call_system_one",
             new=fake_call_system_one,
         ):
             await jev_locate(
@@ -330,7 +330,7 @@ class TestJevWorkflows:
 
     @pytest.mark.asyncio
     async def test_jev_locate_skips_reference_without_url(self):
-        from midscene.core.ai_model.workflows.jev import jev_locate
+        from midscene.core.ai_model.models.jev.locate import jev_locate
 
         captured = {}
 
@@ -348,7 +348,7 @@ class TestJevWorkflows:
             }
 
         with patch(
-            "midscene.core.ai_model.workflows.jev.call_system_one",
+            "midscene.core.ai_model.models.jev.locate.call_system_one",
             new=fake_call_system_one,
         ):
             await jev_locate(
@@ -362,7 +362,7 @@ class TestJevWorkflows:
 
     @pytest.mark.asyncio
     async def test_jev_locate_inlines_local_reference_path(self, tmp_path):
-        from midscene.core.ai_model.workflows.jev import jev_locate
+        from midscene.core.ai_model.models.jev.locate import jev_locate
 
         captured = {}
 
@@ -382,7 +382,7 @@ class TestJevWorkflows:
         reference = tmp_path / "ref.png"
         reference.write_bytes(base64.b64decode(make_png_base64()))
         with patch(
-            "midscene.core.ai_model.workflows.jev.call_system_one",
+            "midscene.core.ai_model.models.jev.locate.call_system_one",
             new=fake_call_system_one,
         ):
             await jev_locate(
@@ -398,7 +398,7 @@ class TestJevWorkflows:
 
     @pytest.mark.asyncio
     async def test_jev_boolean(self):
-        from midscene.core.ai_model.workflows.jev import jev_boolean
+        from midscene.core.ai_model.models.jev.boolean import jev_boolean
 
         async def fake_call_system_one(runtime, request):
             return {
@@ -408,7 +408,7 @@ class TestJevWorkflows:
             }
 
         with patch(
-            "midscene.core.ai_model.workflows.jev.call_system_one",
+            "midscene.core.ai_model.models.jev.boolean.call_system_one",
             new=fake_call_system_one,
         ):
             class _Ctx:
@@ -418,8 +418,8 @@ class TestJevWorkflows:
         assert result["value"] is True
 
     def test_build_jev_action_attaches_reference_images(self):
-        from midscene.core.actions import build_web_action_space
-        from midscene.core.ai_model.workflows.jev import build_jev_action
+        from midscene.core.device import build_web_action_space
+        from midscene.core.ai_model.models.jev.planning_action import build_jev_action
 
         tap = next(a for a in build_web_action_space() if a.name == "Tap")
         actions = build_jev_action(
@@ -437,7 +437,7 @@ class TestJevWorkflows:
         assert locate["prompt"]["images"] == [{"url": "data:image/png;base64,AAAA"}]
 
     def test_build_jev_action_complete_yields_no_actions(self):
-        from midscene.core.ai_model.workflows.jev import build_jev_action
+        from midscene.core.ai_model.models.jev.planning_action import build_jev_action
 
         assert (
             build_jev_action(
@@ -459,7 +459,7 @@ class TestJevWorkflows:
 
 class TestAutoGlm:
     def test_parse_response_split(self):
-        from midscene.core.ai_model.workflows.planning_custom import (
+        from midscene.core.ai_model.workflows.planning.custom_planning import (
             parse_auto_glm_response,
         )
 
@@ -472,7 +472,7 @@ class TestAutoGlm:
         assert response["content"] == 'do(action="Tap", element=[123,456])</answer>'
 
     def test_parse_tap_action(self):
-        from midscene.core.ai_model.workflows.planning_custom import (
+        from midscene.core.ai_model.workflows.planning.custom_planning import (
             parse_auto_glm_planning_action,
         )
 
@@ -482,7 +482,7 @@ class TestAutoGlm:
         assert action == {"_metadata": "do", "action": "Tap", "element": (100, 200), "think": "t"}
 
     def test_parse_finish_with_escaped_quotes(self):
-        from midscene.core.ai_model.workflows.planning_custom import (
+        from midscene.core.ai_model.workflows.planning.custom_planning import (
             parse_auto_glm_planning_action,
         )
 
@@ -496,7 +496,7 @@ class TestAutoGlm:
         assert "Tom" in action["message"]
 
     def test_parse_wait_duration(self):
-        from midscene.core.ai_model.workflows.planning_custom import (
+        from midscene.core.ai_model.workflows.planning.custom_planning import (
             parse_auto_glm_planning_action,
         )
 
@@ -506,7 +506,7 @@ class TestAutoGlm:
         assert action["durationMs"] == 3000
 
     def test_transform_swipe_inverts_direction(self):
-        from midscene.core.ai_model.workflows.planning_custom import (
+        from midscene.core.ai_model.workflows.planning.custom_planning import (
             transform_auto_glm_action,
         )
 
@@ -530,7 +530,7 @@ class TestAutoGlm:
         assert actions[0]["param"]["distance"] == 600
 
     def test_transform_finish(self):
-        from midscene.core.ai_model.workflows.planning_custom import (
+        from midscene.core.ai_model.workflows.planning.custom_planning import (
             transform_auto_glm_action,
         )
 
@@ -541,7 +541,7 @@ class TestAutoGlm:
         assert actions[0]["thought"] == "all done"
 
     def test_transform_unsupported_raises(self):
-        from midscene.core.ai_model.workflows.planning_custom import (
+        from midscene.core.ai_model.workflows.planning.custom_planning import (
             transform_auto_glm_action,
         )
 
@@ -554,7 +554,7 @@ class TestAutoGlm:
 
 class TestUiTars:
     def test_parse_action_call(self):
-        from midscene.core.ai_model.workflows.planning_custom import (
+        from midscene.core.ai_model.workflows.planning.custom_planning import (
             parse_ui_tars_action_calls,
         )
 
@@ -567,7 +567,7 @@ class TestUiTars:
         assert actions[0]["thought"] == "click the button"
 
     def test_transform_click(self):
-        from midscene.core.ai_model.workflows.planning_custom import (
+        from midscene.core.ai_model.workflows.planning.custom_planning import (
             parse_ui_tars_action_calls,
             transform_ui_tars_actions,
         )
@@ -584,7 +584,7 @@ class TestUiTars:
         assert point == pytest.approx((0.25, 0.15), abs=1e-6)
 
     def test_transform_hotkey(self):
-        from midscene.core.ai_model.workflows.planning_custom import (
+        from midscene.core.ai_model.workflows.planning.custom_planning import (
             parse_ui_tars_action_calls,
             transform_ui_tars_actions,
             _transform_hotkey_input,
@@ -603,7 +603,7 @@ class TestUiTars:
         assert transformed[0]["param"]["keyName"] == "Enter"
 
     def test_transform_finished(self):
-        from midscene.core.ai_model.workflows.planning_custom import (
+        from midscene.core.ai_model.workflows.planning.custom_planning import (
             parse_ui_tars_action_calls,
             transform_ui_tars_actions,
         )
@@ -618,7 +618,7 @@ class TestUiTars:
         assert transformed[0]["thought"] == "task completed"
 
     def test_bbox_conversion(self):
-        from midscene.core.ai_model.workflows.planning_custom import (
+        from midscene.core.ai_model.workflows.planning.custom_planning import (
             parse_ui_tars_action_calls,
         )
 
@@ -636,14 +636,14 @@ class TestUiTars:
 
 class TestDeepLocate:
     def test_expand_search_area(self):
-        from midscene.core.ai_model.workflows.search_area import expand_search_area
+        from midscene.core.ai_model.workflows.grounding.search_area import expand_search_area
 
         rect = {"left": 500, "top": 500, "width": 50, "height": 30}
         expanded = expand_search_area(rect, {"width": 1000, "height": 1000})
         assert expanded["width"] * expanded["height"] >= 400 * 400
 
     def test_expand_clamps_to_screen(self):
-        from midscene.core.ai_model.workflows.search_area import expand_search_area
+        from midscene.core.ai_model.workflows.grounding.search_area import expand_search_area
 
         rect = {"left": 0, "top": 0, "width": 900, "height": 900}
         expanded = expand_search_area(rect, {"width": 1000, "height": 1000})
@@ -651,7 +651,7 @@ class TestDeepLocate:
         assert expanded["top"] == 0
 
     def test_mapping_roundtrip(self):
-        from midscene.core.ai_model.workflows.search_area import (
+        from midscene.core.ai_model.workflows.grounding.search_area import (
             map_search_area_result_to_original_result,
         )
 
@@ -667,7 +667,7 @@ class TestDeepLocate:
     async def test_two_stage_locate(self, mock_interface):
         """deepLocate with a plan coordinate hint: search-area crop + element
         locate on the zoomed image, then mapping back."""
-        from midscene.core.ai_model.workflows.locate_service import locate_service
+        from midscene.core.service import locate_service
 
         async def fake_call(*args, **kwargs):
             # The zoomed image is 2x the cropped section; coordinates are
@@ -690,10 +690,10 @@ class TestDeepLocate:
             }
 
         with patch(
-            "midscene.core.ai_model.workflows.locate_service.call_generative_ai",
+            "midscene.core.service.index.call_generative_ai",
             new=fake_call,
         ), patch(
-            "midscene.core.ai_model.workflows.locate_service.ai_locate_element",
+            "midscene.core.service.index.ai_locate_element",
             new=fake_element_locate,
         ):
             result = await locate_service(
@@ -720,7 +720,7 @@ class TestLocatePromptOrder:
         }
 
     def test_default_keeps_trailing_references(self):
-        from midscene.core.ai_model.locate_prompt_order import (
+        from midscene.core.ai_model.model_adapter.locate_prompt_order import (
             build_locate_messages,
             parse_locate_prompt_order,
         )
@@ -741,7 +741,7 @@ class TestLocatePromptOrder:
         ]
 
     def test_user_each_emits_separate_messages_and_skips_absent_references(self):
-        from midscene.core.ai_model.locate_prompt_order import (
+        from midscene.core.ai_model.model_adapter.locate_prompt_order import (
             build_locate_messages,
             parse_locate_prompt_order,
         )
@@ -759,7 +759,7 @@ class TestLocatePromptOrder:
             ]
 
     def test_preserves_reference_boundaries_in_the_middle(self):
-        from midscene.core.ai_model.locate_prompt_order import (
+        from midscene.core.ai_model.model_adapter.locate_prompt_order import (
             build_locate_messages,
             parse_locate_prompt_order,
         )
@@ -778,7 +778,7 @@ class TestLocatePromptOrder:
         ]
 
     def test_flattens_reference_blocks_and_keeps_group_boundaries(self):
-        from midscene.core.ai_model.locate_prompt_order import (
+        from midscene.core.ai_model.model_adapter.locate_prompt_order import (
             build_locate_messages,
             parse_locate_prompt_order,
         )
@@ -804,7 +804,7 @@ class TestLocatePromptOrder:
         ]
 
     def test_skips_empty_references_only_group(self):
-        from midscene.core.ai_model.locate_prompt_order import (
+        from midscene.core.ai_model.model_adapter.locate_prompt_order import (
             build_locate_messages,
             parse_locate_prompt_order,
         )
@@ -827,7 +827,7 @@ class TestLocatePromptOrder:
         ]
 
     def test_system_can_hold_the_task(self):
-        from midscene.core.ai_model.locate_prompt_order import (
+        from midscene.core.ai_model.model_adapter.locate_prompt_order import (
             build_locate_messages,
             parse_locate_prompt_order,
         )
@@ -850,7 +850,7 @@ class TestLocatePromptOrder:
         ]
 
     def test_preserves_text_order_and_system_positions(self):
-        from midscene.core.ai_model.locate_prompt_order import (
+        from midscene.core.ai_model.model_adapter.locate_prompt_order import (
             build_locate_messages,
             parse_locate_prompt_order,
         )
@@ -885,7 +885,7 @@ class TestLocatePromptOrder:
 
     @pytest.mark.parametrize("part", ["screenshot", "references"])
     def test_rejects_image_parts_in_system(self, part):
-        from midscene.core.ai_model.locate_prompt_order import (
+        from midscene.core.ai_model.model_adapter.locate_prompt_order import (
             parse_locate_prompt_order,
         )
 
@@ -909,7 +909,7 @@ class TestLocatePromptOrder:
         ],
     )
     def test_rejects_invalid_orders(self, order):
-        from midscene.core.ai_model.locate_prompt_order import (
+        from midscene.core.ai_model.model_adapter.locate_prompt_order import (
             parse_locate_prompt_order,
         )
 
@@ -918,7 +918,7 @@ class TestLocatePromptOrder:
 
     @pytest.mark.asyncio
     async def test_element_locate_respects_prompt_order(self, mock_interface):
-        from midscene.core.ai_model.adapters import ModelAdapter, ModelRuntime
+        from midscene.core.ai_model.models.registry import ModelAdapter, ModelRuntime
         from midscene.core.ai_model.workflows import ai_locate_element
 
         captured = {}
@@ -943,7 +943,7 @@ class TestLocatePromptOrder:
             adapter,
         )
         with patch_model_call(
-            "midscene.core.ai_model.workflows.grounding", handler
+            "midscene.core.ai_model.workflows.grounding.locate", handler
         ):
             context = await mock_interface.get_context()
             await ai_locate_element("the Submit button", context, runtime)
@@ -959,8 +959,8 @@ class TestLocatePromptOrder:
 
     @pytest.mark.asyncio
     async def test_section_locate_respects_prompt_order(self, mock_interface):
-        from midscene.core.ai_model.adapters import ModelAdapter, ModelRuntime
-        from midscene.core.ai_model.workflows.locate_service import (
+        from midscene.core.ai_model.models.registry import ModelAdapter, ModelRuntime
+        from midscene.core.service import (
             ai_locate_section,
         )
 
@@ -986,7 +986,7 @@ class TestLocatePromptOrder:
             adapter,
         )
         with patch_model_call(
-            "midscene.core.ai_model.workflows.locate_service", handler
+            "midscene.core.service.index", handler
         ):
             context = await mock_interface.get_context()
             await ai_locate_section(context, "the row containing Apollo", runtime)
@@ -1012,7 +1012,7 @@ class TestLocatePromptOrder:
 
         png = "data:image/png;base64," + make_png_base64()
         with patch_model_call(
-            "midscene.core.ai_model.workflows.grounding", handler
+            "midscene.core.ai_model.workflows.grounding.locate", handler
         ):
             context = await mock_interface.get_context()
             await ai_locate_element(
@@ -1037,7 +1037,7 @@ class TestLocatePromptOrder:
 
 
 def _make_runtime(**overrides):
-    from midscene.core.ai_model.adapters import get_model_runtime
+    from midscene.core.ai_model.models.registry import get_model_runtime
 
     config = {
         "modelName": "mock-model",
@@ -1059,7 +1059,7 @@ def _make_runtime(**overrides):
 
 class TestModelFallback:
     def test_jev_extracts_fall_back_to_default(self):
-        from midscene.core.ai_model.adapters import resolve_model_for_task_type
+        from midscene.core.ai_model.models import resolve_model_for_task_type
 
         configs = {
             "locate": {"modelName": "jev-1", "modelFamily": "jev", "intent": "locate", "slot": "locate"},
@@ -1087,7 +1087,7 @@ class TestModelFallback:
 
 class TestYamlRunner:
     def test_parse_script(self):
-        from midscene.core.yaml_runner import parse_yaml_script
+        from midscene.core.yaml import parse_yaml_script
 
         script = parse_yaml_script(
             """
@@ -1104,14 +1104,14 @@ tasks:
         assert script["tasks"][0]["flow"][0]["aiAction"] == "click the button"
 
     def test_parse_requires_tasks(self):
-        from midscene.core.yaml_runner import parse_yaml_script
+        from midscene.core.yaml import parse_yaml_script
 
         with pytest.raises(ValueError) as exc:
             parse_yaml_script("web:\n  url: https://example.com\n")
         assert '"tasks" is required' in str(exc.value)
 
     def test_computer_env_is_a_target(self):
-        from midscene.core.yaml_runner import parse_yaml_script
+        from midscene.core.yaml import parse_yaml_script
 
         script = parse_yaml_script(
             "computer:\n  displayId: '1'\n"
@@ -1120,7 +1120,7 @@ tasks:
         assert script["computer"]["displayId"] == "1"
 
     def test_computer_and_web_are_mutually_exclusive(self):
-        from midscene.core.yaml_runner import parse_yaml_script
+        from midscene.core.yaml import parse_yaml_script
 
         with pytest.raises(ValueError, match="only one of"):
             parse_yaml_script(
@@ -1129,7 +1129,7 @@ tasks:
             )
 
     def test_env_interpolation(self):
-        from midscene.core.yaml_runner import parse_yaml_script
+        from midscene.core.yaml import parse_yaml_script
 
         import os
 
@@ -1147,7 +1147,7 @@ tasks:
         assert script["web"]["url"] == "https://env-example.com"
 
     def test_env_interpolation_inside_tasks(self, monkeypatch):
-        from midscene.core.yaml_runner import parse_yaml_script
+        from midscene.core.yaml import parse_yaml_script
 
         monkeypatch.setenv("TASK_NAME", "hello")
         script = parse_yaml_script(
@@ -1159,7 +1159,7 @@ tasks:
         assert script["tasks"][0]["name"] == "hello"
 
     def test_env_interpolation_keeps_unresolved_refs_in_tasks(self, monkeypatch):
-        from midscene.core.yaml_runner import parse_yaml_script
+        from midscene.core.yaml import parse_yaml_script
 
         monkeypatch.delenv("NOT_DEFINED_VAR", raising=False)
         script = parse_yaml_script(
@@ -1171,7 +1171,7 @@ tasks:
         assert script["tasks"][0]["name"] == "${NOT_DEFINED_VAR}"
 
     def test_env_interpolation_missing_outside_tasks_raises(self, monkeypatch):
-        from midscene.core.yaml_runner import parse_yaml_script
+        from midscene.core.yaml import parse_yaml_script
 
         monkeypatch.delenv("NOT_DEFINED_VAR", raising=False)
         with pytest.raises(ValueError, match="NOT_DEFINED_VAR"):
@@ -1181,7 +1181,7 @@ tasks:
 
     @pytest.mark.asyncio
     async def test_player_runs_flow(self):
-        from midscene.core.yaml_runner import ScriptPlayer, parse_yaml_script
+        from midscene.core.yaml import ScriptPlayer, parse_yaml_script
 
         script = parse_yaml_script(
             """
@@ -1212,8 +1212,8 @@ tasks:
 
 
 def _make_agent(interface):
-    from midscene.core.agent import Agent
-    from midscene.core.types import AgentOptions
+    from midscene.core.agent.agent import Agent
+    from midscene.core.agent.agent_options import AgentOptions
 
     return Agent(
         interface,
@@ -1280,13 +1280,13 @@ class TestDump:
 class TestConnectivity:
     @pytest.mark.asyncio
     async def test_text_check_passes_on_token(self):
-        from midscene.core.ai_model.connectivity import _run_check, _text_check
+        from midscene.core.ai_model.connectivity.run_connectivity_test import _run_check, _text_check
 
         async def fake_call(messages, runtime, options=None):
             return {"content": "CONNECTIVITY_OK", "usage": None}
 
         with patch(
-            "midscene.core.ai_model.connectivity.call_generative_ai",
+            "midscene.core.ai_model.connectivity.run_connectivity_test.call_generative_ai",
             new=fake_call,
         ):
             result = await _run_check(
@@ -1296,13 +1296,13 @@ class TestConnectivity:
 
     @pytest.mark.asyncio
     async def test_text_check_fails_on_wrong_token(self):
-        from midscene.core.ai_model.connectivity import _run_check, _text_check
+        from midscene.core.ai_model.connectivity.run_connectivity_test import _run_check, _text_check
 
         async def fake_call(messages, runtime, options=None):
             return {"content": "HELLO", "usage": None}
 
         with patch(
-            "midscene.core.ai_model.connectivity.call_generative_ai",
+            "midscene.core.ai_model.connectivity.run_connectivity_test.call_generative_ai",
             new=fake_call,
         ):
             result = await _run_check(
@@ -1324,13 +1324,13 @@ class TestConnectivity:
             "insightModelConfig": {"modelName": "m"},
         }
         with patch(
-            "midscene.core.ai_model.connectivity.call_generative_ai",
+            "midscene.core.ai_model.connectivity.run_connectivity_test.call_generative_ai",
             new=fake_call,
         ), patch(
-            "midscene.core.ai_model.connectivity._vision_check",
+            "midscene.core.ai_model.connectivity.run_connectivity_test._vision_check",
             new=AsyncMock(return_value={"passed": True, "content": ""}),
         ), patch(
-            "midscene.core.ai_model.connectivity._ai_locate_check",
+            "midscene.core.ai_model.connectivity.run_connectivity_test._ai_locate_check",
             new=AsyncMock(return_value={"passed": True, "content": ""}),
         ):
             result = await run_connectivity_test(config)
@@ -1345,7 +1345,7 @@ class TestConnectivity:
 
 class TestSiwc:
     def test_authorization_url_contains_pkce(self):
-        from midscene.core.ai_model.siwc import create_siwc_authorization
+        from midscene.core.siwc import create_siwc_authorization
 
         auth = create_siwc_authorization(
             "urn:uuid:test", "http://127.0.0.1:9999/auth/callback"
@@ -1354,7 +1354,7 @@ class TestSiwc:
         assert "chatgpt.tokens.use.direct" in auth["url"]
 
     def test_parse_callback_validates_state(self):
-        from midscene.core.ai_model.siwc import (
+        from midscene.core.siwc import (
             create_siwc_authorization,
             parse_siwc_callback,
         )
@@ -1380,7 +1380,7 @@ class TestSiwc:
         )
 
     def test_parse_callback_rejects_dynamic_client(self):
-        from midscene.core.ai_model.siwc import (
+        from midscene.core.siwc import (
             create_siwc_authorization,
             parse_siwc_callback,
         )
@@ -1397,7 +1397,7 @@ class TestSiwc:
             parse_siwc_callback(callback_url, attempt)
 
     def test_resolve_proxy_precedence(self, monkeypatch):
-        from midscene.core.ai_model.siwc import _siwc_proxy
+        from midscene.core.siwc import _siwc_proxy
 
         # Explicit config wins over the environment; HTTP beats SOCKS.
         monkeypatch.setenv("MIDSCENE_MODEL_HTTP_PROXY", "http://env:8080")
@@ -1418,7 +1418,7 @@ class TestSiwc:
 
     @pytest.mark.asyncio
     async def test_refresh_request_uses_configured_proxy(self):
-        from midscene.core.ai_model import siwc
+        from midscene.core import siwc
 
         captured: Dict[str, Any] = {}
 
@@ -1458,7 +1458,7 @@ class TestSiwc:
 
     @pytest.mark.asyncio
     async def test_refresh_request_falls_back_to_env_proxy(self, monkeypatch):
-        from midscene.core.ai_model import siwc
+        from midscene.core import siwc
 
         monkeypatch.setenv("MIDSCENE_MODEL_HTTP_PROXY", "http://env:8080")
         monkeypatch.delenv("MIDSCENE_MODEL_SOCKS_PROXY", raising=False)
@@ -1494,7 +1494,7 @@ class TestSiwc:
 
     @pytest.mark.asyncio
     async def test_jwks_fetched_once_and_reused(self, monkeypatch):
-        from midscene.core.ai_model import siwc
+        from midscene.core import siwc
 
         calls = []
         keys = [object()]
@@ -1512,7 +1512,7 @@ class TestSiwc:
 
     @pytest.mark.asyncio
     async def test_jwks_force_refetch_replaces_cache(self, monkeypatch):
-        from midscene.core.ai_model import siwc
+        from midscene.core import siwc
 
         rotated = [object(), object()]
         calls = []
@@ -1530,7 +1530,7 @@ class TestSiwc:
 
     @pytest.mark.asyncio
     async def test_token_manager_threads_proxy_into_refresh(self):
-        from midscene.core.ai_model import siwc
+        from midscene.core import siwc
 
         record = {
             "credentials": {
@@ -1553,7 +1553,7 @@ class TestSiwc:
 
     @pytest.mark.asyncio
     async def test_exchange_uses_configured_proxy(self):
-        from midscene.core.ai_model import siwc
+        from midscene.core import siwc
 
         captured: Dict[str, Any] = {}
 
@@ -1601,8 +1601,8 @@ class TestSiwc:
         assert credentials["subject"] == "subject-1"
 
     def test_public_entry_reexports_existing_implementation(self):
-        import midscene.siwc as public
-        from midscene.core.ai_model import siwc as internals
+        import midscene.core.siwc as public
+        from midscene.core import siwc as internals
 
         assert public.refresh_siwc_credentials is internals.refresh_siwc_credentials
         assert public.create_siwc_authorization is internals.create_siwc_authorization
@@ -1649,8 +1649,9 @@ class _StubAsyncClient:
 class TestCallerParity:
     @pytest.mark.asyncio
     async def test_siwc_token_expired_refreshes_once(self):
-        from midscene.core.ai_model import caller
-        from midscene.core.ai_model.adapters import get_model_runtime
+        from midscene.core.ai_model.service_caller import call_ai as caller
+        from midscene.core.ai_model.service_caller import model_call
+        from midscene.core.ai_model.models.registry import get_model_runtime
 
         responses = iter(
             [
@@ -1661,7 +1662,7 @@ class TestCallerParity:
         refresh = AsyncMock(return_value="new-token")
 
         with patch.object(
-            caller.httpx, "AsyncClient", lambda *a, **k: _StubAsyncClient(responses)
+            model_call.httpx, "AsyncClient", lambda *a, **k: _StubAsyncClient(responses)
         ), patch.object(caller.siwc_token_manager, "refresh_access_token", refresh):
             runtime = get_model_runtime(
                 {
@@ -1684,7 +1685,7 @@ class TestCallerParity:
 
     @pytest.mark.asyncio
     async def test_timeout_passed_to_httpx_in_seconds(self):
-        from midscene.core.ai_model import caller
+        from midscene.core.ai_model.service_caller import model_call
 
         captured: List[Dict[str, Any]] = []
 
@@ -1694,11 +1695,11 @@ class TestCallerParity:
                 super().__init__([FakeResponse(_chat_completion_payload())])
 
         with patch.object(
-            caller.httpx,
+            model_call.httpx,
             "AsyncClient",
             lambda *a, **k: RecordingClient(*a, **k),
         ):
-            await caller._post_json(
+            await model_call._post_json(
                 url="https://example.com/v1/chat/completions",
                 headers={},
                 request_body={"model": "m", "messages": []},
@@ -1710,15 +1711,15 @@ class TestCallerParity:
         assert captured[0]["timeout"].read == 5.0
 
     def test_default_timeout_is_180s(self):
-        from midscene.core.ai_model.caller import resolve_effective_timeout_ms
+        from midscene.core.ai_model.service_caller.request_timeout import resolve_effective_timeout_ms
 
         assert resolve_effective_timeout_ms(None) == 180_000.0
         assert resolve_effective_timeout_ms(0) is None
         assert resolve_effective_timeout_ms(2500) == 2500.0
 
     def test_semantic_retry_temperature(self):
-        from midscene.core.ai_model.adapters import get_model_runtime
-        from midscene.core.ai_model.caller import prepare_chat_completion
+        from midscene.core.ai_model.models.registry import get_model_runtime
+        from midscene.core.ai_model.service_caller.openai.chat_completion import prepare_chat_completion
 
         runtime = get_model_runtime(
             {
@@ -1741,7 +1742,7 @@ class TestCallerParity:
 
 class TestAdapterParity:
     def test_gpt5_responses_json_mode_only_when_expected(self):
-        from midscene.core.ai_model.adapters import get_model_adapter
+        from midscene.core.ai_model.models.registry import get_model_adapter
 
         adapter = get_model_adapter("gpt-5")
         params = adapter.build_responses_params(
@@ -1755,20 +1756,20 @@ class TestAdapterParity:
         assert "text" not in params
 
     def test_deep_locate_support_flags(self):
-        from midscene.core.ai_model.adapters import get_model_adapter
+        from midscene.core.ai_model.models.registry import get_model_adapter
 
         assert get_model_adapter("gpt-5").supports_action_deep_locate is True
         assert get_model_adapter("auto-glm").supports_action_deep_locate is False
         assert get_model_adapter("vlm-ui-tars").supports_action_deep_locate is False
 
     def test_kimi3_replays_raw_assistant_message(self):
-        from midscene.core.ai_model.adapters import get_model_adapter
+        from midscene.core.ai_model.models.registry import get_model_adapter
 
         assert get_model_adapter("kimi3").replay_raw_assistant_message is True
         assert get_model_adapter("gpt-5").replay_raw_assistant_message is False
 
     def test_new_family_locate_formats(self):
-        from midscene.core.ai_model.adapters import get_model_adapter
+        from midscene.core.ai_model.models.registry import get_model_adapter
 
         step = get_model_adapter("step").locate_result_codec.prompt_spec
         assert step["resultKey"] == "point_2d"
@@ -1783,7 +1784,7 @@ class TestAdapterParity:
         assert qwen4["resultKeyAliases"] == ["point_2d"]
 
     def test_openrouter_reasoning_shapes(self):
-        from midscene.core.ai_model.adapters import get_model_adapter
+        from midscene.core.ai_model.models.registry import get_model_adapter
 
         params = get_model_adapter("qwen4").build_chat_completion_params(
             {}, {"reasoningEnabled": True, "reasoningBudget": 64}
@@ -1833,7 +1834,7 @@ class TestAdapterParity:
         assert native["enable_thinking"] is True
 
     def test_reasoning_effort_only_when_enabled(self):
-        from midscene.core.ai_model.adapters import get_model_adapter
+        from midscene.core.ai_model.models.registry import get_model_adapter
 
         for family in ("kimi3", "deepseek", "doubao-seed"):
             params = get_model_adapter(family).build_chat_completion_params(
@@ -1854,8 +1855,8 @@ class TestAdapterParity:
         assert "thinking" not in params
 
     def test_qwen_single_item_array_unwrap_only_for_locate(self):
-        from midscene.core.ai_model.adapters import get_model_adapter
-        from midscene.core.ai_model.json_utils import parse_model_response_json
+        from midscene.core.ai_model.models.registry import get_model_adapter
+        from midscene.core.ai_model.shared.json import parse_model_response_json
 
         adapter = get_model_adapter("qwen3")
         raw = '[{"bbox_2d":[562,653,574,671],"label":"Approve checkbox"}]'
@@ -1875,8 +1876,8 @@ class TestAdapterParity:
         assert element["target"] == [562, 653, 574, 671]
 
     def test_unset_temperature_removed_from_request(self):
-        from midscene.core.ai_model import caller
-        from midscene.core.ai_model.adapters import get_model_runtime
+        from midscene.core.ai_model.service_caller.openai import chat_completion, responses
+        from midscene.core.ai_model.models.registry import get_model_runtime
 
         runtime = get_model_runtime(
             {
@@ -1886,12 +1887,12 @@ class TestAdapterParity:
                 "retryCount": 0,
             }
         )
-        chat = caller.prepare_chat_completion(
+        chat = chat_completion.prepare_chat_completion(
             [{"role": "user", "content": "hi"}], runtime, {}
         )
         assert "temperature" not in chat["request_body"]
 
-        responses = caller.prepare_responses(
+        responses = responses.prepare_responses(
             [{"role": "user", "content": "hi"}], runtime, {}
         )
         assert "temperature" not in responses["request_body"]
@@ -1899,14 +1900,14 @@ class TestAdapterParity:
 
 class TestPromptParity:
     def test_data_demand_keeps_cjk(self):
-        from midscene.core.ai_model.prompts.insight import extract_data_query_prompt
+        from midscene.core.ai_model.prompt.insight import extract_data_query_prompt
 
         prompt = extract_data_query_prompt("页面", {"标题": "string"})
         assert "标题" in prompt
         assert "\\u" not in prompt
 
     def test_typed_demand_values(self):
-        from midscene.core.ai_model.prompts.insight import (
+        from midscene.core.ai_model.prompt.insight import (
             build_type_query_demand_value,
         )
 
@@ -1917,7 +1918,7 @@ class TestPromptParity:
         assert build_type_query_demand_value("Number", "count").startswith("Number, ")
 
     def test_multiline_action_space_uses_literal_blocks(self):
-        from midscene.core.ai_model.prompts.planning import (
+        from midscene.core.ai_model.prompt.planning import (
             serialize_action_descriptions,
         )
 
@@ -1926,9 +1927,9 @@ class TestPromptParity:
         assert "\\n" not in dumped
 
     def test_distance_fields_include_input_image_unit_note(self):
-        from midscene.core.actions import build_web_action_space
-        from midscene.core.ai_model.adapters import get_model_adapter
-        from midscene.core.ai_model.prompts.planning import (
+        from midscene.core.device import build_web_action_space
+        from midscene.core.ai_model.models.registry import get_model_adapter
+        from midscene.core.ai_model.prompt.planning import (
             build_standard_planning_system_prompt,
         )
 
@@ -1946,7 +1947,7 @@ class TestPromptParity:
 
     @pytest.mark.asyncio
     async def test_scroll_executor_passes_distance_unchanged(self):
-        from midscene.core.actions import _execute_scroll
+        from midscene.core.device import _execute_scroll
         from tests.test_core import MockInterface
 
         interface = MockInterface()
@@ -1968,7 +1969,7 @@ class TestTypedQueryParity:
 
         agent = _make_agent(MockInterface())
         with patch_model_call(
-            "midscene.core.ai_model.workflows.insight", handler
+            "midscene.core.ai_model.workflows.insight.extraction", handler
         ):
             assert await agent.ai_boolean("is loaded") is True
 
@@ -1989,7 +1990,7 @@ class TestTypedQueryParity:
 
         agent = _make_agent(MockInterface())
         with patch_model_call(
-            "midscene.core.ai_model.workflows.insight", handler
+            "midscene.core.ai_model.workflows.insight.extraction", handler
         ):
             await agent.ai_wait_for("loaded", {"timeoutMs": 100, "checkIntervalMs": 10})
 
@@ -2010,7 +2011,7 @@ class TestTypedQueryParity:
 
         agent = _make_agent(MockInterface())
         with patch_model_call(
-            "midscene.core.ai_model.workflows.insight", handler
+            "midscene.core.ai_model.workflows.insight.extraction", handler
         ):
             result = await agent.ai_query("list every row")
 
@@ -2019,13 +2020,13 @@ class TestTypedQueryParity:
 
 class TestPlanningLocateNormalization:
     def _codec(self):
-        from midscene.core.ai_model.adapters import GPT_LOCATE_FORMAT
-        from midscene.core.ai_model.locate_result import create_locate_result_codec
+        from midscene.core.ai_model.models.registry import GPT_LOCATE_FORMAT
+        from midscene.core.ai_model.shared.model_locate_result import create_locate_result_codec
 
         return create_locate_result_codec(GPT_LOCATE_FORMAT)
 
     def test_prompt_only_when_not_included(self):
-        from midscene.core.ai_model.workflows.planning import (
+        from midscene.core.ai_model.workflows.planning.standard_planning import (
             normalize_planning_locate_parameter,
         )
 
@@ -2038,7 +2039,7 @@ class TestPlanningLocateNormalization:
         assert normalized == {"prompt": "button"}
 
     def test_coordinates_are_converted_and_removed(self):
-        from midscene.core.ai_model.workflows.planning import (
+        from midscene.core.ai_model.workflows.planning.standard_planning import (
             normalize_planning_locate_parameter,
         )
 
@@ -2052,7 +2053,7 @@ class TestPlanningLocateNormalization:
         assert normalized["locatedPixelResult"]["center"] == (200.0, 125.0)
 
     def test_missing_coordinates_raise(self):
-        from midscene.core.ai_model.workflows.planning import (
+        from midscene.core.ai_model.workflows.planning.standard_planning import (
             normalize_planning_locate_parameter,
         )
 
@@ -2080,7 +2081,7 @@ class TestActionSpaceParity:
         assert "Scroll" not in names
 
     def test_android_action_space(self):
-        from midscene.core.actions import build_android_action_space
+        from midscene.core.device import build_android_action_space
 
         names = {action.name for action in build_android_action_space()}
         assert {
@@ -2094,7 +2095,7 @@ class TestActionSpaceParity:
         } <= names
 
     def test_scroll_action_descriptions_match_upstream(self):
-        from midscene.core.actions import build_android_action_space
+        from midscene.core.device import build_android_action_space
 
         scroll = next(
             action
@@ -2119,7 +2120,7 @@ class TestActionSpaceParity:
 
     @pytest.mark.asyncio
     async def test_scroll_drops_unsupported_kwargs(self):
-        from midscene.core.actions import _execute_scroll
+        from midscene.core.device import _execute_scroll
 
         class ScrollDevice:
             def __init__(self):
@@ -2138,7 +2139,7 @@ class TestActionSpaceParity:
 
     @pytest.mark.asyncio
     async def test_scroll_passes_located_point(self):
-        from midscene.core.actions import _execute_scroll
+        from midscene.core.device import _execute_scroll
 
         class ScrollDevice:
             def __init__(self):
@@ -2162,7 +2163,7 @@ class TestActionSpaceParity:
 
     @pytest.mark.asyncio
     async def test_input_drops_unsupported_options(self):
-        from midscene.core.actions import _execute_input
+        from midscene.core.device import _execute_input
 
         class InputDevice:
             def __init__(self):
@@ -2184,7 +2185,7 @@ class TestPlatformFixes:
     @pytest.mark.asyncio
     async def test_selenium_scroll_passes_numbers_as_arguments(self):
         pytest.importorskip("selenium")
-        from midscene.web.selenium_page import SeleniumWebPage
+        from midscene.web_integration.selenium_page import SeleniumWebPage
 
         class Driver:
             def __init__(self):
@@ -2209,7 +2210,7 @@ class TestPlatformFixes:
 
     @pytest.mark.asyncio
     async def test_playwright_scroll_defaults_to_viewport_and_centers_mouse(self):
-        from midscene.web.playwright_page import PlaywrightWebPage
+        from midscene.web_integration.playwright_page import PlaywrightWebPage
 
         class Mouse:
             def __init__(self):
@@ -2228,7 +2229,7 @@ class TestPlatformFixes:
 
         page = PlaywrightWebPage.__new__(PlaywrightWebPage)
         page.page = Page()
-        with patch("midscene.web.playwright_page.asyncio.sleep", AsyncMock()):
+        with patch("midscene.web_integration.playwright_page.asyncio.sleep", AsyncMock()):
             await page.scroll("down")
             await page.scroll("right")
         assert page.page.mouse.calls == [
@@ -2240,7 +2241,7 @@ class TestPlatformFixes:
 
     @pytest.mark.asyncio
     async def test_bridge_scroll_defaults_to_viewport_and_centers_mouse(self):
-        from midscene.web.bridge import BridgeWebPage
+        from midscene.web_integration.bridge import BridgeWebPage
 
         class Server:
             def __init__(self):
@@ -2265,7 +2266,7 @@ class TestPlatformFixes:
     @pytest.mark.asyncio
     async def test_selenium_scroll_defaults_to_viewport(self):
         pytest.importorskip("selenium")
-        from midscene.web.selenium_page import SeleniumWebPage
+        from midscene.web_integration.selenium_page import SeleniumWebPage
 
         class Driver:
             def __init__(self):
@@ -2303,7 +2304,7 @@ class TestPlatformFixes:
 
     @pytest.mark.asyncio
     async def test_drag_and_drop_resolves_both_points(self):
-        from midscene.core.actions import _execute_drag_and_drop
+        from midscene.core.device import _execute_drag_and_drop
 
         class DragDevice:
             def __init__(self):
@@ -2326,7 +2327,7 @@ class TestPlatformFixes:
 
     @pytest.mark.asyncio
     async def test_drag_and_drop_requires_primitive(self):
-        from midscene.core.actions import _execute_drag_and_drop
+        from midscene.core.device import _execute_drag_and_drop
 
         class NoDrag:
             pass
@@ -2338,7 +2339,7 @@ class TestPlatformFixes:
 
     @pytest.mark.asyncio
     async def test_yaml_ai_drag_and_drop(self):
-        from midscene.core.yaml_runner import ScriptPlayer, parse_yaml_script
+        from midscene.core.yaml import ScriptPlayer, parse_yaml_script
 
         script = parse_yaml_script(
             """
@@ -2389,7 +2390,7 @@ tasks:
 
     @pytest.mark.asyncio
     async def test_selenium_drag_and_drop_uses_relative_offsets(self):
-        from midscene.web.selenium_page import SeleniumWebPage
+        from midscene.web_integration.selenium_page import SeleniumWebPage
 
         class FakeChains:
             def __init__(self):
@@ -2434,7 +2435,7 @@ tasks:
         the server-side call (Socket.IO protocol)."""
         import socketio
 
-        from midscene.web.bridge import BridgeServer
+        from midscene.web_integration.bridge import BridgeServer
 
         # listen() on an ephemeral port: exercises the real server config
         server = BridgeServer(host="127.0.0.1", port=0, close_conflict_server=False)
@@ -2484,7 +2485,7 @@ tasks:
     async def test_bridge_rejects_untrusted_origin(self):
         import socketio
 
-        from midscene.web.bridge import BridgeServer
+        from midscene.web_integration.bridge import BridgeServer
 
         server = BridgeServer()
         sio = socketio.AsyncServer(async_mode="aiohttp", cors_allowed_origins="*")
@@ -2504,7 +2505,7 @@ tasks:
 
     @pytest.mark.asyncio
     async def test_bridge_listen_timeout_without_client(self):
-        from midscene.web.bridge import BridgeServer
+        from midscene.web_integration.bridge import BridgeServer
 
         server = BridgeServer(port=0)
         with pytest.raises(RuntimeError) as exc:
@@ -2556,7 +2557,7 @@ class TestBridgeProtocol:
             return None
 
     def _connected_page(self):
-        from midscene.web.bridge import BridgeWebPage
+        from midscene.web_integration.bridge import BridgeWebPage
 
         page = BridgeWebPage()
         recorder = self.RecordingServer()
@@ -2565,7 +2566,7 @@ class TestBridgeProtocol:
         return page, recorder
 
     def test_build_key_commands_matches_extension_shape(self):
-        from midscene.web.bridge import build_key_commands
+        from midscene.web_integration.bridge import build_key_commands
 
         assert build_key_commands("Enter") == [{"key": "Enter"}]
         assert build_key_commands("Control+A") == [
@@ -2620,7 +2621,7 @@ class TestBridgeProtocol:
             await page.pinch("sideways")
 
     def test_bridge_action_space_matches_extension_primitives(self):
-        from midscene.web.bridge import BridgeWebPage
+        from midscene.web_integration.bridge import BridgeWebPage
 
         names = {action.name for action in _make_agent(BridgeWebPage()).action_space}
         assert {
@@ -2640,7 +2641,7 @@ class TestBridgeProtocol:
 
     @pytest.mark.asyncio
     async def test_page_methods_require_connect(self):
-        from midscene.web.bridge import BridgeWebPage
+        from midscene.web_integration.bridge import BridgeWebPage
 
         page = BridgeWebPage()
         with pytest.raises(RuntimeError, match="not connected"):
@@ -2650,7 +2651,7 @@ class TestBridgeProtocol:
     async def test_close_flushes_pending_calls(self):
         from types import SimpleNamespace
 
-        from midscene.web.bridge import BridgeServer
+        from midscene.web_integration.bridge import BridgeServer
 
         server = BridgeServer(host="127.0.0.1", port=0, close_conflict_server=False)
         server._client_sid = "sid"
@@ -2663,7 +2664,7 @@ class TestBridgeProtocol:
 
     @pytest.mark.asyncio
     async def test_disconnect_flushes_pending_calls(self):
-        from midscene.web.bridge import BridgeServer
+        from midscene.web_integration.bridge import BridgeServer
 
         server = BridgeServer(host="127.0.0.1", port=0, close_conflict_server=False)
         server._client_sid = "sid"
@@ -2678,7 +2679,7 @@ class TestBridgeProtocol:
     async def test_listen_kills_conflicting_server_on_the_real_port(self):
         import socket as _socket
 
-        from midscene.web import bridge as bridge_module
+        from midscene.web_integration import bridge as bridge_module
 
         probe = _socket.socket()
         probe.bind(("127.0.0.1", 0))
@@ -2711,7 +2712,7 @@ class TestBridgeProtocol:
         XHR poll (chrome-extension:// origin) is blocked by the browser."""
         import aiohttp
 
-        from midscene.web.bridge import BridgeServer
+        from midscene.web_integration.bridge import BridgeServer
 
         server = BridgeServer(host="127.0.0.1", port=0, close_conflict_server=False)
         await server.listen(timeout=False)
@@ -2735,7 +2736,7 @@ class TestBridgeProtocol:
     async def test_second_client_receives_bridge_refused(self):
         import socketio
 
-        from midscene.web.bridge import BridgeServer
+        from midscene.web_integration.bridge import BridgeServer
 
         server = BridgeServer(host="127.0.0.1", port=0, close_conflict_server=False)
         await server.listen(timeout=False)
@@ -2795,7 +2796,7 @@ class TestBridgeProtocol:
 class TestYamlExtras:
     @pytest.mark.asyncio
     async def test_javascript_and_json_output(self, tmp_path):
-        from midscene.core.yaml_runner import ScriptPlayer, parse_yaml_script
+        from midscene.core.yaml import ScriptPlayer, parse_yaml_script
 
         output = tmp_path / "result.json"
         script = parse_yaml_script(
@@ -2833,8 +2834,8 @@ class TestDeepLocatePlanHint:
 
     @pytest.mark.asyncio
     async def test_plan_coords_become_search_hint(self, mock_interface):
-        from midscene.core.agent import Agent
-        from midscene.core.types import AgentOptions
+        from midscene.core.agent.agent import Agent
+        from midscene.core.agent.agent_options import AgentOptions
 
         agent = Agent(
             mock_interface,
@@ -2865,7 +2866,7 @@ class TestDeepLocatePlanHint:
             "deepLocate": True,
         }
         with patch(
-            "midscene.core.agent.locate_service", new=fake_locate_service
+            "midscene.core.agent.task_builder.locate_service", new=fake_locate_service
         ):
             element = await agent._locate_for_action(locate_param)
 
@@ -2877,8 +2878,8 @@ class TestDeepLocatePlanHint:
 
     @pytest.mark.asyncio
     async def test_plan_coords_direct_hit_without_deep_locate(self, mock_interface):
-        from midscene.core.agent import Agent
-        from midscene.core.types import AgentOptions
+        from midscene.core.agent.agent import Agent
+        from midscene.core.agent.agent_options import AgentOptions
 
         agent = Agent(
             mock_interface,
@@ -2899,6 +2900,6 @@ class TestDeepLocatePlanHint:
             "prompt": "the button",
             "locatedPixelResult": {"center": (160, 120)},
         }
-        with patch("midscene.core.agent.locate_service", new=fail_if_called):
+        with patch("midscene.core.agent.task_builder.locate_service", new=fail_if_called):
             element = await agent._locate_for_action(locate_param)
         assert element["center"] == (160, 120)

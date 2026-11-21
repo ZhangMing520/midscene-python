@@ -4,7 +4,7 @@ Basic usage examples for Midscene Python
 
 import asyncio
 from midscene import Agent
-from midscene.web import SeleniumWebPage
+from midscene.web_integration import SeleniumWebPage
 from midscene.android import AndroidAgent
 
 
@@ -76,7 +76,7 @@ async def playwright_example():
     """Playwright integration example"""
     print("🎭 Playwright Example")
     
-    from midscene.web import PlaywrightWebPage
+    from midscene.web_integration import PlaywrightWebPage
     
     # Create Playwright page
     async with await PlaywrightWebPage.create(headless=False) as page:

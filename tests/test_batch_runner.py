@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from midscene.core.batch_runner import (
+from midscene.cli.batch_runner import (
     BatchRunner,
     load_batch_config,
     merge_web_overrides,
@@ -276,7 +276,7 @@ class TestBatchLifecycleAndArtifact:
         runner = BatchRunner(config, _factory({}))
         await runner.run()
 
-        from midscene.core.report_artifact import read_report_artifact
+        from midscene.shared.report_artifact import read_report_artifact
 
         artifact = read_report_artifact(artifact_dir)
         assert artifact["manifest"]["kind"] == "test"

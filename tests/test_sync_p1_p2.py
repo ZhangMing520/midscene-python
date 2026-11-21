@@ -22,8 +22,8 @@ def mock_interface():
 
 
 def _agent(model_family: str = "gpt-5", **options):
-    from midscene.core.agent import Agent
-    from midscene.core.types import AgentOptions
+    from midscene.core.agent.agent import Agent
+    from midscene.core.agent.agent_options import AgentOptions
 
     config = {
         "MIDSCENE_MODEL_NAME": "mock-model",
@@ -254,14 +254,14 @@ class TestAdbInput:
 
 class TestAndroidActions:
     def test_actions_registered(self):
-        from midscene.core.actions import build_android_action_space
+        from midscene.core.device import build_android_action_space
 
         names = [a.name for a in build_android_action_space()]
         assert {"RunAdbShell", "Launch", "Terminate"} <= set(names)
 
     @pytest.mark.asyncio
     async def test_run_adb_shell_executor(self):
-        from midscene.core.actions import build_android_action_space, find_action_in_action_space_or_throw
+        from midscene.core.device import build_android_action_space, find_action_in_action_space_or_throw
 
         executed: List[str] = []
 
@@ -277,7 +277,7 @@ class TestAndroidActions:
 
     @pytest.mark.asyncio
     async def test_launch_and_terminate_executors(self):
-        from midscene.core.actions import build_android_action_space, find_action_in_action_space_or_throw
+        from midscene.core.device import build_android_action_space, find_action_in_action_space_or_throw
 
         calls: List[tuple] = []
 
@@ -299,7 +299,7 @@ class TestAndroidActions:
 
     @pytest.mark.asyncio
     async def test_launch_requires_uri(self):
-        from midscene.core.actions import build_android_action_space, find_action_in_action_space_or_throw
+        from midscene.core.device import build_android_action_space, find_action_in_action_space_or_throw
 
         space = build_android_action_space()
         with pytest.raises(ValueError):
@@ -459,7 +459,7 @@ class TestAndroidActions:
 
 class TestDistanceUnits:
     def test_scale_marks_scroll_swipe_and_pinch(self):
-        from midscene.core.actions import (
+        from midscene.core.device import (
             build_android_action_space,
             build_web_action_space,
             scale_action_distances,
@@ -477,7 +477,7 @@ class TestDistanceUnits:
         assert scale_action_distances(param, definition, 2.0) is param
 
     def test_scale_rejects_invalid_distance_and_ratio(self):
-        from midscene.core.actions import (
+        from midscene.core.device import (
             build_web_action_space,
             scale_action_distances,
         )
@@ -526,7 +526,7 @@ class TestDistanceUnits:
         assert agent.interface.scrolled[-1][1] == 100
 
     def test_yaml_flow_scales_distance(self):
-        from midscene.core.actions import build_web_action_space
+        from midscene.core.device import build_web_action_space
         from midscene.core.ai_model.workflows import build_yaml_flow_from_plans
 
         import yaml
@@ -543,7 +543,7 @@ class TestDistanceUnits:
 
 class TestDomIncluded:
     def test_render_ai_context(self, mock_interface):
-        from midscene.core.ai_model.workflows.context_utils import render_ai_context
+        from midscene.core.agent.prompt_context import render_ai_context
 
         import asyncio
 
@@ -554,7 +554,7 @@ class TestDomIncluded:
         assert "Test Button" in rendered
 
     def test_render_ai_context_empty(self):
-        from midscene.core.ai_model.workflows.context_utils import render_ai_context
+        from midscene.core.agent.prompt_context import render_ai_context
 
         assert render_ai_context(Mock(content=[])) is None
 
@@ -585,7 +585,7 @@ class TestDomIncluded:
 
         agent = _agent()
         with patch(
-            "midscene.core.agent.ai_extract_element_info", new=AsyncMock(side_effect=fake_extract)
+            "midscene.core.agent.agent.ai_extract_element_info", new=AsyncMock(side_effect=fake_extract)
         ):
             await agent.ai_query("the title", {"domIncluded": True})
         assert "Page element context" in captured["context_text"]
@@ -644,12 +644,12 @@ class TestCacheStrategy:
 
 class TestPinch:
     def test_pinch_in_web_space_only(self):
-        from midscene.core.actions import build_web_action_space
+        from midscene.core.device import build_web_action_space
 
         assert "Pinch" in [a.name for a in build_web_action_space()]
 
     def test_playwright_implements_pinch(self):
-        from midscene.web.playwright_page import PlaywrightWebPage
+        from midscene.web_integration.playwright_page import PlaywrightWebPage
 
         assert hasattr(PlaywrightWebPage, "pinch")
 
@@ -662,14 +662,14 @@ class TestPinch:
         assert AndroidDevice.pinch is AbstractInterface.pinch
 
     def test_pinch_filtered_when_interface_lacks_primitive(self):
-        from midscene.core.actions import _supports
+        from midscene.core.device import _supports
 
         assert not _supports(MockInterface(), "pinch")
         assert "Pinch" not in [a.name for a in _agent().action_space]
 
     @pytest.mark.asyncio
     async def test_pinch_executor_validates_direction(self):
-        from midscene.core.actions import build_web_action_space, find_action_in_action_space_or_throw
+        from midscene.core.device import build_web_action_space, find_action_in_action_space_or_throw
 
         definition = find_action_in_action_space_or_throw("Pinch", build_web_action_space())
         with pytest.raises(ValueError):
@@ -727,7 +727,7 @@ class TestRecordToReport:
         assert list((tmp_path / "report").glob("*.json"))
 
     def test_yaml_record_to_report(self, tmp_path, monkeypatch):
-        from midscene.core.yaml_runner import ScriptPlayer, parse_yaml_script
+        from midscene.core.yaml import ScriptPlayer, parse_yaml_script
 
         monkeypatch.setenv("MIDSCENE_RUN_DIR", str(tmp_path))
         script = parse_yaml_script(
@@ -768,7 +768,7 @@ tasks:
 
     @pytest.mark.asyncio
     async def test_yaml_task_failure_records_error(self, tmp_path, monkeypatch):
-        from midscene.core.yaml_runner import ScriptPlayer, parse_yaml_script
+        from midscene.core.yaml import ScriptPlayer, parse_yaml_script
 
         monkeypatch.setenv("MIDSCENE_RUN_DIR", str(tmp_path))
         script = parse_yaml_script(
@@ -831,7 +831,7 @@ class TestAgentOptions:
             readiness_calls.append(context)
 
         with patch("asyncio.sleep", new=fake_sleep), patch_model_call(
-            "midscene.core.ai_model.workflows.planning", planning_handler
+            "midscene.core.ai_model.workflows.planning.standard_planning", planning_handler
         ):
             agent.options.wait_for_action_ready = readiness
             await agent.ai_act("run")
@@ -878,7 +878,7 @@ class TestAgentOptions:
             return {"content": '<complete success="true">done</complete>', "usage": None}
 
         with patch_model_call(
-            "midscene.core.ai_model.workflows.planning", planning_handler
+            "midscene.core.ai_model.workflows.planning.standard_planning", planning_handler
         ):
             await agent.ai_act("run")
         assert not list((tmp_path / "report").glob("*.json"))
@@ -907,8 +907,8 @@ class FileChooserInterface(MockInterface):
 
 
 def _file_chooser_agent():
-    from midscene.core.agent import Agent
-    from midscene.core.types import AgentOptions
+    from midscene.core.agent.agent import Agent
+    from midscene.core.agent.agent_options import AgentOptions
 
     config = {
         "MIDSCENE_MODEL_NAME": "mock-model",
@@ -974,7 +974,7 @@ class TestFileChooser:
             a for a in agent.action_space
             if a.name == "RegisterFileChooserAccept"
         )
-        from midscene.core.agent import _FileChooserAccepter
+        from midscene.core.agent.file_chooser import _FileChooserAccepter
 
         agent._active_file_chooser_accepter = _FileChooserAccepter(agent.interface)
         with pytest.raises(RuntimeError, match="fileChooserAllowedDir"):
@@ -985,7 +985,7 @@ class TestFileChooser:
 
     @pytest.mark.asyncio
     async def test_register_action_uses_allowed_dir(self, tmp_path):
-        from midscene.core.agent import _FileChooserAccepter
+        from midscene.core.agent.file_chooser import _FileChooserAccepter
         from midscene.core.types import FileChooserHandler
 
         (tmp_path / "doc.pdf").write_text("pdf")
@@ -1009,7 +1009,7 @@ class TestFileChooser:
         agent._active_file_chooser_accepter = None
 
     def test_allowed_dir_rejects_escape(self, tmp_path):
-        from midscene.core.agent import _normalize_file_chooser_accept_in_allowed_dir
+        from midscene.core.agent.file_chooser import _normalize_file_chooser_accept_in_allowed_dir
 
         (tmp_path.parent / "outside.txt").write_text("x")
         with pytest.raises(ValueError, match="fileChooserAllowedDir"):
@@ -1018,7 +1018,7 @@ class TestFileChooser:
             )
 
     def test_missing_file_raises(self, tmp_path):
-        from midscene.core.agent import _normalize_file_paths
+        from midscene.core.agent.file_chooser import _normalize_file_paths
 
         with pytest.raises(FileNotFoundError, match="File not found"):
             _normalize_file_paths(str(tmp_path / "missing.txt"))
@@ -1068,7 +1068,7 @@ class _FakeBrowserPage:
 
 class TestPlaywrightFileChooser:
     def _page(self):
-        from midscene.web.playwright_page import PlaywrightWebPage
+        from midscene.web_integration.playwright_page import PlaywrightWebPage
 
         fake = _FakeBrowserPage()
         return PlaywrightWebPage(page=fake, context=Mock(), browser=Mock()), fake
@@ -1131,7 +1131,7 @@ class _FakeTypingPage:
 
 class TestTextInputStrategy:
     def test_rejects_invalid_options(self):
-        from midscene.web.playwright_page import _resolve_text_input_options
+        from midscene.web_integration.playwright_page import _resolve_text_input_options
 
         with pytest.raises(ValueError, match="non-negative"):
             _resolve_text_input_options(None, -1)
@@ -1142,7 +1142,7 @@ class TestTextInputStrategy:
 
     @pytest.mark.asyncio
     async def test_bulk_uses_single_insert_text(self):
-        from midscene.web.playwright_page import PlaywrightWebPage
+        from midscene.web_integration.playwright_page import PlaywrightWebPage
 
         web = PlaywrightWebPage(_FakeTypingPage(), Mock(), Mock())
         await web.input_text("hello", input_strategy="bulk")
@@ -1151,7 +1151,7 @@ class TestTextInputStrategy:
 
     @pytest.mark.asyncio
     async def test_sequential_types_one_code_point_at_a_time(self):
-        from midscene.web.playwright_page import PlaywrightWebPage
+        from midscene.web_integration.playwright_page import PlaywrightWebPage
 
         web = PlaywrightWebPage(_FakeTypingPage(), Mock(), Mock())
         await web.input_text("ab", input_strategy="sequential", keyboard_type_delay=0)
@@ -1159,7 +1159,7 @@ class TestTextInputStrategy:
 
     @pytest.mark.asyncio
     async def test_legacy_uses_platform_delay(self):
-        from midscene.web.playwright_page import PlaywrightWebPage
+        from midscene.web_integration.playwright_page import PlaywrightWebPage
 
         web = PlaywrightWebPage(
             _FakeTypingPage(), Mock(), Mock(), keyboard_type_delay=25
@@ -1169,7 +1169,7 @@ class TestTextInputStrategy:
 
     @pytest.mark.asyncio
     async def test_replace_selects_all_before_bulk_insert(self):
-        from midscene.web.playwright_page import PlaywrightWebPage
+        from midscene.web_integration.playwright_page import PlaywrightWebPage
 
         web = PlaywrightWebPage(_FakeTypingPage(), Mock(), Mock())
         await web.replace_input("next", input_strategy="bulk")
@@ -1177,14 +1177,14 @@ class TestTextInputStrategy:
         assert web.page.keyboard.inserted == ["next"]
 
     def test_force_same_tab_navigation_registers_popup_listener(self):
-        from midscene.web.playwright_page import PlaywrightWebPage
+        from midscene.web_integration.playwright_page import PlaywrightWebPage
 
         fake = _FakeTypingPage()
         PlaywrightWebPage(fake, Mock(), Mock())
         assert "popup" in fake.handlers
 
     def test_auto_follow_new_page_disables_force_same_tab(self):
-        from midscene.web.playwright_page import PlaywrightWebPage
+        from midscene.web_integration.playwright_page import PlaywrightWebPage
 
         context = Mock()
         web = PlaywrightWebPage(
@@ -1212,7 +1212,7 @@ async def _stream_lines(lines):
 class TestStreamingGeneration:
     @pytest.mark.asyncio
     async def test_chat_stream_emits_incremental_chunks(self):
-        from midscene.core.ai_model.caller import _aggregate_stream_lines
+        from midscene.core.ai_model.service_caller.model_call import _aggregate_stream_lines
 
         chunks: List[Dict[str, Any]] = []
         result = await _aggregate_stream_lines(
@@ -1236,7 +1236,7 @@ class TestStreamingGeneration:
 
     @pytest.mark.asyncio
     async def test_responses_stream_emits_chunks(self):
-        from midscene.core.ai_model.caller import _aggregate_stream_lines
+        from midscene.core.ai_model.service_caller.model_call import _aggregate_stream_lines
 
         chunks: List[Dict[str, Any]] = []
         result = await _aggregate_stream_lines(
@@ -1258,7 +1258,7 @@ class TestStreamingGeneration:
         assert chunks[-1]["isComplete"] is True
 
     def test_recorder_stream_options_require_on_chunk(self):
-        from midscene.core.recorder_generation import _recorder_stream_options
+        from midscene.core.ai_model.workflows.recorder_generation.common import _recorder_stream_options
 
         assert _recorder_stream_options({"stream": True}) is None
         callback = Mock()

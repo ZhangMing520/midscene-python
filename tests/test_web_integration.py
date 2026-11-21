@@ -49,7 +49,7 @@ DEMO_PAGE = """
 async def web_page():
     from playwright.async_api import async_playwright
 
-    from midscene.web.playwright_page import PlaywrightWebPage
+    from midscene.web_integration.playwright_page import PlaywrightWebPage
 
     async with async_playwright() as playwright:
         try:
@@ -80,7 +80,7 @@ async def _region_state(page):
 
 @pytest.mark.asyncio
 async def test_create_applies_viewport_user_agent_and_args():
-    from midscene.web.playwright_page import PlaywrightWebPage
+    from midscene.web_integration.playwright_page import PlaywrightWebPage
 
     try:
         web = await PlaywrightWebPage.create(
@@ -247,7 +247,7 @@ async def test_cache_feature_uses_index_for_order_sensitive(web_page, monkeypatc
         return True
 
     monkeypatch.setattr(
-        "midscene.web.playwright_page.resolve_order_sensitive", fake_judge
+        "midscene.web_integration.playwright_page.resolve_order_sensitive", fake_judge
     )
     await page.set_content(
         "<style>body{margin:0}</style>"
@@ -288,9 +288,9 @@ async def test_cache_feature_skips_shadow_dom(web_page):
 
 @pytest.mark.asyncio
 async def test_agent_resolves_locate_cache_without_ai(web_page, tmp_path, monkeypatch):
-    from midscene.core.agent import Agent
-    from midscene.core.task_cache import TaskCache
-    from midscene.core.types import AgentOptions
+    from midscene.core.agent.agent import Agent
+    from midscene.core.agent.task_cache import TaskCache
+    from midscene.core.agent.agent_options import AgentOptions
 
     monkeypatch.setenv("MIDSCENE_RUN_DIR", str(tmp_path))
     web, page = web_page

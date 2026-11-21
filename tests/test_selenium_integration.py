@@ -75,7 +75,7 @@ async def selenium_page():
     from selenium import webdriver
     from selenium.webdriver.chrome.service import Service
 
-    from midscene.web.selenium_page import SeleniumWebPage
+    from midscene.web_integration.selenium_page import SeleniumWebPage
 
     driver_path = _find_chromedriver()
     if not driver_path:
@@ -276,7 +276,7 @@ async def test_cache_feature_uses_index_for_order_sensitive(
         return True
 
     monkeypatch.setattr(
-        "midscene.web.selenium_page.resolve_order_sensitive", fake_judge
+        "midscene.web_integration.selenium_page.resolve_order_sensitive", fake_judge
     )
     driver.get(
         "data:text/html;charset=utf-8,"
