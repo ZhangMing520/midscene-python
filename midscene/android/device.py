@@ -4,10 +4,11 @@ Android device management using ADB
 
 import asyncio
 import base64
+import math
 import subprocess
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import List, Optional, Sequence
+from typing import List, Optional, Sequence, Tuple
 
 from loguru import logger
 from pydantic import BaseModel
@@ -58,6 +59,111 @@ class AndroidElement(BaseElement):
 IME_STRATEGY_ALWAYS_YADB = "always-yadb"
 IME_STRATEGY_YADB_FOR_NON_ASCII = "yadb-for-non-ascii"
 IME_STRATEGY_LEGACY = "legacy"
+
+DEFAULT_SCROLL_UNTIL_TIMES = 10
+DEFAULT_FAST_SCROLL_DURATION = 100
+DEFAULT_NORMAL_SCROLL_DURATION = 1000
+
+
+def _is_finite_number(value: object) -> bool:
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+    )
+
+
+def _round_half_up(value: float) -> int:
+    # JS Math.round rounds half toward +infinity, unlike Python's round().
+    return int(math.floor(value + 0.5))
+
+
+def calculate_scroll_end_point(
+    start: Sequence[float],
+    delta_x: float,
+    delta_y: float,
+    width: float,
+    height: float,
+) -> Tuple[int, int]:
+    """Clamp an anchored scroll gesture to the viewport (upstream).
+
+    The start point must stay inside the viewport and the requested travel is
+    capped so the gesture never overshoots the edge it is heading toward.
+    """
+    start_x, start_y = float(start[0]), float(start[1])
+    if not all(
+        _is_finite_number(value)
+        for value in (start_x, start_y, delta_x, delta_y, width, height)
+    ) or not (
+        0 <= start_x <= width and 0 <= start_y <= height
+    ):
+        raise ValueError(
+            "Scroll origin and distance must be finite and inside the viewport"
+        )
+
+    if delta_x == 0 and delta_y == 0:
+        raise ValueError("Scroll distance is too small to move after rounding")
+
+    def actual_distance(origin: float, delta: float, size: float) -> float:
+        # Cap the requested travel at the room toward the edge; a short
+        # request is kept as-is so small intentional gestures survive.
+        available = size - origin if delta > 0 else origin
+        return min(abs(delta), available)
+
+    distance_x = actual_distance(start_x, delta_x, width) if delta_x else 0.0
+    distance_y = actual_distance(start_y, delta_y, height) if delta_y else 0.0
+
+    if delta_x == 0:
+        end_x = _round_half_up(start_x)
+    elif delta_x > 0:
+        end_x = _round_half_up(min(width, start_x + distance_x))
+    else:
+        end_x = _round_half_up(max(0, start_x - distance_x))
+
+    if delta_y == 0:
+        end_y = _round_half_up(start_y)
+    elif delta_y > 0:
+        end_y = _round_half_up(min(height, start_y + distance_y))
+    else:
+        end_y = _round_half_up(max(0, start_y - distance_y))
+
+    if (delta_x != 0 and (end_x - start_x) * delta_x <= 0) or (
+        delta_y != 0 and (end_y - start_y) * delta_y <= 0
+    ):
+        raise ValueError(
+            "No space to scroll from the located point; "
+            "choose a point farther from the screen edge"
+        )
+
+    return end_x, end_y
+
+
+def warn_scroll_distance_clamped(
+    direction: str, requested_distance: float, applied_distance: float
+) -> None:
+    if requested_distance <= applied_distance:
+        return
+
+    scroll_to_suggestion = {
+        "down": "scrollToBottom",
+        "up": "scrollToTop",
+        "left": "scrollToLeft",
+        "right": "scrollToRight",
+    }
+    edge_label = {
+        "down": "bottom",
+        "up": "top",
+        "left": "left edge",
+        "right": "right edge",
+    }
+    logger.warning(
+        "[midscene] Android ADB swipe coordinates must stay within the screen "
+        f"bounds. The requested scroll distance ({requested_distance}px) exceeds "
+        "the maximum single swipe distance "
+        f"({applied_distance}px) from the current start point, so it will be "
+        f"clamped. If you want to scroll to the {edge_label[direction]}, use "
+        f"{scroll_to_suggestion[direction]} instead."
+    )
 YADB_VERSION = "v1.1.1"
 YADB_DEVICE_PATH = "/data/local/tmp/yadb"
 
@@ -275,7 +381,9 @@ class AndroidDevice(AbstractInterface):
         """
         try:
             if isinstance(direction_or_start_x, str):
-                await self._swipe_direction(direction_or_start_x, distance)
+                await self._swipe_direction(
+                    direction_or_start_x, distance, duration=duration
+                )
                 return
             start_x = direction_or_start_x
             fx, fy = self._to_physical(start_x, start_y)
@@ -293,7 +401,7 @@ class AndroidDevice(AbstractInterface):
         direction: str,
         distance: Optional[int] = None,
         point: Optional[Sequence[float]] = None,
-        duration: int = 300,
+        duration: int = DEFAULT_NORMAL_SCROLL_DURATION,
     ) -> None:
         if not self._screen_size:
             await self._get_screen_size()
@@ -301,42 +409,62 @@ class AndroidDevice(AbstractInterface):
             raise ValueError(f"Invalid swipe direction: {direction}")
 
         width, height = self._screen_size.width, self._screen_size.height
+        horizontal = direction in ("left", "right")
+        forward = direction in ("down", "right")
+        axis_size = width if horizontal else height
+        center_x, center_y = width // 2, height // 2
+        start: Tuple[int, int]
+        end: Tuple[int, int]
+
         if distance is None and point is None:
             # Upstream scrollDefault: the finger crosses the central 70%
             # (0.85 <-> 0.15) slowly enough to keep the release velocity low.
-            horizontal = direction in ("left", "right")
-            forward = direction in ("down", "right")
-            extent = width if horizontal else height
-            start = round(extent * (0.85 if forward else 0.15))
-            end = round(extent * (0.15 if forward else 0.85))
-            center_x, center_y = width // 2, height // 2
+            start_axis = _round_half_up(axis_size * (0.85 if forward else 0.15))
+            end_axis = _round_half_up(axis_size * (0.15 if forward else 0.85))
             if horizontal:
-                from_point, to_point = (start, center_y), (end, center_y)
+                start, end = (start_axis, center_y), (end_axis, center_y)
             else:
-                from_point, to_point = (center_x, start), (center_x, end)
-            duration = 1000
-        else:
-            center_x = int(point[0]) if point else width // 2
-            center_y = int(point[1]) if point else height // 2
-            distance = distance or 500
-            vectors = {
-                "down": (0, distance),
-                "up": (0, -distance),
-                "left": (-distance, 0),
-                "right": (distance, 0),
-            }
-            dx, dy = vectors[direction]
-            from_point = (center_x - dx // 2, center_y - dy // 2)
-            to_point = (center_x + dx // 2, center_y + dy // 2)
-            # Keep the gesture inside the viewport like calculateScrollEndPoint.
-            margin = min(width, height) // 10
-            to_point = (
-                min(max(to_point[0], margin), width - margin),
-                min(max(to_point[1], margin), height - margin),
+                start, end = (center_x, start_axis), (center_x, end_axis)
+            duration = DEFAULT_NORMAL_SCROLL_DURATION
+        elif point is not None:
+            # Anchored gesture: start where the model pointed and travel toward
+            # the edge in the requested direction.
+            start = (_round_half_up(point[0]), _round_half_up(point[1]))
+            scroll_distance = _round_half_up(
+                distance if distance is not None else axis_size
             )
+            delta_x = scroll_distance if direction == "right" else (
+                -scroll_distance if direction == "left" else 0
+            )
+            delta_y = scroll_distance if direction == "down" else (
+                -scroll_distance if direction == "up" else 0
+            )
+            end = calculate_scroll_end_point(start, delta_x, delta_y, width, height)
+            if distance is not None:
+                applied = (
+                    abs(end[0] - start[0]) if horizontal else abs(end[1] - start[1])
+                )
+                warn_scroll_distance_clamped(direction, scroll_distance, applied)
+        else:
+            # Upstream scrollRaw: start at a quarter of the axis so a single
+            # explicit-distance gesture keeps (n-1)/n of the screen as travel.
+            scroll_distance = _round_half_up(distance)
+            start_axis = _round_half_up(
+                axis_size / 4 if forward else axis_size * 3 / 4
+            )
+            end_axis = (
+                start_axis + scroll_distance
+                if forward
+                else start_axis - scroll_distance
+            )
+            end_axis = min(max(end_axis, 0), axis_size)
+            if horizontal:
+                start, end = (start_axis, center_y), (end_axis, center_y)
+            else:
+                start, end = (center_x, start_axis), (center_x, end_axis)
 
-        fx, fy = self._to_physical(*from_point)
-        tx, ty = self._to_physical(*to_point)
+        fx, fy = self._to_physical(*start)
+        tx, ty = self._to_physical(*end)
         await self._run_adb_command([
             "-s", self.device_id, "shell", "input", "swipe",
             str(fx), str(fy), str(tx), str(ty), str(duration),
@@ -502,9 +630,10 @@ class AndroidDevice(AbstractInterface):
     ) -> None:
         """Scroll in direction.
 
-        `point` is the gesture center (usually a located region). Scroll
-        directions describe the content to reveal, i.e. the opposite of the
-        finger movement used by swipe.
+        `point` is the gesture origin (usually a located region) and the
+        gesture travels toward the matching screen edge. Scroll directions
+        describe the content to reveal, i.e. the opposite of the finger
+        movement used by swipe.
         """
         try:
             finger_direction = {
@@ -517,32 +646,37 @@ class AndroidDevice(AbstractInterface):
                 raise ValueError(f"Invalid scroll direction: {direction}")
 
             if (scroll_type or "").startswith("scrollTo"):
-                # Upstream scrollUntil*: 10 fast drags toward the edge, then a
-                # 1s settle window before the next observation.
+                # Upstream scrollUntil*: repeated fast gestures anchored from
+                # the located point to the target screen edge, then a 1s
+                # settle window before the next observation.
                 if not self._screen_size:
                     await self._get_screen_size()
-                axis = (
-                    self._screen_size.height
-                    if direction in ("up", "down")
-                    else self._screen_size.width
-                )
-                scroll_distance = int(distance) if distance else int(axis * 0.8)
-                for _ in range(10):
-                    await self._swipe_direction(
-                        finger_direction,
-                        scroll_distance,
-                        point=point,
-                        duration=100,
-                    )
+                width = self._screen_size.width
+                height = self._screen_size.height
+                if point is not None:
+                    start = (_round_half_up(point[0]), _round_half_up(point[1]))
+                    end = {
+                        "up": (start[0], height),
+                        "down": (start[0], 0),
+                        "left": (width, start[1]),
+                        "right": (0, start[1]),
+                    }[direction]
+                    for _ in range(DEFAULT_SCROLL_UNTIL_TIMES):
+                        await self.swipe(
+                            start[0], start[1], end[0], end[1],
+                            duration=DEFAULT_FAST_SCROLL_DURATION,
+                        )
+                else:
+                    for _ in range(DEFAULT_SCROLL_UNTIL_TIMES):
+                        await self._swipe_direction(
+                            finger_direction,
+                            distance=9999999,
+                            duration=DEFAULT_FAST_SCROLL_DURATION,
+                        )
                 await asyncio.sleep(1)
                 return
 
-            await self._swipe_direction(
-                finger_direction,
-                distance,
-                point=point,
-                duration=1000 if distance is None and point is None else 300,
-            )
+            await self._swipe_direction(finger_direction, distance, point=point)
 
         except Exception as e:
             logger.error(f"Failed to scroll {direction}: {e}")

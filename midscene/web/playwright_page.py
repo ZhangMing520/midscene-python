@@ -803,10 +803,21 @@ class PlaywrightWebPage(AbstractInterface):
                     )
                     return
 
-            distance = distance or 500
-
+            horizontal = direction in ("left", "right")
+            viewport = self.page.viewport_size or {"width": 1280, "height": 720}
             if point:
                 await self.page.mouse.move(point[0], point[1])
+            else:
+                # An unmoved pointer keeps the wheel event on whatever the
+                # browser last hovered; center it over the page first.
+                await self.page.mouse.move(
+                    viewport["width"] // 2, viewport["height"] // 2
+                )
+
+            if distance is None:
+                distance = (
+                    viewport["width"] if horizontal else viewport["height"]
+                ) * 0.7
 
             if direction == "down":
                 await self.page.mouse.wheel(0, distance)

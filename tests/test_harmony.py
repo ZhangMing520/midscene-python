@@ -302,6 +302,45 @@ class TestHarmonyDevice:
         assert 0 <= tx <= 1260
         assert 0 <= ty <= 2720
 
+    def test_assert_scroll_direction_rejects_bad_travel(self):
+        from midscene.harmony.device import _assert_scroll_direction
+
+        size = {"width": 1260, "height": 2720}
+        _assert_scroll_direction((100, 100), (100, 200), "up", size)
+        with pytest.raises(ValueError, match="inside the viewport"):
+            _assert_scroll_direction((2000, 100), (2000, 200), "up", size)
+        with pytest.raises(ValueError, match="No space to scroll up"):
+            _assert_scroll_direction((100, 100), (100, 100), "up", size)
+        with pytest.raises(ValueError, match="No space to scroll down"):
+            _assert_scroll_direction((100, 50), (100, 100), "down", size)
+
+    @pytest.mark.asyncio
+    async def test_scroll_keeps_located_origin_when_clamping(self):
+        device = _device()
+        await device.scroll("down", 200, point=[100, 200])
+        flings = [c for c in device.hdc.calls if c[0] == "fling"]
+        assert flings
+        _, fx, fy, tx, ty, _speed = flings[0]
+        # clamps the endpoint to the safe margin, not the origin
+        assert (fx, fy, tx, ty) == (100, 200, 100, 50)
+
+    @pytest.mark.asyncio
+    async def test_scroll_to_edge_uses_anchored_flings(self):
+        device = _device()
+        with patch("midscene.harmony.device.asyncio.sleep", AsyncMock()):
+            await device.scroll("up", scroll_type="scrollToTop", point=[100, 200])
+        flings = [c for c in device.hdc.calls if c[0] == "fling"]
+        assert len(flings) == 10
+        assert all(c[1:5] == (100, 200, 100, 2670) for c in flings)
+
+    @pytest.mark.asyncio
+    async def test_scroll_to_edge_rejects_reverse_gesture(self):
+        device = _device()
+        with pytest.raises(ValueError, match="No space to scroll up"):
+            await device.scroll(
+                "up", scroll_type="scrollToTop", point=[100, 2700]
+            )
+
     @pytest.mark.asyncio
     async def test_swipe_finger_convention(self):
         device = _device()

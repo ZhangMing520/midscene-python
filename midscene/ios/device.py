@@ -269,9 +269,23 @@ class IOSDevice(AbstractInterface):
         if boundary:
             await self._scroll_until_boundary(boundary, point=point)
             return
+        await self._scroll_in_direction(direction, distance, point)
+
+    async def _scroll_in_direction(
+        self,
+        direction: str,
+        distance: Optional[int] = None,
+        point: Optional[List[float]] = None,
+        duration: float = 500.0,
+    ) -> None:
+        """Bounded gesture from the chosen touch origin (upstream).
+
+        A large distance clips the endpoint, never the origin: moving the
+        origin could avoid a nested scroll container.
+        """
         size = await self.size()
         width, height = size["width"], size["height"]
-        if not distance and not point:
+        if distance is None and not point:
             # upstream scrollDefault: cross the central 70% slowly, so the
             # release velocity stays below the point where iOS flings past the
             # viewport.
@@ -288,19 +302,33 @@ class IOSDevice(AbstractInterface):
                 max(1000, round(math.hypot(to_x - from_x, to_y - from_y) / 0.4)),
             )
             return
-        # upstream defaults: height/3 vertically, width * 0.7 horizontally
-        default = (
-            round(height / 3) if direction in ("up", "down") else round(width * 0.7)
+
+        x = round(point[0]) if point else round(width / 2)
+        y = round(point[1]) if point else round(height / 2)
+        if not (
+            math.isfinite(x)
+            and math.isfinite(y)
+            and 0 <= x < width
+            and 0 <= y < height
+        ):
+            raise ValueError("Scroll origin must be inside the viewport")
+
+        horizontal = direction in ("left", "right")
+        amount = distance if distance is not None else (
+            width * 0.7 if horizontal else height / 3
         )
-        scroll_distance = int(distance) if distance else default
-        cx = int(point[0]) if point else width // 2
-        cy = int(point[1]) if point else height // 2
-        vectors = {
-            "down": (0, -scroll_distance), "up": (0, scroll_distance),
-            "right": (-scroll_distance, 0), "left": (scroll_distance, 0),
-        }
-        dx, dy = vectors[direction]
-        await self._swipe_coordinates(cx, cy, cx + dx, cy + dy)
+        if not math.isfinite(amount) or amount <= 0:
+            raise ValueError("Scroll distance must be positive and finite")
+
+        delta = round(amount) * (1 if direction in ("up", "left") else -1)
+        end_x = max(1, min(width - 1, x + delta)) if horizontal else x
+        end_y = y if horizontal else max(1, min(height - 1, y + delta))
+        travel = (end_x - x) if horizontal else (end_y - y)
+        if travel * delta <= 0:
+            raise ValueError(
+                "No room to scroll from this origin in the requested direction"
+            )
+        await self._swipe_coordinates(x, y, end_x, end_y, duration)
 
     async def _scroll_until_boundary(
         self, direction: str, point: Optional[List[float]] = None
@@ -318,17 +346,14 @@ class IOSDevice(AbstractInterface):
             anchors = {
                 "up": (width / 2, height * 0.2),
                 "down": (width / 2, height * 0.8),
-                "left": (width * 0.8, height / 2),
-                "right": (width * 0.2, height / 2),
+                # Reveal left content by moving the finger right, with room to
+                # travel (and symmetrically for the right edge).
+                "left": (width * 0.2, height / 2),
+                "right": (width * 0.8, height / 2),
             }
             start_x, start_y = (round(v) for v in anchors[direction])
         extent = width if direction in ("left", "right") else height
         distance = round(extent * SCROLL_BOUNDARY_DISTANCE_RATIO)
-        vectors = {
-            "up": (0, distance), "down": (0, -distance),
-            "left": (distance, 0), "right": (-distance, 0),
-        }
-        dx, dy = vectors[direction]
         # upstream only insists on 3 unchanged frames when scrolling right;
         # horizontal carousels settle after one, the rest use a single check.
         max_unchanged = 3 if direction == "right" else 1
@@ -355,8 +380,8 @@ class IOSDevice(AbstractInterface):
                 return
 
             last_screenshot = current
-            await self._swipe_coordinates(
-                start_x, start_y, start_x + dx, start_y + dy, SCROLL_FLING_MS
+            await self._scroll_in_direction(
+                direction, distance, [start_x, start_y], SCROLL_FLING_MS
             )
             # wait for the gesture plus its inertia
             await asyncio.sleep(SCROLL_INERTIA_MS / 1000.0)

@@ -307,6 +307,119 @@ class TestAndroidActions:
                 {}, Mock(), None
             )
 
+    def test_calculate_scroll_end_point_clamps_to_edge(self):
+        from midscene.android.device import calculate_scroll_end_point
+
+        assert calculate_scroll_end_point((100, 100), 0, 500, 1080, 1920) == (
+            100,
+            600,
+        )
+        # 20px of room is used as-is; the 50px floor only applies when there
+        # is at least that much travel available.
+        assert calculate_scroll_end_point((100, 1900), 0, 500, 1080, 1920) == (
+            100,
+            1920,
+        )
+        # A short request is kept as-is; the upstream 50px floor only bounds the
+        # available-space clamp, it does not grow the requested travel.
+        assert calculate_scroll_end_point((100, 100), 0, 30, 1080, 1920) == (
+            100,
+            130,
+        )
+        assert calculate_scroll_end_point((1000, 100), 500, 0, 1080, 1920) == (
+            1080,
+            100,
+        )
+
+    def test_calculate_scroll_end_point_rejects_bad_gestures(self):
+        from midscene.android.device import calculate_scroll_end_point
+
+        with pytest.raises(ValueError, match="finite and inside the viewport"):
+            calculate_scroll_end_point((-1, 10), 0, 100, 1080, 1920)
+        with pytest.raises(ValueError, match="too small to move"):
+            calculate_scroll_end_point((10, 10), 0, 0, 1080, 1920)
+        with pytest.raises(ValueError, match="No space to scroll"):
+            calculate_scroll_end_point((100, 1920), 0, 500, 1080, 1920)
+        with pytest.raises(ValueError, match="No space to scroll"):
+            calculate_scroll_end_point((0, 100), -500, 0, 1080, 1920)
+
+    @pytest.mark.asyncio
+    async def test_android_scroll_anchors_at_located_point(self):
+        from midscene.android.device import AndroidDevice
+        from midscene.core.types import Size
+
+        device = AndroidDevice.__new__(AndroidDevice)
+        device._connected = True
+        device.device_id = "emulator-5554"
+        device._screen_size = Size(width=1080, height=1920)
+        device._physical_size = None
+        commands: List[list] = []
+
+        async def fake_run(cmd):
+            commands.append(cmd)
+            return ""
+
+        device._run_adb_command = fake_run
+        # scroll up reveals upper content, so the finger travels down
+        await device.scroll("up", distance=500, point=(100, 100))
+        assert commands == [
+            [
+                "-s", "emulator-5554", "shell", "input", "swipe",
+                "100", "100", "100", "600", "1000",
+            ]
+        ]
+
+    @pytest.mark.asyncio
+    async def test_android_scroll_to_edge_repeats_anchored_gesture(self):
+        from midscene.android.device import AndroidDevice
+        from midscene.core.types import Size
+
+        device = AndroidDevice.__new__(AndroidDevice)
+        device._connected = True
+        device.device_id = "emulator-5554"
+        device._screen_size = Size(width=1080, height=1920)
+        device._physical_size = None
+        commands: List[list] = []
+
+        async def fake_run(cmd):
+            commands.append(cmd)
+            return ""
+
+        device._run_adb_command = fake_run
+        with patch("midscene.android.device.asyncio.sleep", AsyncMock()):
+            await device.scroll(
+                "down", scroll_type="scrollToBottom", point=(100, 100)
+            )
+        assert len(commands) == 10
+        # scroll down reveals lower content: the finger travels up to y=0
+        assert all(
+            cmd[5:10] == ["100", "100", "100", "0", "100"] for cmd in commands
+        )
+
+    @pytest.mark.asyncio
+    async def test_android_scroll_to_edge_does_not_need_a_point(self):
+        from midscene.android.device import AndroidDevice
+        from midscene.core.types import Size
+
+        device = AndroidDevice.__new__(AndroidDevice)
+        device._connected = True
+        device.device_id = "emulator-5554"
+        device._screen_size = Size(width=1080, height=1920)
+        device._physical_size = None
+        commands: List[list] = []
+
+        async def fake_run(cmd):
+            commands.append(cmd)
+            return ""
+
+        device._run_adb_command = fake_run
+        with patch("midscene.android.device.asyncio.sleep", AsyncMock()):
+            await device.scroll("up", scroll_type="scrollToTop")
+        assert len(commands) == 10
+        # finger travels down from the upper quarter to the bottom edge
+        assert commands[0][6] == "480"
+        assert commands[0][8] == "1920"
+
 
 # ---------------------------------------------------------------------------
 # P1-3 domIncluded

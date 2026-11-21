@@ -619,7 +619,14 @@ class SeleniumWebPage(AbstractInterface):
                     self.driver.execute_script("window.scrollTo(0, 0);")
                     return
 
-            distance = int(float(distance or 500))
+            horizontal = direction in ("left", "right")
+            if distance is None:
+                window = self.driver.get_window_size()
+                distance = (
+                    window["width"] if horizontal else window["height"]
+                ) * 0.7
+            else:
+                distance = int(float(distance))
 
             offsets = {
                 "down": (0, distance),

@@ -7,9 +7,10 @@ from screen edges because uitest ignores boundary flings.
 
 import asyncio
 import base64
+import math
 import tempfile
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Sequence
 
 from loguru import logger
 
@@ -29,6 +30,34 @@ from .swipe import resolve_swipe_speed
 
 SCREEN_EDGE_MARGIN = 50
 DEFAULT_FAST_SWIPE_SPEED = 2000
+
+
+def _assert_scroll_direction(
+    start: Sequence[float],
+    end: Sequence[float],
+    direction: str,
+    size: Dict[str, int],
+) -> None:
+    """Keep the located origin and reject reverse or stationary gestures."""
+    start_x, start_y = float(start[0]), float(start[1])
+    end_x, end_y = float(end[0]), float(end[1])
+    width, height = size["width"], size["height"]
+    if not all(
+        math.isfinite(value) for value in (start_x, start_y, end_x, end_y)
+    ) or not (0 <= start_x < width and 0 <= start_y < height):
+        raise ValueError("Scroll origin must be finite and inside the viewport")
+
+    travel = {
+        "down": start_y - end_y,
+        "up": end_y - start_y,
+        "left": end_x - start_x,
+        "right": start_x - end_x,
+    }[direction]
+    if not math.isfinite(travel) or travel <= 0:
+        raise ValueError(
+            f"No space to scroll {direction} from the located point; "
+            "choose a point farther from the screen edge"
+        )
 MAX_SCROLL_DISTANCE = 9999999
 
 
@@ -241,6 +270,9 @@ class HarmonyDevice(AbstractInterface):
                 "right": (max(SCREEN_EDGE_MARGIN, sx - scroll_distance), sy),
             }
             ex, ey = endpoints[direction]
+            _assert_scroll_direction(
+                (sx, sy), (ex, ey), direction, {"width": width, "height": height}
+            )
             await hdc.fling(sx, sy, ex, ey, DEFAULT_FAST_SWIPE_SPEED)
             return
 
@@ -277,6 +309,13 @@ class HarmonyDevice(AbstractInterface):
             "right": (SCREEN_EDGE_MARGIN, sy),
         }
         tx, ty = targets[direction]
+        if point:
+            _assert_scroll_direction(
+                (sx, sy),
+                (tx, ty),
+                direction,
+                {"width": width, "height": height},
+            )
         for _ in range(10):
             await hdc.fling(sx, sy, tx, ty, DEFAULT_FAST_SWIPE_SPEED)
         await asyncio.sleep(1)

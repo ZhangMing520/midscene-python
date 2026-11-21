@@ -6,6 +6,7 @@ All WDA HTTP calls go through a fake transport; no device required.
 import asyncio
 import re
 from typing import Any, Dict, List, Optional
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -413,6 +414,49 @@ class TestIOSDevice:
         # scrollLeft brings the left content in: finger travels right
         assert moves[0]["x"] == 100
         assert moves[-1]["x"] == 100 + round(390 * 0.7)
+
+    @pytest.mark.asyncio
+    async def test_scroll_clips_the_endpoint_not_the_origin(self):
+        """A long requested distance must not move the located touch origin."""
+        device, transport = self._device()
+        await device.scroll("left", distance=200, point=[380, 300])
+        moves = [
+            a for a in transport.calls_for("/actions")[0][2]["actions"][0]["actions"]
+            if a["type"] == "pointerMove"
+        ]
+        assert moves[0]["x"] == 380
+        assert moves[-1]["x"] == 389  # clipped to width - 1
+        assert moves[-1]["y"] == 300
+
+    @pytest.mark.asyncio
+    async def test_scroll_rejects_reverse_stationary_and_outside_origins(self):
+        device, _ = self._device()
+        with pytest.raises(ValueError, match="No room to scroll"):
+            await device.scroll("left", distance=100, point=[389, 300])
+        with pytest.raises(ValueError, match="positive and finite"):
+            await device.scroll("down", distance=0, point=[100, 300])
+        with pytest.raises(ValueError, match="inside the viewport"):
+            await device.scroll("down", distance=100, point=[400, 300])
+
+    @pytest.mark.asyncio
+    async def test_scroll_until_boundary_anchors_horizontal_gestures(self):
+        """Reveal left content by starting near the left edge (0.2w), and
+        symmetrically start near 0.8w when revealing right content."""
+        device, _ = self._device()
+        calls = []
+
+        async def fake_scroll(direction, distance=None, point=None, duration=500.0):
+            calls.append((direction, tuple(point)))
+            raise RuntimeError("stop")
+
+        device._scroll_in_direction = fake_scroll
+        device.screenshot_base64 = AsyncMock(return_value="frame")
+        with patch("midscene.ios.device.asyncio.sleep", AsyncMock()):
+            with pytest.raises(RuntimeError, match="stop"):
+                await device._scroll_until_boundary("left")
+            with pytest.raises(RuntimeError, match="stop"):
+                await device._scroll_until_boundary("right")
+        assert calls == [("left", (78, 422)), ("right", (312, 422))]
 
     @pytest.mark.asyncio
     async def test_untargeted_scroll_uses_the_slow_default_gesture(self):

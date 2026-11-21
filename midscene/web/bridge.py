@@ -514,18 +514,32 @@ class BridgeWebPage(AbstractInterface):
     async def scroll(
         self, direction: str, distance: Optional[int] = None, **kwargs
     ) -> None:
-        distance = distance or 500
+        if direction not in ("up", "down", "left", "right"):
+            raise ValueError(f"Invalid scroll direction: {direction}")
+        server = self._require_server()
+        horizontal = direction in ("left", "right")
+        point = kwargs.get("point")
+        if distance is None or not point:
+            size = await server.call("size", [])
+            if distance is None:
+                distance = (
+                    size["width"] if horizontal else size["height"]
+                ) * 0.7
+            if not point:
+                await server.call(
+                    "mouse.move", [size["width"] // 2, size["height"] // 2]
+                )
+        elif point:
+            await server.call("mouse.move", [point[0], point[1]])
         if direction == "down":
             delta_x, delta_y = 0, distance
         elif direction == "up":
             delta_x, delta_y = 0, -distance
         elif direction == "right":
             delta_x, delta_y = distance, 0
-        elif direction == "left":
-            delta_x, delta_y = -distance, 0
         else:
-            raise ValueError(f"Invalid scroll direction: {direction}")
-        await self._require_server().call("mouse.wheel", [delta_x, delta_y])
+            delta_x, delta_y = -distance, 0
+        await server.call("mouse.wheel", [delta_x, delta_y])
 
     async def evaluate_javascript(self, script: str) -> Any:
         """Evaluate JavaScript through the extension's debugger channel."""
