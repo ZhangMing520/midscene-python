@@ -1,5 +1,8 @@
 """Workflow reporting (upstream packages/core/src/test-runner/reporting)."""
 
+from midscene.core.test_runner.reporting.execution_record import (
+    execution_records_to_report_input,
+)
 from midscene.core.test_runner.reporting.metrics import (
     collect_test_run_report_metrics,
     sum_test_run_report_metrics,
@@ -26,6 +29,7 @@ __all__ = [
     "TRUNCATED_VALUE",
     "build_test_run_report_plan",
     "collect_test_run_report_metrics",
+    "execution_records_to_report_input",
     "sanitize_report_error",
     "sanitize_report_text",
     "sanitize_report_value",

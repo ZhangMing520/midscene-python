@@ -364,3 +364,76 @@ async def test_resource_scope_snapshot_and_dispose():
     snapshot = get_resource_cleanup_snapshot(scope.signal)
     assert snapshot["status"] == "not-required"
     scope.dispose()
+
+
+def _record(**overrides):
+    record = {
+        "runId": "run-1",
+        "attemptIndex": 0,
+        "sourcePath": "/tmp/workflow.yaml",
+        "platform": "cli",
+        "document": _document([_step(prompt="hi")]),
+        "status": "success",
+        "startedAt": "2026-01-01T00:00:00.000Z",
+        "endedAt": "2026-01-01T00:00:01.000Z",
+        "durationMs": 1000,
+        "cleanupErrors": [],
+        "outputs": {},
+        "reportPaths": [],
+    }
+    record.update(overrides)
+    return record
+
+
+def test_execution_record_without_execution_is_not_run():
+    from midscene.core.test_runner.execution_record import execution_record_to_result
+
+    result = execution_record_to_result(_record())
+    assert result["document"]["documentRunId"] == "run-1"
+    assert result["document"]["status"] == "success"
+    assert result["document"]["plan"]["documentId"] == "doc-1"
+    assert result["cases"][0]["status"] == "not-run"
+    assert result["cases"][0]["notRunReason"] == "document-start-failed"
+
+
+def test_execution_record_surfaces_host_errors():
+    from midscene.core.test_runner.execution_record import execution_record_to_result
+
+    result = execution_record_to_result(
+        _record(setupError=RuntimeError("no env"))
+    )
+    document = result["document"]
+    assert document["status"] == "failed"
+    phases = [host["phase"] for host in document["hostErrors"]]
+    assert phases == ["setup"]
+
+
+def test_execution_records_project_latest_invocation():
+    from midscene.core.test_runner.reporting.execution_record import (
+        execution_records_to_report_input,
+    )
+
+    records = [
+        _record(runId="run-1"),
+        _record(
+            runId="run-2",
+            attemptIndex=1,
+            status="failed",
+            execution={
+                "document": {"status": "success", "cases": []},
+                "cases": [
+                    {"caseId": "case-1", "status": "failed"},
+                ],
+            },
+        ),
+    ]
+    report = execution_records_to_report_input(records, {"runId": "batch-1"})
+    assert report["status"] == "failed"
+    # Only the latest invocation of a document counts toward the summary.
+    assert report["summary"]["total"] == 1
+    assert report["summary"]["failed"] == 1
+    # Both invocations are projected, but only the latest counts for status.
+    assert len(report["projects"][0]["documents"]) == 2
+    assert report["projects"][0]["retry"] == 1
+    run_ids = {case["documentRunId"] for case in report["projects"][0]["cases"]}
+    assert run_ids == {"run-1", "run-2"}
