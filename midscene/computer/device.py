@@ -13,6 +13,7 @@ from typing import Dict, List, Optional, Tuple
 
 from loguru import logger
 
+from midscene.computer.utils import is_mac as _is_mac
 from midscene.core.types import (
     AbstractInterface,
     InterfaceType,
@@ -410,10 +411,4 @@ def _normalize_key(key: str) -> str:
         # itself (isShiftCharacter); lowercasing here would type the wrong glyph.
         return text
     return _KEY_ALIASES.get(lowered, lowered)
-
-
-def _is_mac() -> bool:
-    import platform
-
-    return platform.system() == "Darwin"
 
