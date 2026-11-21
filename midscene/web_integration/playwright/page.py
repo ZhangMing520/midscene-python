@@ -12,9 +12,10 @@ from playwright.async_api import async_playwright, Page, Browser, BrowserContext
 from loguru import logger
 
 from midscene.core.types import (
-    AbstractInterface, InterfaceType, UIContext, BaseElement, UINode, UITree,
+    AbstractInterface, InterfaceType, UIContext, UINode, UITree,
     Size, Rect, NodeType, FileChooserHandler, FileChooserRegistration
 )
+from midscene.web_integration.web_element import PlaywrightElement
 from midscene.core.ai_model.workflows.insight.order_sensitive import resolve_order_sensitive
 
 INPUT_STRATEGIES = ("legacy", "sequential", "bulk")
@@ -205,31 +206,6 @@ _RECT_FOR_XPATH_JS = """(xpath) => {
     height: rect.height,
   };
 }"""
-
-
-class PlaywrightElement(BaseElement):
-    """Playwright element wrapper"""
-    
-    def __init__(self, page: Page, selector: str, **kwargs):
-        self._page = page
-        self._selector = selector
-        super().__init__(**kwargs)
-    
-    async def tap(self) -> None:
-        """Click this element"""
-        try:
-            await self._page.click(self._selector)
-        except Exception as e:
-            logger.error(f"Failed to click element: {e}")
-            raise
-    
-    async def input_text(self, text: str) -> None:
-        """Input text to this element"""
-        try:
-            await self._page.fill(self._selector, text)
-        except Exception as e:
-            logger.error(f"Failed to input text: {e}")
-            raise
 
 
 class PlaywrightWebPage(AbstractInterface):

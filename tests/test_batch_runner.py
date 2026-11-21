@@ -6,8 +6,8 @@ import json
 
 import pytest
 
-from midscene.cli.batch_runner import (
-    BatchRunner,
+from midscene.cli.batch_runner import BatchRunner
+from midscene.cli.yaml_batch_executor import (
     load_batch_config,
     merge_web_overrides,
     parse_batch_config,
