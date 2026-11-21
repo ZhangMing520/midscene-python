@@ -12,7 +12,6 @@ from typing import Dict, List, Optional
 
 from loguru import logger
 
-UI_INPUT_SPEED_RANGE = {"min": 200, "max": 40000}
 SUPPORTED_STRING_KEY_EVENTS = {"Back", "Home", "Power"}
 NUMERIC_KEY_EVENT_PATTERN = re.compile(r"^\d+$")
 UI_INPUT_ERROR_PATTERN = re.compile(

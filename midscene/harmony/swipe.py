@@ -3,7 +3,7 @@
 import math
 from typing import Dict
 
-from midscene.harmony.hdc import UI_INPUT_SPEED_RANGE
+from midscene.harmony.hdc_constraints import UI_INPUT_SPEED_RANGE
 
 DEFAULT_SWIPE_DURATION_MS = 300
 
