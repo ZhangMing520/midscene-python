@@ -3,6 +3,10 @@
 from midscene.core.test_runner.reporting.execution_record import (
     execution_records_to_report_input,
 )
+from midscene.core.test_runner.reporting.merge_report import (
+    MergeTestRunReportSource,
+    merge_test_run_report_dumps,
+)
 from midscene.core.test_runner.reporting.metrics import (
     collect_test_run_report_metrics,
     sum_test_run_report_metrics,
@@ -30,12 +34,14 @@ __all__ = [
     "MAX_OBJECT_KEYS",
     "MAX_SERIALIZED_BYTES",
     "MAX_STRING_LENGTH",
+    "MergeTestRunReportSource",
     "TRUNCATED_VALUE",
     "build_test_run_report_dump",
     "build_test_run_report_plan",
     "collect_test_run_report_metrics",
     "collect_test_run_report_sources",
     "execution_records_to_report_input",
+    "merge_test_run_report_dumps",
     "sanitize_report_error",
     "sanitize_report_text",
     "sanitize_report_value",

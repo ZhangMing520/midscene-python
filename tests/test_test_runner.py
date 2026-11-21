@@ -717,6 +717,163 @@ def test_build_test_run_report_dump_groups_document_attempts():
     ]
 
 
+def _built_dump(**overrides):
+    from midscene.core.test_runner.reporting.test_run_report import (
+        build_test_run_report_dump,
+    )
+
+    return build_test_run_report_dump(
+        _report_input(**overrides),
+        {"sources": [], "metrics": {}, "diagnostics": []},
+    )
+
+
+def test_merge_test_run_report_dumps_namespaces_ids():
+    from midscene.core.test_runner.reporting.merge_report import (
+        merge_test_run_report_dumps,
+    )
+
+    first = _built_dump()
+    second = _built_dump(runId="batch-2")
+    merged = merge_test_run_report_dumps(
+        [
+            {
+                "reportId": "report-a",
+                "sourcePath": "/tmp/a.json",
+                "attributes": {"testStatus": "passed"},
+                "dump": first,
+            },
+            {
+                "reportId": "report-b",
+                "sourcePath": "/tmp/b.json",
+                "attributes": {"testStatus": "passed"},
+                "dump": second,
+            },
+        ],
+        first["metrics"],
+        "merged-1",
+    )
+    assert merged["runId"] == "merged-1"
+    assert merged["status"] == "success"
+    assert merged["summary"]["total"] == 2
+    assert merged["startedAt"] == "2026-01-01T00:00:00.000Z"
+    assert merged["endedAt"] == "2026-01-01T00:00:02.000Z"
+    assert [project["projectId"] for project in merged["projects"]] == [
+        "report-a:project-1",
+        "report-b:project-1",
+    ]
+    document = merged["projects"][0]["documents"][0]
+    assert document["documentId"] == "report-a:doc-1"
+    case = document["cases"][0]
+    assert case["caseId"] == "report-a:case-1"
+    assert case["attempts"][0]["attemptId"] == "report-a:case-run-1"
+    assert case["attempts"][0]["steps"][0]["id"] == "report-a:case-run-1:steps:0"
+    assert merged["metrics"]["collection"]["status"] == "complete"
+
+
+def test_merge_test_run_report_dumps_retains_host_failure():
+    from midscene.core.test_runner.reporting.merge_report import (
+        merge_test_run_report_dumps,
+    )
+
+    dump = _built_dump()
+    merged = merge_test_run_report_dumps(
+        [
+            {
+                "reportId": "report-a",
+                "sourcePath": "/tmp/a.json",
+                "attributes": {
+                    "testStatus": "failed",
+                    "testTitle": "host case",
+                    "testId": "host-1",
+                },
+                "dump": dump,
+            }
+        ],
+        dump["metrics"],
+        "merged-2",
+    )
+    assert merged["status"] == "failed"
+    assert merged["summary"]["documentFailures"] == 1
+    document = merged["projects"][0]["documents"][0]
+    host_step = document["afterAll"][-1]
+    assert host_step["node"] == "runner:host-result"
+    assert host_step["status"] == "failed"
+    assert host_step["error"]["name"] == "HostTestError"
+    assert merged["diagnostics"][-1]["code"] == "run-infrastructure-error"
+
+
+def test_merge_test_run_report_dumps_wraps_agent_report():
+    from midscene.core.test_runner.reporting.merge_report import (
+        merge_test_run_report_dumps,
+    )
+    from midscene.core.test_runner.reporting.metrics import (
+        sum_test_run_report_metrics,
+    )
+
+    merged = merge_test_run_report_dumps(
+        [
+            {
+                "reportId": "agent-1",
+                "sourcePath": "/tmp/agent.json",
+                "attributes": {
+                    "testStatus": "passed",
+                    "testTitle": "agent case",
+                    "testId": "agent-case",
+                },
+                "timing": {
+                    "startedAt": "2026-01-01T00:00:00.000Z",
+                    "endedAt": "2026-01-01T00:00:01.000Z",
+                    "durationMs": 1000,
+                },
+            }
+        ],
+        sum_test_run_report_metrics([]),
+        "merged-3",
+    )
+    project = merged["projects"][0]
+    assert project["projectId"] == "agent-1:agent-report"
+    assert project["platform"] == "agent"
+    case = project["documents"][0]["cases"][0]
+    assert case["status"] == "success"
+    assert case["attempts"][0]["attemptId"] == "agent-1:agent-report"
+    assert merged["status"] == "success"
+
+
+def test_merge_test_run_report_dumps_rejects_invalid_timestamps():
+    from midscene.core.test_runner.reporting.merge_report import (
+        merge_test_run_report_dumps,
+    )
+
+    dump = _built_dump()
+    dump["startedAt"] = "not-a-date"
+    with pytest.raises(ValueError):
+        merge_test_run_report_dumps(
+            [
+                {
+                    "reportId": "report-a",
+                    "sourcePath": "/tmp/a.json",
+                    "attributes": {"testStatus": "passed"},
+                    "dump": dump,
+                }
+            ],
+            dump["metrics"],
+            "merged-4",
+        )
+    with pytest.raises(ValueError):
+        merge_test_run_report_dumps(
+            [
+                {
+                    "reportId": "agent-1",
+                    "sourcePath": "/tmp/agent.json",
+                    "attributes": {"testStatus": "skipped"},
+                }
+            ],
+            dump["metrics"],
+            "merged-5",
+        )
+
+
 def test_build_test_run_report_dump_requires_document_run_id():
     from midscene.core.test_runner.reporting.test_run_report import (
         build_test_run_report_dump,
