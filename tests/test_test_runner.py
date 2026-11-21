@@ -874,6 +874,35 @@ def test_merge_test_run_report_dumps_rejects_invalid_timestamps():
         )
 
 
+def test_build_agent_test_run_report_dump_indexes_executions():
+    from midscene.core.test_runner.reporting.agent_report import (
+        build_agent_test_run_report_dump,
+    )
+
+    report = _report_input()
+    document = report["projects"][0]["documents"][0]
+    document["reportScopeId"] = "scope-1"
+    document["beforeAll"] = [
+        _report_step(
+            phase="beforeAll",
+            report={"traces": [{"executionId": "exec-1"}]},
+        )
+    ]
+    dump = build_agent_test_run_report_dump(
+        report,
+        {"executions": [{"id": "exec-1"}, {"id": None}]},
+        {
+            "scopeId": "scope-1",
+            "reportId": "report-1",
+            "sourcePath": "/tmp/agent.json",
+        },
+    )
+    step = dump["projects"][0]["documents"][0]["beforeAll"][0]
+    assert step["agentDetails"] == [{"reportId": "report-1", "executionId": "exec-1"}]
+    assert dump["metrics"]["collection"]["capturedExecutionCount"] == 1
+    assert "diagnostics" not in dump
+
+
 def test_build_test_run_report_dump_requires_document_run_id():
     from midscene.core.test_runner.reporting.test_run_report import (
         build_test_run_report_dump,

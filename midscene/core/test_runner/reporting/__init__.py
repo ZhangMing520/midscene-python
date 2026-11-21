@@ -1,5 +1,8 @@
 """Workflow reporting (upstream packages/core/src/test-runner/reporting)."""
 
+from midscene.core.test_runner.reporting.agent_report import (
+    build_agent_test_run_report_dump,
+)
 from midscene.core.test_runner.reporting.execution_record import (
     execution_records_to_report_input,
 )
@@ -36,6 +39,7 @@ __all__ = [
     "MAX_STRING_LENGTH",
     "MergeTestRunReportSource",
     "TRUNCATED_VALUE",
+    "build_agent_test_run_report_dump",
     "build_test_run_report_dump",
     "build_test_run_report_plan",
     "collect_test_run_report_metrics",
