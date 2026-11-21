@@ -2,7 +2,7 @@
 
 **See interfaces like a human. UI automation and E2E testing in natural language for Web, Android, and Desktop.**
 
-Midscene Python is the Python SDK for [Midscene](https://github.com/web-infra-dev/midscene). It captures a screenshot, asks a vision-language model what to do next, and executes the action through Playwright, Selenium, the Chrome Bridge, ADB, or pyautogui. It can also serve the same capabilities over MCP for AI coding assistants. The AI model layer (prompts, planning/locate/insight protocols, multi-slot configuration and coordinate parsing) is synced with upstream Midscene v1.18.2.
+Midscene Python is the Python SDK for [Midscene](https://github.com/web-infra-dev/midscene). It captures a screenshot, asks a vision-language model what to do next, and executes the action through Playwright, the Chrome Bridge, ADB, or pyautogui. It can also serve the same capabilities over MCP for AI coding assistants. The AI model layer (prompts, planning/locate/insight protocols, multi-slot configuration and coordinate parsing) is synced with upstream Midscene v1.18.2.
 
 [English](README.md) | [简体中文](README.zh.md)
 
@@ -72,7 +72,7 @@ Visual localization does not depend on the UI rendering stack, so the same `Agen
 
 | Platform | Integration |
 | --- | --- |
-| Web | [Playwright](https://midscenejs.com/integrate-with-playwright) or Selenium |
+| Web | [Playwright](https://midscenejs.com/integrate-with-playwright) |
 | Desktop Chrome | [Bridge mode](https://midscenejs.com/bridge-mode) (Chrome extension talks to this SDK over WebSocket) |
 | Android | Devices and emulators through ADB |
 | iOS | Real devices and simulators through WebDriverAgent (WDA / Appium XCUITest) |
@@ -133,14 +133,14 @@ Aligned with the official TypeScript SDK:
 - **Element describer**: `describe_element_at_point`, `verify_element_description_at_point` and `verify_locator` annotate the screenshot with the upstream ring/crosshair marker (or a bordered rect), optionally add a zoomed detail crop (`deepDescribe`), verify the description by re-locating it and retry with deep modes.    
 - **Directory report artifacts**: `AgentOptions(report_artifact_dir=...)` and `midscene run --artifact-dir <dir>` also write the multi-file layout (`report.json` manifest + `data/<reportId>/*.json`), with atomic writes, a publisher lock and `read_report_artifact`.    
 - **Batch lifecycle hooks**: the batch config accepts `maxConcurrentFiles` (alias of `concurrent`), `namespace`, `beforeAll` / `afterAll` / `beforeEach` / `afterEach` YAML scripts and `artifactDir` for a unified test report.    
-- **Web swipe**: `Swipe` is available on Playwright and Selenium; explicit slow `duration` values are honored (never capped as a long press) and the pointer is always released.    
-Not ported from upstream: the official React report visualizer and Studio app (this SDK writes upstream-shaped JSON dumps plus its own single-file HTML viewer and the directory artifact layout above), the Midscene Test framework's TypeScript Nodes and `midscene.config.ts` project runner (the YAML batch runner provides its lifecycle hooks, namespaces and concurrency), Puppeteer (use Playwright or Selenium), the Chrome-extension in-page `EventRecorder` (recorded event lists are supported through `generate_yaml_test` / `generate_markdown_replay` / `generate_playwright_test`), the Playwright `AiFixture`, and the Codex app-server transport (`codex://` base URLs raise `CodexAppServerNotSupportedError`).
+- **Web swipe**: `Swipe` is available on Playwright; explicit slow `duration` values are honored (never capped as a long press) and the pointer is always released.    
+Not ported from upstream: the official React report visualizer and Studio app (this SDK writes upstream-shaped JSON dumps plus its own single-file HTML viewer and the directory artifact layout above), the Midscene Test framework's TypeScript Nodes and `midscene.config.ts` project runner (the YAML batch runner provides its lifecycle hooks, namespaces and concurrency), Puppeteer (use Playwright), the Chrome-extension in-page `EventRecorder` (recorded event lists are supported through `generate_yaml_test` / `generate_markdown_replay` / `generate_playwright_test`), the Playwright `AiFixture`, and the Codex app-server transport (`codex://` base URLs raise `CodexAppServerNotSupportedError`).
 
 ## Planning loop and caching
 
 - `ai_action` runs the upstream-style "plan -> execute -> feedback" loop: each turn emits one action (Tap/Input/Scroll/KeyboardPress, ...), which is executed and then fed back with a fresh screenshot until `<complete>` or the cycle limit (`MIDSCENE_REPLANNING_CYCLE_LIMIT`, default 20) is reached.
 - Caching is enabled by `AgentOptions(cache_id=...)` (or `agent.cache` in a YAML script) and stores plans in `midscene_run/cache/<cache_id>.cache.yaml`; rerunning the same instruction replays the cached actions and falls back to AI planning on any mismatch. `MIDSCENE_CACHE=1` enables caching with the default id when no `cache_id` is set.
-- Element-level locate caching (Playwright / Selenium): after a successful locate the element at the target point is persisted as an XPath feature in the same YAML cache (upstream `interface.cacheFeatureForPoint` parity), and later runs resolve it back to a rect without calling the model. Elements inside iframes are cached through compound XPaths (`...|>>|...`, with frame offsets accumulated as upstream does); a segment matching more than one element is rejected so the AI re-locates instead of clicking the wrong one; order-sensitive descriptions ("the second button") produce index-based XPaths via an AI order-sensitivity judge. Interfaces without these hooks (Android, Bridge), elements inside shadow roots, and cross-origin frames whose document is unreachable still go through AI locate.
+- Element-level locate caching (Playwright): after a successful locate the element at the target point is persisted as an XPath feature in the same YAML cache (upstream `interface.cacheFeatureForPoint` parity), and later runs resolve it back to a rect without calling the model. Elements inside iframes are cached through compound XPaths (`...|>>|...`, with frame offsets accumulated as upstream does); a segment matching more than one element is rejected so the AI re-locates instead of clicking the wrong one; order-sensitive descriptions ("the second button") produce index-based XPaths via an AI order-sensitivity judge. Interfaces without these hooks (Android, Bridge), elements inside shadow roots, and cross-origin frames whose document is unreachable still go through AI locate.
 
 ## Semantic retry
 
@@ -184,7 +184,7 @@ midscene-python/
 │   │   ├── report.py         # report write + HTML template + markdown + CLI helpers
 │   │   ├── types.py          # Interfaces, options and data models
 │   │   └── element_describer.py  # Element description helpers
-│   ├── web_integration/      # Playwright, Selenium and Bridge interfaces
+│   ├── web_integration/      # Playwright and Bridge interfaces
 │   ├── android/              # ADB device and Android agent
 │   ├── computer/             # pyautogui screen capture and OS input
 │   ├── cli/                  # midscene command line

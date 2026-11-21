@@ -72,7 +72,6 @@ def validate_imports(python_path):
     test_imports = [
         "import midscene",
         "import pydantic",
-        "import selenium",
         "import playwright",
         "import pytest",
         "import black",

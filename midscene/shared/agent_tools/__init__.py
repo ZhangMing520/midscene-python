@@ -93,7 +93,7 @@ class AgentTools:
                         "url": {"type": "string", "description": "Page to open first"},
                         "browser": {
                             "type": "string",
-                            "enum": ["playwright", "selenium"],
+                            "enum": ["playwright"],
                             "description": "Browser driver (default playwright)",
                         },
                         "headless": {"type": "boolean", "default": True},
@@ -235,12 +235,8 @@ class AgentTools:
 
 
 async def _default_page_factory(browser: str = "playwright", headless: bool = True):
-    if browser == "selenium":
-        from midscene.web_integration.selenium_page import SeleniumWebPage
-
-        return SeleniumWebPage.create(headless=headless)
     if browser != "playwright":
-        raise ValueError(f"Unsupported browser: {browser}")
+        raise ValueError(f"Unsupported browser: {browser} (only playwright is supported)")
     from midscene.web_integration.playwright_page import PlaywrightWebPage
 
     return await PlaywrightWebPage.create(headless=headless)

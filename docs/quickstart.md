@@ -1,6 +1,6 @@
 # 快速开始 - Midscene Python
 
-Midscene Python 是 [Midscene](https://github.com/web-infra-dev/midscene) 的 Python SDK：截取当前屏幕，交给视觉语言模型判断下一步，再通过 Playwright、Selenium、Chrome Bridge、ADB 或 pyautogui（桌面）执行动作。
+Midscene Python 是 [Midscene](https://github.com/web-infra-dev/midscene) 的 Python SDK：截取当前屏幕，交给视觉语言模型判断下一步，再通过 Playwright、Chrome Bridge、ADB 或 pyautogui（桌面）执行动作。
 
 本指南中的 API、环境变量与 YAML 格式均与当前仓库代码一致；上游 TypeScript 版的使用说明见 [midscenejs.com](https://midscenejs.com/)。
 
@@ -16,7 +16,7 @@ playwright install chromium
 pip install "midscene-python[computer]"
 ```
 
-Selenium 模式需要本机安装 Chrome，Selenium Manager 会自动解析 chromedriver；Android 模式需要 `adb` 在 `PATH` 中，且设备已开启 USB 调试。
+Playwright 模式需要先执行 `playwright install chromium`；Android 模式需要 `adb` 在 `PATH` 中，且设备已开启 USB 调试。
 
 ## 配置模型
 
@@ -85,32 +85,6 @@ midscene model connect
 该命令并行执行规划文本、理解视觉、aiLocate 与默认文本四项检查，任一失败都会以非零状态退出。使用 ChatGPT 订阅（SIWC）时，先执行 `midscene model siwc login`，并设置 `MIDSCENE_MODEL_AUTH_MODE=siwc`。
 
 ## Web 自动化
-
-### Selenium（同步创建，异步调用）
-
-```python
-import asyncio
-
-from midscene import Agent, AgentOptions
-from midscene.web_integration import SeleniumWebPage
-
-
-async def main():
-    with SeleniumWebPage.create(headless=False) as page:
-        await page.navigate_to("https://example.com")
-
-        agent = Agent(page, AgentOptions(cache_id="login-flow"))
-        await agent.ai_act("Log in with demo@example.com and password123")
-        await agent.ai_assert("The dashboard is visible")
-
-        username = await agent.ai_query({"username": "the displayed username"})
-        print(username)
-
-
-asyncio.run(main())
-```
-
-`SeleniumWebPage.create()` 的参数为 `headless`、`window_size=(1920, 1080)`、`user_data_dir`，其余关键字参数会作为 Chrome 启动参数传入。
 
 ### Playwright（异步创建）
 
@@ -415,7 +389,7 @@ flow 指令支持字符串简写或映射形式：
 | `aiSwipe` | 滑动 |
 | `aiAndroidBack` / `aiAndroidHome` / `aiAndroidRecentApps` | Android 导航键 |
 | `sleep` | 等待毫秒数 |
-| `javascript` | 执行页面脚本（Playwright / Selenium） |
+| `javascript` | 执行页面脚本（Playwright） |
 | `launch` / `terminate` | 仅 Android 动作空间：启动包名或 URL、强停应用；值必须是非空字符串 |
 | `runGherkinScenario` | 播放单条 Gherkin 场景：Given/When 走 `ai_act`，Then 走 `ai_assert` |
 | `Finalize` | 上游规划期标记，运行时为空操作 |
@@ -442,7 +416,7 @@ config:
 midscene_run/cache/<cache_id>.cache.yaml
 ```
 
-同一指令重跑时直接回放缓存动作；回放失败会自动回退到 AI 重新规划。元素级定位缓存（Playwright / Selenium）也写在同一个文件中，命中后无需再调用模型。
+同一指令重跑时直接回放缓存动作；回放失败会自动回退到 AI 重新规划。元素级定位缓存（Playwright）也写在同一个文件中，命中后无需再调用模型。
 
 ### 执行报告
 
@@ -490,9 +464,9 @@ Locate model family is required for locate. Configure MIDSCENE_MODEL_FAMILY ...
 
 补上 `MIDSCENE_MODEL_FAMILY`（单独配置定位插槽时则是 `MIDSCENE_LOCATE_MODEL_FAMILY`），否则无法解析模型返回的坐标。
 
-### Chrome 或驱动未找到
+### Chrome 未找到
 
-确认本机已安装 Chrome；Selenium 模式可让 Selenium Manager 自动下载驱动，或手动安装匹配版本的 chromedriver。Playwright 模式需先执行 `playwright install chromium`。
+Playwright 模式需先执行 `playwright install chromium`，或确认本机已安装 Chrome 并让 Playwright 使用它。
 
 ### Android 设备连接失败
 

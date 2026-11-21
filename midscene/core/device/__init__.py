@@ -1495,7 +1495,7 @@ def build_action_space_for(interface_type: str) -> List[DeviceAction]:
             a for a in build_web_action_space() if a.name != "Pinch"
         ] + [_swipe_action("pointer")]
     if interface_type == "web":
-        # Upstream web integration exposes the pointer swipe; the Playwright and
-        # Selenium pages implement it as a mouse drag with an explicit duration.
+        # Upstream web integration exposes the pointer swipe; the Playwright page
+        # implements it as a mouse drag with an explicit duration.
         return build_web_action_space() + [_swipe_action("pointer")]
     return build_web_action_space()

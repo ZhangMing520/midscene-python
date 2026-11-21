@@ -7,7 +7,7 @@ name = "midscene-python"
 description = "Python SDK for Midscene: natural-language UI automation and E2E testing for Web and Android"
 readme = "README.md"
 license = "MIT"
-keywords = ["automation", "AI", "web", "android", "testing", "ui", "selenium", "playwright"]
+keywords = ["automation", "AI", "web", "android", "testing", "ui", "playwright"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -23,7 +23,6 @@ classifiers = [
 requires-python = ">=3.9"
 dependencies = [
     "pydantic>=2.0,<3.0",
-    "selenium>=4.15.0,<5.0",
     "playwright>=1.40.0,<2.0",
     "websockets>=12.0,<16.0",
     "opencv-python>=4.8.0,<5.0",

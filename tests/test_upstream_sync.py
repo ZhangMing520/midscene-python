@@ -2183,32 +2183,6 @@ class TestActionSpaceParity:
 
 class TestPlatformFixes:
     @pytest.mark.asyncio
-    async def test_selenium_scroll_passes_numbers_as_arguments(self):
-        pytest.importorskip("selenium")
-        from midscene.web_integration.selenium_page import SeleniumWebPage
-
-        class Driver:
-            def __init__(self):
-                self.calls = []
-
-            def execute_script(self, script, *args):
-                self.calls.append((script, args))
-                return None
-
-        page = SeleniumWebPage.__new__(SeleniumWebPage)
-        page.driver = Driver()
-
-        await page.scroll("down", distance="120")
-        assert page.driver.calls[-1] == (
-            "window.scrollBy(arguments[0], arguments[1]);",
-            (0, 120),
-        )
-
-        with pytest.raises(ValueError):
-            await page.scroll("down", distance="0);alert(1)//")
-        assert len(page.driver.calls) == 1
-
-    @pytest.mark.asyncio
     async def test_playwright_scroll_defaults_to_viewport_and_centers_mouse(self):
         from midscene.web_integration.playwright_page import PlaywrightWebPage
 
@@ -2262,29 +2236,6 @@ class TestPlatformFixes:
             ("mouse.move", [500, 400]),
             ("mouse.wheel", [0, -560.0]),
         ]
-
-    @pytest.mark.asyncio
-    async def test_selenium_scroll_defaults_to_viewport(self):
-        pytest.importorskip("selenium")
-        from midscene.web_integration.selenium_page import SeleniumWebPage
-
-        class Driver:
-            def __init__(self):
-                self.calls = []
-
-            def get_window_size(self):
-                return {"width": 1000, "height": 800}
-
-            def execute_script(self, script, *args):
-                self.calls.append((script, args))
-
-        page = SeleniumWebPage.__new__(SeleniumWebPage)
-        page.driver = Driver()
-        await page.scroll("left")
-        assert page.driver.calls[-1] == (
-            "window.scrollBy(arguments[0], arguments[1]);",
-            (-700.0, 0),
-        )
 
     @pytest.mark.asyncio
     async def test_android_keyboard_press_arrow_keys(self):
@@ -2387,47 +2338,6 @@ tasks:
         device.swipe = swipe
         await device.drag_and_drop((10, 20), (30, 40))
         assert calls == [(10, 20, 30, 40, 1000)]
-
-    @pytest.mark.asyncio
-    async def test_selenium_drag_and_drop_uses_relative_offsets(self):
-        from midscene.web_integration.selenium_page import SeleniumWebPage
-
-        class FakeChains:
-            def __init__(self):
-                self.calls = []
-
-            def move_by_offset(self, x, y):
-                self.calls.append(("move_by_offset", x, y))
-                return self
-
-            def click_and_hold(self):
-                self.calls.append(("click_and_hold",))
-                return self
-
-            def release(self):
-                self.calls.append(("release",))
-                return self
-
-            def perform(self):
-                self.calls.append(("perform",))
-                return self
-
-            def reset_actions(self):
-                self.calls.append(("reset_actions",))
-
-        page = SeleniumWebPage.__new__(SeleniumWebPage)
-        page._action_chains = FakeChains()
-
-        await page.drag_and_drop((100, 200), (300, 400))
-
-        assert page._action_chains.calls == [
-            ("move_by_offset", 100, 200),
-            ("click_and_hold",),
-            ("move_by_offset", 200, 200),
-            ("release",),
-            ("perform",),
-            ("reset_actions",),
-        ]
 
     @pytest.mark.asyncio
     async def test_bridge_call_response_round_trip(self):

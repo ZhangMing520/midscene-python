@@ -24,9 +24,6 @@ REM Check core dependencies
 findstr /i "pydantic==" requirements.txt >nul 2>&1
 if %errorlevel% equ 0 (echo Success: pydantic) else (echo Error: pydantic & set error=1)
 
-findstr /i "selenium==" requirements.txt >nul 2>&1
-if %errorlevel% equ 0 (echo Success: selenium) else (echo Error: selenium & set error=1)
-
 findstr /i "playwright==" requirements.txt >nul 2>&1
 if %errorlevel% equ 0 (echo Success: playwright) else (echo Error: playwright & set error=1)
 

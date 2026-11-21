@@ -2,7 +2,7 @@
 
 **像人一样理解界面。用自然语言驱动 Web、Android 与桌面的 UI 自动化与端到端测试。**
 
-Midscene Python 是 [Midscene](https://github.com/web-infra-dev/midscene) 的 Python SDK。它截取当前屏幕，交给视觉语言模型判断下一步该做什么，再通过 Playwright、Selenium、Chrome Bridge、ADB 或 pyautogui 执行动作。AI 模型层（提示词、规划/定位/理解协议、多模型插槽、坐标解析）与上游 Midscene v1.18.2 保持同步。
+Midscene Python 是 [Midscene](https://github.com/web-infra-dev/midscene) 的 Python SDK。它截取当前屏幕，交给视觉语言模型判断下一步该做什么，再通过 Playwright、Chrome Bridge、ADB 或 pyautogui 执行动作。AI 模型层（提示词、规划/定位/理解协议、多模型插槽、坐标解析）与上游 Midscene v1.18.2 保持同步。
 
 [English](README.md) | [简体中文](README.zh.md)
 
@@ -72,7 +72,7 @@ await agent.ai_assert("The error message is visible below the email field")
 
 | 平台 | 集成方式 |
 | --- | --- |
-| Web | [Playwright](https://midscenejs.com/integrate-with-playwright) 或 Selenium |
+| Web | [Playwright](https://midscenejs.com/integrate-with-playwright) |
 | 桌面 Chrome | [Bridge 模式](https://midscenejs.com/bridge-mode)（Chrome 扩展通过 WebSocket 与本 SDK 通信） |
 | Android | 通过 ADB 连接真机与模拟器 |
 | iOS | 通过 WebDriverAgent（WDA / Appium XCUITest）连接真机与模拟器 |
@@ -133,14 +133,14 @@ agent = Agent(page, AgentOptions(
 - **元素描述器**：`describe_element_at_point`、`verify_element_description_at_point`、`verify_locator` 会先在截图上绘制上游同款圆环 + 十字标记（或矩形边框），可选追加放大的局部细节图（`deepDescribe`），再通过重新定位校验描述并按需自动切换深度模式重试。    
 - **目录化报告产物**：`AgentOptions(report_artifact_dir=...)` 与 `midscene run --artifact-dir <dir>` 会额外写入多文件布局（`report.json` 清单 + `data/<reportId>/*.json`），原子写入、发布锁，并提供 `read_report_artifact` 读取。    
 - **批跑生命周期钩子**：批跑配置支持 `maxConcurrentFiles`（`concurrent` 别名）、`namespace`、`beforeAll` / `afterAll` / `beforeEach` / `afterEach` YAML 脚本，以及 `artifactDir` 统一测试报告。    
-- **Web 滑动**：Playwright 与 Selenium 支持 `Swipe`；显式设置的慢速 `duration` 不会被当作长按截断，失败时也会释放鼠标。    
-未从上游移植：官方 React 报告可视化器与 Studio 应用（本 SDK 提供上游格式的 JSON dump、单文件 HTML 查看器以及上面的目录化产物）、Midscene Test 框架的 TypeScript Nodes 与 `midscene.config.ts` 工程运行器（YAML 批跑已提供生命周期钩子、namespace 与并发）、Puppeteer（请使用 Playwright 或 Selenium）、Chrome 扩展内的事件录制器 `EventRecorder`（录制好的事件序列可通过 `generate_yaml_test` / `generate_markdown_replay` / `generate_playwright_test` 生成用例）、Playwright `AiFixture`，以及 Codex app-server 传输（`codex://` base URL 会抛 `CodexAppServerNotSupportedError`）。
+- **Web 滑动**：Playwright 支持 `Swipe`；显式设置的慢速 `duration` 不会被当作长按截断，失败时也会释放鼠标。    
+未从上游移植：官方 React 报告可视化器与 Studio 应用（本 SDK 提供上游格式的 JSON dump、单文件 HTML 查看器以及上面的目录化产物）、Midscene Test 框架的 TypeScript Nodes 与 `midscene.config.ts` 工程运行器（YAML 批跑已提供生命周期钩子、namespace 与并发）、Puppeteer（请使用 Playwright）、Chrome 扩展内的事件录制器 `EventRecorder`（录制好的事件序列可通过 `generate_yaml_test` / `generate_markdown_replay` / `generate_playwright_test` 生成用例）、Playwright `AiFixture`，以及 Codex app-server 传输（`codex://` base URL 会抛 `CodexAppServerNotSupportedError`）。
 
 ## 规划循环与缓存
 
 - `ai_action` 采用上游同款「规划 → 执行 → 反馈」循环：每轮输出一个动作（Tap/Input/Scroll/KeyboardPress 等），执行后带新截图反馈重新规划，直到 `<complete>` 或达到循环上限（`MIDSCENE_REPLANNING_CYCLE_LIMIT`，默认 20）。
 - 设置 `AgentOptions(cache_id=...)`（YAML 脚本中为 `agent.cache`）即启用缓存，规划结果写入 `midscene_run/cache/<cache_id>.cache.yaml`，同一指令重跑时直接回放缓存动作，命中失败自动回退 AI 重新规划。未设置 `cache_id` 时，`MIDSCENE_CACHE=1` 会用默认缓存 id 启用缓存。
-- 元素级定位缓存（Playwright / Selenium）：定位成功后把目标点上的元素以 XPath 特征写入同一个 YAML 缓存（对齐上游 `interface.cacheFeatureForPoint`），后续运行直接由缓存还原坐标、不再调用模型。iframe 内元素通过复合 XPath（`...|>>|...`）缓存，并按上游方式累加 frame 偏移；某段 XPath 命中多个元素时不写入缓存（避免误点第一个），交给 AI 重新定位；位置相关描述（如「第二个按钮」）会由 AI 判断顺序敏感性并生成带索引的 XPath。未实现该钩子的接口（Android、Bridge）、Shadow DOM 内元素，以及无法访问文档的跨域 iframe 仍走 AI 定位。
+- 元素级定位缓存（Playwright）：定位成功后把目标点上的元素以 XPath 特征写入同一个 YAML 缓存（对齐上游 `interface.cacheFeatureForPoint`），后续运行直接由缓存还原坐标、不再调用模型。iframe 内元素通过复合 XPath（`...|>>|...`）缓存，并按上游方式累加 frame 偏移；某段 XPath 命中多个元素时不写入缓存（避免误点第一个），交给 AI 重新定位；位置相关描述（如「第二个按钮」）会由 AI 判断顺序敏感性并生成带索引的 XPath。未实现该钩子的接口（Android、Bridge）、Shadow DOM 内元素，以及无法访问文档的跨域 iframe 仍走 AI 定位。
 
 ## 语义重试
 
@@ -183,7 +183,7 @@ midscene-python/
 │   │   ├── report.py         # 报告写入 + HTML 模板 + Markdown + CLI 辅助
 │   │   ├── types.py          # 接口、选项与数据模型
 │   │   └── element_describer.py  # 元素描述辅助
-│   ├── web_integration/      # Playwright、Selenium、Bridge 接口
+│   ├── web_integration/      # Playwright、Bridge 接口
 │   ├── android/              # ADB 设备与 Android Agent
 │   ├── computer/             # pyautogui 整屏截图与系统输入
 │   ├── cli/                  # midscene 命令行
