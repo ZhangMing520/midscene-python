@@ -3026,3 +3026,90 @@ class TestSwipeAction:
         )
         assert device.direction_swipes == [("up", 200, 400)]
         assert device.points == []
+
+
+# ---------------------------------------------------------------------------
+# Android PullGesture (upstream AndroidDevice actionSpace PullGesture)
+# ---------------------------------------------------------------------------
+
+
+class _RecordingPullDevice:
+    def __init__(self):
+        self.calls: List[tuple] = []
+
+    async def pull_gesture(self, direction, start_point=None, distance=None, duration=None):
+        self.calls.append((direction, start_point, distance, duration))
+
+
+class TestPullGesture:
+    def test_android_action_space_exposes_pull_gesture(self):
+        from midscene.core.device import build_action_space_for
+
+        action = next(
+            a for a in build_action_space_for("android") if a.name == "PullGesture"
+        )
+        assert action.primitive == "pull_gesture"
+        assert action.locate_fields == ["locate"]
+        assert action.param_schema["direction"]["type"] == '"up" | "down"'
+        assert action.sample["direction"] == "down"
+        assert "PullGesture" not in [
+            a.name for a in build_action_space_for("web")
+        ]
+
+    @pytest.mark.asyncio
+    async def test_executor_resolves_locate_and_forwards_params(self):
+        from midscene.core.device import _execute_pull_gesture
+
+        device = _RecordingPullDevice()
+        await _execute_pull_gesture(
+            {
+                "direction": "up",
+                "locate": {"prompt": "a"},
+                "distance": 120,
+                "duration": 400,
+            },
+            device,
+            _swipe_locate_fn,
+        )
+        assert device.calls == [("up", [200.0, 150.0], 120, 400)]
+
+    @pytest.mark.asyncio
+    async def test_executor_rejects_unknown_direction(self):
+        from midscene.core.device import _execute_pull_gesture
+
+        with pytest.raises(ValueError, match="direction"):
+            await _execute_pull_gesture(
+                {"direction": "left"}, _RecordingPullDevice(), _swipe_locate_fn
+            )
+
+    @pytest.mark.asyncio
+    async def test_android_defaults_match_upstream(self, monkeypatch):
+        from midscene.android.device import AndroidDevice
+        from midscene.core.types import Size
+
+        async def _no_sleep(_seconds):
+            return None
+
+        monkeypatch.setattr("midscene.android.device.asyncio.sleep", _no_sleep)
+        device = AndroidDevice("emulator-5554")
+        device._screen_size = Size(width=1000, height=2000)
+        swipes: List[tuple] = []
+
+        async def record_swipe(*args, **kwargs):
+            swipes.append((args, kwargs))
+
+        monkeypatch.setattr(device, "swipe", record_swipe)
+
+        await device.pull_gesture("down")
+        # 15% start, 50% travel, 800ms default.
+        assert swipes[-1] == (((500, 300, 500, 1300)), {"duration": 800})
+
+        await device.pull_gesture("up")
+        # 85% start, 40% travel, 600ms default.
+        assert swipes[-1] == (((500, 1700, 500, 900)), {"duration": 600})
+
+        await device.pull_gesture("up", start_point=(100, 1700), distance=500, duration=400)
+        assert swipes[-1] == (((100, 1700, 100, 1200)), {"duration": 400})
+
+        with pytest.raises(ValueError, match="Unknown pull direction"):
+            await device.pull_gesture("left")

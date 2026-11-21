@@ -436,6 +436,25 @@ async def _execute_swipe(param: Dict[str, Any], device: Any, locate_fn) -> None:
     )
 
 
+async def _execute_pull_gesture(param: Dict[str, Any], device: Any, locate_fn) -> None:
+    if not _supports(device, "pull_gesture"):
+        raise NotImplementedError("PullGesture is not supported on this interface")
+    direction = param.get("direction")
+    if direction not in ("up", "down"):
+        raise ValueError('PullGesture requires a direction of "up" or "down"')
+    start_point = None
+    locate = param.get("locate")
+    if locate is not None:
+        point = await _resolve_locate_point(locate, locate_fn)
+        start_point = list(point["center"])
+    await device.pull_gesture(
+        direction,
+        start_point=start_point,
+        distance=param.get("distance"),
+        duration=param.get("duration"),
+    )
+
+
 async def _execute_drag_and_drop(param: Dict[str, Any], device: Any, locate_fn) -> None:
     from_locate = param.get("from")
     to_locate = param.get("to")
@@ -1092,6 +1111,43 @@ def _swipe_action(input_mode: str = "touch") -> DeviceAction:
     )
 
 
+def _pull_gesture_action() -> DeviceAction:
+    """Android-only pull-to-refresh / pull-up action (upstream PullGesture)."""
+    return DeviceAction(
+        name="PullGesture",
+        description="Trigger pull down to refresh or pull up actions",
+        param_schema={
+            "direction": {
+                "type": '"up" | "down"',
+                "description": "The direction to pull",
+            },
+            "distance": {
+                "type": "number",
+                "description": "The distance to pull (in pixels)",
+                "optional": True,
+            },
+            "duration": {
+                "type": "number",
+                "description": "The duration of the pull (in milliseconds)",
+                "optional": True,
+            },
+            "locate": {
+                "type": "locate",
+                "description": "The element to start the pull from (optional)",
+                "optional": True,
+            },
+        },
+        locate_fields=["locate"],
+        distance_fields=["distance"],
+        sample={
+            "direction": "down",
+            "locate": {"prompt": "the center of the content list area"},
+        },
+        primitive="pull_gesture",
+        execute=_execute_pull_gesture,
+    )
+
+
 def _long_press_action() -> DeviceAction:
     """LongPress is exposed by the touch devices that implement long_press."""
     return DeviceAction(
@@ -1126,6 +1182,7 @@ def build_android_action_space() -> List[DeviceAction]:
     actions.extend(
         [
             _swipe_action(),
+            _pull_gesture_action(),
             _long_press_action(),
             DeviceAction(
                 name="AndroidBackButton",

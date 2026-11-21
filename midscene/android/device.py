@@ -426,6 +426,42 @@ class AndroidDevice(AbstractInterface):
             await self._get_screen_size()
         return {"width": self._screen_size.width, "height": self._screen_size.height}
 
+    async def pull_gesture(
+        self,
+        direction: str,
+        start_point: Optional[Sequence[float]] = None,
+        distance: Optional[int] = None,
+        duration: Optional[int] = None,
+    ) -> None:
+        """Pull to refresh (down) or load more (up), upstream PullGesture.
+
+        Defaults: pull down starts at 15% of the screen height and travels
+        half of it; pull up starts at 85% and travels 40%.
+        """
+        if direction not in ("up", "down"):
+            raise ValueError(f"Unknown pull direction: {direction}")
+        if not self._screen_size:
+            await self._get_screen_size()
+        width, height = self._screen_size.width, self._screen_size.height
+        if start_point:
+            start_x = _round_half_up(start_point[0])
+            start_y = _round_half_up(start_point[1])
+        else:
+            start_x = _round_half_up(width / 2)
+            start_y = _round_half_up(
+                height * (0.15 if direction == "down" else 0.85)
+            )
+        if direction == "down":
+            pull_distance = _round_half_up(distance or height * 0.5)
+            duration_ms = int(duration if duration is not None else 800)
+            end_y = start_y + pull_distance
+        else:
+            pull_distance = _round_half_up(distance or height * 0.4)
+            duration_ms = int(duration if duration is not None else 600)
+            end_y = start_y - pull_distance
+        await self.swipe(start_x, start_y, start_x, end_y, duration=duration_ms)
+        await asyncio.sleep(0.2 if direction == "down" else 0.1)
+
     async def _swipe_direction(
         self,
         direction: str,

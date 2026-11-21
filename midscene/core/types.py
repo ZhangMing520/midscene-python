@@ -339,6 +339,16 @@ class AbstractInterface(ABC):
         """Swipe from one logical point to another (upstream swipe(start, end))."""
         raise NotImplementedError("swipe_points is not supported on this interface")
 
+    async def pull_gesture(
+        self,
+        direction: str,
+        start_point: Optional[List[float]] = None,
+        distance: Optional[int] = None,
+        duration: Optional[int] = None,
+    ) -> None:
+        """Pull-to-refresh / pull-up gesture (upstream Android PullGesture)."""
+        raise NotImplementedError("pull_gesture is not supported on this interface")
+
     async def pinch(
         self,
         direction: str,
