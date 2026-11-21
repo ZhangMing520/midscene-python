@@ -2184,7 +2184,7 @@ class TestActionSpaceParity:
 class TestPlatformFixes:
     @pytest.mark.asyncio
     async def test_playwright_scroll_defaults_to_viewport_and_centers_mouse(self):
-        from midscene.web_integration.playwright_page import PlaywrightWebPage
+        from midscene.web_integration.playwright.page import PlaywrightWebPage
 
         class Mouse:
             def __init__(self):
@@ -2203,7 +2203,7 @@ class TestPlatformFixes:
 
         page = PlaywrightWebPage.__new__(PlaywrightWebPage)
         page.page = Page()
-        with patch("midscene.web_integration.playwright_page.asyncio.sleep", AsyncMock()):
+        with patch("midscene.web_integration.playwright.page.asyncio.sleep", AsyncMock()):
             await page.scroll("down")
             await page.scroll("right")
         assert page.page.mouse.calls == [
@@ -2215,7 +2215,7 @@ class TestPlatformFixes:
 
     @pytest.mark.asyncio
     async def test_bridge_scroll_defaults_to_viewport_and_centers_mouse(self):
-        from midscene.web_integration.bridge import BridgeWebPage
+        from midscene.web_integration.bridge_mode import BridgeWebPage
 
         class Server:
             def __init__(self):
@@ -2345,7 +2345,7 @@ tasks:
         the server-side call (Socket.IO protocol)."""
         import socketio
 
-        from midscene.web_integration.bridge import BridgeServer
+        from midscene.web_integration.bridge_mode import BridgeServer
 
         # listen() on an ephemeral port: exercises the real server config
         server = BridgeServer(host="127.0.0.1", port=0, close_conflict_server=False)
@@ -2395,7 +2395,7 @@ tasks:
     async def test_bridge_rejects_untrusted_origin(self):
         import socketio
 
-        from midscene.web_integration.bridge import BridgeServer
+        from midscene.web_integration.bridge_mode import BridgeServer
 
         server = BridgeServer()
         sio = socketio.AsyncServer(async_mode="aiohttp", cors_allowed_origins="*")
@@ -2415,7 +2415,7 @@ tasks:
 
     @pytest.mark.asyncio
     async def test_bridge_listen_timeout_without_client(self):
-        from midscene.web_integration.bridge import BridgeServer
+        from midscene.web_integration.bridge_mode import BridgeServer
 
         server = BridgeServer(port=0)
         with pytest.raises(RuntimeError) as exc:
@@ -2467,7 +2467,7 @@ class TestBridgeProtocol:
             return None
 
     def _connected_page(self):
-        from midscene.web_integration.bridge import BridgeWebPage
+        from midscene.web_integration.bridge_mode import BridgeWebPage
 
         page = BridgeWebPage()
         recorder = self.RecordingServer()
@@ -2476,7 +2476,7 @@ class TestBridgeProtocol:
         return page, recorder
 
     def test_build_key_commands_matches_extension_shape(self):
-        from midscene.web_integration.bridge import build_key_commands
+        from midscene.web_integration.web_page import build_key_commands
 
         assert build_key_commands("Enter") == [{"key": "Enter"}]
         assert build_key_commands("Control+A") == [
@@ -2529,7 +2529,7 @@ class TestBridgeProtocol:
         assert recorder.calls[-1] == ("pinch", [10, 20, 20.0, 120.0, 800])
 
     def test_bridge_action_space_matches_extension_primitives(self):
-        from midscene.web_integration.bridge import BridgeWebPage
+        from midscene.web_integration.bridge_mode import BridgeWebPage
 
         names = {action.name for action in _make_agent(BridgeWebPage()).action_space}
         assert {
@@ -2549,7 +2549,7 @@ class TestBridgeProtocol:
 
     @pytest.mark.asyncio
     async def test_page_methods_require_connect(self):
-        from midscene.web_integration.bridge import BridgeWebPage
+        from midscene.web_integration.bridge_mode import BridgeWebPage
 
         page = BridgeWebPage()
         with pytest.raises(RuntimeError, match="not connected"):
@@ -2559,7 +2559,7 @@ class TestBridgeProtocol:
     async def test_close_flushes_pending_calls(self):
         from types import SimpleNamespace
 
-        from midscene.web_integration.bridge import BridgeServer
+        from midscene.web_integration.bridge_mode import BridgeServer
 
         server = BridgeServer(host="127.0.0.1", port=0, close_conflict_server=False)
         server._client_sid = "sid"
@@ -2572,7 +2572,7 @@ class TestBridgeProtocol:
 
     @pytest.mark.asyncio
     async def test_disconnect_flushes_pending_calls(self):
-        from midscene.web_integration.bridge import BridgeServer
+        from midscene.web_integration.bridge_mode import BridgeServer
 
         server = BridgeServer(host="127.0.0.1", port=0, close_conflict_server=False)
         server._client_sid = "sid"
@@ -2587,7 +2587,7 @@ class TestBridgeProtocol:
     async def test_listen_kills_conflicting_server_on_the_real_port(self):
         import socket as _socket
 
-        from midscene.web_integration import bridge as bridge_module
+        from midscene.web_integration.bridge_mode import io_server as bridge_module
 
         probe = _socket.socket()
         probe.bind(("127.0.0.1", 0))
@@ -2620,7 +2620,7 @@ class TestBridgeProtocol:
         XHR poll (chrome-extension:// origin) is blocked by the browser."""
         import aiohttp
 
-        from midscene.web_integration.bridge import BridgeServer
+        from midscene.web_integration.bridge_mode import BridgeServer
 
         server = BridgeServer(host="127.0.0.1", port=0, close_conflict_server=False)
         await server.listen(timeout=False)
@@ -2644,7 +2644,7 @@ class TestBridgeProtocol:
     async def test_second_client_receives_bridge_refused(self):
         import socketio
 
-        from midscene.web_integration.bridge import BridgeServer
+        from midscene.web_integration.bridge_mode import BridgeServer
 
         server = BridgeServer(host="127.0.0.1", port=0, close_conflict_server=False)
         await server.listen(timeout=False)

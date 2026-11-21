@@ -237,7 +237,7 @@ class AgentTools:
 async def _default_page_factory(browser: str = "playwright", headless: bool = True):
     if browser != "playwright":
         raise ValueError(f"Unsupported browser: {browser} (only playwright is supported)")
-    from midscene.web_integration.playwright_page import PlaywrightWebPage
+    from midscene.web_integration.playwright.page import PlaywrightWebPage
 
     return await PlaywrightWebPage.create(headless=headless)
 

@@ -2,8 +2,12 @@
 Web integration module for Midscene Python
 """
 
-from midscene.web_integration.playwright_page import PlaywrightWebPage
-from midscene.web_integration.bridge import BridgeWebPage, BridgeServer, kill_running_server
+from midscene.web_integration.playwright import PlaywrightWebPage
+from midscene.web_integration.bridge_mode import (
+    BridgeServer,
+    BridgeWebPage,
+    kill_running_server,
+)
 
 __all__ = [
     "PlaywrightWebPage",

@@ -649,7 +649,7 @@ class TestPinch:
         assert "Pinch" in [a.name for a in build_web_action_space()]
 
     def test_playwright_implements_pinch(self):
-        from midscene.web_integration.playwright_page import PlaywrightWebPage
+        from midscene.web_integration.playwright.page import PlaywrightWebPage
 
         assert hasattr(PlaywrightWebPage, "pinch")
 
@@ -1076,7 +1076,7 @@ class _FakeBrowserPage:
 
 class TestPlaywrightFileChooser:
     def _page(self):
-        from midscene.web_integration.playwright_page import PlaywrightWebPage
+        from midscene.web_integration.playwright.page import PlaywrightWebPage
 
         fake = _FakeBrowserPage()
         return PlaywrightWebPage(page=fake, context=Mock(), browser=Mock()), fake
@@ -1139,7 +1139,7 @@ class _FakeTypingPage:
 
 class TestTextInputStrategy:
     def test_rejects_invalid_options(self):
-        from midscene.web_integration.playwright_page import _resolve_text_input_options
+        from midscene.web_integration.playwright.page import _resolve_text_input_options
 
         with pytest.raises(ValueError, match="non-negative"):
             _resolve_text_input_options(None, -1)
@@ -1150,7 +1150,7 @@ class TestTextInputStrategy:
 
     @pytest.mark.asyncio
     async def test_bulk_uses_single_insert_text(self):
-        from midscene.web_integration.playwright_page import PlaywrightWebPage
+        from midscene.web_integration.playwright.page import PlaywrightWebPage
 
         web = PlaywrightWebPage(_FakeTypingPage(), Mock(), Mock())
         await web.input_text("hello", input_strategy="bulk")
@@ -1159,7 +1159,7 @@ class TestTextInputStrategy:
 
     @pytest.mark.asyncio
     async def test_sequential_types_one_code_point_at_a_time(self):
-        from midscene.web_integration.playwright_page import PlaywrightWebPage
+        from midscene.web_integration.playwright.page import PlaywrightWebPage
 
         web = PlaywrightWebPage(_FakeTypingPage(), Mock(), Mock())
         await web.input_text("ab", input_strategy="sequential", keyboard_type_delay=0)
@@ -1167,7 +1167,7 @@ class TestTextInputStrategy:
 
     @pytest.mark.asyncio
     async def test_legacy_uses_platform_delay(self):
-        from midscene.web_integration.playwright_page import PlaywrightWebPage
+        from midscene.web_integration.playwright.page import PlaywrightWebPage
 
         web = PlaywrightWebPage(
             _FakeTypingPage(), Mock(), Mock(), keyboard_type_delay=25
@@ -1177,7 +1177,7 @@ class TestTextInputStrategy:
 
     @pytest.mark.asyncio
     async def test_replace_selects_all_before_bulk_insert(self):
-        from midscene.web_integration.playwright_page import PlaywrightWebPage
+        from midscene.web_integration.playwright.page import PlaywrightWebPage
 
         web = PlaywrightWebPage(_FakeTypingPage(), Mock(), Mock())
         await web.replace_input("next", input_strategy="bulk")
@@ -1185,14 +1185,14 @@ class TestTextInputStrategy:
         assert web.page.keyboard.inserted == ["next"]
 
     def test_force_same_tab_navigation_registers_popup_listener(self):
-        from midscene.web_integration.playwright_page import PlaywrightWebPage
+        from midscene.web_integration.playwright.page import PlaywrightWebPage
 
         fake = _FakeTypingPage()
         PlaywrightWebPage(fake, Mock(), Mock())
         assert "popup" in fake.handlers
 
     def test_auto_follow_new_page_disables_force_same_tab(self):
-        from midscene.web_integration.playwright_page import PlaywrightWebPage
+        from midscene.web_integration.playwright.page import PlaywrightWebPage
 
         context = Mock()
         web = PlaywrightWebPage(

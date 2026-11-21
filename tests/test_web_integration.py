@@ -49,7 +49,7 @@ DEMO_PAGE = """
 async def web_page():
     from playwright.async_api import async_playwright
 
-    from midscene.web_integration.playwright_page import PlaywrightWebPage
+    from midscene.web_integration.playwright.page import PlaywrightWebPage
 
     async with async_playwright() as playwright:
         try:
@@ -80,7 +80,7 @@ async def _region_state(page):
 
 @pytest.mark.asyncio
 async def test_create_applies_viewport_user_agent_and_args():
-    from midscene.web_integration.playwright_page import PlaywrightWebPage
+    from midscene.web_integration.playwright.page import PlaywrightWebPage
 
     try:
         web = await PlaywrightWebPage.create(
@@ -247,7 +247,7 @@ async def test_cache_feature_uses_index_for_order_sensitive(web_page, monkeypatc
         return True
 
     monkeypatch.setattr(
-        "midscene.web_integration.playwright_page.resolve_order_sensitive", fake_judge
+        "midscene.web_integration.playwright.page.resolve_order_sensitive", fake_judge
     )
     await page.set_content(
         "<style>body{margin:0}</style>"
