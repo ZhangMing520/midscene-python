@@ -176,11 +176,19 @@ class AbortSignal:
 
     `asyncio.Event` / `threading.Event` instances are accepted as well (see
     `midscene.core.agent.agent`), so callers can drive cancellation with either API.
+
+    Listeners mirror the upstream DOM API used by the workflow engine
+    (`addEventListener('abort', ...)` / `removeEventListener`). They run
+    synchronously inside `abort()`; abort listeners must not block.
     """
 
     def __init__(self) -> None:
+        import threading
+
         self._aborted = False
         self._reason: Any = None
+        self._listeners: List[Any] = []
+        self._lock = threading.RLock()
 
     @property
     def aborted(self) -> bool:
@@ -191,9 +199,48 @@ class AbortSignal:
         return self._reason
 
     def abort(self, reason: Any = None) -> None:
-        if not self._aborted:
+        with self._lock:
+            if self._aborted:
+                return
             self._aborted = True
             self._reason = reason
+            listeners = list(self._listeners)
+            self._listeners = []
+        for callback in listeners:
+            callback()
+
+    def add_event_listener(self, event: str, callback: Any, once: bool = False) -> None:
+        if event != "abort":
+            raise ValueError(f"Unsupported AbortSignal event: {event}")
+        with self._lock:
+            if self._aborted:
+                aborted = True
+            else:
+                aborted = False
+                if once:
+
+                    def _once() -> None:
+                        self.remove_event_listener("abort", _once)
+                        callback()
+
+                    self._listeners.append(_once)
+                else:
+                    self._listeners.append(callback)
+        if aborted:
+            callback()
+
+    def remove_event_listener(self, event: str, callback: Any) -> None:
+        if event != "abort":
+            return
+        with self._lock:
+            self._listeners = [item for item in self._listeners if item is not callback]
+
+    # Upstream naming aliases -------------------------------------------
+    def addEventListener(self, event: str, callback: Any, once: bool = False) -> None:  # noqa: N802
+        self.add_event_listener(event, callback, once)
+
+    def removeEventListener(self, event: str, callback: Any) -> None:  # noqa: N802
+        self.remove_event_listener(event, callback)
 
     def throw_if_aborted(self) -> None:
         if self._aborted:
