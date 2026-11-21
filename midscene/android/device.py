@@ -138,6 +138,17 @@ def calculate_scroll_end_point(
     return end_x, end_y
 
 
+# Scroll directions name the content to reveal, i.e. the inverse of the finger
+# movement direction used by _swipe_direction. Clamp warnings suggest a scroll
+# action, so they must be reported in the scroll convention.
+_SCROLL_DIRECTION_FOR_SWIPE = {
+    "up": "down",
+    "down": "up",
+    "left": "right",
+    "right": "left",
+}
+
+
 def warn_scroll_distance_clamped(
     direction: str, requested_distance: float, applied_distance: float
 ) -> None:
@@ -430,9 +441,8 @@ class AndroidDevice(AbstractInterface):
             # Anchored gesture: start where the model pointed and travel toward
             # the edge in the requested direction.
             start = (_round_half_up(point[0]), _round_half_up(point[1]))
-            scroll_distance = _round_half_up(
-                distance if distance is not None else axis_size
-            )
+            # Upstream uses `distance || height`; a zero request means the axis.
+            scroll_distance = _round_half_up(distance or axis_size)
             delta_x = scroll_distance if direction == "right" else (
                 -scroll_distance if direction == "left" else 0
             )
@@ -444,11 +454,13 @@ class AndroidDevice(AbstractInterface):
                 applied = (
                     abs(end[0] - start[0]) if horizontal else abs(end[1] - start[1])
                 )
-                warn_scroll_distance_clamped(direction, scroll_distance, applied)
+                warn_scroll_distance_clamped(
+                    _SCROLL_DIRECTION_FOR_SWIPE[direction], scroll_distance, applied
+                )
         else:
             # Upstream scrollRaw: start at a quarter of the axis so a single
             # explicit-distance gesture keeps (n-1)/n of the screen as travel.
-            scroll_distance = _round_half_up(distance)
+            scroll_distance = _round_half_up(distance or axis_size)
             start_axis = _round_half_up(
                 axis_size / 4 if forward else axis_size * 3 / 4
             )

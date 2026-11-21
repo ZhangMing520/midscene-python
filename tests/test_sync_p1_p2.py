@@ -397,6 +397,37 @@ class TestAndroidActions:
         )
 
     @pytest.mark.asyncio
+    async def test_android_clamp_warning_uses_scroll_direction(self):
+        from loguru import logger as loguru_logger
+
+        from midscene.android.device import AndroidDevice
+        from midscene.core.types import Size
+
+        device = AndroidDevice.__new__(AndroidDevice)
+        device._connected = True
+        device.device_id = "emulator-5554"
+        device._screen_size = Size(width=1080, height=1920)
+        device._physical_size = None
+
+        async def fake_run(cmd):
+            return ""
+
+        device._run_adb_command = fake_run
+        messages: List[str] = []
+        handler = loguru_logger.add(
+            lambda message: messages.append(message.record["message"]),
+            level="WARNING",
+        )
+        try:
+            # scroll down reveals lower content, so the finger travels up.
+            await device.scroll("down", distance=1500, point=(100, 100))
+        finally:
+            loguru_logger.remove(handler)
+
+        warning = next(m for m in messages if "clamped" in m)
+        assert "scroll to the bottom, use scrollToBottom" in warning
+
+    @pytest.mark.asyncio
     async def test_android_scroll_to_edge_does_not_need_a_point(self):
         from midscene.android.device import AndroidDevice
         from midscene.core.types import Size

@@ -208,3 +208,34 @@ class TestExportReportArtifact:
 
         assert (tmp_path / "out" / "copy.html").exists()
         assert path.endswith("copy.html")
+
+    def test_reexports_external_bundle_as_single_html(self, tmp_path):
+        from midscene.core.report_viewer import read_report_dump
+
+        source = self._make_artifact(tmp_path / "report")
+        bundle = export_report_artifact(
+            source, tmp_path / "out", "bundle", output_format="html-and-external-assets"
+        )
+        path = export_report_artifact(bundle, tmp_path / "single", "resingle")
+
+        dump = read_report_dump(path)
+        screenshot = dump["executions"][0]["tasks"][0]["uiContext"]["screenshot"]
+        # The standalone file must embed the image; a relative screenshot path
+        # cannot resolve next to the exported HTML.
+        assert screenshot.startswith("data:image/png;base64,")
+        assert (tmp_path / "single" / "screenshots").exists() is False
+
+    def test_reexports_external_bundle_with_its_own_screenshots(self, tmp_path):
+        source = self._make_artifact(tmp_path / "report")
+        bundle = export_report_artifact(
+            source, tmp_path / "out", "bundle", output_format="html-and-external-assets"
+        )
+        path = export_report_artifact(
+            bundle, tmp_path / "out2", "bundle2", output_format="html-and-external-assets"
+        )
+
+        artifact = tmp_path / "out2" / "bundle2"
+        assert path == str(artifact / "index.html")
+        screenshot = next((artifact / "screenshots").glob("*.png"))
+        assert screenshot.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
+        assert './screenshots/' in (artifact / "index.html").read_text(encoding="utf-8")

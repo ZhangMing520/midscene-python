@@ -314,6 +314,50 @@ def _externalize_images(
     return value
 
 
+def _inline_file_images(
+    value: Any,
+    base_dirs: List[Path],
+    cache: Optional[Dict[str, str]] = None,
+) -> Any:
+    """Embed {storage: 'file'} images as data URLs.
+
+    Directory exports keep screenshots next to the report as relative paths;
+    rendering one back into a standalone HTML file must resolve (and inline)
+    them, otherwise the exported report shows broken images.
+    """
+    if cache is None:
+        cache = {}
+    if isinstance(value, dict):
+        if value.get("storage") == "file" and isinstance(value.get("path"), str):
+            relative = value["path"]
+            if relative in cache:
+                return cache[relative]
+            for base in base_dirs:
+                root = base.resolve()
+                candidate = (root / relative).resolve()
+                if not candidate.is_file():
+                    continue
+                try:
+                    candidate.relative_to(root)
+                except ValueError:
+                    continue
+                suffix = candidate.suffix.lstrip(".").lower() or "png"
+                mime = (
+                    "image/jpeg" if suffix in ("jpg", "jpeg") else f"image/{suffix}"
+                )
+                data = base64.b64encode(candidate.read_bytes()).decode("ascii")
+                cache[relative] = f"data:{mime};base64,{data}"
+                return cache[relative]
+            return value
+        return {
+            item_key: _inline_file_images(item_value, base_dirs, cache)
+            for item_key, item_value in value.items()
+        }
+    if isinstance(value, list):
+        return [_inline_file_images(item, base_dirs, cache) for item in value]
+    return value
+
+
 def split_report_file(html_path: str, output_dir: str) -> Dict[str, List[str]]:
     """Split one report HTML into per-execution JSON files + screenshots."""
     dump, executions = collect_report_executions(html_path)

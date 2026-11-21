@@ -282,15 +282,25 @@ def _validate_export_file_name(file_name: str) -> None:
 
 def _load_report_dump_for_export(input_path: Path) -> Dict[str, Any]:
     """Read a directory artifact or a single-file HTML report into one dump."""
-    from .report_viewer import _dedupe_executions, read_report_dump
+    from .report_viewer import (
+        _dedupe_executions,
+        _inline_file_images,
+        read_report_dump,
+    )
 
     if input_path.is_dir() and (input_path / "report.json").exists():
         artifact = read_report_artifact(input_path)
-        dumps = [entry["dump"] for entry in artifact["executions"]]
-        if not dumps:
+        if not artifact["executions"]:
             raise ReportArtifactError(
                 "No report execution data was found in the input."
             )
+        dumps = [
+            _inline_file_images(
+                entry["dump"],
+                [input_path / Path(entry["path"]).parent, input_path],
+            )
+            for entry in artifact["executions"]
+        ]
         merged = dict(dumps[0])
         executions: List[Dict[str, Any]] = []
         for dump in dumps:
@@ -300,9 +310,10 @@ def _load_report_dump_for_export(input_path: Path) -> Dict[str, Any]:
             merged["runner"] = artifact["runner"]
         return merged
     try:
-        return read_report_dump(str(input_path))
+        dump = read_report_dump(str(input_path))
     except ValueError as error:
         raise ReportArtifactError(str(error)) from error
+    return _inline_file_images(dump, [input_path.parent])
 
 
 def export_report_artifact(
@@ -341,8 +352,9 @@ def export_report_artifact(
         raise ReportArtifactError(
             "Export destination must differ from the input report."
         )
-    if not overwrite and (artifact.exists() if external else destination.exists()):
-        raise ReportArtifactError(f"Report artifact already exists: {artifact}")
+    existing = artifact if external else destination
+    if not overwrite and existing.exists():
+        raise ReportArtifactError(f"Report artifact already exists: {existing}")
 
     dump = _load_report_dump_for_export(input_path)
     if not dump.get("executions") and not dump.get("runner"):
