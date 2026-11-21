@@ -15,7 +15,9 @@ from midscene.core.screenshot_item import (
     extract_image_by_id_sync,
     normalize_screenshot_ref,
 )
-from midscene.core.skill import SkillMidsceneTools, _run_command, report_cli_error
+from midscene.core.skill import SkillMidsceneTools
+from midscene.core.types import InterfaceType
+from midscene.shared.cli import report_cli_error
 from midscene.core.task_runner import (
     TaskExecutionError,
     TaskRunner,
@@ -209,14 +211,15 @@ async def test_task_runner_append_error_plan_records_failure():
 
 
 @pytest.mark.asyncio
-async def test_skill_command_dispatch():
-    class FakeAgent:
-        async def ai_act(self, prompt):
-            return f"acted:{prompt}"
+async def test_skill_tools_generate_commands():
+    class Device:
+        interface_type = InterfaceType.WEB
 
-    assert await _run_command(FakeAgent(), "act", {"prompt": "go"}) == "acted:go"
-    with pytest.raises(ValueError):
-        await _run_command(FakeAgent(), "unknown", {})
+    tools = SkillMidsceneTools(Device)
+    await tools.init_tools()
+    names = {definition.name for definition in tools.get_tool_definitions()}
+    assert {"act", "assert", "take_screenshot"} <= names
+    assert "record" in {definition.name for definition in tools.get_cli_tool_definitions()}
 
 
 def test_skill_tools_lazy_device():

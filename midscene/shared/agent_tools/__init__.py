@@ -1,7 +1,12 @@
 """Agent tools exposed to CLI / MCP clients (upstream shared/agent-tools).
 
-A tool is a small dict: {name, description, inputSchema, handler}. The handler
-takes the tool arguments and returns JSON-serializable data.
+This package contains two surfaces:
+
+* ``BaseMidsceneTools`` (``base_tools``) and the tool generators, which turn a
+  device action space into CLI/MCP tool definitions.
+* ``AgentTools``, a self-contained browser MCP tool manager. A tool is a small
+  dict: {name, description, inputSchema, handler}. The handler takes the tool
+  arguments and returns JSON-serializable data.
 """
 
 import json
@@ -241,4 +246,132 @@ async def _default_page_factory(browser: str = "playwright", headless: bool = Tr
     return await PlaywrightWebPage.create(headless=headless)
 
 
-__all__ = ["AgentTools"]
+from midscene.shared.agent_tools.base_tools import BaseMidsceneTools, InitArgSpec
+from midscene.shared.agent_tools.tool_generator import (
+    generate_common_tools,
+    generate_tools_from_action_space,
+)
+from midscene.shared.agent_tools.agent_behavior_init_args import (
+    AGENT_BEHAVIOR_INIT_ARG_SHAPE,
+    extract_agent_behavior_init_args,
+    get_agent_init_args_signature,
+    should_rebuild_agent_for_init_args,
+)
+from midscene.shared.agent_tools.agent_context import (
+    AGENT_AI_CONTEXT_KEYS,
+    AI_API_NAMES,
+    is_agent_ai_context_key,
+)
+from midscene.shared.agent_tools.chrome_path import (
+    get_system_chrome_path,
+    resolve_chrome_path,
+)
+from midscene.shared.agent_tools.cli_report_session import (
+    create_cli_report_session,
+    generate_cli_report_session,
+    read_cli_report_session,
+    write_cli_report_session,
+)
+from midscene.shared.agent_tools.error_formatter import (
+    get_error_message,
+    get_error_stack,
+    serialize_error,
+    truncate_serialized_error_string,
+)
+from midscene.shared.agent_tools.init_arg_utils import (
+    create_namespaced_init_arg_schema,
+    extract_namespaced_args,
+    sanitize_namespaced_args,
+)
+from midscene.shared.agent_tools.observation_artifact import (
+    OBSERVATION_ARTIFACT_ADAPTER_ATTR,
+    ObservationArtifactAdapter,
+    resolve_observation_artifact_adapter,
+)
+from midscene.shared.agent_tools.observation_record import (
+    UIObservationRecordWriter,
+    clone_ui_observation_record,
+    default_observation_record_path,
+    parse_ui_observation_record,
+    read_ui_observation_record,
+    write_ui_observation_record,
+)
+from midscene.shared.agent_tools.tool_defaults import (
+    TOOL_BEHAVIOR_FLAGS,
+    merge_tool_defaults,
+    resolve_tool_defaults,
+    strip_behavior_flags,
+)
+from midscene.shared.agent_tools.types import (
+    DEFAULT_APP_LOADING_CHECK_INTERVAL_MS,
+    DEFAULT_APP_LOADING_TIMEOUT_MS,
+    ActionSpaceItem,
+    ToolCliMetadata,
+    ToolCliOption,
+    ToolDefaults,
+    ToolDefinition,
+    ToolResult,
+    ToolSchema,
+    UIObservationFrame,
+    UIObservationRecord,
+    schema_field,
+)
+from midscene.shared.agent_tools.user_prompt import (
+    PROMPT_INPUT_EXTRA_SCHEMA,
+    compose_user_prompt,
+)
+
+__all__ = [
+    "AGENT_AI_CONTEXT_KEYS",
+    "AGENT_BEHAVIOR_INIT_ARG_SHAPE",
+    "AI_API_NAMES",
+    "DEFAULT_APP_LOADING_CHECK_INTERVAL_MS",
+    "DEFAULT_APP_LOADING_TIMEOUT_MS",
+    "OBSERVATION_ARTIFACT_ADAPTER_ATTR",
+    "PROMPT_INPUT_EXTRA_SCHEMA",
+    "TOOL_BEHAVIOR_FLAGS",
+    "ActionSpaceItem",
+    "AgentTools",
+    "BaseMidsceneTools",
+    "InitArgSpec",
+    "ObservationArtifactAdapter",
+    "ToolCliMetadata",
+    "ToolCliOption",
+    "ToolDefaults",
+    "ToolDefinition",
+    "ToolResult",
+    "ToolSchema",
+    "UIObservationFrame",
+    "UIObservationRecord",
+    "UIObservationRecordWriter",
+    "clone_ui_observation_record",
+    "compose_user_prompt",
+    "create_cli_report_session",
+    "create_namespaced_init_arg_schema",
+    "default_observation_record_path",
+    "extract_agent_behavior_init_args",
+    "extract_namespaced_args",
+    "generate_cli_report_session",
+    "generate_common_tools",
+    "generate_tools_from_action_space",
+    "get_agent_init_args_signature",
+    "get_error_message",
+    "get_error_stack",
+    "get_system_chrome_path",
+    "is_agent_ai_context_key",
+    "merge_tool_defaults",
+    "parse_ui_observation_record",
+    "read_cli_report_session",
+    "read_ui_observation_record",
+    "resolve_chrome_path",
+    "resolve_observation_artifact_adapter",
+    "resolve_tool_defaults",
+    "sanitize_namespaced_args",
+    "schema_field",
+    "serialize_error",
+    "should_rebuild_agent_for_init_args",
+    "strip_behavior_flags",
+    "truncate_serialized_error_string",
+    "write_cli_report_session",
+    "write_ui_observation_record",
+]
