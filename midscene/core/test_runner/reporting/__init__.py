@@ -19,6 +19,10 @@ from midscene.core.test_runner.reporting.sanitize import (
     sanitize_report_value,
 )
 from midscene.core.test_runner.reporting.test_plan import build_test_run_report_plan
+from midscene.core.test_runner.reporting.test_run_report import (
+    build_test_run_report_dump,
+    collect_test_run_report_sources,
+)
 
 __all__ = [
     "MAX_ARRAY_ITEMS",
@@ -27,8 +31,10 @@ __all__ = [
     "MAX_SERIALIZED_BYTES",
     "MAX_STRING_LENGTH",
     "TRUNCATED_VALUE",
+    "build_test_run_report_dump",
     "build_test_run_report_plan",
     "collect_test_run_report_metrics",
+    "collect_test_run_report_sources",
     "execution_records_to_report_input",
     "sanitize_report_error",
     "sanitize_report_text",

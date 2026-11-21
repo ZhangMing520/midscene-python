@@ -437,3 +437,297 @@ def test_execution_records_project_latest_invocation():
     assert report["projects"][0]["retry"] == 1
     run_ids = {case["documentRunId"] for case in report["projects"][0]["cases"]}
     assert run_ids == {"run-1", "run-2"}
+
+
+def _report_step(**overrides):
+    step = {
+        "phase": "steps",
+        "stepIndex": 0,
+        "node": "echo",
+        "input": {"prompt": "say hi"},
+        "status": "success",
+        "continuedAfterError": False,
+        "startedAt": "2026-01-01T00:00:00.000Z",
+        "endedAt": "2026-01-01T00:00:00.500Z",
+        "durationMs": 500,
+        "output": {"summary": "ok", "data": {"value": 1}},
+    }
+    step.update(overrides)
+    return step
+
+
+def _report_attempt(**overrides):
+    attempt = {
+        "runId": "case-run-1",
+        "attemptIndex": 0,
+        "status": "success",
+        "startedAt": "2026-01-01T00:00:00.000Z",
+        "endedAt": "2026-01-01T00:00:01.000Z",
+        "durationMs": 1000,
+        "beforeEach": [],
+        "steps": [_report_step()],
+        "afterEach": [],
+    }
+    attempt.update(overrides)
+    return attempt
+
+
+def _report_input(**overrides):
+    document = {
+        "documentId": "doc-1",
+        "documentRunId": "doc-run-1",
+        "attemptIndex": 0,
+        "sourcePath": "/tmp/workflow.yaml",
+        "status": "success",
+        "startedAt": "2026-01-01T00:00:00.000Z",
+        "endedAt": "2026-01-01T00:00:02.000Z",
+        "durationMs": 2000,
+        "beforeAll": [],
+        "afterAll": [],
+    }
+    report = {
+        "runId": "batch-1",
+        "status": "success",
+        "startedAt": "2026-01-01T00:00:00.000Z",
+        "endedAt": "2026-01-01T00:00:02.000Z",
+        "durationMs": 2000,
+        "summary": {
+            "total": 1,
+            "passed": 1,
+            "failed": 0,
+            "notRun": 0,
+            "filtered": 0,
+            "collectionErrors": 0,
+            "documentFailures": 0,
+            "projectFailures": 0,
+        },
+        "projects": [
+            {
+                "projectId": "project-1",
+                "name": "Project One",
+                "platform": "cli",
+                "status": "success",
+                "retry": 0,
+                "documents": [document],
+                "cases": [
+                    {
+                        "caseId": "case-1",
+                        "name": "case one",
+                        "caseIndex": 0,
+                        "status": "success",
+                        "run": _report_attempt(),
+                        "documentId": "doc-1",
+                        "documentRunId": "doc-run-1",
+                    }
+                ],
+                "collectionErrors": [],
+            }
+        ],
+        "errors": [],
+    }
+    report.update(overrides)
+    return report
+
+
+def test_build_test_run_report_dump_projects_steps():
+    from midscene.core.test_runner.reporting.test_run_report import (
+        build_test_run_report_dump,
+    )
+
+    dump = build_test_run_report_dump(
+        _report_input(),
+        {"sources": [], "metrics": {}, "diagnostics": []},
+    )
+    assert dump["schemaVersion"] == 1
+    assert dump["kind"] == "test-runner"
+    assert dump["runId"] == "batch-1"
+    assert dump["summary"]["total"] == 1
+
+    project = dump["projects"][0]
+    assert project["platform"] == "cli"
+    document = project["documents"][0]
+    assert document["documentRunId"] == "doc-run-1"
+    case = document["cases"][0]
+    assert case["status"] == "success"
+    step = case["attempts"][0]["steps"][0]
+    assert step["id"] == "case-run-1:steps:0"
+    assert step["title"] == "say hi"
+    assert step["input"] == {"value": {"prompt": "say hi"}}
+    assert step["output"] == {"summary": "ok", "data": {"value": {"value": 1}}}
+    assert dump["metrics"]["collection"]["status"] == "complete"
+
+
+def test_build_test_run_report_dump_resolves_agent_details():
+    from midscene.core.test_runner.reporting.test_run_report import (
+        build_test_run_report_dump,
+    )
+
+    metrics = {
+        "modelCallCount": 1,
+        "modelTimeMs": 100,
+        "promptTokens": 3,
+        "cachedInputTokens": 0,
+        "completionTokens": 2,
+        "totalTokens": 5,
+    }
+    report = _report_input()
+    report["projects"][0]["documents"][0]["reportScopeId"] = "scope-1"
+    report["projects"][0]["documents"][0]["beforeAll"] = [
+        _report_step(
+            phase="beforeAll",
+            report={
+                "traces": [{"executionId": "exec-1", "metrics": metrics}],
+                "sources": [
+                    {
+                        "sourcePath": "/tmp/report.json",
+                        "collection": {
+                            "status": "complete",
+                            "capturedAt": "2026-01-01T00:00:02.000Z",
+                        },
+                    }
+                ],
+            },
+        )
+    ]
+    dump = build_test_run_report_dump(
+        report,
+        {
+            "sources": [
+                {
+                    "reportId": "report-1",
+                    "scopeId": "scope-1",
+                    "sourcePath": "/tmp/report.json",
+                    "executionIds": ["exec-1"],
+                }
+            ],
+            "metrics": {},
+            "diagnostics": [],
+        },
+    )
+    document = dump["projects"][0]["documents"][0]
+    step = document["beforeAll"][0]
+    assert step["agentDetails"] == [{"reportId": "report-1", "executionId": "exec-1"}]
+    assert step["metrics"]["modelCallCount"] == 1
+    assert step["evidenceCollection"]["status"] == "complete"
+    assert document["scopeReportIds"] == ["report-1"]
+    collection = dump["metrics"]["collection"]
+    assert collection["expectedExecutionCount"] == 1
+    assert collection["capturedExecutionCount"] == 1
+    assert dump["executionMetrics"]["exec-1"]["totalTokens"] == 5
+
+
+def test_build_test_run_report_dump_flags_unresolved_agent_details():
+    from midscene.core.test_runner.reporting.test_run_report import (
+        build_test_run_report_dump,
+    )
+
+    report = _report_input()
+    report["projects"][0]["documents"][0]["reportScopeId"] = "scope-1"
+    report["projects"][0]["documents"][0]["beforeAll"] = [
+        _report_step(
+            phase="beforeAll",
+            report={"traces": [{"executionId": "exec-missing"}]},
+        )
+    ]
+    dump = build_test_run_report_dump(
+        report,
+        {"sources": [], "metrics": {}, "diagnostics": []},
+    )
+    step = dump["projects"][0]["documents"][0]["beforeAll"][0]
+    assert "exec-missing" in step["agentDetailDiagnostic"]
+    assert step["evidenceCollection"] == {
+        "status": "unknown",
+        "modelUsageUnavailable": True,
+    }
+    diagnostics = [item for item in dump["diagnostics"] if item["code"] == "agent-detail-unresolved"]
+    assert diagnostics and diagnostics[0]["executionId"] == "exec-missing"
+    assert dump["metrics"]["collection"]["status"] == "unknown"
+
+
+def test_collect_test_run_report_sources_deduplicates_paths():
+    from midscene.core.test_runner.reporting.test_run_report import (
+        collect_test_run_report_sources,
+    )
+
+    report = _report_input()
+    document = report["projects"][0]["documents"][0]
+    document["reportSources"] = [{"sourcePath": "/tmp/a.json"}]
+    document["reportPaths"] = ["/tmp/a.json", "/tmp/b.json"]
+    attempt = report["projects"][0]["cases"][0]["run"]
+    attempt["reportSources"] = [{"sourcePath": "/tmp/c.json", "dumpPath": "/tmp/c.dump"}]
+    attempt["reportPaths"] = ["/tmp/c.json", "/tmp/d.json"]
+
+    sources = collect_test_run_report_sources(report)
+    assert sources == [
+        {"scopeId": "doc-run-1", "sourcePath": "/tmp/a.json"},
+        {"scopeId": "doc-run-1", "sourcePath": "/tmp/b.json"},
+        {
+            "scopeId": "case-run-1",
+            "sourcePath": "/tmp/c.json",
+            "dumpPath": "/tmp/c.dump",
+        },
+        {"scopeId": "case-run-1", "sourcePath": "/tmp/d.json"},
+    ]
+
+
+def test_build_test_run_report_dump_groups_document_attempts():
+    from midscene.core.test_runner.reporting.test_run_report import (
+        build_test_run_report_dump,
+    )
+
+    report = _report_input()
+    project = report["projects"][0]
+    first = project["documents"][0]
+    second = dict(first, documentRunId="doc-run-2", attemptIndex=1)
+    project["documents"] = [first, second]
+    project["cases"] = [
+        {
+            "caseId": "case-1",
+            "name": "case one",
+            "caseIndex": 0,
+            "status": "failed",
+            "run": _report_attempt(runId="case-run-1"),
+            "documentId": "doc-1",
+            "documentRunId": "doc-run-1",
+        },
+        {
+            "caseId": "case-1",
+            "name": "case one",
+            "caseIndex": 0,
+            "status": "success",
+            "run": _report_attempt(runId="case-run-2"),
+            "documentId": "doc-1",
+            "documentRunId": "doc-run-2",
+        },
+    ]
+    dump = build_test_run_report_dump(
+        report, {"sources": [], "metrics": {}, "diagnostics": []}
+    )
+    documents = dump["projects"][0]["documents"]
+    assert len(documents) == 1
+    document = documents[0]
+    assert document["documentRunId"] == "doc-run-2"
+    assert len(document["attempts"]) == 2
+    assert [item["attemptIndex"] for item in document["attempts"]] == [0, 1]
+    case = document["cases"][0]
+    assert case["status"] == "success"
+    assert [item["attemptId"] for item in case["attempts"]] == [
+        "case-run-1",
+        "case-run-2",
+    ]
+
+
+def test_build_test_run_report_dump_requires_document_run_id():
+    from midscene.core.test_runner.reporting.test_run_report import (
+        build_test_run_report_dump,
+    )
+
+    report = _report_input()
+    project = report["projects"][0]
+    first = project["documents"][0]
+    project["documents"] = [first, dict(first, documentRunId="doc-run-2", attemptIndex=1)]
+    project["cases"][0].pop("documentRunId")
+    with pytest.raises(ValueError):
+        build_test_run_report_dump(
+            report, {"sources": [], "metrics": {}, "diagnostics": []}
+        )
