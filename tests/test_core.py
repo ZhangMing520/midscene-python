@@ -225,6 +225,23 @@ class TestEnvConfig:
         assert config["retryCount"] == 2
         assert config["timeout"] == 60
 
+    def test_unset_temperature_sentinel(self):
+        from midscene.core.ai_model.env_config import ModelConfigManager
+
+        manager = ModelConfigManager(
+            self._config_map(MIDSCENE_MODEL_TEMPERATURE="unset")
+        )
+        assert manager.get_model_config("default")["temperature"] == "unset"
+
+    def test_new_model_families_accepted(self):
+        from midscene.core.ai_model.env_config import ModelConfigManager
+
+        for family in ("step", "tencent-hy", "qwen4"):
+            manager = ModelConfigManager(
+                self._config_map(MIDSCENE_MODEL_FAMILY=family)
+            )
+            assert manager.get_model_config("default")["modelFamily"] == family
+
 
 # ---------------------------------------------------------------------------
 # locate_result codec

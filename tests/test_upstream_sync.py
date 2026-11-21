@@ -1609,6 +1609,135 @@ class TestAdapterParity:
         assert get_model_adapter("kimi3").replay_raw_assistant_message is True
         assert get_model_adapter("gpt-5").replay_raw_assistant_message is False
 
+    def test_new_family_locate_formats(self):
+        from midscene.core.ai_model.adapters import get_model_adapter
+
+        step = get_model_adapter("step").locate_result_codec.prompt_spec
+        assert step["resultKey"] == "point_2d"
+        assert step["resultKeyAliases"] == ["point"]
+
+        tencent = get_model_adapter("tencent-hy").locate_result_codec.prompt_spec
+        assert tencent["resultKey"] == "box_2d"
+        assert tencent["resultValueSchema"] == "[number, number, number, number]"
+
+        qwen4 = get_model_adapter("qwen4").locate_result_codec.prompt_spec
+        assert qwen4["resultKey"] == "point"
+        assert qwen4["resultKeyAliases"] == ["point_2d"]
+
+    def test_openrouter_reasoning_shapes(self):
+        from midscene.core.ai_model.adapters import get_model_adapter
+
+        params = get_model_adapter("qwen4").build_chat_completion_params(
+            {}, {"reasoningEnabled": True, "reasoningBudget": 64}
+        )
+        assert params["enable_thinking"] is True
+        assert params["thinking_budget"] == 64
+
+        openrouter = {
+            "baseURL": "https://openrouter.ai/api/v1",
+            "reasoningEnabled": True,
+            "reasoningEffort": "high",
+            "reasoningBudget": 64,
+        }
+        params = get_model_adapter("qwen4").build_chat_completion_params(
+            {}, openrouter
+        )
+        assert params["reasoning"] == {
+            "enabled": True,
+            "effort": "high",
+            "max_tokens": 64,
+        }
+        assert "enable_thinking" not in params
+
+        disabled = get_model_adapter("qwen4").build_chat_completion_params(
+            {}, {"baseURL": "https://openrouter.ai/api/v1", "reasoningEnabled": False}
+        )
+        assert disabled["reasoning"] == {"enabled": False}
+
+        step = get_model_adapter("step").build_chat_completion_params(
+            {},
+            {
+                "baseURL": "https://openrouter.ai/api/v1",
+                "reasoningEnabled": False,
+            },
+        )
+        assert step["reasoning"] == {"effort": "low"}
+
+        # The URL match is exact; a trailing slash is not OpenRouter.
+        native = get_model_adapter("qwen4").build_chat_completion_params(
+            {},
+            {
+                "baseURL": "https://openrouter.ai/api/v1/",
+                "reasoningEnabled": True,
+            },
+        )
+        assert "reasoning" not in native
+        assert native["enable_thinking"] is True
+
+    def test_reasoning_effort_only_when_enabled(self):
+        from midscene.core.ai_model.adapters import get_model_adapter
+
+        for family in ("kimi3", "deepseek", "doubao-seed"):
+            params = get_model_adapter(family).build_chat_completion_params(
+                {}, {"reasoningEnabled": False, "reasoningEffort": "high"}
+            )
+            assert "reasoning_effort" not in params, family
+
+        params = get_model_adapter("kimi3").build_chat_completion_params(
+            {}, {"reasoningEnabled": True, "reasoningEffort": "high"}
+        )
+        assert params["reasoning_effort"] == "high"
+        assert params["thinking"] == {"type": "enabled"}
+
+        # "default" leaves native thinking untouched.
+        params = get_model_adapter("glm-v").build_chat_completion_params(
+            {}, {"reasoningEnabled": "default"}
+        )
+        assert "thinking" not in params
+
+    def test_qwen_single_item_array_unwrap_only_for_locate(self):
+        from midscene.core.ai_model.adapters import get_model_adapter
+        from midscene.core.ai_model.json_utils import parse_model_response_json
+
+        adapter = get_model_adapter("qwen3")
+        raw = '[{"bbox_2d":[562,653,574,671],"label":"Approve checkbox"}]'
+        parsed = adapter.json_parser(raw, "locate")
+        assert parsed == {"bbox_2d": [562, 653, 574, 671], "label": "Approve checkbox"}
+
+        parsed = adapter.json_parser(raw, "generic-object")
+        assert isinstance(parsed, list)
+        assert parse_model_response_json(raw) == [
+            {"bbox_2d": [562, 653, 574, 671], "label": "Approve checkbox"}
+        ]
+
+        element = adapter.locate_protocol["element"]["parse_raw_response"](
+            raw, adapter.locate_result_codec.prompt_spec
+        )
+        assert element["kind"] == "located"
+        assert element["target"] == [562, 653, 574, 671]
+
+    def test_unset_temperature_removed_from_request(self):
+        from midscene.core.ai_model import caller
+        from midscene.core.ai_model.adapters import get_model_runtime
+
+        runtime = get_model_runtime(
+            {
+                "modelName": "mock-model",
+                "modelFamily": "gpt-5",
+                "temperature": "unset",
+                "retryCount": 0,
+            }
+        )
+        chat = caller.prepare_chat_completion(
+            [{"role": "user", "content": "hi"}], runtime, {}
+        )
+        assert "temperature" not in chat["request_body"]
+
+        responses = caller.prepare_responses(
+            [{"role": "user", "content": "hi"}], runtime, {}
+        )
+        assert "temperature" not in responses["request_body"]
+
 
 class TestPromptParity:
     def test_data_demand_keeps_cjk(self):

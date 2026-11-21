@@ -1,7 +1,7 @@
 """
 Model environment configuration.
 
-Synced from upstream web-infra-dev/midscene v1.17.4:
+Synced from upstream web-infra-dev/midscene v1.18.2:
   packages/shared/src/env/types.ts       (env key constants, TModelFamily)
   packages/shared/src/env/constants.ts   (per-intent model config key maps)
   packages/shared/src/env/parse-model-config.ts
@@ -33,6 +33,7 @@ MODEL_CONFIG_DOC_URL = "https://midscenejs.com/model-api-setup.html"
 MODEL_FAMILY_VALUES: List[str] = [
     "jev",
     "ant-ling",
+    "step",
     "doubao-vision",
     "doubao-seed",
     "gemini",
@@ -41,6 +42,7 @@ MODEL_FAMILY_VALUES: List[str] = [
     "qwen3",
     "qwen3.5",
     "qwen3.6",
+    "qwen4",
     "vlm-ui-tars",
     "vlm-ui-tars-doubao",
     "vlm-ui-tars-doubao-1.5",
@@ -50,6 +52,7 @@ MODEL_FAMILY_VALUES: List[str] = [
     "gpt-5",
     "gpt-6",
     "deepseek",
+    "tencent-hy",
     "kimi",
     "kimi3",
     "xiaomi-mimo",
@@ -383,7 +386,9 @@ def get_model_description(
     return ""
 
 
-def _parse_temperature(raw: Optional[str]) -> Optional[float]:
+def _parse_temperature(raw: Optional[str]) -> Optional[Union[float, str]]:
+    if raw == "unset":
+        return "unset"
     if raw is None or raw == "":
         return None
     try:

@@ -1,6 +1,6 @@
 """Default model protocols: planning (Midscene XML), locate (JSON), insight (data-json).
 
-Synced from upstream packages/core/src/ai-model/model-adapter/:
+Synced from upstream packages/core/src/ai-model/model-adapter/ (v1.18.2):
   default-planning-protocol.ts, default-locate-protocol.ts,
   default-insight-protocol.ts
 """
@@ -308,11 +308,18 @@ def _build_search_area_user_prompt(section_description: str) -> str:
     return f"Find section containing: {section_description}"
 
 
-def _create_parse_raw_response(json_source: str, include_references: bool):
+def _create_parse_raw_response(
+    json_source: str,
+    include_references: bool,
+    json_parser=None,
+):
     def parse_raw_response(
         content: str, prompt_spec: Dict[str, Any]
     ) -> Dict[str, Any]:
-        parsed_response = parse_model_response_json(content, source=json_source)
+        parser = json_parser or (
+            lambda raw, source: parse_model_response_json(raw, source=source)
+        )
+        parsed_response = parser(content, json_source)
         assert_json_object(parsed_response)
         record: Dict[str, Any] = parsed_response
         target = read_locate_result_field(record, prompt_spec)
@@ -357,23 +364,27 @@ def _create_parse_raw_response(json_source: str, include_references: bool):
     return parse_raw_response
 
 
-def create_default_element_protocol() -> Dict[str, Any]:
+def create_default_element_protocol(json_parser=None) -> Dict[str, Any]:
     return {
         "system_prompt_introduction": DEFAULT_LOCATE_SYSTEM_PROMPT_INTRODUCTION,
         "build_response_instructions": _build_locate_response_instructions,
         "build_user_prompt": _build_locate_user_prompt,
         "expected_json_object_response": True,
-        "parse_raw_response": _create_parse_raw_response("locate", False),
+        "parse_raw_response": _create_parse_raw_response(
+            "locate", False, json_parser
+        ),
     }
 
 
-def create_default_search_area_protocol() -> Dict[str, Any]:
+def create_default_search_area_protocol(json_parser=None) -> Dict[str, Any]:
     return {
         "system_prompt_introduction": DEFAULT_SEARCH_AREA_SYSTEM_PROMPT_INTRODUCTION,
         "build_response_instructions": _build_search_area_response_instructions,
         "build_user_prompt": _build_search_area_user_prompt,
         "expected_json_object_response": True,
-        "parse_raw_response": _create_parse_raw_response("section-locator", True),
+        "parse_raw_response": _create_parse_raw_response(
+            "section-locator", True, json_parser
+        ),
     }
 
 

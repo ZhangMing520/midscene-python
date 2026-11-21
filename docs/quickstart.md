@@ -38,7 +38,7 @@ export MIDSCENE_MODEL_BASE_URL="https://dashscope.aliyuncs.com/compatible-mode/v
 export MIDSCENE_MODEL_FAMILY="qwen3-vl"
 ```
 
-支持的模型家族包括 `qwen2.5-vl` / `qwen3-vl`、`doubao-seed` / `doubao-vision`、`gemini`、`gpt-5`、`gpt-6`、`glm-v`、`kimi` / `kimi3`、`deepseek`、`xiaomi-mimo`、`ant-ling`、`vlm-ui-tars`、`auto-glm` 与 `jev`。旧开关 `MIDSCENE_USE_QWEN_VL` / `MIDSCENE_USE_DOUBAO_VISION` 等仍然兼容。
+支持的模型家族包括 `qwen2.5-vl` / `qwen3-vl`、`qwen3` / `qwen3.5` / `qwen3.6` / `qwen4`、`step`、`doubao-seed` / `doubao-vision`、`gemini`、`gpt-5`、`gpt-6`、`glm-v`、`kimi` / `kimi3`、`deepseek`、`tencent-hy`、`xiaomi-mimo`、`ant-ling`、`vlm-ui-tars`、`auto-glm` 与 `jev`。旧开关 `MIDSCENE_USE_QWEN_VL` / `MIDSCENE_USE_DOUBAO_VISION` 等仍然兼容。
 
 ### 按职责拆分模型
 

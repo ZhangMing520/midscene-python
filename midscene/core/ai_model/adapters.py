@@ -1,15 +1,17 @@
 """Model runtime and per-family adapter resolution.
 
-Synced from upstream web-infra-dev/midscene v1.17.4:
+Synced from upstream web-infra-dev/midscene v1.18.2:
   packages/core/src/ai-model/models/registry.ts
   packages/core/src/ai-model/models/default.ts
   packages/core/src/ai-model/models/{qwen,gpt,doubao,gemini,glm,kimi,mimo,deepseek}.ts
+  packages/core/src/ai-model/models/{stepfun,tencent-hy}.ts
   packages/core/src/ai-model/models/{ui-tars,auto-glm,ant-ling,jev}/*
   packages/core/src/ai-model/models/model-fallback.ts
   packages/core/src/ai-model/models/deepseek/locate-protocol.ts
+  packages/core/src/ai-model/model-adapter/{is-openrouter,openrouter-reasoning}.ts
 """
 
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from loguru import logger
 
@@ -38,15 +40,72 @@ def _json_object_config(
     return {}
 
 
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+
+
+def _is_openrouter(base_url: Optional[str]) -> bool:
+    return base_url == OPENROUTER_BASE_URL
+
+
+def _reasoning_enabled(user_config: ModelRequestUserConfig) -> Union[bool, str]:
+    reasoning_enabled = user_config.get("reasoningEnabled")
+    return False if reasoning_enabled is None else reasoning_enabled
+
+
+def _build_openrouter_reasoning_params(
+    user_config: ModelRequestUserConfig,
+    control_method: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """OpenRouter unified reasoning control (openrouter-reasoning.ts)."""
+    reasoning_enabled = _reasoning_enabled(user_config)
+    if reasoning_enabled == "default":
+        return {}
+
+    reasoning: Dict[str, Any] = {}
+    if control_method and control_method.get("type") == "effort":
+        if reasoning_enabled is True:
+            reasoning["effort"] = (
+                user_config.get("reasoningEffort")
+                or control_method["defaultEnabledEffort"]
+            )
+        else:
+            reasoning["effort"] = control_method["disabledEffort"]
+    else:
+        reasoning["enabled"] = bool(reasoning_enabled)
+        if reasoning_enabled is True and user_config.get("reasoningEffort") is not None:
+            reasoning["effort"] = user_config["reasoningEffort"]
+
+    # Budget forwarding is independent of the reasoning control method.
+    if reasoning_enabled is True and user_config.get("reasoningBudget") is not None:
+        reasoning["max_tokens"] = user_config["reasoningBudget"]
+
+    return {"reasoning": reasoning}
+
+
+def _apply_temperature(
+    config: Dict[str, Any],
+    user_config: ModelRequestUserConfig,
+    allow_override: bool = True,
+) -> Dict[str, Any]:
+    """Apply the user temperature; the 'unset' sentinel removes the default."""
+    if not allow_override:
+        config.pop("temperature", None)
+        return config
+    temperature = user_config.get("temperature")
+    if temperature == "unset":
+        config.pop("temperature", None)
+    elif temperature is not None:
+        config["temperature"] = temperature
+    return config
+
+
 def _build_default_params(
     midscene_defaults: Dict[str, Any],
     user_config: ModelRequestUserConfig,
     expected_json_object_response: bool = False,
 ) -> Dict[str, Any]:
     config: Dict[str, Any] = dict(midscene_defaults)
-    if user_config.get("temperature") is not None:
-        config["temperature"] = user_config["temperature"]
-    return config
+    return _apply_temperature(config, user_config)
 
 
 def _build_qwen_params(
@@ -54,18 +113,113 @@ def _build_qwen_params(
     user_config: ModelRequestUserConfig,
     expected_json_object_response: bool = False,
 ) -> Dict[str, Any]:
+    """qwen3-vl: native thinking controls only, no OpenRouter branch."""
     config: Dict[str, Any] = dict(midscene_defaults)
-    if user_config.get("temperature") is not None:
-        config["temperature"] = user_config["temperature"]
-    # DashScope / vLLM thinking controls
-    reasoning_enabled = user_config.get("reasoningEnabled")
+    _apply_temperature(config, user_config)
+    reasoning_enabled = _reasoning_enabled(user_config)
     if reasoning_enabled != "default":
-        config["enable_thinking"] = (
-            bool(reasoning_enabled) if reasoning_enabled is not None else False
+        config["enable_thinking"] = bool(reasoning_enabled)
+        if reasoning_enabled is True:
+            reasoning_budget = user_config.get("reasoningBudget")
+            if reasoning_budget is not None:
+                config["thinking_budget"] = reasoning_budget
+    return config
+
+
+def _build_qwen3_params(
+    midscene_defaults: Dict[str, Any],
+    user_config: ModelRequestUserConfig,
+    expected_json_object_response: bool = False,
+) -> Dict[str, Any]:
+    """qwen3 / qwen3.5 / qwen3.6: native or OpenRouter reasoning controls."""
+    config: Dict[str, Any] = dict(midscene_defaults)
+    _apply_temperature(config, user_config)
+    reasoning_enabled = _reasoning_enabled(user_config)
+    if _is_openrouter(user_config.get("baseURL")):
+        config.update(_build_openrouter_reasoning_params(user_config))
+    else:
+        if reasoning_enabled != "default":
+            config["enable_thinking"] = bool(reasoning_enabled)
+        if reasoning_enabled is True:
+            reasoning_budget = user_config.get("reasoningBudget")
+            if reasoning_budget is not None:
+                config["thinking_budget"] = reasoning_budget
+    return config
+
+
+def _build_qwen4_params(
+    midscene_defaults: Dict[str, Any],
+    user_config: ModelRequestUserConfig,
+    expected_json_object_response: bool = False,
+) -> Dict[str, Any]:
+    config: Dict[str, Any] = dict(midscene_defaults)
+    _apply_temperature(config, user_config)
+    config.update(_json_object_config(user_config, expected_json_object_response))
+    reasoning_enabled = _reasoning_enabled(user_config)
+    if _is_openrouter(user_config.get("baseURL")):
+        config.update(_build_openrouter_reasoning_params(user_config))
+    else:
+        if reasoning_enabled != "default":
+            config["enable_thinking"] = bool(reasoning_enabled)
+        if reasoning_enabled is True:
+            reasoning_effort = user_config.get("reasoningEffort")
+            if reasoning_effort is not None:
+                config["reasoning_effort"] = reasoning_effort
+            reasoning_budget = user_config.get("reasoningBudget")
+            if reasoning_budget is not None:
+                config["thinking_budget"] = reasoning_budget
+    return config
+
+
+def _build_step_params(
+    midscene_defaults: Dict[str, Any],
+    user_config: ModelRequestUserConfig,
+    expected_json_object_response: bool = False,
+) -> Dict[str, Any]:
+    config: Dict[str, Any] = dict(midscene_defaults)
+    _apply_temperature(config, user_config)
+    config.update(_json_object_config(user_config, expected_json_object_response))
+    reasoning_enabled = _reasoning_enabled(user_config)
+    if _is_openrouter(user_config.get("baseURL")):
+        config.update(
+            _build_openrouter_reasoning_params(
+                user_config,
+                {
+                    "type": "effort",
+                    "disabledEffort": "low",
+                    "defaultEnabledEffort": "medium",
+                },
+            )
         )
-        reasoning_budget = user_config.get("reasoningBudget")
-        if reasoning_budget is not None:
-            config["thinking_budget"] = reasoning_budget
+    elif reasoning_enabled != "default":
+        # Step reasoning models cannot disable thinking; use the lowest effort.
+        config["reasoning_effort"] = (
+            (user_config.get("reasoningEffort") or "medium")
+            if reasoning_enabled is True
+            else "low"
+        )
+    return config
+
+
+def _build_tencent_hy_params(
+    midscene_defaults: Dict[str, Any],
+    user_config: ModelRequestUserConfig,
+    expected_json_object_response: bool = False,
+) -> Dict[str, Any]:
+    config: Dict[str, Any] = dict(midscene_defaults)
+    _apply_temperature(config, user_config)
+    reasoning_enabled = _reasoning_enabled(user_config)
+    if _is_openrouter(user_config.get("baseURL")):
+        config.update(_build_openrouter_reasoning_params(user_config))
+    else:
+        if reasoning_enabled != "default":
+            config["thinking"] = {
+                "type": "enabled" if reasoning_enabled is True else "disabled"
+            }
+        if reasoning_enabled is True:
+            reasoning_effort = user_config.get("reasoningEffort")
+            if reasoning_effort is not None:
+                config["reasoning_effort"] = reasoning_effort
     return config
 
 
@@ -75,8 +229,7 @@ def _build_qwen25_params(
     expected_json_object_response: bool = False,
 ) -> Dict[str, Any]:
     config: Dict[str, Any] = dict(midscene_defaults)
-    if user_config.get("temperature") is not None:
-        config["temperature"] = user_config["temperature"]
+    _apply_temperature(config, user_config)
     config["vl_high_resolution_images"] = True
     return config
 
@@ -106,8 +259,7 @@ def _build_gpt5_chat_params(
     expected_json_object_response: bool = False,
 ) -> Dict[str, Any]:
     config: Dict[str, Any] = dict(midscene_defaults)
-    if user_config.get("temperature") is not None:
-        config["temperature"] = user_config["temperature"]
+    _apply_temperature(config, user_config)
     config.update(_json_object_config(user_config, expected_json_object_response))
     effort = _resolve_gpt5_reasoning_effort(user_config)
     if effort is not None:
@@ -122,6 +274,7 @@ def _build_gpt6_chat_params(
 ) -> Dict[str, Any]:
     config: Dict[str, Any] = dict(midscene_defaults)
     # GPT-6 does not support temperature; omit it from the serialized request.
+    _apply_temperature(config, user_config, allow_override=False)
     config.update(_json_object_config(user_config, expected_json_object_response))
     effort = _resolve_gpt6_reasoning_effort(user_config)
     if effort is not None:
@@ -135,8 +288,7 @@ def _build_gpt5_responses_params(
     expected_json_object_response: bool = False,
 ) -> Dict[str, Any]:
     config: Dict[str, Any] = dict(midscene_defaults)
-    if user_config.get("temperature") is not None:
-        config["temperature"] = user_config["temperature"]
+    _apply_temperature(config, user_config)
     if user_config.get("responseFormat") != "none" and expected_json_object_response:
         config["text"] = {"format": {"type": "json_object"}}
     effort = _resolve_gpt5_reasoning_effort(user_config)
@@ -152,6 +304,7 @@ def _build_gpt6_responses_params(
     expected_json_object_response: bool = False,
 ) -> Dict[str, Any]:
     config: Dict[str, Any] = dict(midscene_defaults)
+    _apply_temperature(config, user_config, allow_override=False)
     effort = _resolve_gpt6_reasoning_effort(user_config)
     if effort is not None:
         config["reasoning"] = {"effort": effort, "context": "current_turn"}
@@ -160,34 +313,26 @@ def _build_gpt6_responses_params(
     return config
 
 
-def _resolve_doubao_reasoning(user_config: ModelRequestUserConfig) -> Dict[str, Any]:
-    reasoning_enabled = user_config.get("reasoningEnabled")
-    if reasoning_enabled == "default":
-        return {}
-    thinking: Dict[str, Any] = {
-        "type": "enabled" if reasoning_enabled else "disabled"
-    }
-    reasoning_budget = user_config.get("reasoningBudget")
-    if reasoning_budget is not None:
-        thinking["budget_tokens"] = reasoning_budget
-    return {"thinking": thinking}
-
-
 def _build_doubao_params(
     midscene_defaults: Dict[str, Any],
     user_config: ModelRequestUserConfig,
     expected_json_object_response: bool = False,
 ) -> Dict[str, Any]:
     config: Dict[str, Any] = dict(midscene_defaults)
-    if user_config.get("temperature") is not None:
-        config["temperature"] = user_config["temperature"]
+    _apply_temperature(config, user_config)
     config.update(_json_object_config(user_config, expected_json_object_response))
-    reasoning_enabled = user_config.get("reasoningEnabled")
-    if reasoning_enabled != "default":
-        config.update(_resolve_doubao_reasoning(user_config))
-        effort = user_config.get("reasoningEffort")
-        if effort:
-            config["reasoning_effort"] = effort
+    reasoning_enabled = _reasoning_enabled(user_config)
+    if _is_openrouter(user_config.get("baseURL")):
+        config.update(_build_openrouter_reasoning_params(user_config))
+    else:
+        if reasoning_enabled != "default":
+            config["thinking"] = {
+                "type": "enabled" if reasoning_enabled is True else "disabled"
+            }
+        if reasoning_enabled is True:
+            reasoning_effort = user_config.get("reasoningEffort")
+            if reasoning_effort is not None:
+                config["reasoning_effort"] = reasoning_effort
     return config
 
 
@@ -197,13 +342,14 @@ def _build_glm_params(
     expected_json_object_response: bool = False,
 ) -> Dict[str, Any]:
     config: Dict[str, Any] = dict(midscene_defaults)
-    if user_config.get("temperature") is not None:
-        config["temperature"] = user_config["temperature"]
+    _apply_temperature(config, user_config)
     config.update(_json_object_config(user_config, expected_json_object_response))
-    reasoning_enabled = user_config.get("reasoningEnabled")
-    if reasoning_enabled != "default":
+    reasoning_enabled = _reasoning_enabled(user_config)
+    if _is_openrouter(user_config.get("baseURL")):
+        config.update(_build_openrouter_reasoning_params(user_config))
+    elif reasoning_enabled != "default":
         config["thinking"] = {
-            "type": "enabled" if reasoning_enabled else "disabled"
+            "type": "enabled" if reasoning_enabled is True else "disabled"
         }
     return config
 
@@ -214,8 +360,7 @@ def _build_gemini_params(
     expected_json_object_response: bool = False,
 ) -> Dict[str, Any]:
     config: Dict[str, Any] = dict(midscene_defaults)
-    if user_config.get("temperature") is not None:
-        config["temperature"] = user_config["temperature"]
+    _apply_temperature(config, user_config)
     reasoning_enabled = user_config.get("reasoningEnabled")
     if reasoning_enabled != "default":
         # Google's native thinking_config; relays reject the minimal level.
@@ -241,11 +386,15 @@ def _build_kimi_params(
 ) -> Dict[str, Any]:
     config: Dict[str, Any] = dict(midscene_defaults)
     # Kimi disallows custom temperature.
+    _apply_temperature(config, user_config, allow_override=False)
     config.update(_json_object_config(user_config, expected_json_object_response))
-    reasoning_enabled = user_config.get("reasoningEnabled")
-    config["thinking"] = {
-        "type": "enabled" if (reasoning_enabled or False) else "disabled"
-    }
+    reasoning_enabled = _reasoning_enabled(user_config)
+    if _is_openrouter(user_config.get("baseURL")):
+        config.update(_build_openrouter_reasoning_params(user_config))
+    elif reasoning_enabled != "default":
+        config["thinking"] = {
+            "type": "enabled" if reasoning_enabled is True else "disabled"
+        }
     return config
 
 
@@ -256,10 +405,20 @@ def _build_kimi3_params(
 ) -> Dict[str, Any]:
     config: Dict[str, Any] = dict(midscene_defaults)
     # Kimi disallows custom temperature.
+    _apply_temperature(config, user_config, allow_override=False)
     config.update(_json_object_config(user_config, expected_json_object_response))
-    reasoning_effort = user_config.get("reasoningEffort")
-    if reasoning_effort:
-        config["reasoning_effort"] = reasoning_effort
+    reasoning_enabled = _reasoning_enabled(user_config)
+    if _is_openrouter(user_config.get("baseURL")):
+        config.update(_build_openrouter_reasoning_params(user_config))
+    else:
+        if reasoning_enabled != "default":
+            config["thinking"] = {
+                "type": "enabled" if reasoning_enabled is True else "disabled"
+            }
+        if reasoning_enabled is True:
+            reasoning_effort = user_config.get("reasoningEffort")
+            if reasoning_effort is not None:
+                config["reasoning_effort"] = reasoning_effort
     return config
 
 
@@ -270,12 +429,14 @@ def _build_mimo_params(
 ) -> Dict[str, Any]:
     config: Dict[str, Any] = dict(midscene_defaults)
     config.update(_json_object_config(user_config, expected_json_object_response))
-    if user_config.get("temperature") is not None:
-        config["temperature"] = user_config["temperature"]
-    reasoning_enabled = user_config.get("reasoningEnabled")
-    config["thinking"] = {
-        "type": "enabled" if (reasoning_enabled or False) else "disabled"
-    }
+    _apply_temperature(config, user_config)
+    reasoning_enabled = _reasoning_enabled(user_config)
+    if _is_openrouter(user_config.get("baseURL")):
+        config.update(_build_openrouter_reasoning_params(user_config))
+    elif reasoning_enabled != "default":
+        config["thinking"] = {
+            "type": "enabled" if reasoning_enabled is True else "disabled"
+        }
     return config
 
 
@@ -285,19 +446,22 @@ def _build_deepseek_params(
     expected_json_object_response: bool = False,
 ) -> Dict[str, Any]:
     config: Dict[str, Any] = dict(midscene_defaults)
-    reasoning_enabled = user_config.get("reasoningEnabled")
+    reasoning_enabled = _reasoning_enabled(user_config)
     is_thinking_mode = reasoning_enabled is True or reasoning_enabled == "default"
     # DeepSeek thinking mode does not support temperature; omit it.
-    if not is_thinking_mode and user_config.get("temperature") is not None:
-        config["temperature"] = user_config["temperature"]
+    _apply_temperature(config, user_config, allow_override=not is_thinking_mode)
     config.update(_json_object_config(user_config, expected_json_object_response))
-    if reasoning_enabled != "default":
-        config["thinking"] = {
-            "type": "enabled" if (reasoning_enabled or False) else "disabled"
-        }
-        reasoning_effort = user_config.get("reasoningEffort")
-        if reasoning_effort:
-            config["reasoning_effort"] = reasoning_effort
+    if _is_openrouter(user_config.get("baseURL")):
+        config.update(_build_openrouter_reasoning_params(user_config))
+    else:
+        if reasoning_enabled != "default":
+            config["thinking"] = {
+                "type": "enabled" if reasoning_enabled is True else "disabled"
+            }
+        if reasoning_enabled is True:
+            reasoning_effort = user_config.get("reasoningEffort")
+            if reasoning_effort is not None:
+                config["reasoning_effort"] = reasoning_effort
     return config
 
 
@@ -307,13 +471,14 @@ def _build_ant_ling_params(
     expected_json_object_response: bool = False,
 ) -> Dict[str, Any]:
     config: Dict[str, Any] = dict(midscene_defaults)
-    if user_config.get("temperature") is not None:
-        config["temperature"] = user_config["temperature"]
+    _apply_temperature(config, user_config)
     config.update(_json_object_config(user_config, expected_json_object_response))
-    reasoning_enabled = user_config.get("reasoningEnabled")
-    if reasoning_enabled != "default":
+    reasoning_enabled = _reasoning_enabled(user_config)
+    if _is_openrouter(user_config.get("baseURL")):
+        config.update(_build_openrouter_reasoning_params(user_config))
+    elif reasoning_enabled != "default":
         config["thinking"] = {
-            "type": "enabled" if (reasoning_enabled or False) else "disabled"
+            "type": "enabled" if reasoning_enabled is True else "disabled"
         }
     return config
 
@@ -324,8 +489,7 @@ def _build_ui_tars_params(
     expected_json_object_response: bool = False,
 ) -> Dict[str, Any]:
     config: Dict[str, Any] = dict(midscene_defaults)
-    if user_config.get("temperature") is not None:
-        config["temperature"] = user_config["temperature"]
+    _apply_temperature(config, user_config)
     return config
 
 
@@ -335,8 +499,7 @@ def _build_auto_glm_params(
     expected_json_object_response: bool = False,
 ) -> Dict[str, Any]:
     config: Dict[str, Any] = dict(midscene_defaults)
-    if user_config.get("temperature") is not None:
-        config["temperature"] = user_config["temperature"]
+    _apply_temperature(config, user_config)
     config["top_p"] = 0.85
     config["frequency_penalty"] = 0.2
     return config
@@ -382,6 +545,43 @@ QWEN3_LOCATE_FORMAT = {
         "rounding": "round",
     },
 }
+
+QWEN4_LOCATE_FORMAT = {
+    "resultKey": "point",
+    "resultKeyAliases": ["point_2d"],
+    "coordinates": {
+        "shape": "point",
+        "order": "xy",
+        "normalizedBy": 1000,
+        "rounding": "round",
+    },
+}
+
+STEP_LOCATE_FORMAT = {
+    "resultKey": "point_2d",
+    "resultKeyAliases": ["point"],
+    "coordinates": {"shape": "point", "order": "xy", "normalizedBy": 1000},
+}
+
+TENCENT_HY_LOCATE_FORMAT = {
+    "resultKey": "box_2d",
+    "coordinates": {"shape": "bbox", "order": "xy", "normalizedBy": 1000},
+}
+
+
+def _parse_qwen_locate_json(raw: str, source: str = "generic-object") -> Any:
+    """Unwrap Qwen3/Qwen4 single-item locate arrays: [{"bbox_2d": ...}]."""
+    from .json_utils import parse_model_response_json
+
+    parsed = parse_model_response_json(raw, source=source)
+    if (
+        source in ("locate", "section-locator")
+        and isinstance(parsed, list)
+        and len(parsed) == 1
+        and isinstance(parsed[0], dict)
+    ):
+        return parsed[0]
+    return parsed
 
 DEFAULT_LOCATE_FORMAT = {
     "resultKey": "bbox",
@@ -766,6 +966,7 @@ class ModelAdapter:
         replay_raw_assistant_message: bool = False,
         supports_action_deep_locate: Optional[bool] = None,
         insight_boolean_fn: Optional[Callable] = None,
+        json_parser: Optional[Callable] = None,
     ):
         self.family = family
         self._build_params = build_chat_completion_params or _build_default_params
@@ -796,6 +997,7 @@ class ModelAdapter:
             else planning_kind == "standard"
         )
         self.insight_boolean_fn = insight_boolean_fn
+        self.json_parser = json_parser
         self._locate_codec: Optional[Any] = None
         self._locate_protocol: Optional[Any] = None
         self._planning_protocol: Optional[Any] = None
@@ -812,9 +1014,12 @@ class ModelAdapter:
         merged_user_config = dict(user_config)
         for key in self.unsupported_user_config:
             merged_user_config.pop(key, None)
-        return self._build_params(
+        config = self._build_params(
             midscene_defaults, merged_user_config, expected_json_object_response
         )
+        if merged_user_config.get("temperature") == "unset":
+            config.pop("temperature", None)
+        return config
 
     @property
     def locate_protocol(self):
@@ -827,9 +1032,9 @@ class ModelAdapter:
 
             self._locate_protocol = {
                 "element": self._element_protocol
-                or create_default_element_protocol(),
+                or create_default_element_protocol(self.json_parser),
                 "search_area": self._search_area_protocol
-                or create_default_search_area_protocol(),
+                or create_default_search_area_protocol(self.json_parser),
             }
         return self._locate_protocol
 
@@ -896,6 +1101,28 @@ def _qwen3_adapter() -> ModelAdapter:
     )
 
 
+def _qwen3_text_adapter() -> ModelAdapter:
+    return ModelAdapter(
+        family="qwen3",
+        build_chat_completion_params=_build_qwen3_params,
+        reasoning_content_keys=["reasoning_content", "reasoning"],
+        use_reasoning_as_content_fallback=True,
+        locate_element_format=QWEN3_LOCATE_FORMAT,
+        json_parser=_parse_qwen_locate_json,
+    )
+
+
+def _qwen4_adapter() -> ModelAdapter:
+    return ModelAdapter(
+        family="qwen4",
+        build_chat_completion_params=_build_qwen4_params,
+        reasoning_content_keys=["reasoning_content", "reasoning"],
+        use_reasoning_as_content_fallback=True,
+        locate_element_format=QWEN4_LOCATE_FORMAT,
+        json_parser=_parse_qwen_locate_json,
+    )
+
+
 def _adapter_registry() -> Dict[str, ModelAdapter]:
     qwen3 = _qwen3_adapter()
     ui_tars_doubao = ModelAdapter(
@@ -949,9 +1176,23 @@ def _adapter_registry() -> Dict[str, ModelAdapter]:
             image_pad_block_size=28,
         ),
         "qwen3-vl": qwen3,
-        "qwen3": qwen3,
-        "qwen3.5": qwen3,
-        "qwen3.6": qwen3,
+        "qwen3": _qwen3_text_adapter(),
+        "qwen3.5": _qwen3_text_adapter(),
+        "qwen3.6": _qwen3_text_adapter(),
+        "qwen4": _qwen4_adapter(),
+        "step": ModelAdapter(
+            family="step",
+            build_chat_completion_params=_build_step_params,
+            supported_protocols=["openai-chat"],
+            reasoning_content_keys=["reasoning", "reasoning_content"],
+            locate_element_format=STEP_LOCATE_FORMAT,
+        ),
+        "tencent-hy": ModelAdapter(
+            family="tencent-hy",
+            build_chat_completion_params=_build_tencent_hy_params,
+            unsupported_user_config=["reasoningBudget"],
+            locate_element_format=TENCENT_HY_LOCATE_FORMAT,
+        ),
         "gpt-5": ModelAdapter(
             family="gpt-5",
             build_chat_completion_params=_build_gpt5_chat_params,
@@ -990,7 +1231,7 @@ def _adapter_registry() -> Dict[str, ModelAdapter]:
         "kimi3": ModelAdapter(
             family="kimi3",
             build_chat_completion_params=_build_kimi3_params,
-            unsupported_user_config=["reasoningEnabled", "reasoningBudget"],
+            unsupported_user_config=["reasoningBudget"],
             use_reasoning_as_content_fallback=True,
             locate_element_format=KIMI_LOCATE_FORMAT,
             replay_raw_assistant_message=True,

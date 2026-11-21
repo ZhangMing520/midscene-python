@@ -86,7 +86,7 @@ Puppeteer from upstream Midscene is **not ported** in this SDK. The iOS and Harm
 
 Screenshot-based planning and locate avoid sending large DOM trees to the model. Midscene Python supports the same model families and request protocols as upstream:
 
-`qwen2.5-vl` / `qwen3-vl`, `doubao-seed` / `doubao-vision`, `gemini`, `gpt-5`, `gpt-6`, `glm-v`, `kimi` / `kimi3`, `deepseek` (dedicated `<｜point｜>` locate protocol), `xiaomi-mimo`, `ant-ling`, `vlm-ui-tars` (Thought/Action custom planner), `auto-glm` (AutoGLM pseudo-code planner), and `jev` (System One protocol).
+`qwen2.5-vl` / `qwen3-vl`, `qwen3` / `qwen3.5` / `qwen3.6` / `qwen4`, `step`, `doubao-seed` / `doubao-vision`, `gemini`, `gpt-5`, `gpt-6`, `glm-v`, `kimi` / `kimi3`, `deepseek` (dedicated `<｜point｜>` locate protocol), `tencent-hy`, `xiaomi-mimo`, `ant-ling`, `vlm-ui-tars` (Thought/Action custom planner), `auto-glm` (AutoGLM pseudo-code planner), and `jev` (System One protocol).
 
 ```bash
 # Default model (fallback for every responsibility)

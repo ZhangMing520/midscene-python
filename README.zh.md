@@ -86,7 +86,7 @@ await agent.ai_assert("The error message is visible below the email field")
 
 基于截图的规划与定位无需把庞大的 DOM 树发送给模型。Midscene Python 支持与上游相同的模型家族与请求协议：
 
-`qwen2.5-vl` / `qwen3-vl`、`doubao-seed` / `doubao-vision`、`gemini`、`gpt-5`、`gpt-6`、`glm-v`、`kimi` / `kimi3`、`deepseek`（专用的 `<｜point｜>` 定位协议）、`xiaomi-mimo`、`ant-ling`、`vlm-ui-tars`（Thought/Action 自定义规划器）、`auto-glm`（AutoGLM 伪代码规划器）以及 `jev`（System One 协议）。
+`qwen2.5-vl` / `qwen3-vl`、`qwen3` / `qwen3.5` / `qwen3.6` / `qwen4`、`step`、`doubao-seed` / `doubao-vision`、`gemini`、`gpt-5`、`gpt-6`、`glm-v`、`kimi` / `kimi3`、`deepseek`（专用的 `<｜point｜>` 定位协议）、`tencent-hy`、`xiaomi-mimo`、`ant-ling`、`vlm-ui-tars`（Thought/Action 自定义规划器）、`auto-glm`（AutoGLM 伪代码规划器）以及 `jev`（System One 协议）。
 
 ```bash
 # 默认模型（所有职责的兜底）

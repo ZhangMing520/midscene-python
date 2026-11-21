@@ -271,6 +271,8 @@ def _adapter_user_config(model_config: Dict[str, Any]) -> Dict[str, Any]:
         "reasoningEffort": model_config.get("reasoningEffort"),
         "reasoningBudget": model_config.get("reasoningBudget"),
         "responseFormat": model_config.get("responseFormat"),
+        "baseURL": model_config.get("openaiBaseURL"),
+        "intent": model_config.get("intent"),
     }
 
 
@@ -297,6 +299,8 @@ def prepare_chat_completion(
         _adapter_user_config(model_config),
         bool(options.get("expectedJsonObjectResponse")),
     )
+    if model_config.get("temperature") == "unset":
+        adapter_params.pop("temperature", None)
     request_body: Dict[str, Any] = {
         "model": model_config.get("modelName"),
         "messages": to_chat_messages(messages, image_detail),
@@ -343,9 +347,13 @@ def prepare_responses(
         builder(midscene_defaults, user_config, bool(options.get("expectedJsonObjectResponse")))
         if builder
         else {**midscene_defaults, **{
-            key: value for key, value in user_config.items() if value is not None
+            key: value
+            for key, value in user_config.items()
+            if value is not None and value != "unset"
         }}
     )
+    if model_config.get("temperature") == "unset":
+        adapter_params.pop("temperature", None)
     request_body: Dict[str, Any] = {
         "store": False,
         **_strip_undefined(adapter_params),
