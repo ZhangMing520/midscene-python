@@ -12,6 +12,7 @@ Synced from upstream web-infra-dev/midscene v1.18.2:
 """
 
 from typing import Any, Callable, Dict, List, Optional, Union
+import uuid
 
 from loguru import logger
 
@@ -595,7 +596,12 @@ DEFAULT_LOCATE_FORMAT = {
 
 GPT_LOCATE_FORMAT = {
     "resultKey": "bbox",
-    "coordinates": {"shape": "bbox", "order": "xy", "rounding": "round"},
+    "coordinates": {
+        "shape": "bbox",
+        "order": "xy",
+        "boundsType": "left-closed-right-open",
+        "rounding": "round",
+    },
 }
 
 GLM_LOCATE_FORMAT = {
@@ -1355,6 +1361,14 @@ class ModelRuntime:
         self.adapter = adapter or get_model_adapter(config.get("modelFamily"))
         self.on_usage = None  # optional callback(AIUsageInfo)
         self.model_fallback: Optional[Dict[str, Any]] = None
+        self._execution_id: Optional[str] = None
+
+    @property
+    def execution_id(self) -> str:
+        """Stable per-runtime call id sent as `x-midscene-execution-id`."""
+        if self._execution_id is None:
+            self._execution_id = f"unscoped-{uuid.uuid4().hex}"
+        return self._execution_id
 
     @property
     def model_family(self) -> Optional[str]:

@@ -62,6 +62,7 @@ const badge = (status) => {
 };
 const findScreenshot = (value, depth = 0) => {
   if (!value || depth > 4) return null;
+  if (typeof value === 'object' && !Array.isArray(value) && value.storage === 'file' && typeof value.path === 'string') return value.path;
   if (typeof value === 'string' && value.startsWith('data:image')) return value;
   if (typeof value === 'string' && /^[A-Za-z0-9+/=]{200,}$/.test(value)) return 'data:image/png;base64,' + value;
   if (Array.isArray(value)) { for (const v of value) { const r = findScreenshot(v, depth + 1); if (r) return r; } }

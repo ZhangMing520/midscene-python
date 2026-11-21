@@ -211,6 +211,7 @@ def build_usage_info(
     request_id: Optional[str],
     response_model_name: Optional[str],
     internal_call_id: str,
+    parse_retry_count: int = 0,
 ) -> Optional[Dict[str, Any]]:
     if not raw_usage:
         return None
@@ -237,7 +238,10 @@ def build_usage_info(
         "total_tokens": total_tokens,
         "cached_input": cached_input,
         "time_cost": time_cost,
-        "retry": retry_count,
+        # `retry` predates the upstream metric split; keep it as the sum.
+        "retry": retry_count + parse_retry_count,
+        "request_retry_count": retry_count,
+        "parse_retry_count": parse_retry_count,
         "request_id": request_id,
         "model_name": response_model_name or model_config.get("modelName"),
         "model_description": model_config.get("modelDescription", ""),
@@ -810,6 +814,7 @@ async def call_generative_ai(
                 request_id=parsed.get("requestId"),
                 response_model_name=parsed.get("responseModelName"),
                 internal_call_id=internal_call_id,
+                parse_retry_count=options.get("semanticRetryAttempt") or 0,
             )
             if usage and model_runtime.on_usage:
                 model_runtime.on_usage(usage)

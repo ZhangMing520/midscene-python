@@ -261,8 +261,9 @@ class TestLocateResult:
         result = codec.to_pixel_result(
             [100, 100, 199, 199], {"preparedSize": {"width": 320, "height": 240}}
         )
-        # Pixel inputs keep their precision; the bbox midpoint is 149.5
-        assert result["center"] == (149.5, 149.5)
+        # Closed bounds cover the final pixel: [100, 199] has 100 pixels and
+        # its center is 150.
+        assert result["center"] == (150, 150)
         rect = result["rect"]
         assert rect["left"] == 100 and rect["top"] == 100
         assert rect["width"] == 100 and rect["height"] == 100
@@ -281,11 +282,12 @@ class TestLocateResult:
                 },
             }
         )
-        # 500/1000 of 320 = 160, 250/1000 of 240 = 60
+        # 500/1000 of 320 = 160 (closed interval [0, 160], center 80.5 -> 81),
+        # 250/1000 of 240 = 60 (center 30.5 -> 31).
         result = codec.to_pixel_result(
             [0, 0, 500, 250], {"preparedSize": {"width": 320, "height": 240}}
         )
-        assert result["center"] == (80, 30)
+        assert result["center"] == (81, 31)
 
     def test_yx_order_point(self):
         from midscene.core.ai_model.locate_result import create_locate_result_codec
@@ -343,7 +345,76 @@ class TestLocateResult:
         result = codec.to_pixel_result(
             "100, 100, 199, 199", {"preparedSize": {"width": 320, "height": 240}}
         )
-        assert result["center"] == (149.5, 149.5)
+        assert result["center"] == (150, 150)
+
+    def test_half_open_bbox_accepts_image_edges(self):
+        from midscene.core.ai_model.adapters import GPT_LOCATE_FORMAT
+        from midscene.core.ai_model.locate_result import create_locate_result_codec
+
+        codec = create_locate_result_codec(GPT_LOCATE_FORMAT)
+        result = codec.to_pixel_result(
+            [0, 0, 320, 240], {"preparedSize": {"width": 320, "height": 240}}
+        )
+        assert result["center"] == (160, 120)
+        assert result["rect"]["width"] == 320
+        assert result["rect"]["height"] == 240
+
+        with pytest.raises(ValueError):
+            codec.to_pixel_result(
+                [0, 0, 321, 240], {"preparedSize": {"width": 320, "height": 240}}
+            )
+
+    def test_closed_bbox_rejects_image_edges(self):
+        from midscene.core.ai_model.adapters import GPT_LOCATE_FORMAT
+        from midscene.core.ai_model.locate_result import create_locate_result_codec
+
+        codec = create_locate_result_codec(
+            {
+                "resultKey": "bbox",
+                "coordinates": {
+                    "shape": "bbox",
+                    "order": "xy",
+                    "boundsType": "closed",
+                },
+            }
+        )
+        with pytest.raises(ValueError):
+            codec.to_pixel_result(
+                [0, 0, 320, 240], {"preparedSize": {"width": 320, "height": 240}}
+            )
+        # Legacy aliases resolve to the same canonical bounds.
+        assert GPT_LOCATE_FORMAT["coordinates"]["boundsType"] == (
+            "left-closed-right-open"
+        )
+
+    def test_bounds_type_aliases(self):
+        from midscene.core.ai_model.locate_result import resolve_bounds_type
+
+        assert resolve_bounds_type(None) == "closed"
+        assert resolve_bounds_type("inclusive") == "closed"
+        assert resolve_bounds_type("edges") == "left-closed-right-open"
+
+    def test_normalization_basis_image_size_vs_last_pixel(self):
+        from midscene.core.ai_model.locate_result import create_locate_result_codec
+
+        def center_for(basis):
+            codec = create_locate_result_codec(
+                {
+                    "resultKey": "point",
+                    "coordinates": {
+                        "shape": "point",
+                        "normalizedBy": 1000,
+                        "normalizationBasis": basis,
+                    },
+                }
+            )
+            return codec.to_pixel_result(
+                [900, 900], {"preparedSize": {"width": 320, "height": 240}}
+            )["center"]
+
+        # image-size maps 900/1000 to 288x216; last-pixel uses 319x239.
+        assert center_for("image-size") == (288, 216)
+        assert center_for("last-pixel") == (287, 215)
 
 
 # ---------------------------------------------------------------------------
@@ -669,6 +740,17 @@ class TestCaller:
         assert result["usage"]["prompt_tokens"] == 100
 
     @pytest.mark.asyncio
+    async def test_usage_splits_request_and_parse_retries(self):
+        result = await self._run_call(
+            [FakeResponse(self._chat_payload("ok"))], semanticRetryAttempt=2
+        )
+        usage = result["usage"]
+        assert usage["request_retry_count"] == 0
+        assert usage["parse_retry_count"] == 2
+        # `retry` predates the upstream split; keep it as the sum.
+        assert usage["retry"] == 2
+
+    @pytest.mark.asyncio
     async def test_reasoning_fallback(self):
         result = await self._run_call(
             [FakeResponse(self._chat_payload("", reasoning="thinking output"))]
@@ -798,8 +880,9 @@ class TestGroundingWorkflow:
             )
 
         assert calls["count"] == 2
-        # Normalized 0-1000 input: midpoint 4.5 -> ~1.44 x 1.08 px -> (1, 1)
-        assert result["parse_result"]["element"]["center"] == (1, 1)
+        # Normalized 0-1000 closed bbox: [0, 0, 9, 9] spans [0, 2.88] px,
+        # whose closed interval center rounds to (2, 2).
+        assert result["parse_result"]["element"]["center"] == (2, 2)
 
     @pytest.mark.asyncio
     async def test_custom_locate_dispatches_to_adapter_fn(self, mock_interface):
@@ -1012,8 +1095,9 @@ class TestPlanningWorkflow:
             )
         located = result["action"]["param"]["locate"]["locatedPixelResult"]
         # bbox_2d is normalized to 0-1000: 100..200 maps to 32..64 px on a
-        # 320-wide image and 24..48 px on a 240-high image.
-        assert located["center"] == (48, 36)
+        # 320-wide image and 24..48 px on a 240-high image. Closed intervals
+        # center at 48.5/36.5, which Math.round-style rounding sends up.
+        assert located["center"] == (49, 37)
 
 
 # ---------------------------------------------------------------------------
@@ -1613,6 +1697,56 @@ class TestLocateCache:
 
         assert result == {"center": [7, 8]}
         assert interface.features == [[7.0, 8.0]]
+
+    @pytest.mark.asyncio
+    async def test_non_cacheable_planner_skips_all_caches(
+        self, tmp_path, monkeypatch
+    ):
+        from midscene.core.agent import Agent
+
+        monkeypatch.setenv("MIDSCENE_RUN_DIR", str(tmp_path))
+        interface = _CacheInterface()
+        agent = Agent(
+            interface,
+            AgentOptions(
+                cache_id="locate-nocache-planner",
+                model_config={
+                    "MIDSCENE_MODEL_NAME": "mock-model",
+                    "MIDSCENE_MODEL_API_KEY": "sk-test",
+                    "MIDSCENE_MODEL_BASE_URL": "https://example.com/v1",
+                    "MIDSCENE_MODEL_FAMILY": "vlm-ui-tars",
+                },
+            ),
+        )
+        cache = agent._get_task_cache()
+        cache.append_locate_cache("the button", {"xpaths": ["/cached"]})
+        cache.append_plan_cache("another task", "- type: Tap")
+
+        async def fake_locate(*args, **kwargs):
+            return {"center": [25, 40], "rect": None}
+
+        monkeypatch.setattr(agent, "_run_locate", fake_locate)
+        plans = [
+            {
+                "action": {
+                    "type": "Tap",
+                    "param": {"locate": {"prompt": "the button"}},
+                }
+            },
+            {"finalize_success": True, "finalize_message": "done"},
+        ]
+
+        async def fake_plan_once(*args, **kwargs):
+            return plans.pop(0)
+
+        monkeypatch.setattr(agent, "_plan_once", fake_plan_once)
+        assert await agent.ai_action("tap the button") == "done"
+
+        # A planner without planning-cache support disables locate caching and
+        # plan-cache writes for the whole aiAct (upstream #3418).
+        assert interface.resolved == []
+        assert interface.features == []
+        assert len(cache.cache["caches"]) == 2  # only the seeded entries
 
     @pytest.mark.asyncio
     async def test_plan_coordinates_win_over_cache(self, tmp_path, monkeypatch):

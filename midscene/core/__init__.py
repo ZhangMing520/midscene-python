@@ -40,6 +40,7 @@ from .element_describer import (
 )
 from .report_artifact import (
     ReportArtifactStore,
+    export_report_artifact,
     publish_report_artifact,
     read_report_artifact,
 )
@@ -76,6 +77,7 @@ __all__ = [
     "verify_element_description_at_point",
     "verify_locator",
     "ReportArtifactStore",
+    "export_report_artifact",
     "publish_report_artifact",
     "read_report_artifact",
 ]

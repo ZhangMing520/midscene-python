@@ -7,14 +7,39 @@ import pytest
 from midscene.core.report_artifact import (
     ReportArtifactError,
     ReportArtifactStore,
+    export_report_artifact,
     publish_report_artifact,
     read_report_artifact,
     validate_manifest,
 )
 
+_PNG_1PX = (
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8"
+    "z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+)
+
 
 def _dump(name="run-1"):
     return {"groupName": "G", "executions": [{"name": name, "tasks": []}]}
+
+
+def _dump_with_image(name="run-1"):
+    return {
+        "groupName": "G",
+        "executions": [
+            {
+                "name": name,
+                "tasks": [
+                    {
+                        "type": "Insight",
+                        "uiContext": {
+                            "screenshot": f"data:image/png;base64,{_PNG_1PX}"
+                        },
+                    }
+                ],
+            }
+        ],
+    }
 
 
 class TestReportArtifactStore:
@@ -112,3 +137,74 @@ class TestPublication:
 
         publish_report_artifact(other, destination, overwrite=True)
         assert (destination / "report.json").exists() is False
+
+
+class TestExportReportArtifact:
+    def _make_artifact(self, root):
+        store = ReportArtifactStore(root, "demo-report")
+        store.write_execution("run-1", _dump_with_image())
+        store.finalize()
+        return root
+
+    def test_exports_directory_artifact_as_single_html(self, tmp_path):
+        from midscene.core.report_viewer import read_report_dump
+
+        source = self._make_artifact(tmp_path / "report")
+        output = tmp_path / "out"
+        path = export_report_artifact(source, output, "exported")
+
+        assert path == str(output / "exported.html")
+        assert (output / "exported.html").exists()
+        dump = read_report_dump(path)
+        assert dump["groupName"] == "G"
+        assert dump["executions"][0]["name"] == "run-1"
+
+    def test_exports_html_with_external_assets(self, tmp_path):
+        source = self._make_artifact(tmp_path / "report")
+        output = tmp_path / "out"
+        path = export_report_artifact(
+            source, output, "bundle", output_format="html-and-external-assets"
+        )
+
+        artifact = output / "bundle"
+        assert path == str(artifact / "index.html")
+        screenshots = list((artifact / "screenshots").glob("*.png"))
+        assert len(screenshots) == 1
+        assert screenshots[0].read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
+        html = (artifact / "index.html").read_text(encoding="utf-8")
+        assert '"storage": "file"' in html
+
+    def test_refuses_to_overwrite_unless_requested(self, tmp_path):
+        source = self._make_artifact(tmp_path / "report")
+        output = tmp_path / "out"
+        export_report_artifact(source, output, "exported")
+
+        with pytest.raises(ReportArtifactError, match="already exists"):
+            export_report_artifact(source, output, "exported")
+        assert export_report_artifact(source, output, "exported", overwrite=True)
+
+    def test_rejects_destination_equal_to_input(self, tmp_path):
+        from midscene.core.report_viewer import write_report_html
+
+        source = write_report_html(_dump(), "orig", str(tmp_path))
+        with pytest.raises(ReportArtifactError, match="must differ"):
+            export_report_artifact(source, tmp_path, "orig")
+
+    def test_rejects_missing_input(self, tmp_path):
+        with pytest.raises(ReportArtifactError):
+            export_report_artifact(tmp_path / "missing", tmp_path / "out", "x")
+
+    def test_rejects_invalid_export_name(self, tmp_path):
+        source = self._make_artifact(tmp_path / "report")
+        for name in ("report.html", "a/b", ".."):
+            with pytest.raises(ReportArtifactError, match="reportFileName"):
+                export_report_artifact(source, tmp_path / "out", name)
+
+    def test_reads_single_file_html_input(self, tmp_path):
+        from midscene.core.report_viewer import write_report_html
+
+        source = write_report_html(_dump("single"), "single", str(tmp_path))
+        path = export_report_artifact(source, tmp_path / "out", "copy")
+
+        assert (tmp_path / "out" / "copy.html").exists()
+        assert path.endswith("copy.html")

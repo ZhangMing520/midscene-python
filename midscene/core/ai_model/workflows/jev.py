@@ -5,6 +5,7 @@ Synced from upstream packages/core/src/ai-model/models/jev/*
 planning-decision.ts, planning-action.ts).
 """
 
+import asyncio
 import base64
 import io
 import json
@@ -12,7 +13,7 @@ from typing import Any, Dict, List, Optional
 
 
 from ..adapters import ModelRuntime
-from ..system_one import SystemOneError, call_system_one, validate_system_one_response
+from ..system_one import SystemOneError, call_system_one
 from .context_utils import (
     get_screenshot_base64,
     get_shot_size,
@@ -20,14 +21,14 @@ from .context_utils import (
 )
 from ..locate_result import create_locate_result_codec
 
-# Jev boxes are normalized 0-1 with edges semantics.
+# Jev boxes are normalized 0-1 with half-open, image-edge semantics.
 _jev_box_codec = create_locate_result_codec(
     {
         "coordinates": {
             "shape": "bbox",
             "normalizedBy": 1,
             "rounding": "none",
-            "boundsType": "edges",
+            "boundsType": "left-closed-right-open",
         }
     }
 )
@@ -65,15 +66,11 @@ def map_jev_box(
     )
 
 
-def _parse_answers(content: str) -> Dict[str, Any]:
-    return validate_system_one_response(json.loads(content))["answers"]
-
-
 # ---------------------------------------------------------------------------
 # Locate (jev/locate.ts)
 # ---------------------------------------------------------------------------
 
-def _prepare_jev_references(prompt: Any) -> Dict[str, Any]:
+async def _prepare_jev_references(prompt: Any) -> Dict[str, Any]:
     """Reference images from a multimodal prompt (jev/image.ts prepareReferences)."""
     images = prompt.get("images") if isinstance(prompt, dict) else None
     convert_http = (
@@ -81,24 +78,45 @@ def _prepare_jev_references(prompt: Any) -> Dict[str, Any]:
         if isinstance(prompt, dict)
         else False
     )
-    references: List[Dict[str, Any]] = []
-    image_map: Dict[str, str] = {}
+    entries: List[Dict[str, Any]] = []
     for index, item in enumerate(images or []):
-        key = f"reference_{index}"
         url = item.get("url") if isinstance(item, dict) else item
         if not isinstance(url, str) or not url:
             continue
-        if not url.startswith("data:"):
-            # Local file paths (and opted-in HTTP URLs) need inlining first.
-            resolved = resolve_reference_image(item, convert_http)
-            if resolved:
-                url = resolved
-        name = item.get("name") if isinstance(item, dict) else None
-        reference: Dict[str, Any] = {"image": f"`{key}`"}
-        if name:
-            reference["name"] = name
+        entries.append(
+            {
+                "key": f"reference_{index}",
+                "name": item.get("name") if isinstance(item, dict) else None,
+                "url": url,
+            }
+        )
+
+    semaphore = asyncio.Semaphore(5)
+    resolved: Dict[str, Optional[str]] = {}
+
+    async def resolve(url: str) -> None:
+        if url.startswith("data:"):
+            resolved[url] = url
+            return
+        # Local file paths (and opted-in HTTP URLs) need inlining first.
+        async with semaphore:
+            resolved[url] = await asyncio.to_thread(
+                resolve_reference_image, {"url": url}, convert_http
+            )
+
+    await asyncio.gather(*(resolve(url) for url in dict.fromkeys(
+        entry["url"] for entry in entries
+    )))
+
+    references: List[Dict[str, Any]] = []
+    image_map: Dict[str, str] = {}
+    for entry in entries:
+        url = resolved.get(entry["url"]) or entry["url"]
+        reference: Dict[str, Any] = {"image": f"`{entry['key']}`"}
+        if entry["name"]:
+            reference["name"] = entry["name"]
         references.append(reference)
-        image_map[key] = prepare_jev_image(url)
+        image_map[entry["key"]] = prepare_jev_image(url)
     return {"references": references, "images": image_map}
 
 
@@ -109,7 +127,7 @@ async def jev_locate(
 ) -> Dict[str, Any]:
     """Jev locate: returns {locatedPixelResult}, plus raw/usage."""
     image = prepare_jev_image(locate_image["imageBase64"])
-    references = _prepare_jev_references(target_element_description)
+    references = await _prepare_jev_references(target_element_description)
     target = (
         target_element_description
         if isinstance(target_element_description, str)
@@ -219,13 +237,12 @@ async def prepare_jev_planning_context(
         ],
     }
     images = {"screenshot": screenshot}
-    reference_keys = []
-    for _index, _url in enumerate(reference_images or []):
-        _key = f"reference_{_index}"
-        images[_key] = _url
-        reference_keys.append(_key)
-    if reference_keys:
-        state["referenceImages"] = reference_keys
+    references = []
+    for index, url in enumerate(reference_images or []):
+        key = f"reference_{index}"
+        images[key] = prepare_jev_image(url)
+        references.append({"image": f"`{key}`"})
+    state["references"] = references
     return {"state": state, "images": images}
 
 
@@ -330,6 +347,7 @@ def build_jev_action(
     action_space: List[Any],
     include_locate_in_planning: bool,
     shot_size: Dict[str, Any],
+    reference_images: Optional[List[str]] = None,
 ) -> List[Dict[str, Any]]:
     choice = decision["choice"]
     if choice["kind"] == "complete":
@@ -344,19 +362,30 @@ def build_jev_action(
             raise SystemOneError("Missing Jev planning target box")
         located_pixel_result = map_jev_box(decision["target"]["box"], shot_size)
 
-    param = {
-        field: {
+    locate_prompt = (
+        "Locate the target for parameter {field} of action "
+        "{action} ({description}) for the NEXT step toward this goal. Use the "
+        "current screenshot as authoritative and consider execution feedback. "
+        "Task context: {context}"
+    )
+
+    def locate_param(field: str) -> Dict[str, Any]:
+        prompt = locate_prompt.format(
+            field=json.dumps(field),
+            action=json.dumps(action.name),
+            description=action.description or action.name,
+            context=json.dumps(jev_context["state"]),
+        )
+        return {
             "prompt": (
-                f"Locate the target for parameter {json.dumps(field)} of action "
-                f"{json.dumps(action.name)} ({action.description or action.name}) "
-                "for the NEXT step toward this goal. Use the current screenshot "
-                "as authoritative and consider execution feedback. Task context: "
-                f"{json.dumps(jev_context['state'])}"
+                {"prompt": prompt, "images": [{"url": url} for url in reference_images]}
+                if reference_images
+                else prompt
             ),
             **({"locatedPixelResult": located_pixel_result} if located_pixel_result else {}),
         }
-        for field in fields
-    }
+
+    param = {field: locate_param(field) for field in fields}
     return [{"type": action.name, "param": param}]
 
 
@@ -426,6 +455,7 @@ async def jev_plan(
         action_space,
         include_locate_in_planning,
         get_shot_size(context),
+        reference_images,
     )
     log = f"Jev selected {selected}"
     feedback = conversation_history.pending_feedback_message

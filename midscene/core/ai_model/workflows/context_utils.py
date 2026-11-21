@@ -1,5 +1,6 @@
 """Shared helpers for AI workflows (context access + image preparation)."""
 
+import asyncio
 import base64
 import io
 from pathlib import Path
@@ -71,6 +72,28 @@ def resolve_reference_images(images: Any, convert_http: bool) -> List[str]:
         if url:
             resolved.append(url)
     return resolved
+
+
+async def prepare_reference_images(images: Any, convert_http: bool) -> List[str]:
+    """Resolve reference images once per unique URL, at most five in flight
+    (upstream prepareReferenceImages)."""
+    urls: List[str] = []
+    for item in images or []:
+        url = item.get("url") if isinstance(item, dict) else item
+        if isinstance(url, str) and url:
+            urls.append(url)
+    unique_urls = list(dict.fromkeys(urls))
+    semaphore = asyncio.Semaphore(5)
+    prepared: Dict[str, Optional[str]] = {}
+
+    async def prepare_one(url: str) -> None:
+        async with semaphore:
+            prepared[url] = await asyncio.to_thread(
+                resolve_reference_image, {"url": url}, convert_http
+            )
+
+    await asyncio.gather(*(prepare_one(url) for url in unique_urls))
+    return [prepared[url] for url in urls if prepared.get(url)]
 
 
 def get_screenshot_base64(context: Any) -> str:

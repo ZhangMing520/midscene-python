@@ -43,7 +43,7 @@ from .ai_model.workflows import (
     standard_plan,
 )
 from .ai_model.workflows.context_utils import (
-    resolve_reference_images,
+    prepare_reference_images,
     user_prompt_to_string,
 )
 from .ai_model.workflows.jev import jev_plan
@@ -356,12 +356,16 @@ def _markdown_to_ai_act_prompt(
     }
 
 
-def _reference_images_from_prompt(task_prompt):
-    """Pull reference images out of a markdown-style prompt dict."""
+async def _reference_images_from_prompt(task_prompt, force_base64=False):
+    """Pull reference images out of a markdown-style prompt dict.
+
+    Resolution happens once per aiAct and deduplicates URLs; System One (jev)
+    requires data URLs, so force base64 there.
+    """
     if isinstance(task_prompt, dict) and task_prompt.get("images"):
-        return resolve_reference_images(
+        return await prepare_reference_images(
             task_prompt["images"],
-            bool(task_prompt.get("convertHttpImage2Base64", False)),
+            bool(task_prompt.get("convertHttpImage2Base64", False)) or force_base64,
         )
     return None
 
@@ -856,7 +860,6 @@ class Agent:
         abort_signal = _get_opt(opt, _ABORT_SIGNAL_KEYS, None)
         _throw_if_aborted(abort_signal)
         prompt_str = user_prompt_to_string(task_prompt)
-        reference_images = _reference_images_from_prompt(task_prompt)
         await self._emit_progress("aiAct", "start", {"prompt": prompt_str})
 
         # Effort resolution (upstream aiAct boundary)
@@ -869,6 +872,9 @@ class Agent:
         if effort is None:
             effort = "deepThink" if deep_think is True else "balance"
         planning_adapter = self.model_runtime("planning").adapter
+        reference_images = await _reference_images_from_prompt(
+            task_prompt, force_base64=planning_adapter.family == "jev"
+        )
         if effort == "fast" and planning_adapter.planning_kind == "custom":
             raise ValueError(
                 'The "fast" aiAct effort is not supported with custom planning '
@@ -903,10 +909,13 @@ class Agent:
         )
 
         cacheable = opt.get("cacheable", True)
+        # Without planning-cache support the action sequence may change between
+        # runs, so locate caching is disabled for the whole aiAct (upstream #3418).
+        ai_act_cacheable = cacheable if planning_adapter.cache_enabled else False
         cache = self._get_task_cache()
         cached_entry = None
         report_tasks: List[Dict[str, Any]] = []
-        if cache is not None and planning_adapter.cache_enabled and cacheable:
+        if cache is not None and ai_act_cacheable:
             cached_entry = cache.match_plan_cache(prompt_str)
             if cached_entry:
                 replayed = False
@@ -1072,6 +1081,7 @@ class Agent:
                     await self._execute_planning_action(
                         action,
                         getattr(context, "shrunk_shot_to_logical_ratio", 1.0),
+                        cacheable=ai_act_cacheable,
                     )
                     report_tasks.append(
                         self._build_action_report_task(
@@ -1156,7 +1166,7 @@ class Agent:
             {"prompt": prompt_str, "output": output_string},
         )
 
-        if cache is not None and not cache.read_only_mode and executed_actions:
+        if cache is not None and not cache.read_only_mode and executed_actions and ai_act_cacheable:
             cache.append_plan_cache(
                 prompt_str,
                 pyyaml.dump(
@@ -2249,6 +2259,7 @@ class Agent:
         self,
         action: Dict[str, Any],
         distance_ratio: Optional[float] = None,
+        cacheable: Optional[bool] = None,
     ) -> None:
         action_type = action.get("type")
         definition = find_action_in_action_space_or_throw(action_type, self.action_space)
@@ -2256,10 +2267,23 @@ class Agent:
         if distance_ratio is not None:
             param = scale_action_distances(param, definition, distance_ratio)
             action["param"] = param
+        if cacheable is not None:
+            locate_fields = (
+                definition.get("locate_fields")
+                if isinstance(definition, dict)
+                else definition.locate_fields
+            ) or []
+            exec_param = dict(param)
+            for field in locate_fields:
+                locate_param = exec_param.get(field)
+                if isinstance(locate_param, dict):
+                    exec_param[field] = {**locate_param, "cacheable": cacheable}
+        else:
+            exec_param = param
         if definition.execute is None:
             raise NotImplementedError(f"Action {action_type} has no executor")
         logger.info(f"Executing action {action_type}: {param}")
-        await definition.execute(param, self.interface, self._locate_for_action)
+        await definition.execute(exec_param, self.interface, self._locate_for_action)
 
     async def _replay_cached_plan(
         self,

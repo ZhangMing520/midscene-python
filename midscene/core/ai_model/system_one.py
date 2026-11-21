@@ -115,7 +115,9 @@ def resolve_system_one_endpoint(config: Dict[str, Any]) -> str:
 # ---------------------------------------------------------------------------
 
 def prepare_system_one(
-    config: Dict[str, Any], request: Dict[str, Any]
+    config: Dict[str, Any],
+    request: Dict[str, Any],
+    execution_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     if not config.get("openaiApiKey"):
         raise SystemOneError("Jev requires MIDSCENE_*_MODEL_API_KEY")
@@ -146,6 +148,8 @@ def prepare_system_one(
         "TypeSafe-Danger-Zone-Images": "true",
         "x-midscene-version": __import__("midscene").__version__,
     }
+    if execution_id:
+        headers["x-midscene-execution-id"] = execution_id
     extra_headers = (config.get("openaiExtraConfig") or {}).get("defaultHeaders")
     if isinstance(extra_headers, dict):
         headers.update({str(k): str(v) for k, v in extra_headers.items()})
@@ -169,7 +173,7 @@ async def call_system_one(
     semantics); callers parse `answers` themselves.
     """
     config = model_runtime.config
-    prepared = prepare_system_one(config, request)
+    prepared = prepare_system_one(config, request, model_runtime.execution_id)
     questions: Dict[str, Any] = prepared["questions"]
 
     proxy = prepared.get("proxy")
@@ -192,19 +196,22 @@ async def call_system_one(
             f"Jev request failed ({response.status_code}): {body_text[:4000]}"
         )
 
+    from .caller import AIResponseParseError
+
     try:
         payload = json.loads(body_text)
-    except json.JSONDecodeError as e:
-        raise SystemOneError(f"invalid System One JSON response: {e}") from e
-    result = validate_system_one_response(payload)
-
-    for name, question in questions.items():
-        answer = result["answers"].get(name)
-        if not answer or answer.get("type") != question.get("type"):
-            raise SystemOneError(f"Missing or invalid Jev answer: {name}")
-        if question["type"] == "choice":
-            if answer["choice"] not in (question.get("criteria") or {}):
-                raise SystemOneError(f"Invalid Jev choice: {name}")
+        result = validate_system_one_response(payload)
+        for name, question in questions.items():
+            answer = result["answers"].get(name)
+            if not answer or answer.get("type") != question.get("type"):
+                raise SystemOneError(f"Missing or invalid Jev answer: {name}")
+            if question["type"] == "choice":
+                if answer["choice"] not in (question.get("criteria") or {}):
+                    raise SystemOneError(f"Invalid Jev choice: {name}")
+    except (json.JSONDecodeError, SystemOneError) as error:
+        raise AIResponseParseError(
+            f"Invalid System One response: {error}", body_text
+        ) from error
 
     usage_data = result.get("usage") or {}
     input_tokens = usage_data.get("input_tokens")

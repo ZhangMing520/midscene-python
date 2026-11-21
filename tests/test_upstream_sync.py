@@ -101,6 +101,130 @@ class TestSystemOne:
         )
         assert resolve_system_one_endpoint({"endpoint": "https://y"}) == "https://y"
 
+    def test_prepare_includes_execution_id_header(self):
+        from midscene.core.ai_model.system_one import prepare_system_one
+
+        config = {
+            "openaiApiKey": "sk-test",
+            "openaiBaseURL": "https://api.example.com/v1",
+            "modelName": "jev-1",
+        }
+        request = {"state": {}, "questions": {}}
+        prepared = prepare_system_one(config, request, execution_id="exec-123")
+        assert prepared["headers"]["x-midscene-execution-id"] == "exec-123"
+        assert prepare_system_one(config, request)["headers"].get(
+            "x-midscene-execution-id"
+        ) is None
+
+    @pytest.mark.asyncio
+    async def test_call_sends_stable_runtime_execution_id(self):
+        from midscene.core.ai_model import system_one
+
+        captured: List[Dict[str, str]] = []
+        payload = self._response({"present": {"type": "noul", "noul": 0.9}})
+
+        class FakeAsyncClient:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                return False
+
+            async def post(self, url, headers=None, content=None):
+                captured.append(headers)
+                return FakeResponse(payload)
+
+        runtime = _make_runtime(
+            modelFamily="jev",
+            openaiApiKey="sk-test",
+            openaiBaseURL="https://api.example.com/v1",
+        )
+        request = {
+            "state": {"present": "`screenshot`"},
+            "questions": {"present": {"type": "noul"}},
+        }
+        with patch.object(system_one.httpx, "AsyncClient", FakeAsyncClient):
+            await system_one.call_system_one(runtime, request)
+            await system_one.call_system_one(runtime, request)
+
+        execution_id = captured[0]["x-midscene-execution-id"]
+        assert execution_id.startswith("unscoped-")
+        assert captured[1]["x-midscene-execution-id"] == execution_id
+
+    @pytest.mark.asyncio
+    async def test_call_wraps_invalid_response_in_parse_error(self):
+        from midscene.core.ai_model import system_one
+        from midscene.core.ai_model.caller import AIResponseParseError
+
+        payload = {"answers": {"present": {"type": "noul", "noul": 1.5}}}
+
+        class FakeAsyncClient:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                return False
+
+            async def post(self, url, headers=None, content=None):
+                return FakeResponse(payload)
+
+        runtime = _make_runtime(
+            modelFamily="jev",
+            openaiApiKey="sk-test",
+            openaiBaseURL="https://api.example.com/v1",
+        )
+        with patch.object(system_one.httpx, "AsyncClient", FakeAsyncClient):
+            with pytest.raises(AIResponseParseError) as exc:
+                await system_one.call_system_one(
+                    runtime,
+                    {"state": {}, "questions": {"present": {"type": "noul"}}},
+                )
+
+        # The raw body must survive for the caller's semantic retry.
+        assert '"noul": 1.5' in exc.value.raw_response
+
+
+class TestReferenceImages:
+    @pytest.mark.asyncio
+    async def test_prepare_dedupes_urls(self, monkeypatch):
+        from midscene.core.ai_model.workflows import context_utils
+
+        calls: List[Any] = []
+
+        def fake_resolve(image, convert_http):
+            calls.append((image["url"], convert_http))
+            return f"resolved:{image['url']}"
+
+        monkeypatch.setattr(context_utils, "resolve_reference_image", fake_resolve)
+        result = await context_utils.prepare_reference_images(
+            [{"url": "a.png"}, "a.png", "b.png"], convert_http=True
+        )
+
+        assert result == ["resolved:a.png", "resolved:a.png", "resolved:b.png"]
+        assert sorted(calls) == [("a.png", True), ("b.png", True)]
+
+    @pytest.mark.asyncio
+    async def test_prepare_drops_unresolved(self, monkeypatch):
+        from midscene.core.ai_model.workflows import context_utils
+
+        monkeypatch.setattr(
+            context_utils,
+            "resolve_reference_image",
+            lambda image, convert_http: None
+            if image["url"] == "missing.png"
+            else image["url"],
+        )
+        result = await context_utils.prepare_reference_images(
+            ["missing.png", "a.png"], convert_http=False
+        )
+        assert result == ["a.png"]
+
 
 # ---------------------------------------------------------------------------
 # Jev workflows
@@ -292,6 +416,40 @@ class TestJevWorkflows:
 
             result = await jev_boolean("the page is loaded", _Ctx(), None)
         assert result["value"] is True
+
+    def test_build_jev_action_attaches_reference_images(self):
+        from midscene.core.actions import build_web_action_space
+        from midscene.core.ai_model.workflows.jev import build_jev_action
+
+        tap = next(a for a in build_web_action_space() if a.name == "Tap")
+        actions = build_jev_action(
+            {"choice": {"kind": "action", "action": tap}, "target": None},
+            {"state": {"goal": "open the menu"}},
+            "open the menu",
+            [tap],
+            False,
+            {"width": 320, "height": 240},
+            reference_images=["data:image/png;base64,AAAA"],
+        )
+        assert actions[0]["type"] == "Tap"
+        locate = actions[0]["param"]["locate"]
+        assert 'Locate the target for parameter "locate"' in locate["prompt"]["prompt"]
+        assert locate["prompt"]["images"] == [{"url": "data:image/png;base64,AAAA"}]
+
+    def test_build_jev_action_complete_yields_no_actions(self):
+        from midscene.core.ai_model.workflows.jev import build_jev_action
+
+        assert (
+            build_jev_action(
+                {"choice": {"kind": "complete"}},
+                {"state": {}},
+                "done",
+                [],
+                False,
+                {"width": 320, "height": 240},
+            )
+            == []
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -1838,6 +1996,25 @@ class TestTypedQueryParity:
         assert "the user wants to do some 'wait for' operation" in json.dumps(
             calls[0], ensure_ascii=False
         )
+
+    @pytest.mark.asyncio
+    async def test_ai_query_returns_json_array(self):
+        async def handler(*args, **kwargs):
+            return {
+                "content": (
+                    "<observation>Two rows</observation>"
+                    '<data-json>[{"name": "a"}, {"name": "b"}]</data-json>'
+                ),
+                "usage": None,
+            }
+
+        agent = _make_agent(MockInterface())
+        with patch_model_call(
+            "midscene.core.ai_model.workflows.insight", handler
+        ):
+            result = await agent.ai_query("list every row")
+
+        assert result == [{"name": "a"}, {"name": "b"}]
 
 
 class TestPlanningLocateNormalization:
