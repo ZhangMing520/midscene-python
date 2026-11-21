@@ -33,6 +33,10 @@ from midscene.core.yaml import ScriptPlayer, parse_yaml_script
 from midscene.core.dump import ExecutionDumpBuilder, build_execution_task, build_service_dump
 from midscene.core.agent.ui_observer import UIObserver, UIObservation
 from midscene.core.agent.run_gherkin_scenario import run_gherkin_scenario, parse_gherkin_scenario
+from midscene.core.common import build_yaml_flow_from_plans, user_prompt_to_string
+from midscene.core.screenshot_item import ScreenshotItem
+from midscene.core.task_runner import TaskExecutionError, TaskRunner
+from midscene.core.utils import get_version, process_cache_config
 from midscene.core.element_describer import (
     describe_element_at_point,
     verify_element_description_at_point,
@@ -71,6 +75,13 @@ __all__ = [
     "build_service_dump",
     "UIObserver",
     "UIObservation",
+    "ScreenshotItem",
+    "TaskRunner",
+    "TaskExecutionError",
+    "build_yaml_flow_from_plans",
+    "user_prompt_to_string",
+    "get_version",
+    "process_cache_config",
     "run_gherkin_scenario",
     "parse_gherkin_scenario",
     "describe_element_at_point",
