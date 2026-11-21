@@ -570,6 +570,20 @@ class PlaywrightWebPage(AbstractInterface):
         end_y = min(max(start_y + dy, 1), height - 1)
         await self._mouse_swipe(start_x, start_y, end_x, end_y, duration)
 
+    async def swipe_points(
+        self,
+        start: List[float],
+        end: List[float],
+        duration: Optional[int] = None,
+    ) -> None:
+        """Endpoint pointer swipe between two viewport points (upstream swipe)."""
+        await self._mouse_swipe(start[0], start[1], end[0], end[1], duration)
+
+    async def size(self) -> Dict[str, int]:
+        """Viewport size in logical pixels (upstream size())."""
+        viewport = self.page.viewport_size or {"width": 1280, "height": 720}
+        return {"width": int(viewport["width"]), "height": int(viewport["height"])}
+
     async def _mouse_swipe(
         self,
         start_x: float,

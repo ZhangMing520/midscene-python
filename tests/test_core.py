@@ -2085,6 +2085,9 @@ class TestSwipeDuration:
             def __init__(self):
                 self.calls = []
 
+            async def size(self):
+                return {"width": 400, "height": 600}
+
             async def swipe(self, direction, distance=None, duration=None):
                 self.calls.append((direction, distance, duration))
 
@@ -2101,6 +2104,9 @@ class TestSwipeDuration:
         class LegacyDevice:
             def __init__(self):
                 self.calls = []
+
+            async def size(self):
+                return {"width": 400, "height": 600}
 
             async def swipe(self, direction, distance=None):
                 self.calls.append((direction, distance))

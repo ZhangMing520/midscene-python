@@ -8,7 +8,7 @@ import math
 import subprocess
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from loguru import logger
 from pydantic import BaseModel
@@ -407,6 +407,24 @@ class AndroidDevice(AbstractInterface):
         except Exception as e:
             logger.error(f"Failed to swipe: {e}")
             raise
+
+    async def swipe_points(
+        self,
+        start: Sequence[float],
+        end: Sequence[float],
+        duration: Optional[int] = None,
+    ) -> None:
+        """Endpoint swipe between two logical points (upstream swipe(start, end))."""
+        await self.swipe(
+            start[0], start[1], end[0], end[1],
+            duration=int(duration if duration is not None else 300),
+        )
+
+    async def size(self) -> Dict[str, int]:
+        """Logical screen size (upstream size()); physical / display density."""
+        if not self._screen_size:
+            await self._get_screen_size()
+        return {"width": self._screen_size.width, "height": self._screen_size.height}
 
     async def _swipe_direction(
         self,

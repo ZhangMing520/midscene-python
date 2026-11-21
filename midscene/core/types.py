@@ -330,6 +330,15 @@ class AbstractInterface(ABC):
     async def swipe(self, direction: str, distance: Optional[int] = None) -> None:
         raise NotImplementedError("swipe is not supported on this interface")
 
+    async def swipe_points(
+        self,
+        start: List[float],
+        end: List[float],
+        duration: Optional[int] = None,
+    ) -> None:
+        """Swipe from one logical point to another (upstream swipe(start, end))."""
+        raise NotImplementedError("swipe_points is not supported on this interface")
+
     async def pinch(
         self,
         direction: str,

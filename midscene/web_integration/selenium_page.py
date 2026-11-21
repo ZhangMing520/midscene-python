@@ -368,6 +368,37 @@ class SeleniumWebPage(AbstractInterface):
         end_x = min(max(start_x + dx, 1), width - 1)
         end_y = min(max(start_y + dy, 1), height - 1)
         duration_ms = max(int(duration or 100), 150)
+        await self._pointer_swipe(start_x, start_y, end_x, end_y, duration_ms)
+
+    async def swipe_points(
+        self,
+        start: List[float],
+        end: List[float],
+        duration: Optional[int] = None,
+    ) -> None:
+        """Endpoint pointer swipe between two viewport points (upstream swipe)."""
+        duration_ms = max(int(duration or 100), 150)
+        await self._pointer_swipe(start[0], start[1], end[0], end[1], duration_ms)
+
+    async def size(self) -> Dict[str, int]:
+        """Viewport size in logical pixels (upstream size())."""
+        viewport = await asyncio.to_thread(
+            self.driver.execute_script,
+            "return {width: window.innerWidth, height: window.innerHeight}",
+        )
+        return {
+            "width": int(viewport.get("width") or 1280),
+            "height": int(viewport.get("height") or 720),
+        }
+
+    async def _pointer_swipe(
+        self,
+        start_x: float,
+        start_y: float,
+        end_x: float,
+        end_y: float,
+        duration_ms: int,
+    ) -> None:
         steps = 30
 
         def _perform() -> None:
@@ -404,6 +435,7 @@ class SeleniumWebPage(AbstractInterface):
                 raise
 
         await asyncio.to_thread(_perform)
+
 
     async def list_tabs(self) -> List[Dict[str, Any]]:
         """Browser windows/tabs of the current session."""

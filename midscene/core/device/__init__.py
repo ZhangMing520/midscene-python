@@ -101,6 +101,106 @@ def scale_action_distances(
     return result
 
 
+_SWIPE_DIRECTIONS = ("up", "down", "left", "right")
+
+
+def _is_finite_number(value: Any) -> bool:
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+    )
+
+
+def _swipe_center(locate: Any, name: str) -> Dict[str, float]:
+    center = locate.get("center") if isinstance(locate, dict) else None
+    if not center or len(center) < 2:
+        raise ValueError(f'Swipe "{name}" requires a located center point')
+    return {"x": float(center[0]), "y": float(center[1])}
+
+
+def normalize_swipe_param(
+    param: Dict[str, Any], screen_size: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Resolve Swipe params into points, duration and repeat count.
+
+    Mirrors upstream `normalizeSwipeParam`: `end` is mutually exclusive with
+    `direction`/`distance`, the start defaults to the screen center, the end
+    point is clamped to the screen bounds and repeat 0 means continuous mode
+    capped at 10 repetitions.
+    """
+    width = float(screen_size["width"])
+    height = float(screen_size["height"])
+
+    duration = param.get("duration")
+    if duration is None:
+        duration = 300
+    if not _is_finite_number(duration) or duration <= 0:
+        raise ValueError("duration must be a positive finite number")
+
+    repeat_count = param.get("repeat")
+    if repeat_count is None:
+        repeat_count = 1
+    if (
+        not _is_finite_number(repeat_count)
+        or not float(repeat_count).is_integer()
+        or repeat_count < 0
+    ):
+        raise ValueError("repeat must be a non-negative finite integer")
+
+    start = param.get("start")
+    if start:
+        start_point = _swipe_center(start, "start")
+    else:
+        start_point = {"x": width / 2, "y": height / 2}
+
+    end = param.get("end")
+    direction = param.get("direction")
+    distance = param.get("distance")
+    if end:
+        if direction is not None or distance is not None:
+            raise ValueError(
+                'Invalid Swipe parameters: "end" cannot be combined with '
+                '"direction" or "distance". Use "end", optionally with "start", '
+                "for an endpoint swipe."
+            )
+        end_point = _swipe_center(end, "end")
+    else:
+        if direction not in _SWIPE_DIRECTIONS or distance is None:
+            raise ValueError(
+                'Invalid Swipe parameters: a relative swipe requires both '
+                '"direction" and a positive "distance".'
+            )
+        if not _is_finite_number(distance) or distance <= 0:
+            raise ValueError(
+                'Invalid Swipe parameters: "distance" must be a positive number.'
+            )
+        end_point = {
+            "x": start_point["x"]
+            + (
+                distance
+                if direction == "right"
+                else -distance if direction == "left" else 0
+            ),
+            "y": start_point["y"]
+            + (
+                distance
+                if direction == "down"
+                else -distance if direction == "up" else 0
+            ),
+        }
+
+    end_point["x"] = max(0.0, min(end_point["x"], width))
+    end_point["y"] = max(0.0, min(end_point["y"], height))
+
+    return {
+        "start_point": start_point,
+        "end_point": end_point,
+        "duration": duration,
+        "repeat_count": 10 if repeat_count == 0 else int(repeat_count),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Action executors. `device` is the platform interface; `locate_fn` resolves a
 # locate param ({prompt, locatedPixelResult?}) to {'center': (x, y), 'rect'?}.
@@ -262,17 +362,78 @@ async def _execute_go_forward(param: Dict[str, Any], device: Any, locate_fn) -> 
     await device.go_forward()
 
 
+async def _resolve_screen_size(device: Any) -> Dict[str, float]:
+    """Logical screen size used to normalize swipe points."""
+    size_fn = getattr(device, "size", None)
+    if size_fn is not None:
+        size = await size_fn()
+        if isinstance(size, dict):
+            return {"width": float(size["width"]), "height": float(size["height"])}
+        return {"width": float(size.width), "height": float(size.height)}
+    context = await device.get_context()
+    return {
+        "width": float(context.size.width),
+        "height": float(context.size.height),
+    }
+
+
 async def _execute_swipe(param: Dict[str, Any], device: Any, locate_fn) -> None:
-    direction = param.get("direction") or "up"
-    distance = param.get("distance")
-    duration = param.get("duration")
-    if _supports(device, "swipe"):
+    resolved = dict(param)
+    if resolved.get("start"):
+        point = await _resolve_locate_point(resolved["start"], locate_fn)
+        resolved["start"] = {"center": list(point["center"])}
+    if resolved.get("end"):
+        point = await _resolve_locate_point(resolved["end"], locate_fn)
+        resolved["end"] = {"center": list(point["center"])}
+
+    normalized = normalize_swipe_param(resolved, await _resolve_screen_size(device))
+    direction = resolved.get("direction")
+    distance = resolved.get("distance")
+    duration = int(normalized["duration"])
+    repeat_count = normalized["repeat_count"]
+
+    def _swipe_kwargs() -> Dict[str, Any]:
         kwargs: Dict[str, Any] = {"distance": distance}
-        if duration is not None and _accepts_keyword(device.swipe, "duration"):
-            kwargs["duration"] = int(duration)
-        await device.swipe(direction, **kwargs)
-    else:
+        if _accepts_keyword(device.swipe, "duration"):
+            kwargs["duration"] = duration
+        return kwargs
+
+    # A plain relative swipe keeps using the platform direction primitive so
+    # the device-specific centering/clamping behaviour is unchanged.
+    if (
+        not resolved.get("start")
+        and not resolved.get("end")
+        and _supports(device, "swipe")
+    ):
+        for _ in range(repeat_count):
+            await device.swipe(direction, **_swipe_kwargs())
+        return
+
+    if _supports(device, "swipe_points"):
+        point_kwargs: Dict[str, Any] = {}
+        if _accepts_keyword(device.swipe_points, "duration"):
+            point_kwargs["duration"] = duration
+        start_point = [
+            normalized["start_point"]["x"],
+            normalized["start_point"]["y"],
+        ]
+        end_point = [normalized["end_point"]["x"], normalized["end_point"]["y"]]
+        for _ in range(repeat_count):
+            await device.swipe_points(start_point, end_point, **point_kwargs)
+        return
+
+    if _supports(device, "swipe") and direction is not None:
+        for _ in range(repeat_count):
+            await device.swipe(direction, **_swipe_kwargs())
+        return
+
+    if direction is not None:
         await device.scroll(direction, distance=distance)
+        return
+
+    raise NotImplementedError(
+        "Swipe endpoint form is not supported on this interface"
+    )
 
 
 async def _execute_drag_and_drop(param: Dict[str, Any], device: Any, locate_fn) -> None:
@@ -833,29 +994,75 @@ _ANDROID_SHARED_ACTIONS = (
 )
 
 
-def _swipe_action() -> DeviceAction:
-    """Swipe is exposed by touch (android) and pointer (computer) devices."""
+def _swipe_action(input_mode: str = "touch") -> DeviceAction:
+    """Swipe is exposed by touch and pointer devices (upstream defineActionSwipe)."""
+    movement = "finger" if input_mode == "touch" else "pointer"
+    if input_mode == "touch":
+        description = (
+            "Perform a touch gesture that directly manipulates the UI (e.g., "
+            "adjust a continuous control such as a slider or wheel picker, "
+            "switch between paged cards or images, follow an on-screen swipe "
+            "gesture to continue or dismiss, or swipe an item to delete it). "
+            "For browsing off-screen content in a page or scrollable region, "
+            "use Scroll instead. Choose exactly one movement form: "
+            '(1) relative swipe — provide "direction" and a positive '
+            '"distance"; or (2) endpoint swipe — provide "end". "start" is '
+            "optional for both forms and defaults to the center of the page. "
+            'Do not combine "end" with "direction" or "distance".'
+        )
+    else:
+        description = (
+            "Perform a primary-mouse-button gesture that continuously presses "
+            "and moves the pointer across the desktop UI. Use it to adjust a "
+            "continuous control such as a slider or wheel picker, switch "
+            "between paged cards or images, follow an on-screen swipe gesture "
+            "to continue or dismiss, or swipe an item to delete it. For "
+            "browsing off-screen content in a page or scrollable region, use "
+            'Scroll instead. Choose exactly one movement form: (1) relative '
+            'swipe — provide "direction" and a positive "distance"; or '
+            '(2) endpoint swipe — provide "end". "start" is optional for both '
+            "forms and defaults to the center of the page. Do not combine "
+            '"end" with "direction" or "distance".'
+        )
     return DeviceAction(
         name="Swipe",
-        description=(
-            "Perform a swipe gesture with the finger-movement convention: "
-            "direction refers to finger movement."
-        ),
+        description=description,
         param_schema={
+            "start": {
+                "type": "locate",
+                "description": (
+                    f"Optional starting point of the {movement} movement. "
+                    "Available in both relative and endpoint forms. If omitted, "
+                    "the center of the page is used."
+                ),
+                "optional": True,
+            },
             "direction": {
                 "type": '"up" | "down" | "left" | "right"',
                 "description": (
-                    "Finger movement direction. Quick mapping: move the finger "
-                    'or content upward -> "up"; downward -> "down"; leftward -> '
-                    '"left"; rightward -> "right". Required together with a '
-                    "positive distance."
+                    f"{movement.capitalize()} movement direction. Quick "
+                    f"mapping: move the {movement} or content upward -> "
+                    '"up"; downward -> "down"; leftward -> "left"; rightward '
+                    '-> "right". Required together with a positive distance '
+                    "for a relative swipe. Omit when using end."
                 ),
+                "optional": True,
             },
             "distance": {
                 "type": "number",
                 "description": (
-                    "Positive length of the finger movement in pixels. Required "
-                    "together with direction."
+                    f"Positive length of the {movement} movement in pixels. "
+                    "Required together with direction for a relative swipe. "
+                    "Omit when using end."
+                ),
+                "optional": True,
+            },
+            "end": {
+                "type": "locate",
+                "description": (
+                    f"Endpoint of the {movement} movement. Use for an endpoint "
+                    "swipe, optionally with start. Do not provide direction or "
+                    "distance when using end."
                 ),
                 "optional": True,
             },
@@ -864,10 +1071,21 @@ def _swipe_action() -> DeviceAction:
                 "description": "Duration of the swipe gesture in milliseconds",
                 "optional": True,
             },
+            "repeat": {
+                "type": "number",
+                "description": (
+                    "The number of times to repeat the swipe gesture. 1 for "
+                    "default, 0 for continuous mode capped at 10 repeats"
+                ),
+                "optional": True,
+            },
         },
-        locate_fields=[],
+        locate_fields=["start", "end"],
         distance_fields=["distance"],
-        sample={"direction": "up", "distance": 400},
+        sample={
+            "start": {"prompt": "center of the notification"},
+            "end": {"prompt": "upper edge of the screen"},
+        },
         interface_alias="aiSwipe",
         primitive="swipe",
         execute=_execute_swipe,
@@ -1160,9 +1378,9 @@ def build_action_space_for(interface_type: str) -> List[DeviceAction]:
         # until upstream advertises LongPress for this platform.
         return [
             a for a in build_web_action_space() if a.name != "Pinch"
-        ] + [_swipe_action()]
+        ] + [_swipe_action("pointer")]
     if interface_type == "web":
         # Upstream web integration exposes the pointer swipe; the Playwright and
         # Selenium pages implement it as a mouse drag with an explicit duration.
-        return build_web_action_space() + [_swipe_action()]
+        return build_web_action_space() + [_swipe_action("pointer")]
     return build_web_action_space()

@@ -9,7 +9,7 @@ so CJK text and IME interference are handled the same way as upstream.
 import asyncio
 import base64
 import io
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from loguru import logger
 
@@ -337,6 +337,21 @@ class ComputerDevice(AbstractInterface):
         await self.drag_and_drop(
             (cx - dx // 2, cy - dy // 2), (cx + dx // 2, cy + dy // 2)
         )
+
+    async def swipe_points(
+        self,
+        start: List[float],
+        end: List[float],
+        duration: Optional[int] = None,
+    ) -> None:
+        """Endpoint pointer swipe between two logical points (upstream swipe)."""
+        await self.drag_and_drop((start[0], start[1]), (end[0], end[1]))
+
+    async def size(self) -> Dict[str, int]:
+        """Desktop screen size in logical pixels (upstream size())."""
+        pyautogui = await _pyautogui()
+        screen = await asyncio.to_thread(pyautogui.size)
+        return {"width": int(screen.width), "height": int(screen.height)}
 
     async def drag_and_drop(self, from_point, to_point) -> None:
         pyautogui = await _pyautogui()

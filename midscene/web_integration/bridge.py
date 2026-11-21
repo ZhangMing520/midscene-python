@@ -461,6 +461,20 @@ class BridgeWebPage(AbstractInterface):
              {"x": to_point[0], "y": to_point[1]}],
         )
 
+    async def swipe_points(
+        self,
+        start: List[float],
+        end: List[float],
+        duration: Optional[int] = None,
+    ) -> None:
+        """Endpoint pointer swipe between two points (upstream swipe)."""
+        await self.drag_and_drop((start[0], start[1]), (end[0], end[1]))
+
+    async def size(self) -> Dict[str, int]:
+        """Logical page size reported by the bridge (upstream size())."""
+        size = await self._require_server().call("size", [])
+        return {"width": int(size["width"]), "height": int(size["height"])}
+
     async def input_text(self, text: str) -> None:
         await self._require_server().call("keyboard.type", [text])
 

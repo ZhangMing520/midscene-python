@@ -347,6 +347,20 @@ class HarmonyDevice(AbstractInterface):
         speed = resolve_swipe_speed({"x": fx, "y": fy}, {"x": tx, "y": ty}, 300)
         await hdc.swipe(fx, fy, tx, ty, speed)
 
+    async def swipe_points(
+        self,
+        start: List[float],
+        end: List[float],
+        duration: Optional[int] = None,
+    ) -> None:
+        """Endpoint swipe between two logical points (upstream swipe(start, end))."""
+        hdc = await self._get_hdc()
+        duration_ms = int(duration if duration is not None else 300)
+        speed = resolve_swipe_speed(
+            {"x": start[0], "y": start[1]}, {"x": end[0], "y": end[1]}, duration_ms
+        )
+        await hdc.swipe(start[0], start[1], end[0], end[1], speed)
+
     async def drag_and_drop(self, from_point, to_point) -> None:
         hdc = await self._get_hdc()
         await hdc.drag(

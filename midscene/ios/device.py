@@ -221,6 +221,18 @@ class IOSDevice(AbstractInterface):
             cx - dx // 2, cy - dy // 2, cx + dx // 2, cy + dy // 2
         )
 
+    async def swipe_points(
+        self,
+        start: List[float],
+        end: List[float],
+        duration: Optional[int] = None,
+    ) -> None:
+        """Endpoint swipe between two logical points (upstream swipe(start, end))."""
+        await self._swipe_coordinates(
+            start[0], start[1], end[0], end[1],
+            duration if duration is not None else 300,
+        )
+
     async def scroll(
         self,
         direction: str,
