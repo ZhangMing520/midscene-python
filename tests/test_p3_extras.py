@@ -42,7 +42,7 @@ def path_placeholder(url):
 class TestWdaClient:
     @pytest.mark.asyncio
     async def test_create_and_delete_session(self):
-        from midscene.ios.wda import WebDriverClient
+        from midscene.webdriver import WebDriverClient
 
         http = FakeWDAHttp({
             "POST session": {"sessionId": "s1", "capabilities": {"platformName": "iOS"}},
@@ -61,7 +61,7 @@ class TestWdaClient:
 
     @pytest.mark.asyncio
     async def test_take_screenshot_and_window_size(self):
-        from midscene.ios.wda import WebDriverClient
+        from midscene.webdriver import WebDriverClient
 
         http = FakeWDAHttp({
             "GET session/screenshot": {"value": "base64png"},
@@ -78,7 +78,7 @@ class TestWdaClient:
 
     @pytest.mark.asyncio
     async def test_window_size_falls_back_to_size_endpoint(self):
-        from midscene.ios.wda import WebDriverClient
+        from midscene.webdriver import WebDriverClient
 
         http = FakeWDAHttp({
             "GET session/window/size": {"value": {"width": 100, "height": 200}},
@@ -95,7 +95,7 @@ class TestWdaClient:
 
     @pytest.mark.asyncio
     async def test_device_info_from_status(self):
-        from midscene.ios.wda import WebDriverClient
+        from midscene.webdriver import WebDriverClient
 
         http = FakeWDAHttp({
             "GET status": {"device": {"udid": "UDID-1", "name": "iPhone", "model": "15 Pro"}},
@@ -107,7 +107,7 @@ class TestWdaClient:
         assert info["model"] == "15 Pro"
 
     def test_base_url_normalization(self):
-        from midscene.ios.wda import normalize_webdriver_base_url
+        from midscene.webdriver import normalize_webdriver_base_url
 
         assert normalize_webdriver_base_url("http://x:8100/") == "http://x:8100"
         assert normalize_webdriver_base_url("x:8100") == "http://x:8100"

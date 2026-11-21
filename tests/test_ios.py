@@ -11,7 +11,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from midscene.ios.wda import WebDriverAgentBackend, WebDriverRequestError
+from midscene.ios.wda import WebDriverAgentBackend
+from midscene.webdriver import WebDriverRequestError
 
 
 def _js_round(value: float) -> int:
@@ -836,7 +837,7 @@ class TestWebDriverTransport:
 
     @pytest.mark.asyncio
     async def test_http_client_is_reused(self):
-        from midscene.ios.wda import WebDriverClient
+        from midscene.webdriver import WebDriverClient
 
         client = WebDriverClient(base_url="http://localhost:8100")
         try:
@@ -848,7 +849,7 @@ class TestWebDriverTransport:
 
     @pytest.mark.asyncio
     async def test_http_client_is_rebuilt_after_close(self):
-        from midscene.ios.wda import WebDriverClient
+        from midscene.webdriver import WebDriverClient
 
         client = WebDriverClient(base_url="http://localhost:8100")
         first = await client._http()
@@ -863,7 +864,7 @@ class TestWebDriverTransport:
     async def test_request_failure_carries_status_and_protocol_code(self):
         import httpx
 
-        from midscene.ios.wda import (
+        from midscene.webdriver import (
             WebDriverClient,
             WebDriverRequestError,
             is_missing_endpoint,
