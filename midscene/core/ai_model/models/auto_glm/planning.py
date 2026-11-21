@@ -16,6 +16,10 @@ from midscene.core.ai_model.shared.model_locate_result import (
 )
 from midscene.core.ai_model.shared.multimodal_prompt import get_shot_size
 
+from midscene.core.ai_model.model_adapter.custom_planning_types import (
+    CustomPlanningDefinition,
+)
+
 AUTO_GLM_COORDINATES = {"shape": "point", "order": "xy", "normalizedBy": 1000}
 
 
@@ -28,7 +32,7 @@ def _coordinate_distance_to_pixels_for(
     )
 
 
-def create_auto_glm_planner(is_multilingual: bool) -> Dict[str, Any]:
+def create_auto_glm_planner(is_multilingual: bool) -> CustomPlanningDefinition:
     return {
         "messages": {
             "system_prompt_placement": "system-message",

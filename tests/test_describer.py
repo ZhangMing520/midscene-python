@@ -6,10 +6,12 @@ import io
 import pytest
 from PIL import Image
 
-from midscene.core.ai_model.model_adapter.image_preprocess import (
+from midscene.shared.img.box_select import (
     composite_point_marker,
     composite_rect_marker,
-    crop_image,
+)
+from midscene.shared.img.transform import (
+    crop_by_rect as crop_image,
     image_size,
     resize_long_edge,
 )
@@ -101,7 +103,7 @@ class TestDescribeMessages:
         from midscene.core.service import describe
 
         monkeypatch.setattr(
-            describe.image_preprocess,
+            describe.box_select,
             "composite_point_marker",
             lambda image, point, radius=14: f"marked:{point['x']},{point['y']}",
         )
@@ -117,17 +119,17 @@ class TestDescribeMessages:
         from midscene.core.service import describe
 
         monkeypatch.setattr(
-            describe.image_preprocess,
+            describe.box_select,
             "composite_point_marker",
             lambda image, point, radius=14: f"marked:{image}",
         )
         monkeypatch.setattr(
-            describe.image_preprocess,
-            "crop_image",
+            describe.transform,
+            "crop_by_rect",
             lambda image, rect: ("crop", {"width": 10, "height": 10}),
         )
         monkeypatch.setattr(
-            describe.image_preprocess, "resize_long_edge", lambda image, *args: "resized"
+            describe.transform, "resize_long_edge", lambda image, *args: "resized"
         )
         messages = describe.build_describe_messages(
             "shot", [50, 60], {"width": 100, "height": 100}, deep_describe=True

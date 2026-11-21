@@ -3,6 +3,10 @@
 import base64 as _base64
 from typing import Any, Dict, Optional
 
+from midscene.shared.img.box_select import (
+    composite_point_marker,
+    composite_rect_marker,
+)
 from midscene.shared.img.info import (
     encoded_image_info_of_buffer,
     image_info_of_base64,
@@ -10,6 +14,12 @@ from midscene.shared.img.info import (
     is_valid_jpeg_image_buffer,
     is_valid_png_image_buffer,
     validate_screenshot_buffer,
+)
+from midscene.shared.img.transform import (
+    crop_by_rect,
+    image_size,
+    padding_to_match_block_by_base64,
+    resize_long_edge,
 )
 
 _IMAGE_MAGIC = (
@@ -61,12 +71,18 @@ def parse_base64(full_base64_string: str) -> Dict[str, Any]:
 
 
 __all__ = [
+    "composite_point_marker",
+    "composite_rect_marker",
+    "crop_by_rect",
     "detect_image_mime_type_from_buffer",
     "encoded_image_info_of_buffer",
     "image_info_of_base64",
+    "image_size",
     "is_valid_image_buffer",
     "is_valid_jpeg_image_buffer",
     "is_valid_png_image_buffer",
+    "padding_to_match_block_by_base64",
     "parse_base64",
+    "resize_long_edge",
     "validate_screenshot_buffer",
 ]

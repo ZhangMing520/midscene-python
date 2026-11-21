@@ -48,7 +48,14 @@ def request_headers(
 
 
 def resolve_proxy(model_config: Dict[str, Any]) -> Optional[str]:
-    return model_config.get("httpProxy") or model_config.get("socksProxy") or None
+    from midscene.core.ai_model.service_caller.proxy.proxy import (
+        resolve_proxy_agent,
+    )
+
+    return resolve_proxy_agent(
+        socks_proxy=model_config.get("socksProxy"),
+        http_proxy=model_config.get("httpProxy"),
+    )
 
 
 def _timeout_seconds(effective_timeout: Optional[float]) -> Optional[float]:

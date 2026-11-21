@@ -10,7 +10,7 @@ import math
 from typing import Any, Callable, Dict, List, Optional, Sequence, Union
 
 from midscene.core.ai_model.models.registry import ModelRuntime
-from midscene.core.ai_model.model_adapter.image_preprocess import image_size
+from midscene.shared.img.transform import image_size
 from midscene.core.service.describe import ai_describe_element
 from midscene.core.service import locate_service
 from midscene.core.types import NodeType, Rect, Size, UIContext, UINode, UITree

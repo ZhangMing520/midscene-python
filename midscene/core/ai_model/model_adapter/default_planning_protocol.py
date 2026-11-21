@@ -9,6 +9,11 @@ from typing import Any, Dict, List, Optional
 
 from midscene.core.distance_schema import find_distance_fields
 
+from midscene.core.ai_model.model_adapter.planning_protocol import (
+    PlanningActionOutputBuildInput,
+    StandardPlanningProtocol,
+)
+
 PLANNING_ACTION_OUTPUT_TAG_NAMES = ("action-type", "action-param-json")
 
 
@@ -26,7 +31,9 @@ PLANNING_ACTION_OUTPUT_PLACEHOLDER = "\n".join(
 )
 
 
-def build_planning_action_output(build_input: Dict[str, Any]) -> str:
+def build_planning_action_output(
+    build_input: PlanningActionOutputBuildInput,
+) -> str:
     """Serialize an action example into <action-type>/<action-param-json> XML."""
     action_name = build_input["actionName"]
     param = build_input.get("param") or {}
@@ -179,7 +186,7 @@ def _default_build_action_description(build_input: Dict[str, Any]) -> Dict[str, 
     return description
 
 
-def create_default_planning_protocol() -> Dict[str, Any]:
+def create_default_planning_protocol() -> StandardPlanningProtocol:
     """The default Midscene XML planning protocol (StandardPlanningProtocol)."""
     return {
         "response_prefix": None,

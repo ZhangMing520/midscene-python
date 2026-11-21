@@ -5,11 +5,15 @@ The transport now lives in ``service_caller.openai`` (upstream
 the historical ``service_caller.model_call`` imports working.
 """
 
-from typing import Any, AsyncIterator, Dict, Optional
+from typing import Any, AsyncIterator, Dict, List, Optional
 import json
 
 import httpx  # noqa: F401  (kept so tests can patch ``model_call.httpx``)
 
+from midscene.core.ai_model.service_caller.call_ai import (
+    call_ai_with_string_response,
+    call_generative_ai,
+)
 from midscene.core.ai_model.service_caller.openai.call_openai import call_openai
 from midscene.core.ai_model.service_caller.openai.chat_completion.stream import (
     call_chat_completion_stream,
@@ -23,6 +27,15 @@ from midscene.core.ai_model.service_caller.openai.openai_client import (  # noqa
 )
 from midscene.core.ai_model.service_caller.openai.responses.stream import (
     call_responses_stream,
+)
+from midscene.core.ai_model.service_caller.semantic_retry import (
+    call_ai_and_parse_with_retry,
+    with_semantic_retry_feedback,
+)
+from midscene.core.ai_model.service_caller.types import AIResponseParseError
+from midscene.core.ai_model.shared.json import (
+    assert_json_object,
+    parse_model_response_json,
 )
 
 
@@ -80,11 +93,86 @@ async def _aggregate_stream_lines(
     )
 
 
+def parse_ai_object_response(
+    response: Dict[str, Any],
+    model_runtime: Any,
+    json_parser_source: str = "generic-object",
+) -> Dict[str, Any]:
+    """Parse an AI string response into a JSON object (upstream model-call.ts)."""
+    if not response:
+        raise ValueError("empty response")
+    content = response.get("content") or ""
+    parser = model_runtime.adapter.json_parser
+    parsed = (
+        parser(content, source=json_parser_source)
+        if parser is not None
+        else parse_model_response_json(content, source=json_parser_source)
+    )
+    assert_json_object(parsed)
+    return {
+        "content": parsed,
+        "contentString": content,
+        "usage": response.get("usage"),
+        "reasoning_content": response.get("reasoning_content"),
+        "rawAssistantOutput": response.get("rawAssistantOutput"),
+    }
+
+
+async def call_ai_with_object_response(
+    messages: List[dict],
+    model_runtime: Any,
+    options: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Call the model expecting a JSON object response."""
+    options = options or {}
+    model_config = model_runtime.config
+    json_parser_source = options.get("jsonParserSource") or "generic-object"
+
+    async def call_ai(retry_attempt: int, previous_error: Optional[Any]):
+        return await call_generative_ai(
+            with_semantic_retry_feedback(messages, previous_error),
+            model_runtime,
+            {
+                "expectedJsonObjectResponse": True,
+                "semanticRetryAttempt": retry_attempt,
+            },
+        )
+
+    def parse_response(response: Dict[str, Any]) -> Dict[str, Any]:
+        return parse_ai_object_response(
+            response, model_runtime, json_parser_source
+        )
+
+    def to_parse_error(error: Exception, response: Dict[str, Any]):
+        return AIResponseParseError(
+            str(error),
+            response.get("content") or "",
+            response.get("usage"),
+            response.get("rawAssistantOutput"),
+            response.get("reasoning_content"),
+        )
+
+    return await call_ai_and_parse_with_retry(
+        call_ai,
+        parse_response,
+        to_parse_error,
+        parse_retry_times=options.get(
+            "retryTimes", model_config.get("retryCount") or 0
+        ),
+        parse_retry_interval=options.get(
+            "retryInterval", model_config.get("retryInterval") or 0
+        ),
+    )
+
+
 __all__ = [
     "_aggregate_stream_lines",
     "_post_json",
     "_request_headers",
+    "call_ai_with_object_response",
+    "call_ai_with_string_response",
     "call_openai",
+    "parse_ai_object_response",
     "post_json",
     "request_headers",
     "stream_lines",

@@ -13,9 +13,11 @@ from midscene.core.ai_model.model_adapter.locate_prompt_order import build_locat
 from midscene.core.ai_model.prompt.locate import build_element_locate_system_prompt
 from midscene.core.ai_model.service_caller.semantic_retry import call_ai_and_parse_with_retry, with_semantic_retry_feedback
 from midscene.core.ai_model.models.registry import ModelRuntime
+from midscene.core.ai_model.model_adapter.image_preprocess import (
+    prepare_model_image,
+)
 from midscene.core.ai_model.shared.multimodal_prompt import (
     ensure_data_url,
-    prepare_model_image,
     user_prompt_to_string,
 )
 from midscene.core.agent.prompt_context import format_locate_model_context

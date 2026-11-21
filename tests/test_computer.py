@@ -93,9 +93,9 @@ def fake_pyperclip(monkeypatch):
 @pytest.fixture
 def fast_wheel(monkeypatch):
     """Skip the per-notch pacing delay so unit tests stay quick."""
-    from midscene.computer import device as device_module
+    from midscene.computer import input_driver
 
-    monkeypatch.setattr(device_module, "_DETENT_DELAY", 0)
+    monkeypatch.setattr(input_driver, "_DETENT_DELAY", 0)
 
 
 def _device(**options):

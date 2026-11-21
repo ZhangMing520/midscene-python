@@ -14,6 +14,9 @@ from midscene.core.ai_model.workflows.recorder_generation.markdown import (
     normalize_generated_markdown,
     prepare_screenshot_assets_for_markdown_replay,
 )
+from midscene.core.ai_model.workflows.recorder_generation.metadata import (
+    generate_recorder_session_metadata,
+)
 from midscene.core.ai_model.workflows.recorder_generation.playwright import (
     generate_playwright_test,
 )
@@ -31,6 +34,7 @@ __all__ = [
     "create_yaml_prompt",
     "generate_markdown_replay",
     "generate_playwright_test",
+    "generate_recorder_session_metadata",
     "generate_yaml_test",
     "limit_screenshot_assets_for_markdown_replay",
     "normalize_generated_markdown",

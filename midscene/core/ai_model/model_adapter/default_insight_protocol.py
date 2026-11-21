@@ -2,12 +2,13 @@
 
 from midscene.core.ai_model.shared.json import parse_model_response_json
 from midscene.core.ai_model.shared.xml import extract_xml_tag
-from typing import Any, Dict
+from midscene.core.ai_model.model_adapter.insight_protocol import InsightProtocol
+from typing import Any
 
 INSIGHT_DATA_OUTPUT_TAG_NAME = "data-json"
 
 
-def create_default_insight_protocol() -> Dict[str, Any]:
+def create_default_insight_protocol() -> InsightProtocol:
     tag = INSIGHT_DATA_OUTPUT_TAG_NAME
 
     def parse_data(content: str) -> Any:

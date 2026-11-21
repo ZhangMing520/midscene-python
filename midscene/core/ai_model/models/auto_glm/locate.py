@@ -18,58 +18,21 @@ from midscene.core.ai_model.models.auto_glm.prompt import (
     get_auto_glm_chinese_locate_prompt,
     get_auto_glm_multilingual_locate_prompt,
 )
-from midscene.core.ai_model.service_caller.types import AIResponseParseError
-from midscene.core.ai_model.shared.multimodal_prompt import (
-    ensure_data_url,
-    prepare_model_image,
-    user_prompt_to_string,
+from midscene.core.ai_model.workflows.grounding.planning_action_locate import (
+    PlanningTapLocatorDefinition,
+    run_planning_action_locate,
 )
 
 
-def create_auto_glm_planning_tap_locator(is_multilingual: bool) -> Dict[str, Any]:
-    return {
-        "build_system_prompt": (
-            get_auto_glm_multilingual_locate_prompt
-            if is_multilingual
-            else get_auto_glm_chinese_locate_prompt
-        ),
-        "get_located_pixel_result": get_tap_located_pixel_result,
-    }
-
-
-async def auto_glm_locate(
-    target_element_description: Any,
-    locate_image: Dict[str, Any],
-    model_runtime: Any,
-) -> Dict[str, Any]:
-    """Auto-GLM planning-tap-locator (models/auto-glm/locate.ts)."""
-    from midscene.core.ai_model.service_caller.call_ai import (
-        call_ai_with_string_response,
-    )
-
-    is_multilingual = model_runtime.adapter.family == "auto-glm-multilingual"
-    locator = create_auto_glm_planning_tap_locator(is_multilingual)
-
-    shot_size = {"width": locate_image["width"], "height": locate_image["height"]}
-    prepared = prepare_model_image(
-        ensure_data_url(locate_image["imageBase64"]),
-        shot_size["width"],
-        shot_size["height"],
-        None,
-    )
-    messages = [
-        {
-            "role": "user",
-            "content": f"{locator['build_system_prompt']()}Tap: {user_prompt_to_string(target_element_description)}",
-        },
-        {
-            "role": "user",
-            "content": [{"type": "image", "url": prepared["image_base64"]}],
-        },
-    ]
-    try:
-        response = await call_ai_with_string_response(messages, model_runtime)
-        parsed = parse_auto_glm_planning_response(response["content"])
+def create_auto_glm_planning_tap_locator(
+    is_multilingual: bool,
+) -> PlanningTapLocatorDefinition:
+    def transform_actions(
+        parsed: Dict[str, Any],
+        model_runtime: Any,
+        prepared: Dict[str, Any],
+        shot_size: Dict[str, int],
+    ):
         actions = transform_auto_glm_action(
             parsed["action"],
             [],
@@ -85,26 +48,33 @@ async def auto_glm_locate(
                 "contentSize": prepared["content_size"],
             },
         )
-        located = locator["get_located_pixel_result"](actions)
-        if not located:
-            raise ValueError("No locatedPixelResult found in planner response")
-        return {
-            "locatedPixelResult": located,
-            "raw_response": response["content"],
-            "usage": response.get("usage"),
-            "reasoningContent": parsed["response"]["think"],
-        }
-    except AIResponseParseError as error:
-        return {
-            "raw_response": error.raw_response,
-            "usage": error.usage,
-            "errors": [error.message or "Failed to parse planning tap locator response"],
-        }
-    except Exception as error:
-        return {
-            "raw_response": str(error),
-            "errors": [str(error) or "Failed to parse planning tap locator response"],
-        }
+        return actions
+
+    return {
+        "build_system_prompt": (
+            get_auto_glm_multilingual_locate_prompt
+            if is_multilingual
+            else get_auto_glm_chinese_locate_prompt
+        ),
+        "parse_response": parse_auto_glm_planning_response,
+        "transform_actions": transform_actions,
+        "get_located_pixel_result": get_tap_located_pixel_result,
+        "reasoning_content": lambda parsed: parsed["response"]["think"],
+    }
+
+
+async def auto_glm_locate(
+    target_element_description: Any,
+    locate_image: Dict[str, Any],
+    model_runtime: Any,
+) -> Dict[str, Any]:
+    """Auto-GLM planning-tap-locator (models/auto-glm/locate.ts)."""
+    locator = create_auto_glm_planning_tap_locator(
+        model_runtime.adapter.family == "auto-glm-multilingual"
+    )
+    return await run_planning_action_locate(
+        locator, target_element_description, locate_image, model_runtime
+    )
 
 
 __all__ = ["auto_glm_locate", "create_auto_glm_planning_tap_locator"]

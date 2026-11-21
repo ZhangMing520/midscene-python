@@ -15,11 +15,13 @@ from midscene.core.ai_model.prompt.planning import build_standard_planning_syste
 from midscene.core.ai_model.service_caller.semantic_retry import call_ai_and_parse_with_retry, with_semantic_retry_feedback
 from midscene.core.ai_model.models.registry import ModelRuntime
 from midscene.shared.env import planning_model_family_required_for_locate_message
+from midscene.core.ai_model.model_adapter.image_preprocess import (
+    prepare_model_image,
+)
 from midscene.core.ai_model.shared.multimodal_prompt import (
     ensure_data_url,
     get_screenshot_base64,
     get_shot_size,
-    prepare_model_image,
 )
 from midscene.core.ai_model.workflows.planning.conversation_history import (
     ConversationHistory,

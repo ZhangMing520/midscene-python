@@ -8,7 +8,7 @@ model to describe "the element indicated by the marker".
 import math
 from typing import Any, Dict, List, Optional, Sequence, Union
 
-from midscene.core.ai_model.model_adapter import image_preprocess
+from midscene.shared.img import box_select, transform
 from midscene.core.ai_model.service_caller.types import AIResponseParseError
 from midscene.core.ai_model.service_caller.call_ai import call_generative_ai
 from midscene.core.ai_model.shared.json import parse_model_response_json
@@ -44,8 +44,8 @@ def _marked_payload(
     rect: Dict[str, float],
 ) -> str:
     if is_point and point is not None:
-        return image_preprocess.composite_point_marker(screenshot, point)
-    return image_preprocess.composite_rect_marker(screenshot, rect)
+        return box_select.composite_point_marker(screenshot, point)
+    return box_select.composite_rect_marker(screenshot, rect)
 
 
 def _deep_context_images(
@@ -57,14 +57,14 @@ def _deep_context_images(
 ) -> List[Dict[str, Any]]:
     """Focused crop around the target, marked again and upscaled when small."""
     area = expand_search_area(rect, shot_size)
-    cropped, crop_size = image_preprocess.crop_image(screenshot, area)
+    cropped, crop_size = transform.crop_by_rect(screenshot, area)
     if is_point and point is not None:
-        marked = image_preprocess.composite_point_marker(
+        marked = box_select.composite_point_marker(
             cropped,
             {"x": point["x"] - area["left"], "y": point["y"] - area["top"]},
         )
     else:
-        marked = image_preprocess.composite_rect_marker(
+        marked = box_select.composite_rect_marker(
             cropped,
             {
                 "left": rect["left"] - area["left"],
@@ -73,7 +73,7 @@ def _deep_context_images(
                 "height": rect["height"],
             },
         )
-    resized = image_preprocess.resize_long_edge(
+    resized = transform.resize_long_edge(
         marked, DESCRIBE_CROP_MAX_LONG_EDGE, DESCRIBE_CROP_UPSCALE_MAX_RATIO
     )
     return [

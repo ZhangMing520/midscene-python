@@ -19,11 +19,13 @@ from midscene.core.ai_model.service_caller.semantic_retry import (
     with_semantic_retry_feedback,
 )
 from midscene.core.ai_model.service_caller.types import AIResponseParseError
+from midscene.core.ai_model.model_adapter.image_preprocess import (
+    prepare_model_image,
+)
 from midscene.core.ai_model.shared.multimodal_prompt import (
     ensure_data_url,
     get_screenshot_base64,
     get_shot_size,
-    prepare_model_image,
     user_prompt_to_string,
 )
 from midscene.core.ai_model.workflows.grounding.search_area import (

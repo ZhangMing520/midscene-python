@@ -10,6 +10,9 @@ from midscene.core.ai_model.models.ui_tars.prompt import (
     _ui_tars_summary,
     get_ui_tars_planning_prompt,
 )
+from midscene.core.ai_model.model_adapter.custom_planning_types import (
+    CustomPlanningDefinition,
+)
 from midscene.core.ai_model.shared.multimodal_prompt import get_shot_size
 
 UI_TARS_COORDINATES = {"shape": "point", "order": "xy", "normalizedBy": 1}
@@ -48,7 +51,7 @@ def _transform_ui_tars_with_error(
     return transformed
 
 
-def create_ui_tars_planner() -> Dict[str, Any]:
+def create_ui_tars_planner() -> CustomPlanningDefinition:
     return {
         "messages": {
             "system_prompt_placement": "user-message",
