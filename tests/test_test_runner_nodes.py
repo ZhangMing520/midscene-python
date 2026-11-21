@@ -243,3 +243,169 @@ async def test_execute_observe_failure_raises_node_error():
         )
     assert raised.value.code == "NODE_EXECUTION_ERROR"
     assert raised.value.output["data"]["pass"] is False
+
+# ---------------------------------------------------------------------------
+# Legacy runtime / report / task status
+# ---------------------------------------------------------------------------
+
+
+from midscene.core.agent.action_readiness import (  # noqa: E402
+    ActionReadinessError,
+    is_action_readiness_error,
+)
+from midscene.core.dump.task_status import (  # noqa: E402
+    derive_case_status,
+    derive_task_status,
+)
+from midscene.core.yaml.legacy_yaml_report import publish_legacy_yaml_report  # noqa: E402
+from midscene.core.yaml.legacy_yaml_runtime import (  # noqa: E402
+    create_legacy_yaml_runtime,
+    legacy_yaml_outcome_error,
+)
+
+
+class _RuntimeAgent:
+    def __init__(self) -> None:
+        self.calls: List[Any] = []
+        self.removed = 0
+        self.errors: List[Any] = []
+        self._report_builder = None
+
+    async def get_action_space(self):
+        return []
+
+    async def ai_number(self, prompt, opt=None):
+        self.calls.append(("ai_number", prompt))
+        if prompt == "boom":
+            raise RuntimeError("boom")
+        return 42
+
+    def add_dump_update_listener(self, listener):
+        self.listener = listener
+
+        def remove() -> None:
+            self.removed += 1
+
+        return remove
+
+    async def record_error_to_report(self, title, opt=None) -> None:
+        self.errors.append((title, opt))
+
+
+def test_task_status_derivation():
+    assert derive_task_status({"status": "failed"}) == "failed"
+    assert derive_task_status({"status": "finished", "error": "x"}) == "failed"
+    assert (
+        derive_task_status(
+            {"status": "finished", "subType": "WaitFor", "output": False}
+        )
+        == "warning"
+    )
+    assert (
+        derive_task_status({"status": "finished", "subType": "Assert", "output": False})
+        == "failed"
+    )
+    assert derive_task_status({"status": "finished"}) == "passed"
+    assert derive_case_status([{"tasks": [{"status": "finished"}]}]) == "passed"
+    assert (
+        derive_case_status([{"tasks": [{"status": "finished"}]}, {"tasks": [{"status": "failed"}]}])
+        == "failed"
+    )
+
+
+def test_action_readiness_error_detection():
+    error = ActionReadinessError("wait", "Tap", RuntimeError("nope"))
+    assert is_action_readiness_error(error) is True
+    assert is_action_readiness_error(RuntimeError("nope")) is False
+    wrapper = RuntimeError("wrapped")
+    wrapper.cause = error
+    assert is_action_readiness_error(wrapper) is True
+
+
+@pytest.mark.asyncio
+async def test_publish_legacy_yaml_report_uses_agent_hooks():
+    class ReportAgent:
+        report_file = None
+
+        async def _write_yaml_execution_report(self, record):
+            return "/tmp/report.html"
+
+        async def _create_report_source(self, run_id):
+            return {"sourcePath": "run.json", "dumpPath": "run.dump.json"}
+
+    published = await publish_legacy_yaml_report(
+        {
+            "agent": ReportAgent(),
+            "record": {"runId": "r1"},
+            "runId": "r1",
+            "script": {"tasks": []},
+        }
+    )
+    assert published["reportFile"] == "/tmp/report.html"
+    assert published["record"]["reportSources"][0]["sourcePath"] == "run.json"
+
+
+@pytest.mark.asyncio
+async def test_publish_legacy_yaml_report_without_agent_or_report():
+    record = {"runId": "r1"}
+    disabled = await publish_legacy_yaml_report(
+        {
+            "agent": None,
+            "record": record,
+            "runId": "r1",
+            "script": {"agent": {"generateReport": False}, "tasks": []},
+        }
+    )
+    assert disabled == {"record": record}
+
+
+@pytest.mark.asyncio
+async def test_legacy_runtime_runs_script_and_publishes_results():
+    agent = _RuntimeAgent()
+    results: Dict[str, Any] = {}
+
+    async def set_result(name, value):
+        results[name] = value
+
+    runtime = create_legacy_yaml_runtime(
+        {"agent": agent, "actionSpace": [], "setResult": set_result}
+    )
+    script = {
+        "tasks": [
+            {
+                "name": "task one",
+                "flow": [{"aiNumber": "count things", "name": "count"}],
+            }
+        ]
+    }
+    result = await runtime.run_script(script)
+    assert result["document"]["status"] == "success"
+    assert result["cases"][0]["status"] == "success"
+    assert results == {"count": 42}
+    assert agent.calls == [("ai_number", "count things")]
+    assert agent.removed == 1
+
+
+@pytest.mark.asyncio
+async def test_legacy_runtime_records_task_error_and_exposes_cause():
+    agent = _RuntimeAgent()
+
+    async def set_result(name, value):
+        return None
+
+    runtime = create_legacy_yaml_runtime(
+        {"agent": agent, "actionSpace": [], "setResult": set_result}
+    )
+    result = await runtime.run_task(
+        {"name": "failing", "flow": [{"aiNumber": "boom"}]}, 0
+    )
+    assert result["cases"][0]["status"] == "failed"
+    assert legacy_yaml_outcome_error(result["cases"][0]).__class__ is RuntimeError
+    # runTask does not record task errors (upstream recordTaskErrors=false).
+    assert agent.errors == []
+
+    script_result = await runtime.run_script(
+        {"tasks": [{"name": "failing", "flow": [{"aiNumber": "boom"}]}]}
+    )
+    assert script_result["cases"][0]["status"] == "failed"
+    assert agent.errors and agent.errors[0][0] == "YAML task failed - failing"
