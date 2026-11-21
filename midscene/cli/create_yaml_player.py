@@ -6,6 +6,7 @@ from rich.console import Console
 
 from midscene.cli.cli_utils import _resolve_served_url
 from midscene.cli.config_factory import _build_agent_options
+from midscene.web_integration.common.viewport import parse_viewport_dimension
 
 
 async def create_agent_for_script(
@@ -90,8 +91,12 @@ async def create_agent_for_script(
     chrome_options = {}
     if web_section.get("viewportWidth") and web_section.get("viewportHeight"):
         chrome_options["viewport_size"] = (
-            int(web_section["viewportWidth"]),
-            int(web_section["viewportHeight"]),
+            parse_viewport_dimension(
+                web_section["viewportWidth"], "viewportWidth"
+            ),
+            parse_viewport_dimension(
+                web_section["viewportHeight"], "viewportHeight"
+            ),
         )
     if web_section.get("userAgent"):
         chrome_options["user_agent"] = web_section["userAgent"]

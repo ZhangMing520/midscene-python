@@ -16,7 +16,11 @@ from midscene.core.types import (
     Size, Rect, NodeType, FileChooserHandler, FileChooserRegistration
 )
 from midscene.web_integration.web_element import PlaywrightElement
-from midscene.core.ai_model.workflows.insight.order_sensitive import resolve_order_sensitive
+from midscene.web_integration.common.cache_helper import (
+    judge_order_sensitive,
+    sanitize_xpaths,
+)
+from midscene.web_integration.common.input_scripts import SELECT_ALL_INPUT_SCRIPT
 
 INPUT_STRATEGIES = ("legacy", "sequential", "bulk")
 _CHROME_SELECT_STYLE_ID = "midscene-force-select-rendering"
@@ -633,7 +637,7 @@ class PlaywrightWebPage(AbstractInterface):
         self, center: List[float], options: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Build the xpath-based locate-cache feature for a point."""
-        order_sensitive = await resolve_order_sensitive(options)
+        order_sensitive = await judge_order_sensitive(options)
         try:
             xpaths = await self.page.evaluate(
                 _XPATHS_AT_POINT_JS,
@@ -642,17 +646,13 @@ class PlaywrightWebPage(AbstractInterface):
         except Exception as e:
             logger.warning(f"Failed to build cache feature for {center}: {e}")
             xpaths = []
-        return {
-            "xpaths": [
-                xpath for xpath in (xpaths or []) if isinstance(xpath, str) and xpath
-            ]
-        }
+        return {"xpaths": sanitize_xpaths(xpaths)}
 
     async def rect_matches_cache_feature(
         self, feature: Dict[str, Any]
     ) -> Optional[Rect]:
         """Resolve cached xpaths back to the first matching element rect."""
-        xpaths = (feature or {}).get("xpaths") or []
+        xpaths = sanitize_xpaths((feature or {}).get("xpaths"))
         for xpath in xpaths:
             if not isinstance(xpath, str) or not xpath:
                 continue
@@ -674,7 +674,9 @@ class PlaywrightWebPage(AbstractInterface):
 
     async def clear_input(self) -> None:
         try:
-            await self.page.keyboard.press("Control+A")
+            selected = await self.page.evaluate(SELECT_ALL_INPUT_SCRIPT)
+            if not selected:
+                await self.page.keyboard.press("Control+A")
             await self.page.keyboard.press("Delete")
         except Exception as e:
             logger.error(f"Failed to clear input: {e}")

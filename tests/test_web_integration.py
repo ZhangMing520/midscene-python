@@ -247,7 +247,7 @@ async def test_cache_feature_uses_index_for_order_sensitive(web_page, monkeypatc
         return True
 
     monkeypatch.setattr(
-        "midscene.web_integration.playwright.page.resolve_order_sensitive", fake_judge
+        "midscene.web_integration.playwright.page.judge_order_sensitive", fake_judge
     )
     await page.set_content(
         "<style>body{margin:0}</style>"
