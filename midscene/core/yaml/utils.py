@@ -2,7 +2,7 @@
 
 import os
 import re
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 
 import yaml
 
@@ -148,6 +148,105 @@ _INSIGHT_OPTION_KEYS = (
 
 def _snake(name: str) -> str:
     return name[0].lower() + name[1:]
+
+
+_MULTIMODAL_LOCATE_KEYS = ("images", "convertHttpImage2Base64")
+
+
+def _extract_multimodal_prompt(opt: Any) -> Optional[Dict[str, Any]]:
+    if not isinstance(opt, dict):
+        return None
+    entries = {
+        key: opt[key]
+        for key in _MULTIMODAL_LOCATE_KEYS
+        if opt.get(key) is not None
+    }
+    return entries or None
+
+
+def build_detailed_locate_param(
+    locate_prompt: Any, opt: Optional[Dict[str, Any]] = None
+) -> Optional[Dict[str, Any]]:
+    """Build the canonical locate param (upstream buildDetailedLocateParam)."""
+    from midscene.core.agent.prompt_context import (
+        build_locate_prompt_with_context,
+    )
+
+    normalized = locate_prompt
+    if isinstance(locate_prompt, dict) and "prompt" in locate_prompt:
+        inner_prompt = locate_prompt["prompt"]
+        rest = {key: value for key, value in locate_prompt.items() if key != "prompt"}
+        normalized = locate_prompt if rest else inner_prompt
+
+    prompt = normalized or (opt or {}).get("prompt") or (opt or {}).get("locate")
+    deep_locate = False
+    cacheable = True
+    xpath = None
+
+    if isinstance(opt, dict):
+        # Backward-compatible: accept `deepThink` as a deprecated alias.
+        deep_locate = opt.get("deepLocate")
+        if deep_locate is None:
+            deep_locate = opt.get("deepThink")
+        if deep_locate is None:
+            deep_locate = False
+        cacheable = opt.get("cacheable")
+        if cacheable is None:
+            cacheable = True
+        xpath = opt.get("xpath")
+
+    if not prompt:
+        return None
+
+    prompt_display = prompt if isinstance(prompt, str) else prompt.get("prompt")
+    context = None
+    if isinstance(opt, dict) and isinstance(opt.get("context"), str):
+        context = opt["context"].strip() or None
+    prompt = build_locate_prompt_with_context(prompt, (opt or {}).get("context"))
+
+    multimodal = _extract_multimodal_prompt(opt)
+    if multimodal:
+        if isinstance(prompt, str):
+            prompt = {"prompt": prompt, **multimodal}
+        else:
+            prompt = {**prompt, **multimodal}
+
+    result: Dict[str, Any] = {"prompt": prompt}
+    if context:
+        result["promptDisplay"] = prompt_display
+        result["context"] = context
+    result["deepLocate"] = deep_locate
+    result["cacheable"] = cacheable
+    result["xpath"] = xpath
+    return result
+
+
+def build_detailed_locate_param_and_rest_params(
+    locate_prompt: Any,
+    opt: Optional[Dict[str, Any]],
+    exclude_keys: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Split locate fields from action params (upstream buildDetailedLocateParamAndRestParams)."""
+    multimodal = _extract_multimodal_prompt(opt)
+    locate_param = build_detailed_locate_param(locate_prompt, opt)
+    rest_params: Dict[str, Any] = {}
+    if isinstance(opt, dict):
+        locate_param_keys = set(locate_param or {})
+        locate_prompt_value = (locate_param or {}).get("prompt")
+        multimodal_keys = (
+            set(multimodal or {}) if isinstance(locate_prompt_value, dict) else set()
+        )
+        for key, value in opt.items():
+            if (
+                key not in locate_param_keys
+                and key != "context"
+                and key != "deepThink"
+                and key not in multimodal_keys
+                and key not in (exclude_keys or [])
+                and key != "locate"
+            ):
+                rest_params[key] = value
+    return {"locateParam": locate_param, "restParams": rest_params}
 
 
 def _build_action_param(action_name: str, options: Dict[str, Any]) -> Dict[str, Any]:

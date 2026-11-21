@@ -3,6 +3,30 @@
 from typing import Any, Optional
 from midscene.core.ai_model.models.registry import ModelRuntime
 
+
+def _render_context_block(context: Optional[str]) -> Optional[str]:
+    if context is None:
+        return None
+    trimmed = context.strip()
+    if trimmed:
+        return f"<CONTEXT>\n{trimmed}\n</CONTEXT>"
+    return ""
+
+
+def build_locate_prompt_with_context(prompt: Any, context: Optional[str]) -> Any:
+    """Attach user guidance to a locate prompt (upstream buildLocatePromptWithContext)."""
+    rendered = _render_context_block(context)
+    if not rendered:
+        return prompt
+    prompt_text = prompt if isinstance(prompt, str) else prompt.get("prompt")
+    prompt_with_context = (
+        f"{rendered}\n\n<LOCATE_TARGET>\n{prompt_text}\n</LOCATE_TARGET>"
+    )
+    if isinstance(prompt, str):
+        return prompt_with_context
+    return {**prompt, "prompt": prompt_with_context}
+
+
 def format_locate_model_context(model_runtime: ModelRuntime) -> str:
     config = model_runtime.config
     return (

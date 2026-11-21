@@ -874,6 +874,79 @@ def test_merge_test_run_report_dumps_rejects_invalid_timestamps():
         )
 
 
+def test_compile_legacy_flow_items():
+    from midscene.core.device import DeviceAction
+    from midscene.core.yaml.test_runner_compat import compile_legacy_flow_item
+
+    tap = compile_legacy_flow_item({"aiTap": "submit", "name": "tapResult"})
+    assert tap["node"] == "aiTap"
+    assert tap["input"] == {"prompt": "submit", "options": {}}
+    assert tap["meta"] == {"continueOnError": False}
+
+    act = compile_legacy_flow_item({"ai": {"prompt": "do it"}, "cacheable": False})
+    assert act["node"] == "aiAct"
+    assert act["input"]["prompt"] == {"prompt": "do it"}
+    assert act["input"]["options"] == {"cacheable": False}
+
+    assertion = compile_legacy_flow_item({"aiAssert": "works", "errorMessage": "nope"})
+    assert assertion["node"] == "aiAssert"
+    assert assertion["input"]["options"]["keepRawResponse"] is True
+    assert assertion["input"]["message"] == "nope"
+
+    assert compile_legacy_flow_item({"sleep": 0})["node"] == "legacyValidationError"
+    assert compile_legacy_flow_item({"sleep": "abc"})["node"] == "legacyValidationError"
+    assert compile_legacy_flow_item({"sleep": "12"})["input"] == {"ms": 12}
+
+    unknown = compile_legacy_flow_item({"somethingNew": True})
+    assert unknown["node"] == "legacyAction"
+    assert unknown["input"]["flow"] == {"somethingNew": True}
+
+    launch = compile_legacy_flow_item(
+        {"launch": "com.example.app"},
+        [DeviceAction(name="Launch", description="", interface_alias="launch")],
+    )
+    assert launch["node"] == "action"
+    assert launch["input"] == {"name": "Launch", "params": {"uri": "com.example.app"}}
+
+
+def test_compile_legacy_ai_input_and_document():
+    from midscene.core.yaml.test_runner_compat import (
+        collect_legacy_yaml_document,
+        compile_legacy_flow_item,
+    )
+
+    item = compile_legacy_flow_item(
+        {"aiInput": "hello", "locate": "the name field", "name": "value"}
+    )
+    assert item["node"] == "action"
+    assert item["input"]["name"] == "Input"
+    params = item["input"]["params"]
+    assert params["value"] == "hello"
+    assert params["locate"]["prompt"] == "the name field"
+
+    document = collect_legacy_yaml_document(
+        {
+            "tasks": [
+                {"name": "first", "flow": [{"aiTap": "a"}]},
+                {"name": "second", "continueOnError": True, "flow": []},
+                {"name": "third"},
+            ]
+        },
+        "/tmp/legacy.yaml",
+    )
+    assert document["documentId"] == "legacy-yaml:/tmp/legacy.yaml"
+    assert document["projectId"] == "legacy-yaml"
+    assert [case["caseIndex"] for case in document["cases"]] == [0, 1, 2]
+    assert document["cases"][0]["caseId"] == (
+        "legacy-yaml:/tmp/legacy.yaml:task:0"
+    )
+    assert document["cases"][0]["definition"]["onFailure"] == "stop-document"
+    assert document["cases"][1]["definition"]["onFailure"] == "continue"
+    assert document["cases"][2]["definition"]["steps"][0]["node"] == (
+        "legacyValidationError"
+    )
+
+
 def test_build_agent_test_run_report_dump_indexes_executions():
     from midscene.core.test_runner.reporting.agent_report import (
         build_agent_test_run_report_dump,
