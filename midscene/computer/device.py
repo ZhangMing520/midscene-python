@@ -10,6 +10,7 @@ interference are handled the same way as upstream.
 import asyncio
 import base64
 import io
+import os
 from typing import Dict, List, Optional
 
 from loguru import logger
@@ -20,6 +21,11 @@ from midscene.computer.input_driver import (
     normalize_key as _normalize_key_impl,
 )
 from midscene.computer.utils import is_mac as _is_mac
+from midscene.computer.xvfb import (
+    check_xvfb_installed,
+    needs_xvfb,
+    start_xvfb,
+)
 from midscene.core.types import (
     AbstractInterface,
     InterfaceType,
@@ -45,6 +51,7 @@ class ComputerDevice(AbstractInterface):
         self,
         display_id: Optional[str] = None,
         keyboard_modifier_delay: int = 0,
+        headless: bool = False,
     ):
         if display_id is not None:
             # Upstream's computer env carries displayId; refuse to pretend the
@@ -58,6 +65,29 @@ class ComputerDevice(AbstractInterface):
             is_mac=lambda: _is_mac(),
             keyboard_modifier_delay=keyboard_modifier_delay,
         )
+        self._xvfb = None
+        self._previous_display: Optional[str] = None
+        if needs_xvfb(headless) and not os.environ.get("DISPLAY"):
+            if not check_xvfb_installed():
+                raise RuntimeError(
+                    "headless computer automation requires Xvfb; install it "
+                    "or run with DISPLAY set"
+                )
+            self._previous_display = os.environ.get("DISPLAY")
+            self._xvfb = start_xvfb()
+            os.environ["DISPLAY"] = self._xvfb.display
+
+    def close(self) -> None:
+        """Stop the Xvfb instance started for headless mode, if any."""
+        if self._xvfb is None:
+            return
+        self._xvfb.stop()
+        self._xvfb = None
+        if self._previous_display is None:
+            os.environ.pop("DISPLAY", None)
+        else:
+            os.environ["DISPLAY"] = self._previous_display
+        self._previous_display = None
 
     @property
     def interface_type(self) -> InterfaceType:

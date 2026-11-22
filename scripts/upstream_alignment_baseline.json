@@ -1,11 +1,10 @@
 {
-  "generated_at": "2026-11-22T02:18:14.746819+00:00",
+  "generated_at": "2026-11-22T02:41:32.627118+00:00",
   "upstream_root": "/home/zhangming/gitspace/midscene",
   "python_root": "/home/zhangming/gitspace/midscene-python/midscene",
   "counts": {
-    "aligned": 401,
+    "aligned": 407,
     "exempt": 104,
-    "pending": 6,
     "merged": 19
   },
   "files": [
@@ -66,14 +65,14 @@
     {
       "package": "android",
       "upstream": "scrcpy-device-adapter.ts",
-      "status": "pending",
-      "reason": "needs scrcpy streaming support"
+      "status": "aligned",
+      "python": "android/scrcpy_device_adapter.py"
     },
     {
       "package": "android",
       "upstream": "scrcpy-manager.ts",
-      "status": "pending",
-      "reason": "needs the scrcpy server binary"
+      "status": "aligned",
+      "python": "android/scrcpy_manager.py"
     },
     {
       "package": "android",
@@ -1034,14 +1033,14 @@
     {
       "package": "core",
       "upstream": "ai-model/service-caller/codex/call-codex.ts",
-      "status": "pending",
-      "reason": "Codex binary + stdio JSON-RPC"
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/codex/call_codex.py"
     },
     {
       "package": "core",
       "upstream": "ai-model/service-caller/codex/codex-app-server.ts",
-      "status": "pending",
-      "reason": "Codex binary + stdio JSON-RPC"
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/codex/codex_app_server.py"
     },
     {
       "package": "core",
@@ -1705,8 +1704,8 @@
     {
       "package": "core",
       "upstream": "ai-model/model-adapter/codex-app-server.ts",
-      "status": "pending",
-      "reason": "Codex binary + stdio JSON-RPC"
+      "status": "aligned",
+      "python": "core/ai_model/model_adapter/codex_app_server.py"
     },
     {
       "package": "core",
@@ -1913,8 +1912,8 @@
     {
       "package": "computer",
       "upstream": "xvfb.ts",
-      "status": "pending",
-      "reason": "start/stop Xvfb for headless Linux desktop automation"
+      "status": "aligned",
+      "python": "computer/xvfb.py"
     },
     {
       "package": "computer",

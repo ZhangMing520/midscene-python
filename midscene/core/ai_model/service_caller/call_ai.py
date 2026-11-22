@@ -5,6 +5,10 @@ import asyncio
 import time
 from loguru import logger
 from midscene.core.ai_model.models.registry import ModelRuntime
+from midscene.core.ai_model.service_caller.codex.call_codex import (
+    call_codex,
+    prepare_codex_call,
+)
 from midscene.core.ai_model.service_caller.openai.call_openai import call_openai
 from midscene.core.ai_model.service_caller.openai.chat_completion import (
     prepare_chat_completion,
@@ -36,6 +40,13 @@ from midscene.core.ai_model.service_caller.utils import (
     normalize_retry_count,
 )
 
+# Kept for compatibility with callers importing the error from this module.
+__all__ = [
+    "CodexAppServerNotSupportedError",
+    "call_ai_with_string_response",
+    "call_generative_ai",
+]
+
 
 async def call_generative_ai(
     messages: List[dict],
@@ -50,21 +61,17 @@ async def call_generative_ai(
 
     model_config = model_runtime.config
     protocol = model_config.get("protocol") or DEFAULT_MODEL_PROTOCOL
+    codex_provider = is_codex_app_server_provider(model_config.get("openaiBaseURL"))
 
-    if is_codex_app_server_provider(model_config.get("openaiBaseURL")):
-        raise CodexAppServerNotSupportedError(
-            "The Codex app-server transport (baseURL codex://...) requires the "
-            "Codex binary over stdio JSON-RPC and is not supported by the "
-            "Python SDK. Use the OpenAI API instead."
-        )
-    if protocol == "openai-responses":
-        if not model_runtime.adapter.supports_protocol("openai-responses"):
-            raise ValueError(
-                f'Model adapter "{model_config.get("modelFamily") or "default"}" '
-                'does not support protocol "openai-responses"'
-            )
-    elif protocol != "openai-chat":
-        raise ValueError(f"Unsupported model protocol: {protocol}")
+    if not codex_provider:
+        if protocol == "openai-responses":
+            if not model_runtime.adapter.supports_protocol("openai-responses"):
+                raise ValueError(
+                    f'Model adapter "{model_config.get("modelFamily") or "default"}" '
+                    'does not support protocol "openai-responses"'
+                )
+        elif protocol != "openai-chat":
+            raise ValueError(f"Unsupported model protocol: {protocol}")
 
     api_key = model_config.get("openaiApiKey")
     effective_timeout = resolve_effective_timeout_ms(model_config.get("timeout"))
@@ -88,7 +95,9 @@ async def call_generative_ai(
 
     chunk_callback = _track_chunk if on_chunk is not None else None
 
-    if protocol == "openai-responses":
+    if codex_provider:
+        prepared = prepare_codex_call(messages, model_runtime, options)
+    elif protocol == "openai-responses":
         prepared = prepare_responses(messages, model_runtime, options)
     else:
         prepared = prepare_chat_completion(messages, model_runtime, options)
@@ -121,16 +130,36 @@ async def call_generative_ai(
             )
 
         try:
-            parsed = await call_openai(
-                model_runtime,
-                protocol,
-                prepared,
-                stream_requested,
-                on_chunk=chunk_callback,
-                effective_timeout=effective_timeout,
-                execution_id=execution_id,
-                record_event=record_event if recording_enabled else None,
-            )
+            if codex_provider:
+                codex_options = dict(options)
+                codex_options["stream"] = stream_requested
+                if chunk_callback is not None:
+                    codex_options["onChunk"] = chunk_callback
+                codex_call = call_codex(
+                    model_runtime,
+                    codex_options,
+                    messages,
+                    prepared["request_params"],
+                    resolve_image_detail=prepared["resolve_image_detail"],
+                    record_event=record_event if recording_enabled else None,
+                )
+                if effective_timeout is not None:
+                    parsed = await asyncio.wait_for(
+                        codex_call, timeout=effective_timeout / 1000
+                    )
+                else:
+                    parsed = await codex_call
+            else:
+                parsed = await call_openai(
+                    model_runtime,
+                    protocol,
+                    prepared,
+                    stream_requested,
+                    on_chunk=chunk_callback,
+                    effective_timeout=effective_timeout,
+                    execution_id=execution_id,
+                    record_event=record_event if recording_enabled else None,
+                )
             time_cost = int((time.time() - start_time) * 1000)
             usage = build_usage_info(
                 raw_usage=parsed.get("rawUsage"),

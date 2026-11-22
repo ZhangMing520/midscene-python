@@ -7,6 +7,16 @@ from midscene.computer.rdp import (
     RDPDevice,
     UnsupportedRDPBackendClient,
 )
+from midscene.computer.xvfb import (
+    XvfbInstance,
+    XvfbOptions,
+    check_xvfb_installed,
+    create_xvfb_signal_cleanup,
+    find_available_display,
+    needs_xvfb,
+    schedule_xvfb_stop_after_process_exit,
+    start_xvfb,
+)
 
 __all__ = [
     "ComputerDevice",
@@ -14,4 +24,12 @@ __all__ = [
     "RDPDevice",
     "RDPBackendClient",
     "UnsupportedRDPBackendClient",
+    "XvfbInstance",
+    "XvfbOptions",
+    "check_xvfb_installed",
+    "create_xvfb_signal_cleanup",
+    "find_available_display",
+    "needs_xvfb",
+    "schedule_xvfb_stop_after_process_exit",
+    "start_xvfb",
 ]

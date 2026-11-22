@@ -7,7 +7,7 @@ import base64
 import math
 import subprocess
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from loguru import logger
 from pydantic import BaseModel
@@ -27,6 +27,7 @@ from midscene.android.utils import (
 )
 from midscene.core.device.mobile_scroll import resolve_default_mobile_scroll
 from midscene.android.adb import run_adb_command
+from midscene.android.scrcpy_device_adapter import ScrcpyDeviceAdapter
 from midscene.android.ui_tree_capture import capture_android_ui_tree
 from midscene.core.types import (
     AbstractInterface, InterfaceType, UIContext, BaseElement, UINode, UITree,
@@ -204,6 +205,9 @@ class AndroidDeviceConfig(BaseModel):
     use_ime: bool = True
     display_id: int = 0
     timeout: int = 30
+    # Opt-in scrcpy screenshots (upstream scrcpyConfig). Default off so the
+    # existing ADB screencap path is unchanged.
+    scrcpy_config: Optional[Dict[str, Any]] = None
 
 
 class AndroidDevice(AbstractInterface):
@@ -225,6 +229,7 @@ class AndroidDevice(AbstractInterface):
         self._yadb_pushed = False
         self._yadb_bin_path: Optional[str] = None
         self._app_name_mapping: Dict[str, str] = {}
+        self._scrcpy_adapter: Optional[ScrcpyDeviceAdapter] = None
     
     @classmethod
     async def create(cls, device_id: Optional[str] = None) -> 'AndroidDevice':
@@ -271,7 +276,23 @@ class AndroidDevice(AbstractInterface):
             # Setup IME if needed
             if self.config.use_ime:
                 await self._setup_ime()
-            
+
+            # Opt-in scrcpy screenshots. A transient failure falls back to the
+            # existing ADB path while preserving the ability to retry.
+            if self._scrcpy_configured():
+                try:
+                    await self._get_scrcpy_adapter().initialize()
+                    logger.info(
+                        f"Using scrcpy for screenshots (device: "
+                        f"{self.device_id})"
+                    )
+                except Exception as e:
+                    logger.warning(
+                        "Scrcpy unavailable, using ADB fallback "
+                        f"(device: {self.device_id}): {e}. Call "
+                        "retry_scrcpy() to retry immediately."
+                    )
+
             self._connected = True
             logger.info(f"Connected to Android device: {self.device_id}")
             
@@ -283,6 +304,32 @@ class AndroidDevice(AbstractInterface):
     def interface_type(self) -> InterfaceType:
         """Get interface type"""
         return InterfaceType.ANDROID
+
+    def _scrcpy_configured(self) -> bool:
+        config = self.config.scrcpy_config
+        return bool(config and config.get("enabled"))
+
+    def _get_scrcpy_adapter(self) -> ScrcpyDeviceAdapter:
+        """Lazily create the scrcpy adapter (upstream getScrcpyAdapter)."""
+        if self._scrcpy_adapter is None:
+            self._scrcpy_adapter = ScrcpyDeviceAdapter(
+                self.device_id,
+                self.config.scrcpy_config,
+                adb_path=self.config.adb_path,
+            )
+        return self._scrcpy_adapter
+
+    def get_scrcpy_status(self):
+        """Current scrcpy configuration, connection and recovery state."""
+        return self._get_scrcpy_adapter().get_status()
+
+    async def retry_scrcpy(self):
+        """Retry scrcpy initialization without recreating the device."""
+        adapter = self._get_scrcpy_adapter()
+        if not adapter.is_configured():
+            raise RuntimeError("scrcpy is disabled in AndroidDevice options")
+        await adapter.initialize()
+        return adapter.get_status()
     
     async def get_context(self) -> UIContext:
         """Get current UI context"""
@@ -397,7 +444,16 @@ class AndroidDevice(AbstractInterface):
         )
 
     async def size(self) -> Dict[str, int]:
-        """Logical screen size (upstream size()); physical / display density."""
+        """Logical screen size (upstream size()); physical / display density.
+
+        When scrcpy is opted in and connected, its video resolution is the
+        frame coordinate space and takes precedence.
+        """
+        adapter = self._scrcpy_adapter
+        if adapter is not None and adapter.is_enabled():
+            scrcpy_size = adapter.get_size()
+            if scrcpy_size is not None:
+                return scrcpy_size
         if not self._screen_size:
             await self._get_screen_size()
         return {"width": self._screen_size.width, "height": self._screen_size.height}
@@ -891,7 +947,26 @@ class AndroidDevice(AbstractInterface):
             raise
     
     async def _take_screenshot(self) -> str:
-        """Take screenshot and return base64 string"""
+        """Take screenshot and return base64 string.
+
+        Opt-in scrcpy is tried first; any failure logs a diagnostic and falls
+        through to the unchanged ADB screencap path.
+        """
+        adapter = self._scrcpy_adapter
+        if adapter is not None and adapter.is_enabled():
+            try:
+                data_url = await adapter.screenshot_base64()
+                return (
+                    data_url.split(",", 1)[1]
+                    if data_url.startswith("data:")
+                    else data_url
+                )
+            except Exception as e:
+                logger.warning(
+                    "Scrcpy screenshot failed, falling back to standard ADB "
+                    f"method: {e}"
+                )
+
         try:
             # Take screenshot using screencap
             result = await self._run_adb_command([
@@ -1010,6 +1085,12 @@ class AndroidDevice(AbstractInterface):
     
     async def disconnect(self) -> None:
         """Disconnect from device"""
+        if self._scrcpy_adapter is not None:
+            try:
+                await self._scrcpy_adapter.disconnect()
+            except Exception as e:
+                logger.debug(f"Error disconnecting scrcpy: {e}")
+            self._scrcpy_adapter = None
         self._connected = False
         logger.info(f"Disconnected from device: {self.device_id}")
     
