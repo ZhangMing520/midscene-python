@@ -341,11 +341,11 @@ def _accepts_task_context(execute: Any) -> bool:
     for parameter in parameters:
         if parameter.kind is inspect.Parameter.VAR_POSITIONAL:
             return True
-        if parameter.kind is inspect.Parameter.KEYWORD_ONLY:
-            if parameter.name == "task_context":
-                return True
-            continue
-        positional += 1
+        if parameter.kind in (
+            inspect.Parameter.POSITIONAL_ONLY,
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+        ):
+            positional += 1
     return positional >= 4
 
 

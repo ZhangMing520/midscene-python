@@ -78,7 +78,7 @@ def _accepts_type(type_name: str, field: Field, value: Any) -> Optional[bool]:
         return value == field.get("value")
     if name == "enum":
         return value in (field.get("enum") or [])
-    if name in ("nativeenum", "native_enum"):
+    if name == "nativeenum":
         values = field.get("enum", field.get("values"))
         if isinstance(values, dict):
             values = list(values.values())
@@ -125,7 +125,7 @@ def _get_input_fields(field: Field) -> List[Field]:
     flattened: List[Field] = []
     for option in options:
         flattened.extend(_get_input_fields(option))
-    return flattened or [field]
+    return flattened
 
 
 def _collection_kind(field: Field) -> Optional[str]:
@@ -140,13 +140,15 @@ def _collection_kind(field: Field) -> Optional[str]:
 
 def _get_repeated_input_fields(fields: List[Field], index: int) -> List[Field]:
     collections = [
-        field for field in fields if _collection_kind(field) is not None
+        (field, kind)
+        for field in fields
+        if (kind := _collection_kind(field)) is not None
     ]
     if not collections:
         return fields
     repeated: List[Field] = []
-    for field in collections:
-        if _collection_kind(field) == "tuple":
+    for field, kind in collections:
+        if kind == "tuple":
             items = field.get("items")
             item: Any = None
             if isinstance(items, (list, tuple)) and index < len(items):

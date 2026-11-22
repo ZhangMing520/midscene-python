@@ -137,7 +137,7 @@ def _apply_field_rules(name: str, field: Any, value: Any) -> Any:
     """Apply the schema field's refinement and transform, if any."""
     if not isinstance(field, dict):
         return value
-    refine = field.get("refine", field.get("refinement"))
+    refine = field.get("refine")
     if callable(refine) and not refine(value):
         raise ValueError(f"{name}: Invalid value")
     transform = field.get("transform")
