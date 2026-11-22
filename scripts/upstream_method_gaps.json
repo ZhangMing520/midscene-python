@@ -1,0 +1,6541 @@
+{
+  "upstream_root": "/home/zhangming/gitspace/midscene",
+  "counts": {
+    "modules_with_gaps": 154,
+    "missing_functions": 196,
+    "moved_functions": 21,
+    "missing_classes": 26,
+    "missing_methods": 294,
+    "signature_mismatch": 53,
+    "modules_scanned": 425,
+    "functions_scanned": 601,
+    "classes_scanned": 100
+  },
+  "modules": [
+    {
+      "package": "android",
+      "upstream": "device.ts",
+      "python": "android/device.py",
+      "missing_functions": [],
+      "moved_functions": [
+        {
+          "name": "escapeForShell",
+          "params": [
+            "text"
+          ],
+          "found_in": "midscene/android/adb_shell.py"
+        }
+      ],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "AndroidDevice",
+          "name": "adjustCoordinates",
+          "params": [
+            "x",
+            "y"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "calculateScrollEndPoint",
+          "params": [
+            "start",
+            "deltaX",
+            "deltaY",
+            "maxWidth",
+            "maxHeight"
+          ],
+          "async": false,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "captureScreenshotBase64FromDeviceFile",
+          "params": [
+            "label",
+            "capture"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "clearInputRaw",
+          "params": [
+            "element?"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "clearInputWithKeyboard",
+          "params": [
+            "adb"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "createAdbProxy",
+          "params": [
+            "adb"
+          ],
+          "async": false,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "createVisualActionRegistry",
+          "params": [
+            "{\n        tap: (point)",
+            "doubleClick",
+            "longPress",
+            "dragAndDrop",
+            "keyboardPress",
+            "typeText",
+            "clearInput",
+            "cursorMove",
+            "actionScroll",
+            "back",
+            "home",
+            "recentApps",
+            "pullGesture",
+            "launch",
+            "terminate",
+            "runAdbShell",
+            "execYadb",
+            "scrollUntilTop",
+            "scrollUntilBottom",
+            "scrollUntilLeft",
+            "scrollUntilRight",
+            "scrollUp",
+            "scrollDown",
+            "scrollLeft",
+            "scrollRight",
+            "scroll",
+            "pullDown",
+            "pullDrag",
+            "pullUp",
+            "hideKeyboard",
+            "}",
+            "async ()"
+          ],
+          "async": false,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "describe",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "ensureYadb",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "execYadb",
+          "params": [
+            "keyboardContent"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "execYadbRaw",
+          "params": [
+            "keyboardContent"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "forceScreenshot",
+          "params": [
+            "path"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "getAdb",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "getAdjustScale",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "getDevicePhysicalInfo",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "getDisplayDensity",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "getDisplayOrientation",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "getElementsInfo",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "getElementsNodeTree",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "getOrientedPhysicalSize",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "getScrcpyAdapter",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "getScreenSize",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "getUITree",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "initializeDevicePixelRatio",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "launch",
+          "params": [
+            "uri"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "launchRaw",
+          "params": [
+            "uri"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "openScrcpyFrameSource",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "performActionScroll",
+          "params": [
+            "param",
+            "opts?"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "performPullGesture",
+          "params": [
+            "param"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "prepareFallbackScreenshot",
+          "params": [
+            "screenshotBase64"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "resolvePackageName",
+          "params": [
+            "appName"
+          ],
+          "async": false,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "resolveYadbBinPath",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "runAdbShellRaw",
+          "params": [
+            "param",
+            "context?"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "screenshotBase64",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "screenshotBase64ViaYadb",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "scrollDefault",
+          "params": [
+            "direction"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "scrollDown",
+          "params": [
+            "distance?",
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "scrollDownRaw",
+          "params": [
+            "distance?",
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "scrollLeft",
+          "params": [
+            "distance?",
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "scrollLeftRaw",
+          "params": [
+            "distance?",
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "scrollRight",
+          "params": [
+            "distance?",
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "scrollRightRaw",
+          "params": [
+            "distance?",
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "scrollUntilBottom",
+          "params": [
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "scrollUntilBottomRaw",
+          "params": [
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "scrollUntilLeft",
+          "params": [
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "scrollUntilLeftRaw",
+          "params": [
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "scrollUntilRight",
+          "params": [
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "scrollUntilRightRaw",
+          "params": [
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "scrollUntilTop",
+          "params": [
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "scrollUntilTopRaw",
+          "params": [
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "scrollUp",
+          "params": [
+            "distance?",
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "scrollUpRaw",
+          "params": [
+            "distance?",
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "shouldUseYadbForText",
+          "params": [
+            "text"
+          ],
+          "async": false,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "terminate",
+          "params": [
+            "uri"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "terminateRaw",
+          "params": [
+            "uri"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "url",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/android/device.py"
+        },
+        {
+          "class": "AndroidDevice",
+          "name": "warnScrollDistanceClamped",
+          "params": [
+            "direction",
+            "requestedDistance",
+            "appliedDistance"
+          ],
+          "async": false,
+          "python_owner": "midscene/android/device.py"
+        }
+      ],
+      "signature_mismatch": [
+        {
+          "kind": "method",
+          "class": "AndroidDevice",
+          "name": "clearInput",
+          "ts_params": [
+            "element?"
+          ],
+          "python_params": [
+            "self"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "ios",
+      "upstream": "device.ts",
+      "python": "ios/device.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "IOSDevice",
+          "name": "clearInputAt",
+          "params": [
+            "point?"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "compareScreenshots",
+          "params": [
+            "screenshot1",
+            "screenshot2",
+            "tolerancePercent",
+            "// Allow 2% difference"
+          ],
+          "async": false,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "consumePendingKeyboardFollowUp",
+          "params": [
+            "key"
+          ],
+          "async": false,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "describe",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "doubleTapPoint",
+          "params": [
+            "point"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "ensureMjpegFrameSource",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "getConnectedDeviceInfo",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "getElementsInfo",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "getElementsNodeTree",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "getScreenSize",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "hideKeyboard",
+          "params": [
+            "keyNames?"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "initializeDevicePixelRatio",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "invalidatePendingKeyboardFollowUp",
+          "params": [
+            "reason"
+          ],
+          "async": false,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "launch",
+          "params": [
+            "uri"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "longPressPoint",
+          "params": [
+            "point",
+            "duration"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "openMjpegFrameSource",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "openUrl",
+          "params": [
+            "url",
+            "options?"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "openUrlViaSafari",
+          "params": [
+            "url"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "performActionScroll",
+          "params": [
+            "param",
+            "opts?"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "pressKey",
+          "params": [
+            "key",
+            "target?"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "registerPendingKeyboardFollowUp",
+          "params": [
+            "target?"
+          ],
+          "async": false,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "resolveBundleId",
+          "params": [
+            "appName"
+          ],
+          "async": false,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "scrollDefault",
+          "params": [
+            "direction"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "scrollDown",
+          "params": [
+            "distance?",
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "scrollInDirection",
+          "params": [
+            "direction",
+            "distance?",
+            "startPoint?",
+            "duration"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "scrollLeft",
+          "params": [
+            "distance?",
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "scrollRight",
+          "params": [
+            "distance?",
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "scrollUntilBottom",
+          "params": [
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "scrollUntilBoundary",
+          "params": [
+            "direction",
+            "startPoint?",
+            "maxUnchangedCount"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "scrollUntilLeft",
+          "params": [
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "scrollUntilRight",
+          "params": [
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "scrollUntilTop",
+          "params": [
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "scrollUp",
+          "params": [
+            "distance?",
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "swipeCoordinates",
+          "params": [
+            "fromX",
+            "fromY",
+            "toX",
+            "toY",
+            "duration"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "swipePoint",
+          "params": [
+            "start",
+            "end",
+            "duration"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "tapPoint",
+          "params": [
+            "point"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "terminate",
+          "params": [
+            "bundleId"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "tryAutoDismissKeyboard",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "typeText",
+          "params": [
+            "text",
+            "options?",
+            "focusRestorePoint?",
+            "resolvedInputOptions"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "url",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        }
+      ],
+      "signature_mismatch": [
+        {
+          "kind": "method",
+          "class": "IOSDevice",
+          "name": "clearInput",
+          "ts_params": [
+            "element?"
+          ],
+          "python_params": [
+            "self"
+          ]
+        },
+        {
+          "kind": "method",
+          "class": "IOSDevice",
+          "name": "connect",
+          "ts_params": [],
+          "python_params": [
+            "self",
+            "capabilities"
+          ]
+        },
+        {
+          "kind": "method",
+          "class": "IOSDevice",
+          "name": "swipe",
+          "ts_params": [
+            "fromX",
+            "fromY",
+            "toX",
+            "toY",
+            "duration"
+          ],
+          "python_params": [
+            "self",
+            "direction",
+            "distance"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "computer",
+      "upstream": "device.ts",
+      "python": "computer/device.py",
+      "missing_functions": [
+        {
+          "name": "getDisplayInfoBinary",
+          "params": []
+        },
+        {
+          "name": "getPhasedScrollBinary",
+          "params": []
+        },
+        {
+          "name": "mapDisplayLocalPointToGlobal",
+          "params": [
+            "point",
+            "geometry?"
+          ]
+        },
+        {
+          "name": "readDarwinDisplayGeometries",
+          "params": []
+        },
+        {
+          "name": "resolveDarwinDisplayGeometryFromList",
+          "params": [
+            "displayId",
+            "displays"
+          ]
+        },
+        {
+          "name": "runPhasedScroll",
+          "params": [
+            "direction",
+            "pixels",
+            "steps"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "ComputerDevice",
+          "name": "connect",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/computer/device.py"
+        },
+        {
+          "class": "ComputerDevice",
+          "name": "describe",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/computer/device.py"
+        },
+        {
+          "class": "ComputerDevice",
+          "name": "destroy",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/computer/device.py"
+        },
+        {
+          "class": "ComputerDevice",
+          "name": "focusKeyboardTarget",
+          "params": [
+            "element",
+            "delayMs"
+          ],
+          "async": true,
+          "python_owner": "midscene/computer/device.py"
+        },
+        {
+          "class": "ComputerDevice",
+          "name": "healthCheck",
+          "params": [
+            "displays"
+          ],
+          "async": true,
+          "python_owner": "midscene/computer/device.py"
+        },
+        {
+          "class": "ComputerDevice",
+          "name": "isRunningAsAdmin",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/computer/device.py"
+        },
+        {
+          "class": "ComputerDevice",
+          "name": "listDisplays",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/computer/device.py"
+        },
+        {
+          "class": "ComputerDevice",
+          "name": "moveDisplayPointer",
+          "params": [
+            "point",
+            "context",
+            "smooth?"
+          ],
+          "async": false,
+          "python_owner": "midscene/computer/device.py"
+        },
+        {
+          "class": "ComputerDevice",
+          "name": "moveGlobalPointer",
+          "params": [
+            "point",
+            "context",
+            "smooth?"
+          ],
+          "async": true,
+          "python_owner": "midscene/computer/device.py"
+        },
+        {
+          "class": "ComputerDevice",
+          "name": "moveMouseToScrollTarget",
+          "params": [
+            "param"
+          ],
+          "async": true,
+          "python_owner": "midscene/computer/device.py"
+        },
+        {
+          "class": "ComputerDevice",
+          "name": "performPointerDrag",
+          "params": [
+            "from",
+            "to",
+            "duration?"
+          ],
+          "async": true,
+          "python_owner": "midscene/computer/device.py"
+        },
+        {
+          "class": "ComputerDevice",
+          "name": "performScroll",
+          "params": [
+            "param"
+          ],
+          "async": true,
+          "python_owner": "midscene/computer/device.py"
+        },
+        {
+          "class": "ComputerDevice",
+          "name": "pressKeyboardShortcut",
+          "params": [
+            "keyName"
+          ],
+          "async": true,
+          "python_owner": "midscene/computer/device.py"
+        },
+        {
+          "class": "ComputerDevice",
+          "name": "resolveUntargetedScrollPoint",
+          "params": [
+            "screenSize"
+          ],
+          "async": false,
+          "python_owner": "midscene/computer/device.py"
+        },
+        {
+          "class": "ComputerDevice",
+          "name": "screenshotBase64",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/computer/device.py"
+        },
+        {
+          "class": "ComputerDevice",
+          "name": "screenshotViaPowershell",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/computer/device.py"
+        },
+        {
+          "class": "ComputerDevice",
+          "name": "selectAllAndDelete",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/computer/device.py"
+        },
+        {
+          "class": "ComputerDevice",
+          "name": "smartTypeString",
+          "params": [
+            "text",
+            "inputOptions"
+          ],
+          "async": true,
+          "python_owner": "midscene/computer/device.py"
+        },
+        {
+          "class": "ComputerDevice",
+          "name": "toGlobalPoint",
+          "params": [
+            "point"
+          ],
+          "async": false,
+          "python_owner": "midscene/computer/device.py"
+        },
+        {
+          "class": "ComputerDevice",
+          "name": "typeStringWithDelay",
+          "params": [
+            "text",
+            "keyboardTypeDelay"
+          ],
+          "async": true,
+          "python_owner": "midscene/computer/device.py"
+        },
+        {
+          "class": "ComputerDevice",
+          "name": "typeViaClipboard",
+          "params": [
+            "text"
+          ],
+          "async": true,
+          "python_owner": "midscene/computer/device.py"
+        },
+        {
+          "class": "ComputerDevice",
+          "name": "url",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/computer/device.py"
+        }
+      ],
+      "signature_mismatch": []
+    },
+    {
+      "package": "computer",
+      "upstream": "input-driver.ts",
+      "python": "computer/input_driver.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "ComputerInputDriver",
+          "name": "assertActive",
+          "params": [
+            "methodName"
+          ],
+          "async": false,
+          "python_owner": "midscene/computer/input_driver.py"
+        },
+        {
+          "class": "ComputerInputDriver",
+          "name": "assertMousePosition",
+          "params": [
+            "targetX",
+            "targetY",
+            "context"
+          ],
+          "async": false,
+          "python_owner": "midscene/computer/input_driver.py"
+        },
+        {
+          "class": "ComputerInputDriver",
+          "name": "createDestroyedError",
+          "params": [
+            "methodName"
+          ],
+          "async": false,
+          "python_owner": "midscene/computer/input_driver.py"
+        },
+        {
+          "class": "ComputerInputDriver",
+          "name": "delay",
+          "params": [
+            "ms"
+          ],
+          "async": true,
+          "python_owner": "midscene/computer/input_driver.py"
+        },
+        {
+          "class": "ComputerInputDriver",
+          "name": "destroy",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/computer/input_driver.py"
+        },
+        {
+          "class": "ComputerInputDriver",
+          "name": "emitScrollDetents",
+          "params": [
+            "dx",
+            "dy",
+            "detents",
+            "delayMs"
+          ],
+          "async": true,
+          "python_owner": "midscene/computer/input_driver.py"
+        },
+        {
+          "class": "ComputerInputDriver",
+          "name": "focusActiveWindow",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/computer/input_driver.py"
+        },
+        {
+          "class": "ComputerInputDriver",
+          "name": "getLibnutOrThrow",
+          "params": [
+            "methodName"
+          ],
+          "async": false,
+          "python_owner": "midscene/computer/input_driver.py"
+        },
+        {
+          "class": "ComputerInputDriver",
+          "name": "getMousePos",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/computer/input_driver.py"
+        },
+        {
+          "class": "ComputerInputDriver",
+          "name": "getScreenSize",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/computer/input_driver.py"
+        },
+        {
+          "class": "ComputerInputDriver",
+          "name": "keyTap",
+          "params": [
+            "key",
+            "modifiers?"
+          ],
+          "async": false,
+          "python_owner": "midscene/computer/input_driver.py"
+        },
+        {
+          "class": "ComputerInputDriver",
+          "name": "keyTapWithModifierDelay",
+          "params": [
+            "key",
+            "modifiers",
+            "delayMs"
+          ],
+          "async": true,
+          "python_owner": "midscene/computer/input_driver.py"
+        },
+        {
+          "class": "ComputerInputDriver",
+          "name": "keyToggle",
+          "params": [
+            "key",
+            "state",
+            "modifiers?"
+          ],
+          "async": false,
+          "python_owner": "midscene/computer/input_driver.py"
+        },
+        {
+          "class": "ComputerInputDriver",
+          "name": "mouseClick",
+          "params": [
+            "button?",
+            "double?"
+          ],
+          "async": false,
+          "python_owner": "midscene/computer/input_driver.py"
+        },
+        {
+          "class": "ComputerInputDriver",
+          "name": "mouseToggle",
+          "params": [
+            "state",
+            "button"
+          ],
+          "async": false,
+          "python_owner": "midscene/computer/input_driver.py"
+        },
+        {
+          "class": "ComputerInputDriver",
+          "name": "moveMouse",
+          "params": [
+            "x",
+            "y"
+          ],
+          "async": false,
+          "python_owner": "midscene/computer/input_driver.py"
+        },
+        {
+          "class": "ComputerInputDriver",
+          "name": "rejectPendingInputDelays",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/computer/input_driver.py"
+        },
+        {
+          "class": "ComputerInputDriver",
+          "name": "releaseMouseButton",
+          "params": [
+            "button"
+          ],
+          "async": false,
+          "python_owner": "midscene/computer/input_driver.py"
+        },
+        {
+          "class": "ComputerInputDriver",
+          "name": "runPhasedScroll",
+          "params": [
+            "direction",
+            "pixels",
+            "steps"
+          ],
+          "async": false,
+          "python_owner": "midscene/computer/input_driver.py"
+        },
+        {
+          "class": "ComputerInputDriver",
+          "name": "scrollMouse",
+          "params": [
+            "x",
+            "y"
+          ],
+          "async": false,
+          "python_owner": "midscene/computer/input_driver.py"
+        },
+        {
+          "class": "ComputerInputDriver",
+          "name": "sendKey",
+          "params": [
+            "key",
+            "modifiers"
+          ],
+          "async": false,
+          "python_owner": "midscene/computer/input_driver.py"
+        },
+        {
+          "class": "ComputerInputDriver",
+          "name": "sendKeyViaAppleScript",
+          "params": [
+            "key",
+            "modifiers"
+          ],
+          "async": false,
+          "python_owner": "midscene/computer/input_driver.py"
+        },
+        {
+          "class": "ComputerInputDriver",
+          "name": "smoothMoveMouse",
+          "params": [
+            "targetX",
+            "targetY",
+            "steps",
+            "stepDelay"
+          ],
+          "async": true,
+          "python_owner": "midscene/computer/input_driver.py"
+        },
+        {
+          "class": "ComputerInputDriver",
+          "name": "tryReleaseKey",
+          "params": [
+            "key"
+          ],
+          "async": false,
+          "python_owner": "midscene/computer/input_driver.py"
+        },
+        {
+          "class": "ComputerInputDriver",
+          "name": "typeString",
+          "params": [
+            "text"
+          ],
+          "async": false,
+          "python_owner": "midscene/computer/input_driver.py"
+        },
+        {
+          "class": "ComputerInputDriver",
+          "name": "withMouseButton",
+          "params": [
+            "button",
+            "run"
+          ],
+          "async": true,
+          "python_owner": "midscene/computer/input_driver.py"
+        }
+      ],
+      "signature_mismatch": []
+    },
+    {
+      "package": "android",
+      "upstream": "scrcpy-manager.ts",
+      "python": "android/scrcpy_manager.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "ScrcpyScreenshotManager",
+          "name": "advanceStreamEpoch",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/android/scrcpy_manager.py"
+        },
+        {
+          "class": "ScrcpyScreenshotManager",
+          "name": "clearFrameCache",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/android/scrcpy_manager.py"
+        },
+        {
+          "class": "ScrcpyScreenshotManager",
+          "name": "collectServerOutput",
+          "params": [
+            "output",
+            "lines"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/scrcpy_manager.py"
+        },
+        {
+          "class": "ScrcpyScreenshotManager",
+          "name": "connectScrcpy",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/android/scrcpy_manager.py"
+        },
+        {
+          "class": "ScrcpyScreenshotManager",
+          "name": "consumeFramesLoop",
+          "params": [
+            "reader",
+            "streamReaderEpoch"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/scrcpy_manager.py"
+        },
+        {
+          "class": "ScrcpyScreenshotManager",
+          "name": "createConnectionError",
+          "params": [
+            "error",
+            "serverOutput"
+          ],
+          "async": false,
+          "python_owner": "midscene/android/scrcpy_manager.py"
+        },
+        {
+          "class": "ScrcpyScreenshotManager",
+          "name": "estimateDeviceTimeUs",
+          "params": [
+            "hostMonotonicUs",
+            "calibration"
+          ],
+          "async": false,
+          "python_owner": "midscene/android/scrcpy_manager.py"
+        },
+        {
+          "class": "ScrcpyScreenshotManager",
+          "name": "estimateFrameAge",
+          "params": [
+            "packetPtsUs",
+            "hostMonotonicUs"
+          ],
+          "async": false,
+          "python_owner": "midscene/android/scrcpy_manager.py"
+        },
+        {
+          "class": "ScrcpyScreenshotManager",
+          "name": "estimateFrameAgeUs",
+          "params": [
+            "packetPtsUs",
+            "hostMonotonicUs"
+          ],
+          "async": false,
+          "python_owner": "midscene/android/scrcpy_manager.py"
+        },
+        {
+          "class": "ScrcpyScreenshotManager",
+          "name": "estimateFrameTiming",
+          "params": [
+            "packetPtsUs",
+            "receivedAtUs"
+          ],
+          "async": false,
+          "python_owner": "midscene/android/scrcpy_manager.py"
+        },
+        {
+          "class": "ScrcpyScreenshotManager",
+          "name": "getCalibrationUncertaintyUs",
+          "params": [
+            "calibration"
+          ],
+          "async": false,
+          "python_owner": "midscene/android/scrcpy_manager.py"
+        },
+        {
+          "class": "ScrcpyScreenshotManager",
+          "name": "getErrorOutput",
+          "params": [
+            "error"
+          ],
+          "async": false,
+          "python_owner": "midscene/android/scrcpy_manager.py"
+        },
+        {
+          "class": "ScrcpyScreenshotManager",
+          "name": "isFrameAgeAcceptable",
+          "params": [
+            "packetPtsUs",
+            "hostMonotonicUs"
+          ],
+          "async": false,
+          "python_owner": "midscene/android/scrcpy_manager.py"
+        },
+        {
+          "class": "ScrcpyScreenshotManager",
+          "name": "isFrameFresh",
+          "params": [
+            "packetPtsUs"
+          ],
+          "async": false,
+          "python_owner": "midscene/android/scrcpy_manager.py"
+        },
+        {
+          "class": "ScrcpyScreenshotManager",
+          "name": "monotonicTimeUs",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/android/scrcpy_manager.py"
+        },
+        {
+          "class": "ScrcpyScreenshotManager",
+          "name": "processFrame",
+          "params": [
+            "packet",
+            "streamReaderEpoch"
+          ],
+          "async": false,
+          "python_owner": "midscene/android/scrcpy_manager.py"
+        },
+        {
+          "class": "ScrcpyScreenshotManager",
+          "name": "readDeviceClockCalibration",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/android/scrcpy_manager.py"
+        },
+        {
+          "class": "ScrcpyScreenshotManager",
+          "name": "recalibrateFrameClock",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/android/scrcpy_manager.py"
+        },
+        {
+          "class": "ScrcpyScreenshotManager",
+          "name": "requestVideoReset",
+          "params": [
+            "deadlineAt"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/scrcpy_manager.py"
+        },
+        {
+          "class": "ScrcpyScreenshotManager",
+          "name": "resetFrameFreshnessState",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/android/scrcpy_manager.py"
+        },
+        {
+          "class": "ScrcpyScreenshotManager",
+          "name": "restoreFrameCache",
+          "params": [
+            "frame"
+          ],
+          "async": false,
+          "python_owner": "midscene/android/scrcpy_manager.py"
+        },
+        {
+          "class": "ScrcpyScreenshotManager",
+          "name": "sampleFrameClockCalibration",
+          "params": [
+            "force"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/scrcpy_manager.py"
+        },
+        {
+          "class": "ScrcpyScreenshotManager",
+          "name": "startFrameConsumer",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/android/scrcpy_manager.py"
+        },
+        {
+          "class": "ScrcpyScreenshotManager",
+          "name": "waitForVideoResetWrite",
+          "params": [
+            "writePromise",
+            "deadlineAt"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/scrcpy_manager.py"
+        },
+        {
+          "class": "ScrcpyScreenshotManager",
+          "name": "warnFrameFreshness",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/android/scrcpy_manager.py"
+        }
+      ],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "dump/html-utils.ts",
+      "python": "core/dump/html_utils.py",
+      "missing_functions": [
+        {
+          "name": "collectImageScriptIds",
+          "params": [
+            "filePath"
+          ]
+        },
+        {
+          "name": "extractAllDumpScriptsSync",
+          "params": [
+            "filePath"
+          ]
+        },
+        {
+          "name": "extractLastDumpScriptSync",
+          "params": [
+            "filePath"
+          ]
+        },
+        {
+          "name": "extractReportArtifactPathAsync",
+          "params": [
+            "filePath"
+          ]
+        },
+        {
+          "name": "extractReportArtifactPathSync",
+          "params": [
+            "filePath"
+          ]
+        },
+        {
+          "name": "extractTestRunReportDumpSync",
+          "params": [
+            "filePath"
+          ]
+        },
+        {
+          "name": "generateAgentReportComment",
+          "params": [
+            "report"
+          ]
+        },
+        {
+          "name": "generateDumpScriptTag",
+          "params": [
+            "json",
+            "attributes?"
+          ]
+        },
+        {
+          "name": "generateImageScriptTag",
+          "params": [
+            "id",
+            "data"
+          ]
+        },
+        {
+          "name": "generateReportArtifactScriptTag",
+          "params": [
+            "path"
+          ]
+        },
+        {
+          "name": "generateTestRunReportScriptTag",
+          "params": [
+            "dump"
+          ]
+        },
+        {
+          "name": "getBaseUrlFixScript",
+          "params": []
+        },
+        {
+          "name": "parseDumpScript",
+          "params": [
+            "html"
+          ]
+        },
+        {
+          "name": "parseDumpScriptAttributes",
+          "params": [
+            "html"
+          ]
+        },
+        {
+          "name": "parseImageScripts",
+          "params": [
+            "html"
+          ]
+        },
+        {
+          "name": "streamDumpScriptsAsync",
+          "params": [
+            "filePath",
+            "visitor"
+          ]
+        },
+        {
+          "name": "streamDumpScriptsSync",
+          "params": [
+            "filePath",
+            "visitor"
+          ]
+        },
+        {
+          "name": "streamImageScriptsToFile",
+          "params": [
+            "srcFilePath",
+            "destFilePath",
+            "writtenImageIds"
+          ]
+        },
+        {
+          "name": "streamInlineReportImages",
+          "params": [
+            "filePath",
+            "visit"
+          ]
+        },
+        {
+          "name": "streamScanTags",
+          "params": [
+            "filePath",
+            "openTag",
+            "closeTag",
+            "onMatch"
+          ]
+        },
+        {
+          "name": "streamScanTagsAsync",
+          "params": [
+            "filePath",
+            "openTag",
+            "closeTag",
+            "onMatch"
+          ]
+        }
+      ],
+      "moved_functions": [
+        {
+          "name": "extractImageByIdSync",
+          "params": [
+            "htmlPath",
+            "imageId"
+          ],
+          "found_in": "midscene/core/dump/screenshot_store.py"
+        }
+      ],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "report-generator.ts",
+      "python": "core/report_generator.py",
+      "missing_functions": [],
+      "moved_functions": [
+        {
+          "name": "assertReportGenerationOptions",
+          "params": [
+            "opts"
+          ],
+          "found_in": "midscene/core/dump/report_session.py"
+        }
+      ],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "ReportGenerator",
+          "name": "appendAgentReportComment",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/core/dump/report_session.py"
+        },
+        {
+          "class": "ReportGenerator",
+          "name": "assertOpen",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/core/dump/report_session.py"
+        },
+        {
+          "class": "ReportGenerator",
+          "name": "createSourceSnapshot",
+          "params": [
+            "scopeId",
+            "executionIds?"
+          ],
+          "async": true,
+          "python_owner": "midscene/core/dump/report_session.py"
+        },
+        {
+          "class": "ReportGenerator",
+          "name": "doWriteExecution",
+          "params": [
+            "execution",
+            "reportMeta"
+          ],
+          "async": true,
+          "python_owner": "midscene/core/dump/report_session.py"
+        },
+        {
+          "class": "ReportGenerator",
+          "name": "enableSourceSnapshots",
+          "params": [
+            "scopeId"
+          ],
+          "async": false,
+          "python_owner": "midscene/core/dump/report_session.py"
+        },
+        {
+          "class": "ReportGenerator",
+          "name": "finishPublication",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/core/dump/report_session.py"
+        },
+        {
+          "class": "ReportGenerator",
+          "name": "getDumpScriptAttributes",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/core/dump/report_session.py"
+        },
+        {
+          "class": "ReportGenerator",
+          "name": "getExecutionCommentKey",
+          "params": [
+            "execution"
+          ],
+          "async": false,
+          "python_owner": "midscene/core/dump/report_session.py"
+        },
+        {
+          "class": "ReportGenerator",
+          "name": "getExecutionLogKey",
+          "params": [
+            "execution"
+          ],
+          "async": false,
+          "python_owner": "midscene/core/dump/report_session.py"
+        },
+        {
+          "class": "ReportGenerator",
+          "name": "hydrateStateFromExistingReport",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/core/dump/report_session.py"
+        },
+        {
+          "class": "ReportGenerator",
+          "name": "mergeReportAttributes",
+          "params": [
+            "attributes?"
+          ],
+          "async": false,
+          "python_owner": "midscene/core/dump/report_session.py"
+        },
+        {
+          "class": "ReportGenerator",
+          "name": "persistExecutionDumpToFile",
+          "params": [
+            "execution",
+            "singleDump",
+            "referenceImageRefs"
+          ],
+          "async": true,
+          "python_owner": "midscene/core/dump/report_session.py"
+        },
+        {
+          "class": "ReportGenerator",
+          "name": "persistReferenceImages",
+          "params": [
+            "execution"
+          ],
+          "async": true,
+          "python_owner": "midscene/core/dump/report_session.py"
+        },
+        {
+          "class": "ReportGenerator",
+          "name": "printReportPath",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/core/dump/report_session.py"
+        },
+        {
+          "class": "ReportGenerator",
+          "name": "serializeSourceDump",
+          "params": [
+            "snapshot?"
+          ],
+          "async": true,
+          "python_owner": "midscene/core/dump/report_session.py"
+        },
+        {
+          "class": "ReportGenerator",
+          "name": "wrapAsReportDump",
+          "params": [
+            "execution",
+            "reportMeta"
+          ],
+          "async": false,
+          "python_owner": "midscene/core/dump/report_session.py"
+        },
+        {
+          "class": "ReportGenerator",
+          "name": "writeExecution",
+          "params": [
+            "execution",
+            "singleDump"
+          ],
+          "async": true,
+          "python_owner": "midscene/core/dump/report_session.py"
+        },
+        {
+          "class": "ReportGenerator",
+          "name": "writeRunnerReport",
+          "params": [
+            "input",
+            "scopeId",
+            "meta"
+          ],
+          "async": true,
+          "python_owner": "midscene/core/dump/report_session.py"
+        }
+      ],
+      "signature_mismatch": []
+    },
+    {
+      "package": "shared",
+      "upstream": "extractor/util.ts",
+      "python": "shared/extractor/util.py",
+      "missing_functions": [
+        {
+          "name": "elementRect",
+          "params": [
+            "el",
+            "currentWindow",
+            "currentDocument",
+            "baseZoom"
+          ]
+        },
+        {
+          "name": "generateId",
+          "params": [
+            "numberId"
+          ]
+        },
+        {
+          "name": "getNodeAttributes",
+          "params": [
+            "node",
+            "currentWindow"
+          ]
+        },
+        {
+          "name": "getNodeFromCacheList",
+          "params": [
+            "id"
+          ]
+        },
+        {
+          "name": "getPseudoElementContent",
+          "params": [
+            "element",
+            "currentWindow"
+          ]
+        },
+        {
+          "name": "getRect",
+          "params": [
+            "el",
+            "baseZoom",
+            "// base zoom\n  currentWindow"
+          ]
+        },
+        {
+          "name": "getTopDocument",
+          "params": []
+        },
+        {
+          "name": "hasOverflowY",
+          "params": [
+            "element",
+            "currentWindow"
+          ]
+        },
+        {
+          "name": "midsceneGenerateHash",
+          "params": [
+            "node",
+            "content",
+            "rect"
+          ]
+        },
+        {
+          "name": "setExtractTextWithPositionOnWindow",
+          "params": []
+        },
+        {
+          "name": "setGenerateHashOnWindow",
+          "params": []
+        },
+        {
+          "name": "setMidsceneVisibleRectOnWindow",
+          "params": []
+        },
+        {
+          "name": "setNodeHashCacheListOnWindow",
+          "params": []
+        },
+        {
+          "name": "setNodeToCacheList",
+          "params": [
+            "node",
+            "id"
+          ]
+        },
+        {
+          "name": "validTextNodeContent",
+          "params": [
+            "node"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "logger",
+          "ts_params": [
+            "_msg"
+          ],
+          "python_params": []
+        }
+      ]
+    },
+    {
+      "package": "computer",
+      "upstream": "rdp/device.ts",
+      "python": "computer/rdp/device.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "RDPDevice",
+          "name": "assertConnected",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/computer/rdp/device.py"
+        },
+        {
+          "class": "RDPDevice",
+          "name": "clearInput",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/computer/rdp/device.py"
+        },
+        {
+          "class": "RDPDevice",
+          "name": "defaultScrollDistance",
+          "params": [
+            "direction"
+          ],
+          "async": false,
+          "python_owner": "midscene/computer/rdp/device.py"
+        },
+        {
+          "class": "RDPDevice",
+          "name": "describe",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/computer/rdp/device.py"
+        },
+        {
+          "class": "RDPDevice",
+          "name": "destroy",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/computer/rdp/device.py"
+        },
+        {
+          "class": "RDPDevice",
+          "name": "edgeScrollDirection",
+          "params": [
+            "scrollType"
+          ],
+          "async": false,
+          "python_owner": "midscene/computer/rdp/device.py"
+        },
+        {
+          "class": "RDPDevice",
+          "name": "movePointer",
+          "params": [
+            "targetX",
+            "targetY",
+            "options?"
+          ],
+          "async": true,
+          "python_owner": "midscene/computer/rdp/device.py"
+        },
+        {
+          "class": "RDPDevice",
+          "name": "moveToElement",
+          "params": [
+            "element",
+            "options?"
+          ],
+          "async": true,
+          "python_owner": "midscene/computer/rdp/device.py"
+        },
+        {
+          "class": "RDPDevice",
+          "name": "performPointerDrag",
+          "params": [
+            "from",
+            "to",
+            "duration?"
+          ],
+          "async": true,
+          "python_owner": "midscene/computer/rdp/device.py"
+        },
+        {
+          "class": "RDPDevice",
+          "name": "performWheel",
+          "params": [
+            "direction",
+            "amount",
+            "x?",
+            "y?"
+          ],
+          "async": true,
+          "python_owner": "midscene/computer/rdp/device.py"
+        },
+        {
+          "class": "RDPDevice",
+          "name": "screenshotBase64",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/computer/rdp/device.py"
+        },
+        {
+          "class": "RDPDevice",
+          "name": "size",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/computer/rdp/device.py"
+        },
+        {
+          "class": "RDPDevice",
+          "name": "throwIfDestroyed",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/computer/rdp/device.py"
+        },
+        {
+          "class": "RDPDevice",
+          "name": "typeText",
+          "params": [
+            "value",
+            "inputOptions"
+          ],
+          "async": true,
+          "python_owner": "midscene/computer/rdp/device.py"
+        }
+      ],
+      "signature_mismatch": []
+    },
+    {
+      "package": "shared",
+      "upstream": "img/transform.ts",
+      "python": "shared/img/transform.py",
+      "missing_functions": [
+        {
+          "name": "constrainBase64ImageToMaxSize",
+          "params": [
+            "inputBase64",
+            "options"
+          ]
+        },
+        {
+          "name": "convertBase64ImageToJpeg",
+          "params": [
+            "inputBase64",
+            "jpegQuality"
+          ]
+        },
+        {
+          "name": "convertImgBufferToJpeg",
+          "params": [
+            "inputData",
+            "quality"
+          ]
+        },
+        {
+          "name": "padBase64ImageToMinimumSize",
+          "params": [
+            "imageBase64",
+            "minimum"
+          ]
+        },
+        {
+          "name": "paddingToMatchBlock",
+          "params": [
+            "image",
+            "blockSize"
+          ]
+        },
+        {
+          "name": "photonFromBase64",
+          "params": [
+            "base64"
+          ]
+        },
+        {
+          "name": "photonToBase64",
+          "params": [
+            "image",
+            "quality"
+          ]
+        },
+        {
+          "name": "resizeAndConvertImgBuffer",
+          "params": [
+            "inputFormat",
+            "inputData",
+            "newSize"
+          ]
+        },
+        {
+          "name": "resizeBase64ImageToJpeg",
+          "params": [
+            "inputBase64",
+            "options"
+          ]
+        },
+        {
+          "name": "resizeImgBase64",
+          "params": [
+            "inputBase64",
+            "newSize"
+          ]
+        },
+        {
+          "name": "saveBase64Image",
+          "params": [
+            "options"
+          ]
+        },
+        {
+          "name": "scaleImage",
+          "params": [
+            "imageBase64",
+            "scale"
+          ]
+        },
+        {
+          "name": "zoomForGPT4o",
+          "params": [
+            "originalWidth",
+            "originalHeight"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "android",
+      "upstream": "scrcpy-device-adapter.ts",
+      "python": "android/scrcpy_device_adapter.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "ScrcpyDeviceAdapter",
+          "name": "applyPendingActionBarrier",
+          "params": [
+            "manager"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/scrcpy_device_adapter.py"
+        },
+        {
+          "class": "ScrcpyDeviceAdapter",
+          "name": "attachKeyframeListener",
+          "params": [
+            "manager",
+            "listener",
+            "force"
+          ],
+          "async": false,
+          "python_owner": "midscene/android/scrcpy_device_adapter.py"
+        },
+        {
+          "class": "ScrcpyDeviceAdapter",
+          "name": "attachKeyframeListeners",
+          "params": [
+            "manager",
+            "force"
+          ],
+          "async": false,
+          "python_owner": "midscene/android/scrcpy_device_adapter.py"
+        },
+        {
+          "class": "ScrcpyDeviceAdapter",
+          "name": "clearFailure",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/android/scrcpy_device_adapter.py"
+        },
+        {
+          "class": "ScrcpyDeviceAdapter",
+          "name": "createAndroidAdb",
+          "params": [
+            "{ adbExecTimeout: 60_000, deviceId }"
+          ],
+          "async": false,
+          "python_owner": "midscene/android/scrcpy_device_adapter.py"
+        },
+        {
+          "class": "ScrcpyDeviceAdapter",
+          "name": "deferActionBarrier",
+          "params": [
+            "actionCompletedAtHostUs"
+          ],
+          "async": false,
+          "python_owner": "midscene/android/scrcpy_device_adapter.py"
+        },
+        {
+          "class": "ScrcpyDeviceAdapter",
+          "name": "ensureConnectedManager",
+          "params": [
+            "deviceInfo"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/scrcpy_device_adapter.py"
+        },
+        {
+          "class": "ScrcpyDeviceAdapter",
+          "name": "ensureRetryReady",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/android/scrcpy_device_adapter.py"
+        },
+        {
+          "class": "ScrcpyDeviceAdapter",
+          "name": "jpegBufferToBase64",
+          "params": [
+            "screenshotBuffer"
+          ],
+          "async": false,
+          "python_owner": "midscene/android/scrcpy_device_adapter.py"
+        },
+        {
+          "class": "ScrcpyDeviceAdapter",
+          "name": "monotonicTimeUs",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/android/scrcpy_device_adapter.py"
+        },
+        {
+          "class": "ScrcpyDeviceAdapter",
+          "name": "recordFailure",
+          "params": [
+            "error"
+          ],
+          "async": false,
+          "python_owner": "midscene/android/scrcpy_device_adapter.py"
+        },
+        {
+          "class": "ScrcpyDeviceAdapter",
+          "name": "restartAndCaptureOnce",
+          "params": [
+            "deviceInfo"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/scrcpy_device_adapter.py"
+        }
+      ],
+      "signature_mismatch": [
+        {
+          "kind": "method",
+          "class": "ScrcpyDeviceAdapter",
+          "name": "screenshotBase64",
+          "ts_params": [
+            "deviceInfo"
+          ],
+          "python_params": [
+            "self",
+            "device_info",
+            "fallback"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "yaml/player.ts",
+      "python": "core/yaml/player.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "ScriptPlayer",
+          "name": "createRuntime",
+          "params": [
+            "agent"
+          ],
+          "async": false,
+          "python_owner": "midscene/core/yaml/player.py"
+        },
+        {
+          "class": "ScriptPlayer",
+          "name": "flushResult",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/core/yaml/player.py"
+        },
+        {
+          "class": "ScriptPlayer",
+          "name": "flushUnstableLogContent",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/core/yaml/player.py"
+        },
+        {
+          "class": "ScriptPlayer",
+          "name": "notifyCurrentTaskStatusChange",
+          "params": [
+            "taskIndex?"
+          ],
+          "async": false,
+          "python_owner": "midscene/core/yaml/player.py"
+        },
+        {
+          "class": "ScriptPlayer",
+          "name": "playTask",
+          "params": [
+            "taskStatus",
+            "agent"
+          ],
+          "async": true,
+          "python_owner": "midscene/core/yaml/player.py"
+        },
+        {
+          "class": "ScriptPlayer",
+          "name": "publish",
+          "params": [
+            "path",
+            "write"
+          ],
+          "async": true,
+          "python_owner": "midscene/core/yaml/player.py"
+        },
+        {
+          "class": "ScriptPlayer",
+          "name": "runInContext",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/core/yaml/player.py"
+        },
+        {
+          "class": "ScriptPlayer",
+          "name": "setPlayerStatus",
+          "params": [
+            "status",
+            "error?"
+          ],
+          "async": false,
+          "python_owner": "midscene/core/yaml/player.py"
+        },
+        {
+          "class": "ScriptPlayer",
+          "name": "setResult",
+          "params": [
+            "key",
+            "value"
+          ],
+          "async": false,
+          "python_owner": "midscene/core/yaml/player.py"
+        },
+        {
+          "class": "ScriptPlayer",
+          "name": "setTaskIndex",
+          "params": [
+            "taskIndex"
+          ],
+          "async": false,
+          "python_owner": "midscene/core/yaml/player.py"
+        },
+        {
+          "class": "ScriptPlayer",
+          "name": "setTaskStatus",
+          "params": [
+            "index",
+            "statusValue",
+            "error?"
+          ],
+          "async": true,
+          "python_owner": "midscene/core/yaml/player.py"
+        }
+      ],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "agent/insight.ts",
+      "python": "core/agent/insight.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "Insight",
+          "name": "aiAsk",
+          "params": [
+            "prompt",
+            "options"
+          ],
+          "async": true,
+          "python_owner": "midscene/core/agent/insight.py"
+        },
+        {
+          "class": "Insight",
+          "name": "aiAssert",
+          "params": [
+            "assertion",
+            "message?",
+            "options?"
+          ],
+          "async": true,
+          "python_owner": "midscene/core/agent/insight.py"
+        },
+        {
+          "class": "Insight",
+          "name": "aiBoolean",
+          "params": [
+            "prompt",
+            "options"
+          ],
+          "async": true,
+          "python_owner": "midscene/core/agent/insight.py"
+        },
+        {
+          "class": "Insight",
+          "name": "aiNumber",
+          "params": [
+            "prompt",
+            "options"
+          ],
+          "async": true,
+          "python_owner": "midscene/core/agent/insight.py"
+        },
+        {
+          "class": "Insight",
+          "name": "aiQuery",
+          "params": [
+            "demand",
+            "options"
+          ],
+          "async": true,
+          "python_owner": "midscene/core/agent/insight.py"
+        },
+        {
+          "class": "Insight",
+          "name": "aiString",
+          "params": [
+            "prompt",
+            "options"
+          ],
+          "async": true,
+          "python_owner": "midscene/core/agent/insight.py"
+        },
+        {
+          "class": "Insight",
+          "name": "executionOptions",
+          "params": [
+            "options?",
+            "includeAbortSignal"
+          ],
+          "async": false,
+          "python_owner": "midscene/core/agent/insight.py"
+        },
+        {
+          "class": "Insight",
+          "name": "queryPrimitive",
+          "params": [
+            "type",
+            "apiName",
+            "prompt",
+            "options"
+          ],
+          "async": true,
+          "python_owner": "midscene/core/agent/insight.py"
+        },
+        {
+          "class": "Insight",
+          "name": "resolveContext",
+          "params": [
+            "apiName",
+            "options?"
+          ],
+          "async": false,
+          "python_owner": "midscene/core/agent/insight.py"
+        },
+        {
+          "class": "Insight",
+          "name": "withContext",
+          "params": [
+            "apiName",
+            "options"
+          ],
+          "async": false,
+          "python_owner": "midscene/core/agent/insight.py"
+        }
+      ],
+      "signature_mismatch": []
+    },
+    {
+      "package": "cli",
+      "upstream": "execution-summary.ts",
+      "python": "cli/execution_summary.py",
+      "missing_functions": [
+        {
+          "name": "createExecutedYamlResult",
+          "params": [
+            "options"
+          ]
+        },
+        {
+          "name": "createUnexpectedYamlResult",
+          "params": [
+            "options"
+          ]
+        },
+        {
+          "name": "createYamlAttempt",
+          "params": [
+            "result",
+            "attempt"
+          ]
+        },
+        {
+          "name": "getResultsByType",
+          "params": [
+            "results",
+            "resultType"
+          ]
+        },
+        {
+          "name": "getYamlAttemptsDuration",
+          "params": [
+            "attempts"
+          ]
+        },
+        {
+          "name": "isYamlPlayerSuccessful",
+          "params": [
+            "player"
+          ]
+        },
+        {
+          "name": "printExecutionFinished",
+          "params": []
+        },
+        {
+          "name": "resolveYamlMaxAttempts",
+          "params": [
+            "retry?"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "shared",
+      "upstream": "utils.ts",
+      "python": "shared/utils.py",
+      "missing_functions": [
+        {
+          "name": "assert",
+          "params": [
+            "condition",
+            "message?"
+          ]
+        },
+        {
+          "name": "generateHashId",
+          "params": [
+            "rect",
+            "content"
+          ]
+        },
+        {
+          "name": "isPlainObject",
+          "params": [
+            "value"
+          ]
+        },
+        {
+          "name": "logMsg",
+          "params": [
+            "message"
+          ]
+        },
+        {
+          "name": "repeat",
+          "params": [
+            "times",
+            "fn"
+          ]
+        },
+        {
+          "name": "replaceIllegalPathCharsAndSpace",
+          "params": [
+            "str"
+          ]
+        },
+        {
+          "name": "sha256Hex",
+          "params": [
+            "value"
+          ]
+        },
+        {
+          "name": "uuid",
+          "params": []
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "agent/ui-utils.ts",
+      "python": "core/agent/ui_utils.py",
+      "missing_functions": [
+        {
+          "name": "extractInsightParam",
+          "params": [
+            "taskParam"
+          ]
+        },
+        {
+          "name": "locateParamStr",
+          "params": [
+            "locate?"
+          ]
+        },
+        {
+          "name": "paramStr",
+          "params": [
+            "task"
+          ]
+        },
+        {
+          "name": "pullParamStr",
+          "params": [
+            "pullParam?"
+          ]
+        },
+        {
+          "name": "scrollParamStr",
+          "params": [
+            "scrollParam?"
+          ]
+        },
+        {
+          "name": "taskTitleStr",
+          "params": [
+            "type",
+            "prompt"
+          ]
+        },
+        {
+          "name": "typeStr",
+          "params": [
+            "task"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "agent/utils.ts",
+      "python": "core/agent/utils.py",
+      "missing_functions": [
+        {
+          "name": "commonContextParser",
+          "params": [
+            "interfaceInstance",
+            "_opt"
+          ]
+        },
+        {
+          "name": "createScreenshotBoundUIContext",
+          "params": [
+            "screenshotBase64",
+            "opt"
+          ]
+        },
+        {
+          "name": "ifLocateParamHasLocatedPixelResult",
+          "params": [
+            "planLocateParam"
+          ]
+        },
+        {
+          "name": "matchElementFromCache",
+          "params": [
+            "context",
+            "cacheEntry",
+            "cachePrompt"
+          ]
+        },
+        {
+          "name": "matchElementFromPlan",
+          "params": [
+            "planLocateParam"
+          ]
+        },
+        {
+          "name": "normalizeFilePaths",
+          "params": [
+            "files",
+            "options"
+          ]
+        },
+        {
+          "name": "printReportMsg",
+          "params": [
+            "filepath"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "task-runner.ts",
+      "python": "core/task_runner.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "TaskRunner",
+          "name": "attachRecorderItem",
+          "params": [
+            "task",
+            "screenshot",
+            "phase"
+          ],
+          "async": false,
+          "python_owner": "midscene/core/task_runner.py"
+        },
+        {
+          "class": "TaskRunner",
+          "name": "captureScreenshot",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/core/task_runner.py"
+        },
+        {
+          "class": "TaskRunner",
+          "name": "emitSnapshotChange",
+          "params": [
+            "error?"
+          ],
+          "async": true,
+          "python_owner": "midscene/core/task_runner.py"
+        },
+        {
+          "class": "TaskRunner",
+          "name": "emitTaskEvent",
+          "params": [
+            "kind",
+            "task"
+          ],
+          "async": true,
+          "python_owner": "midscene/core/task_runner.py"
+        },
+        {
+          "class": "TaskRunner",
+          "name": "getUiContext",
+          "params": [
+            "options?"
+          ],
+          "async": true,
+          "python_owner": "midscene/core/task_runner.py"
+        },
+        {
+          "class": "TaskRunner",
+          "name": "markTaskAsPending",
+          "params": [
+            "task"
+          ],
+          "async": false,
+          "python_owner": "midscene/core/task_runner.py"
+        },
+        {
+          "class": "TaskRunner",
+          "name": "normalizeStatusFromError",
+          "params": [
+            "options?",
+            "errorMessage?"
+          ],
+          "async": false,
+          "python_owner": "midscene/core/task_runner.py"
+        }
+      ],
+      "signature_mismatch": []
+    },
+    {
+      "package": "android",
+      "upstream": "agent.ts",
+      "python": "android/agent.py",
+      "missing_functions": [
+        {
+          "name": "agentFromAdbDevice",
+          "params": [
+            "deviceId?",
+            "opts?"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "AndroidAgent",
+          "name": "createActionWrapper",
+          "params": [
+            "name"
+          ],
+          "async": false,
+          "python_owner": "midscene/android/agent.py"
+        },
+        {
+          "class": "AndroidAgent",
+          "name": "getTestRunnerNodeDefinitions",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/android/agent.py"
+        },
+        {
+          "class": "AndroidAgent",
+          "name": "launch",
+          "params": [
+            "uri"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/agent.py"
+        },
+        {
+          "class": "AndroidAgent",
+          "name": "runAdbShell",
+          "params": [
+            "command",
+            "opt?"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/agent.py"
+        },
+        {
+          "class": "AndroidAgent",
+          "name": "terminate",
+          "params": [
+            "uri"
+          ],
+          "async": true,
+          "python_owner": "midscene/android/agent.py"
+        }
+      ],
+      "signature_mismatch": []
+    },
+    {
+      "package": "harmony",
+      "upstream": "agent.ts",
+      "python": "harmony/agent.py",
+      "missing_functions": [
+        {
+          "name": "agentFromHdcDevice",
+          "params": [
+            "deviceId?",
+            "opts?"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "HarmonyAgent",
+          "name": "createActionWrapper",
+          "params": [
+            "name"
+          ],
+          "async": false,
+          "python_owner": "midscene/harmony/agent.py"
+        },
+        {
+          "class": "HarmonyAgent",
+          "name": "getTestRunnerNodeDefinitions",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/harmony/agent.py"
+        },
+        {
+          "class": "HarmonyAgent",
+          "name": "launch",
+          "params": [
+            "uri"
+          ],
+          "async": true,
+          "python_owner": "midscene/harmony/agent.py"
+        },
+        {
+          "class": "HarmonyAgent",
+          "name": "runHdcShell",
+          "params": [
+            "command"
+          ],
+          "async": true,
+          "python_owner": "midscene/harmony/agent.py"
+        },
+        {
+          "class": "HarmonyAgent",
+          "name": "terminate",
+          "params": [
+            "uri"
+          ],
+          "async": true,
+          "python_owner": "midscene/harmony/agent.py"
+        }
+      ],
+      "signature_mismatch": []
+    },
+    {
+      "package": "harmony",
+      "upstream": "device.ts",
+      "python": "harmony/device.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "HarmonyDevice",
+          "name": "describe",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/harmony/device.py"
+        },
+        {
+          "class": "HarmonyDevice",
+          "name": "getHdc",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/harmony/device.py"
+        },
+        {
+          "class": "HarmonyDevice",
+          "name": "launch",
+          "params": [
+            "uri"
+          ],
+          "async": true,
+          "python_owner": "midscene/harmony/device.py"
+        },
+        {
+          "class": "HarmonyDevice",
+          "name": "performActionScroll",
+          "params": [
+            "param",
+            "opts?"
+          ],
+          "async": true,
+          "python_owner": "midscene/harmony/device.py"
+        },
+        {
+          "class": "HarmonyDevice",
+          "name": "resolveBundleNameForTerminate",
+          "params": [
+            "target"
+          ],
+          "async": false,
+          "python_owner": "midscene/harmony/device.py"
+        },
+        {
+          "class": "HarmonyDevice",
+          "name": "resolveMappedAppTarget",
+          "params": [
+            "appName"
+          ],
+          "async": false,
+          "python_owner": "midscene/harmony/device.py"
+        }
+      ],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "dump/report-artifact-reader.ts",
+      "python": "core/dump/report_artifact_reader.py",
+      "missing_functions": [
+        {
+          "name": "readReportActionDump",
+          "params": [
+            "reportPath"
+          ]
+        },
+        {
+          "name": "readReportArtifactManifest",
+          "params": [
+            "reportPath"
+          ]
+        },
+        {
+          "name": "readReportArtifactManifestAsync",
+          "params": [
+            "reportPath"
+          ]
+        },
+        {
+          "name": "readReportDumpScripts",
+          "params": [
+            "reportPath"
+          ]
+        },
+        {
+          "name": "readReportRunnerDump",
+          "params": [
+            "reportPath"
+          ]
+        },
+        {
+          "name": "streamReportDumpScripts",
+          "params": [
+            "reportPath",
+            "visitor"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "ios",
+      "upstream": "agent.ts",
+      "python": "ios/agent.py",
+      "missing_functions": [
+        {
+          "name": "agentFromWebDriverAgent",
+          "params": [
+            "opts?"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "IOSAgent",
+          "name": "createActionWrapper",
+          "params": [
+            "name"
+          ],
+          "async": false,
+          "python_owner": "midscene/ios/agent.py"
+        },
+        {
+          "class": "IOSAgent",
+          "name": "getTestRunnerNodeDefinitions",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/ios/agent.py"
+        },
+        {
+          "class": "IOSAgent",
+          "name": "launch",
+          "params": [
+            "uri"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/agent.py"
+        },
+        {
+          "class": "IOSAgent",
+          "name": "terminate",
+          "params": [
+            "uri"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/agent.py"
+        }
+      ],
+      "signature_mismatch": []
+    },
+    {
+      "package": "web-integration",
+      "upstream": "common/browser-agent.ts",
+      "python": "web_integration/common/browser_agent.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "BrowserPageManager",
+          "name": "createNewPageWaiter",
+          "params": [
+            "timeout"
+          ],
+          "async": false,
+          "python_owner": "midscene/web_integration/common/browser_agent.py"
+        },
+        {
+          "class": "BrowserPageManager",
+          "name": "followNewPage",
+          "params": [
+            "event"
+          ],
+          "async": true,
+          "python_owner": "midscene/web_integration/common/browser_agent.py"
+        },
+        {
+          "class": "BrowserPageManager",
+          "name": "isNewPageEvent",
+          "params": [
+            "event"
+          ],
+          "async": false,
+          "python_owner": "midscene/web_integration/common/browser_agent.py"
+        },
+        {
+          "class": "BrowserPageManager",
+          "name": "pageSummary",
+          "params": [
+            "page",
+            "index",
+            "active"
+          ],
+          "async": true,
+          "python_owner": "midscene/web_integration/common/browser_agent.py"
+        },
+        {
+          "class": "BrowserPageManager",
+          "name": "tryPageSummary",
+          "params": [
+            "page",
+            "index",
+            "active"
+          ],
+          "async": true,
+          "python_owner": "midscene/web_integration/common/browser_agent.py"
+        }
+      ],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "device/index.ts",
+      "python": "core/device/__init__.py",
+      "missing_functions": [
+        {
+          "name": "createDefaultMobileActions",
+          "params": [
+            "context"
+          ]
+        },
+        {
+          "name": "defineActionsFromInputPrimitives",
+          "params": [
+            "input",
+            "options"
+          ]
+        },
+        {
+          "name": "resolveSwipeInputPrimitive",
+          "params": [
+            "input"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "AbstractInterface",
+          "name": "screenshotBase64",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/shared/types/__init__.py"
+        },
+        {
+          "class": "AbstractInterface",
+          "name": "size",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/shared/types/__init__.py"
+        }
+      ],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "report.ts",
+      "python": "core/report.py",
+      "missing_functions": [
+        {
+          "name": "collectDedupedExecutions",
+          "params": [
+            "htmlPath"
+          ]
+        },
+        {
+          "name": "dedupeExecutionsKeepLatest",
+          "params": [
+            "executions"
+          ]
+        },
+        {
+          "name": "isDirectoryModeReport",
+          "params": [
+            "reportFilePath"
+          ]
+        },
+        {
+          "name": "removeReportArtifact",
+          "params": [
+            "reportFilePath"
+          ]
+        },
+        {
+          "name": "splitReportHtmlByExecution",
+          "params": [
+            "options"
+          ]
+        }
+      ],
+      "moved_functions": [
+        {
+          "name": "exportReportArtifact",
+          "params": [
+            "options"
+          ],
+          "found_in": "midscene/core/dump/report_artifact_writer.py"
+        }
+      ],
+      "missing_classes": [
+        "ReportMergingTool",
+        "TestRunReportAssembler"
+      ],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/request-timeout.ts",
+      "python": "core/ai_model/service_caller/request_timeout.py",
+      "missing_functions": [
+        {
+          "name": "buildRequestAbortSignal",
+          "params": [
+            "timeoutMs",
+            "userSignal?"
+          ]
+        },
+        {
+          "name": "isHardTimeoutError",
+          "params": [
+            "err"
+          ]
+        },
+        {
+          "name": "runWithAbortSignal",
+          "params": [
+            "signal",
+            "operation"
+          ]
+        },
+        {
+          "name": "waitForRetry",
+          "params": [
+            "ms",
+            "signal?"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [
+        "AIRequestTimeoutError"
+      ],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "device/input-strategy.ts",
+      "python": "core/device/input_strategy.py",
+      "missing_functions": [
+        {
+          "name": "resolveInputStrategy",
+          "params": [
+            "inputStrategy",
+            "keyboardTypeDelay?"
+          ]
+        },
+        {
+          "name": "resolveTextInputOptions",
+          "params": [
+            "actionOptions?",
+            "platformDefaults?"
+          ]
+        },
+        {
+          "name": "sendTextSequentially",
+          "params": [
+            "text",
+            "handlers",
+            "options?"
+          ]
+        },
+        {
+          "name": "shouldInputSequentially",
+          "params": [
+            "{\n  inputStrategy,\n  keyboardTypeDelay,\n"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "harmony",
+      "upstream": "hdc.ts",
+      "python": "harmony/hdc.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "HdcClient",
+          "name": "assertUiInputSucceeded",
+          "params": [
+            "operation",
+            "output",
+            "detail?"
+          ],
+          "async": false,
+          "python_owner": "midscene/harmony/hdc.py"
+        },
+        {
+          "class": "HdcClient",
+          "name": "buildArgs",
+          "params": [
+            "args"
+          ],
+          "async": false,
+          "python_owner": "midscene/harmony/hdc.py"
+        },
+        {
+          "class": "HdcClient",
+          "name": "buildPointerMovementArgs",
+          "params": [
+            "operation",
+            "fromX",
+            "fromY",
+            "toX",
+            "toY",
+            "speed?"
+          ],
+          "async": false,
+          "python_owner": "midscene/harmony/hdc.py"
+        },
+        {
+          "class": "HdcClient",
+          "name": "runUiInput",
+          "params": [
+            "operation",
+            "args",
+            "detail?"
+          ],
+          "async": true,
+          "python_owner": "midscene/harmony/hdc.py"
+        }
+      ],
+      "signature_mismatch": [
+        {
+          "kind": "method",
+          "class": "HdcClient",
+          "name": "exec",
+          "ts_params": [
+            "args"
+          ],
+          "python_params": [
+            "self"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "webdriver",
+      "upstream": "managers/WDAManager.ts",
+      "python": "webdriver/managers/wda_manager.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "WDAManager",
+          "name": "checkWDAPreparation",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/webdriver/managers/wda_manager.py"
+        },
+        {
+          "class": "WDAManager",
+          "name": "isWDARunning",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/webdriver/managers/wda_manager.py"
+        },
+        {
+          "class": "WDAManager",
+          "name": "startWDA",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/webdriver/managers/wda_manager.py"
+        },
+        {
+          "class": "WDAManager",
+          "name": "waitForWDA",
+          "params": [
+            "timeout"
+          ],
+          "async": true,
+          "python_owner": "midscene/webdriver/managers/wda_manager.py"
+        }
+      ],
+      "signature_mismatch": []
+    },
+    {
+      "package": "computer",
+      "upstream": "utils.ts",
+      "python": "computer/utils.py",
+      "missing_functions": [
+        {
+          "name": "checkAccessibilityPermission",
+          "params": [
+            "promptIfNeeded"
+          ]
+        },
+        {
+          "name": "checkComputerEnvironment",
+          "params": []
+        },
+        {
+          "name": "checkScreenRecordingPermission",
+          "params": [
+            "promptIfNeeded"
+          ]
+        },
+        {
+          "name": "getConnectedDisplays",
+          "params": []
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "android",
+      "upstream": "adb-shell.ts",
+      "python": "android/adb_shell.py",
+      "missing_functions": [
+        {
+          "name": "buildRunAdbShellPlanningFeedback",
+          "params": [
+            "{\n  command,\n  stdout,\n}: {\n  command?: "
+          ]
+        },
+        {
+          "name": "getAdbShellStdoutOrThrow",
+          "params": [
+            "command",
+            "output"
+          ]
+        },
+        {
+          "name": "runAdbShellStdoutOrThrow",
+          "params": [
+            "adb",
+            "command",
+            "options"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "agent/file-chooser.ts",
+      "python": "core/agent/file_chooser.py",
+      "missing_functions": [
+        {
+          "name": "normalizeFileChooserAccept",
+          "params": [
+            "files"
+          ]
+        },
+        {
+          "name": "normalizeFileChooserAcceptInAllowedDir",
+          "params": [
+            "files",
+            "allowedDir"
+          ]
+        },
+        {
+          "name": "withFileChooser",
+          "params": [
+            "interfaceInstance",
+            "fileChooserAccept",
+            "action"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [
+        "FileChooserAccepter"
+      ],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/model-call-recorder.ts",
+      "python": "core/ai_model/service_caller/model_call_recorder.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "ModelCallRecorder",
+          "name": "getFilePath",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/core/ai_model/service_caller/model_call_recorder.py"
+        },
+        {
+          "class": "ModelCallRecorder",
+          "name": "initializeFilePath",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/core/ai_model/service_caller/model_call_recorder.py"
+        },
+        {
+          "class": "ModelCallRecorder",
+          "name": "writeEvent",
+          "params": [
+            "event"
+          ],
+          "async": true,
+          "python_owner": "midscene/core/ai_model/service_caller/model_call_recorder.py"
+        }
+      ],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/utils.ts",
+      "python": "core/ai_model/service_caller/utils.py",
+      "missing_functions": [
+        {
+          "name": "appendAIRequestFailureSummary",
+          "params": [
+            "error",
+            "attemptErrors",
+            "maxAttempts"
+          ]
+        },
+        {
+          "name": "stringifyForDebug",
+          "params": [
+            "value"
+          ]
+        },
+        {
+          "name": "toError",
+          "params": [
+            "error"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/shared/model-locate-result/pixel-mapper.ts",
+      "python": "core/ai_model/shared/model_locate_result/pixel_mapper.py",
+      "missing_functions": [
+        {
+          "name": "mapLocateResultToPixelRect",
+          "params": [
+            "result",
+            "{ preparedSize, contentSize"
+          ]
+        },
+        {
+          "name": "mapLocateResultToUnroundedPixelBbox",
+          "params": [
+            "result",
+            "{ width, height }: { width: number; heig"
+          ]
+        },
+        {
+          "name": "roundPixelBbox",
+          "params": [
+            "[left, top, right, bottom]: PixelBbox",
+            "rounding"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "normalizedCoordinateToPixel",
+          "ts_params": [
+            "value",
+            "normalizedBy",
+            "size",
+            "normalizationBasis"
+          ],
+          "python_params": [
+            "value",
+            "normalized_by",
+            "size",
+            "rounding",
+            "normalization_basis"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "dump/screenshot-restoration.ts",
+      "python": "core/dump/screenshot_restoration.py",
+      "missing_functions": [
+        {
+          "name": "createInlineImageResolver",
+          "params": [
+            "images"
+          ]
+        },
+        {
+          "name": "restoreImageReferences",
+          "params": [
+            "data",
+            "resolveImage"
+          ]
+        },
+        {
+          "name": "restoreReportImageReferences",
+          "params": [
+            "data",
+            "reportUrl"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "shared",
+      "upstream": "env/model-config-manager.ts",
+      "python": "shared/env/model_config_manager.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "ModelConfigManager",
+          "name": "initialize",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/shared/env/model_config_manager.py"
+        },
+        {
+          "class": "ModelConfigManager",
+          "name": "normalizeModelConfig",
+          "params": [
+            "config"
+          ],
+          "async": false,
+          "python_owner": "midscene/shared/env/model_config_manager.py"
+        },
+        {
+          "class": "ModelConfigManager",
+          "name": "registerGlobalConfigManager",
+          "params": [
+            "globalConfigManager"
+          ],
+          "async": false,
+          "python_owner": "midscene/shared/env/model_config_manager.py"
+        }
+      ],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "yaml/utils.ts",
+      "python": "core/yaml/utils.py",
+      "missing_functions": [
+        {
+          "name": "interpolateEnvVars",
+          "params": [
+            "content"
+          ]
+        },
+        {
+          "name": "parseLegacyYamlScript",
+          "params": [
+            "content",
+            "filePath?",
+            "onConfig?"
+          ]
+        },
+        {
+          "name": "resolveYamlOutputConfig",
+          "params": [
+            "script"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "parseYamlScript",
+          "ts_params": [
+            "content",
+            "filePath?"
+          ],
+          "python_params": [
+            "content"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "computer",
+      "upstream": "agent.ts",
+      "python": "computer/agent.py",
+      "missing_functions": [
+        {
+          "name": "agentForComputer",
+          "params": [
+            "opts?"
+          ]
+        },
+        {
+          "name": "agentForRDPComputer",
+          "params": [
+            "opts"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "agent/agent-options.ts",
+      "python": "core/agent/agent_options.py",
+      "missing_functions": [
+        {
+          "name": "normalizeAgentOptions",
+          "params": [
+            "options",
+            "warn"
+          ]
+        },
+        {
+          "name": "withAgentDefaults",
+          "params": [
+            "opts?"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "agent/cache-config.ts",
+      "python": "core/agent/cache_config.py",
+      "missing_functions": [
+        {
+          "name": "normalizeAgentCacheConfig",
+          "params": [
+            "opts"
+          ]
+        },
+        {
+          "name": "validateAgentCacheInput",
+          "params": [
+            "cache"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "agent/screenshot-preparation.ts",
+      "python": "core/agent/screenshot_preparation.py",
+      "missing_functions": [
+        {
+          "name": "prepareRawScreenshot",
+          "params": [
+            "screenshotBase64",
+            "options?"
+          ]
+        },
+        {
+          "name": "prepareScreenshotForPersistence",
+          "params": [
+            "screenshotBase64",
+            "options?"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/deepseek/locate-protocol.ts",
+      "python": "core/ai_model/models/deepseek/locate_protocol.py",
+      "missing_functions": [
+        {
+          "name": "parseDeepSeekLocateOutput",
+          "params": [
+            "content"
+          ]
+        },
+        {
+          "name": "parseDeepSeekSearchAreaOutput",
+          "params": [
+            "content"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/openai-request-context.ts",
+      "python": "core/ai_model/service_caller/openai/openai_request_context.py",
+      "missing_functions": [
+        {
+          "name": "formatOpenAIAPIErrorDetails",
+          "params": [
+            "_error",
+            "context"
+          ]
+        },
+        {
+          "name": "wrapOpenAICompatibleFetch",
+          "params": [
+            "context"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/siwc/network.ts",
+      "python": "core/ai_model/service_caller/openai/siwc/network.py",
+      "missing_functions": [
+        {
+          "name": "createSiwcJWKSet",
+          "params": [
+            "issuer",
+            "signal",
+            "request"
+          ]
+        },
+        {
+          "name": "fetchSiwc",
+          "params": [
+            "input",
+            "init?",
+            "proxy?"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/shared/model-locate-result/types.ts",
+      "python": "core/ai_model/shared/model_locate_result/types.py",
+      "missing_functions": [
+        {
+          "name": "isBboxLocateResultValue",
+          "params": [
+            "result"
+          ]
+        },
+        {
+          "name": "isPointLocateResultValue",
+          "params": [
+            "result"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/recorder-generation/markdown.ts",
+      "python": "core/ai_model/workflows/recorder_generation/markdown.py",
+      "missing_functions": [
+        {
+          "name": "convertRecordLogIntoMarkdown",
+          "params": [
+            "log",
+            "modelConfig"
+          ]
+        },
+        {
+          "name": "generateRecorderMarkdownReplay",
+          "params": [
+            "input",
+            "modelConfig"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "createRecorderMarkdownReplayPrompt",
+          "ts_params": [
+            "input"
+          ],
+          "python_params": [
+            "input_payload",
+            "summary",
+            "screenshot_assets"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "cli",
+      "upstream": "args.ts",
+      "python": "cli/args.py",
+      "missing_functions": [
+        {
+          "name": "findOnlyItemInArgs",
+          "params": [
+            "args",
+            "name"
+          ]
+        },
+        {
+          "name": "orderMattersParse",
+          "params": [
+            "args"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "web-integration",
+      "upstream": "bridge-mode/io-server.ts",
+      "python": "web_integration/bridge_mode/io_server.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "BridgeServer",
+          "name": "emitCall",
+          "params": [
+            "id"
+          ],
+          "async": true,
+          "python_owner": "midscene/web_integration/bridge_mode/io_server.py"
+        },
+        {
+          "class": "BridgeServer",
+          "name": "triggerCallResponseCallback",
+          "params": [
+            "id",
+            "error",
+            "response"
+          ],
+          "async": true,
+          "python_owner": "midscene/web_integration/bridge_mode/io_server.py"
+        }
+      ],
+      "signature_mismatch": []
+    },
+    {
+      "package": "web-integration",
+      "upstream": "common/viewport.ts",
+      "python": "web_integration/common/viewport.py",
+      "missing_functions": [
+        {
+          "name": "resolveViewportSize",
+          "params": [
+            "viewport?",
+            "fallback"
+          ]
+        },
+        {
+          "name": "resolveWebViewportSize",
+          "params": [
+            "viewport?",
+            "fallback"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "dump/execution-recorder.ts",
+      "python": "core/dump/execution_recorder.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "ExecutionRecorder",
+          "name": "capture",
+          "params": [
+            "executionIds?",
+            "meta"
+          ],
+          "async": false,
+          "python_owner": "midscene/core/dump/execution_recorder.py"
+        },
+        {
+          "class": "ExecutionRecorder",
+          "name": "toDump",
+          "params": [
+            "meta"
+          ],
+          "async": false,
+          "python_owner": "midscene/core/dump/execution_recorder.py"
+        }
+      ],
+      "signature_mismatch": [
+        {
+          "kind": "method",
+          "class": "ExecutionRecorder",
+          "name": "record",
+          "ts_params": [
+            "execution",
+            "meta"
+          ],
+          "python_params": [
+            "self",
+            "execution"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "dump/report-artifact-store.ts",
+      "python": "core/dump/report_artifact_store.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "ReportArtifactStore",
+          "name": "assertOpen",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/core/dump/report_artifact_store.py"
+        },
+        {
+          "class": "ReportArtifactStore",
+          "name": "publish",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/core/dump/report_artifact_store.py"
+        }
+      ],
+      "signature_mismatch": []
+    },
+    {
+      "package": "web-integration",
+      "upstream": "web-page.ts",
+      "python": "web_integration/web_page.py",
+      "missing_functions": [
+        {
+          "name": "createWebInputPrimitives",
+          "params": [
+            "page"
+          ]
+        },
+        {
+          "name": "getKeyCommands",
+          "params": [
+            "value"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [
+        "AbstractWebPage"
+      ],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "android",
+      "upstream": "adb.ts",
+      "python": "android/adb.py",
+      "missing_functions": [
+        {
+          "name": "createAndroidAdb",
+          "params": [
+            "{\n  adbExecTimeout,\n  deviceId,\n  device"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "shared",
+      "upstream": "agent-tools/base-tools.ts",
+      "python": "shared/agent_tools/base_tools.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "BaseMidsceneTools",
+          "name": "getInitArgKeys",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/shared/agent_tools/base_tools.py"
+        }
+      ],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "agent/record-to-report.ts",
+      "python": "core/agent/record_to_report.py",
+      "missing_functions": [
+        {
+          "name": "normalizeRecordToReportScreenshot",
+          "params": [
+            "screenshot",
+            "index"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "agent/task-builder.ts",
+      "python": "core/agent/task_builder.py",
+      "missing_functions": [
+        {
+          "name": "locatePlanForLocate",
+          "params": [
+            "param"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [
+        "TaskBuilder"
+      ],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "agent/tasks.ts",
+      "python": "core/agent/tasks.py",
+      "missing_functions": [
+        {
+          "name": "recordAndReleaseScreenshotSequence",
+          "params": [
+            "task",
+            "uiContext"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [
+        "TaskExecutor"
+      ],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "agent/ui-observer.ts",
+      "python": "core/agent/ui_observer.py",
+      "missing_functions": [
+        {
+          "name": "uiContextFromObservationRecord",
+          "params": [
+            "record"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [
+        "UIObservationImpl",
+        "UIObserverImpl"
+      ],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "agent/usage-intent.ts",
+      "python": "core/agent/usage_intent.py",
+      "missing_functions": [
+        {
+          "name": "withUsageIntent",
+          "params": [
+            "usage",
+            "intent"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/chat-completion.ts",
+      "python": "core/ai_model/model_adapter/chat_completion.py",
+      "missing_functions": [
+        {
+          "name": "resolveChatCompletion",
+          "params": [
+            "chatCompletion"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/is-openrouter.ts",
+      "python": "core/ai_model/model_adapter/is_openrouter.py",
+      "missing_functions": [
+        {
+          "name": "isOpenRouter",
+          "params": [
+            "baseURL?"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/openrouter-reasoning.ts",
+      "python": "core/ai_model/model_adapter/openrouter_reasoning.py",
+      "missing_functions": [
+        {
+          "name": "buildOpenRouterReasoningParams",
+          "params": [
+            "{\n    reasoningEnabled",
+            "controlMethod"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/responses.ts",
+      "python": "core/ai_model/model_adapter/responses.py",
+      "missing_functions": [
+        {
+          "name": "resolveResponses",
+          "params": [
+            "responses"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/temperature-with-semantic-retry.ts",
+      "python": "core/ai_model/model_adapter/temperature_with_semantic_retry.py",
+      "missing_functions": [
+        {
+          "name": "getTemperatureWithSemanticRetry",
+          "params": [
+            "{\n  temperature,\n  userTemperature,\n  se"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/doubao.ts",
+      "python": "core/ai_model/models/doubao.py",
+      "missing_functions": [
+        {
+          "name": "parseDoubaoRawLocateValue",
+          "params": [
+            "input"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/jev/image.ts",
+      "python": "core/ai_model/models/jev/image.py",
+      "missing_functions": [
+        {
+          "name": "prepareReferences",
+          "params": [
+            "prompt"
+          ]
+        }
+      ],
+      "moved_functions": [
+        {
+          "name": "mapJevBox",
+          "params": [
+            "box",
+            "targetSize"
+          ],
+          "found_in": "midscene/core/ai_model/models/jev/locate.py"
+        }
+      ],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/call-ai.ts",
+      "python": "core/ai_model/service_caller/call_ai.py",
+      "missing_functions": [
+        {
+          "name": "callSystemOneAI",
+          "params": [
+            "request",
+            "modelRuntime",
+            "options?"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/codex/codex-app-server.ts",
+      "python": "core/ai_model/service_caller/codex/codex_app_server.py",
+      "missing_functions": [
+        {
+          "name": "__shutdownCodexAppServerForTests",
+          "params": []
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/call-openai.ts",
+      "python": "core/ai_model/service_caller/openai/call_openai.py",
+      "missing_functions": [
+        {
+          "name": "callOpenAI",
+          "params": [
+            "{\n    modelRuntime,\n    options,\n    exe",
+            "prepared"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/chat-completion/chat-completion.ts",
+      "python": "core/ai_model/service_caller/openai/chat_completion/chat_completion.py",
+      "missing_functions": [
+        {
+          "name": "callChatCompletion",
+          "params": [
+            "options",
+            "stream"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/openai-client.ts",
+      "python": "core/ai_model/service_caller/openai/openai_client.py",
+      "missing_functions": [
+        {
+          "name": "createClient",
+          "params": [
+            "{\n  modelConfig,\n  proxyAgent,\n  effecti"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/responses/responses.ts",
+      "python": "core/ai_model/service_caller/openai/responses/responses.py",
+      "missing_functions": [
+        {
+          "name": "callResponses",
+          "params": [
+            "options",
+            "stream"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/grounding/locate.ts",
+      "python": "core/ai_model/workflows/grounding/locate.py",
+      "missing_functions": [
+        {
+          "name": "genericLocate",
+          "params": [
+            "locateRequest"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "AiLocateElement",
+          "ts_params": [
+            "options"
+          ],
+          "python_params": [
+            "target_element_description",
+            "context",
+            "model_runtime",
+            "locate_image",
+            "abort_signal",
+            "search_config"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/grounding/planning-action-locate.ts",
+      "python": "core/ai_model/workflows/grounding/planning_action_locate.py",
+      "missing_functions": [
+        {
+          "name": "resolvePlanningTapLocator",
+          "params": [
+            "definition",
+            "planner"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/planning/custom-planning.ts",
+      "python": "core/ai_model/workflows/planning/custom_planning.py",
+      "missing_functions": [
+        {
+          "name": "buildCustomPlanningMessages",
+          "params": [
+            "input",
+            "config"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "runCustomPlanning",
+          "ts_params": [
+            "userInstruction",
+            "options",
+            "config"
+          ],
+          "python_params": [
+            "user_instruction",
+            "context",
+            "model_runtime",
+            "action_space",
+            "conversation_history",
+            "config",
+            "include_locate_in_planning",
+            "action_context"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/planning/locate-normalization.ts",
+      "python": "core/ai_model/workflows/planning/locate_normalization.py",
+      "missing_functions": [
+        {
+          "name": "normalizePlanningActionFields",
+          "params": [
+            "actions",
+            "{\n    actionSpace,\n    ...options\n  }: P"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/recorder-generation/common.ts",
+      "python": "core/ai_model/workflows/recorder_generation/common.py",
+      "missing_functions": [
+        {
+          "name": "prepareRecorderGenerationContext",
+          "params": [
+            "input"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "web-integration",
+      "upstream": "bridge-mode/agent-cli-side.ts",
+      "python": "web_integration/bridge_mode/agent_cli_side.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "AgentOverChromeBridge",
+          "name": "configureWaterFlowAnimation",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/web_integration/bridge_mode/agent_cli_side.py"
+        }
+      ],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "distance-schema.ts",
+      "python": "core/distance_schema.py",
+      "missing_functions": [
+        {
+          "name": "getMidsceneDistanceSchema",
+          "params": []
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "dump/report-artifact-publication.ts",
+      "python": "core/dump/report_artifact_publication.py",
+      "missing_functions": [
+        {
+          "name": "publishReportArtifactSync",
+          "params": [
+            "prepared",
+            "destination",
+            "directory",
+            "overwrite"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "dump/report-dump-compactor.ts",
+      "python": "core/dump/report_dump_compactor.py",
+      "missing_functions": [
+        {
+          "name": "compactReportDumps",
+          "params": [
+            "reportPath"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "dump/screenshot-store.ts",
+      "python": "core/dump/screenshot_store.py",
+      "missing_functions": [
+        {
+          "name": "resolveScreenshotSource",
+          "params": [
+            "refInput",
+            "options"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [
+        "ReportImageStore"
+      ],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "resolveImageSource",
+          "ts_params": [
+            "refInput",
+            "options"
+          ],
+          "python_params": [
+            "ref_input"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "shared",
+      "upstream": "img/box-select.ts",
+      "python": "shared/img/box_select.py",
+      "missing_functions": [
+        {
+          "name": "annotateRects",
+          "params": [
+            "imgBase64",
+            "rects",
+            "prompt?"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "shared",
+      "upstream": "logger.ts",
+      "python": "shared/logger.py",
+      "missing_functions": [
+        {
+          "name": "setLogDirectoryResolver",
+          "params": [
+            "resolver"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "ios",
+      "upstream": "mjpeg-frame-source.ts",
+      "python": "ios/mjpeg_frame_source.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "MjpegFrameSource",
+          "name": "run",
+          "params": [
+            "signal"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/mjpeg_frame_source.py"
+        }
+      ],
+      "signature_mismatch": []
+    },
+    {
+      "package": "cli",
+      "upstream": "openai/login.ts",
+      "python": "cli/openai/login.py",
+      "missing_functions": [
+        {
+          "name": "loginWithOpenAI",
+          "params": [
+            "options",
+            "dependencies?"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "report-cli.ts",
+      "python": "core/report_cli.py",
+      "missing_functions": [
+        {
+          "name": "createReportCliCommands",
+          "params": []
+        }
+      ],
+      "moved_functions": [
+        {
+          "name": "mergeReportFiles",
+          "params": [
+            "options"
+          ],
+          "found_in": "midscene/core/dump/report_dump_compactor.py"
+        },
+        {
+          "name": "reportFileToMarkdown",
+          "params": [
+            "options"
+          ],
+          "found_in": "midscene/core/report_markdown.py"
+        },
+        {
+          "name": "splitReportFile",
+          "params": [
+            "options"
+          ],
+          "found_in": "midscene/core/dump/test_report_images.py"
+        }
+      ],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "report-markdown.ts",
+      "python": "core/report_markdown.py",
+      "missing_functions": [
+        {
+          "name": "executionToMarkdown",
+          "params": [
+            "execution",
+            "options?"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "reportToMarkdown",
+          "ts_params": [
+            "report",
+            "options?"
+          ],
+          "python_params": [
+            "dump"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "screenshot-item.ts",
+      "python": "core/screenshot_item.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "ScreenshotItem",
+          "name": "createRef",
+          "params": [
+            "storage",
+            "relativePath?"
+          ],
+          "async": false,
+          "python_owner": "midscene/core/screenshot_item.py"
+        }
+      ],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/errors.ts",
+      "python": "core/test_runner/errors.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "NodeInputValidationError",
+          "name": "fromZod",
+          "params": [
+            "node",
+            "error"
+          ],
+          "async": false,
+          "python_owner": "midscene/core/test_runner/errors.py"
+        }
+      ],
+      "signature_mismatch": []
+    },
+    {
+      "package": "android",
+      "upstream": "ui-tree.ts",
+      "python": "android/ui_tree.py",
+      "missing_functions": [
+        {
+          "name": "uiautomatorXmlToUiNode",
+          "params": [
+            "xml",
+            "devicePixelRatio"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "android",
+      "upstream": "utils.ts",
+      "python": "android/utils.py",
+      "missing_functions": [
+        {
+          "name": "getConnectedDevicesWithDetails",
+          "params": [
+            "deviceOptions?"
+          ]
+        }
+      ],
+      "moved_functions": [
+        {
+          "name": "getConnectedDevices",
+          "params": [
+            "deviceOptions?"
+          ],
+          "found_in": "midscene/harmony/utils.py"
+        }
+      ],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "utils.ts",
+      "python": "core/utils.py",
+      "missing_functions": [
+        {
+          "name": "uploadTestInfoToServer",
+          "params": [
+            "{\n  testUrl,\n  serverUrl,\n}: { testUrl: "
+          ]
+        }
+      ],
+      "moved_functions": [
+        {
+          "name": "getReportTpl",
+          "params": [],
+          "found_in": "midscene/core/dump/html_utils.py"
+        },
+        {
+          "name": "insertContentBeforeClosingHtml",
+          "params": [
+            "html",
+            "content"
+          ],
+          "found_in": "midscene/core/dump/html_utils.py"
+        },
+        {
+          "name": "insertScriptBeforeClosingHtml",
+          "params": [
+            "filePath",
+            "scriptContent"
+          ],
+          "found_in": "midscene/core/dump/html_utils.py"
+        },
+        {
+          "name": "reportHTMLContent",
+          "params": [
+            "dumpData",
+            "reportPath?",
+            "appendReport?",
+            "withTpl",
+            "// whether return with report template, default"
+          ],
+          "found_in": "midscene/core/dump/html_utils.py"
+        },
+        {
+          "name": "writeDumpReport",
+          "params": [
+            "fileName",
+            "dumpData",
+            "appendReport?"
+          ],
+          "found_in": "midscene/core/dump/html_utils.py"
+        },
+        {
+          "name": "writeLogFile",
+          "params": [
+            "opts"
+          ],
+          "found_in": "midscene/core/dump/html_utils.py"
+        }
+      ],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "ios",
+      "upstream": "utils.ts",
+      "python": "ios/utils.py",
+      "missing_functions": [
+        {
+          "name": "checkMacOSPlatform",
+          "params": []
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "webdriver",
+      "upstream": "utils/base-url.ts",
+      "python": "webdriver/utils/base_url.py",
+      "missing_functions": [
+        {
+          "name": "normalizeWebDriverBaseUrl",
+          "params": [
+            "baseUrl"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "webdriver",
+      "upstream": "utils/request.ts",
+      "python": "webdriver/utils/request.py",
+      "missing_functions": [
+        {
+          "name": "makeWebDriverRequest",
+          "params": [
+            "baseUrl",
+            "method",
+            "endpoint",
+            "data?",
+            "timeout"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "cli",
+      "upstream": "yaml-batch-executor.ts",
+      "python": "cli/yaml_batch_executor.py",
+      "missing_functions": [
+        {
+          "name": "runYamlBatchWithCaseIds",
+          "params": [
+            "config",
+            "caseIds",
+            "options"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "runYamlBatch",
+          "ts_params": [
+            "config",
+            "options"
+          ],
+          "python_params": [
+            "config",
+            "player_factory",
+            "state"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "shared",
+      "upstream": "agent-tools/user-prompt.ts",
+      "python": "shared/agent_tools/user_prompt.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "composeUserPrompt",
+          "ts_params": [
+            "input"
+          ],
+          "python_params": [
+            "prompt",
+            "image",
+            "image_name",
+            "convert_http_image_to_base64"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "agent/action-readiness.ts",
+      "python": "core/agent/action_readiness.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [
+        "ActionReadiness"
+      ],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "agent/agent-report-manager.ts",
+      "python": "core/agent/agent_report_manager.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [
+        "AgentReportManager"
+      ],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "agent/metrics.ts",
+      "python": "core/agent/metrics.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [
+        "MetricsCollector"
+      ],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "agent/report-file-name.ts",
+      "python": "core/agent/report_file_name.py",
+      "missing_functions": [],
+      "moved_functions": [
+        {
+          "name": "getReportFileName",
+          "params": [
+            "tag"
+          ],
+          "found_in": "midscene/core/dump/report_action_dump.py"
+        }
+      ],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/image-preprocess.ts",
+      "python": "core/ai_model/model_adapter/image_preprocess.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "prepareModelImage",
+          "ts_params": [
+            "options"
+          ],
+          "python_params": [
+            "image_base64",
+            "width",
+            "height",
+            "policy"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/locate.ts",
+      "python": "core/ai_model/model_adapter/locate.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "resolveLocate",
+          "ts_params": [
+            "locate",
+            "resolvedCustomPlanner",
+            "protocolContext"
+          ],
+          "python_params": [
+            "adapter"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/planning.ts",
+      "python": "core/ai_model/model_adapter/planning.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "resolvePlanning",
+          "ts_params": [
+            "planning",
+            "resolvedCustomPlanner",
+            "protocolContext",
+            "defaultLocateResultCodec?"
+          ],
+          "python_params": [
+            "adapter",
+            "protocol_context"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/resolve.ts",
+      "python": "core/ai_model/model_adapter/resolve.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [
+        "ResolvedModelAdapter"
+      ],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/jev/planning-action.ts",
+      "python": "core/ai_model/models/jev/planning_action.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "buildJevAction",
+          "ts_params": [
+            "decision",
+            "context",
+            "instruction",
+            "options"
+          ],
+          "python_params": [
+            "decision",
+            "jev_context",
+            "instruction",
+            "action_space",
+            "include_locate_in_planning",
+            "shot_size",
+            "reference_images"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/jev/planning-context.ts",
+      "python": "core/ai_model/models/jev/planning_context.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "prepareJevPlanningContext",
+          "ts_params": [
+            "instruction",
+            "options"
+          ],
+          "python_params": [
+            "instruction",
+            "context",
+            "model_runtime",
+            "action_space",
+            "conversation_history",
+            "action_context",
+            "reference_images"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/jev/planning-decision.ts",
+      "python": "core/ai_model/models/jev/planning_decision.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "decideJevAction",
+          "ts_params": [
+            "context",
+            "options"
+          ],
+          "python_params": [
+            "jev_context",
+            "model_runtime",
+            "action_space",
+            "include_locate_in_planning"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/ui-tars/parser.ts",
+      "python": "core/ai_model/models/ui_tars/parser.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "parseUiTarsPlanningResponse",
+          "ts_params": [
+            "rawResponse",
+            "shotSize",
+            "uiTarsModelVersion"
+          ],
+          "python_params": [
+            "raw_response",
+            "shot_size"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/ui-tars/planning.ts",
+      "python": "core/ai_model/models/ui_tars/planning.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "createUiTarsPlanner",
+          "ts_params": [
+            "uiTarsModelVersion"
+          ],
+          "python_params": []
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/prompt/insight/system-prompt.ts",
+      "python": "core/ai_model/prompt/insight/system_prompt.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "buildInsightSystemPrompt",
+          "ts_params": [
+            "options"
+          ],
+          "python_params": [
+            "insight_protocol",
+            "screenshot_included",
+            "reference_images_included"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/prompt/planning/system-prompt.ts",
+      "python": "core/ai_model/prompt/planning/system_prompt.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "buildStandardPlanningSystemPrompt",
+          "ts_params": [
+            "input"
+          ],
+          "python_params": [
+            "action_space",
+            "planning_protocol",
+            "include_locate_in_planning",
+            "locate_prompt_spec",
+            "include_sub_goals",
+            "include_thought",
+            "include_log"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/model-call.ts",
+      "python": "core/ai_model/service_caller/model_call.py",
+      "missing_functions": [],
+      "moved_functions": [
+        {
+          "name": "callAIWithStringResponse",
+          "params": [
+            "msgs",
+            "modelRuntime",
+            "options?"
+          ],
+          "found_in": "midscene/core/ai_model/service_caller/call_ai.py"
+        }
+      ],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/siwc/authorization.ts",
+      "python": "core/ai_model/service_caller/openai/siwc/authorization.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "createSiwcAuthorization",
+          "ts_params": [
+            "options"
+          ],
+          "python_params": [
+            "host_id",
+            "redirect_uri",
+            "client_id",
+            "agent_name"
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "exchangeSiwcCode",
+          "ts_params": [
+            "attempt",
+            "callback",
+            "signal",
+            "dependencies?"
+          ],
+          "python_params": [
+            "attempt",
+            "callback",
+            "proxy"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/siwc/prepare-call.ts",
+      "python": "core/ai_model/service_caller/openai/siwc/prepare_call.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "prepareSiwcCall",
+          "ts_params": [
+            "modelRuntime",
+            "options?"
+          ],
+          "python_params": [
+            "model_runtime"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/siwc/refresh.ts",
+      "python": "core/ai_model/service_caller/openai/siwc/refresh.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "refreshSiwcCredentials",
+          "ts_params": [
+            "saved",
+            "signal",
+            "dependencies?"
+          ],
+          "python_params": [
+            "saved",
+            "proxy"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/system-one/prepare-system-one.ts",
+      "python": "core/ai_model/service_caller/system_one/prepare_system_one.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "prepareSystemOne",
+          "ts_params": [
+            "config",
+            "request"
+          ],
+          "python_params": [
+            "config",
+            "request",
+            "execution_id"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/shared/json.ts",
+      "python": "core/ai_model/shared/json.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "parseModelResponseJson",
+          "ts_params": [
+            "raw",
+            "context?"
+          ],
+          "python_params": [
+            "raw",
+            "source",
+            "preserve_string_value_keys"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/shared/model-locate-result/prompt-spec.ts",
+      "python": "core/ai_model/shared/model_locate_result/prompt_spec.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "createLocateResultPromptSpec",
+          "ts_params": [
+            "resolvedCoordinates",
+            "options"
+          ],
+          "python_params": [
+            "resolved_coordinates",
+            "result_key",
+            "result_key_aliases"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/grounding/search-area.ts",
+      "python": "core/ai_model/workflows/grounding/search_area.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "buildSearchAreaConfig",
+          "ts_params": [
+            "options"
+          ],
+          "python_params": [
+            "context",
+            "base_rect"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/grounding/section-locate.ts",
+      "python": "core/ai_model/workflows/grounding/section_locate.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "AiLocateSection",
+          "ts_params": [
+            "options"
+          ],
+          "python_params": [
+            "context",
+            "section_description",
+            "model_runtime"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/insight/boolean.ts",
+      "python": "core/ai_model/workflows/insight/boolean.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "extractBoolean",
+          "ts_params": [
+            "options"
+          ],
+          "python_params": [
+            "boolean_fn",
+            "data_query",
+            "context",
+            "model_runtime",
+            "page_description",
+            "context_text"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/insight/extraction.ts",
+      "python": "core/ai_model/workflows/insight/extraction.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "AiExtractElementInfo",
+          "ts_params": [
+            "options"
+          ],
+          "python_params": [
+            "task_type",
+            "data_query",
+            "context",
+            "model_runtime",
+            "page_description",
+            "screenshot_included",
+            "context_text",
+            "screenshot_sequence"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/insight/insight-response-parser.ts",
+      "python": "core/ai_model/workflows/insight/insight_response_parser.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "parseInsightResponse",
+          "ts_params": [
+            "content",
+            "dataOutputProtocol",
+            "jsonParser"
+          ],
+          "python_params": [
+            "content",
+            "data_output_protocol"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/planning/standard-planning-parser.ts",
+      "python": "core/ai_model/workflows/planning/standard_planning_parser.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "parseStandardPlanningResponse",
+          "ts_params": [
+            "xmlString",
+            "options"
+          ],
+          "python_params": [
+            "xml_string",
+            "action_output_protocol",
+            "action_space",
+            "include_thought",
+            "log_source"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/planning/standard-planning.ts",
+      "python": "core/ai_model/workflows/planning/standard_planning.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "standardPlan",
+          "ts_params": [
+            "userInstruction",
+            "opts"
+          ],
+          "python_params": [
+            "user_instruction",
+            "context",
+            "model_runtime",
+            "action_space",
+            "conversation_history",
+            "include_locate_in_planning",
+            "effort",
+            "action_context",
+            "planning_advice",
+            "reference_images",
+            "images_include_count"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/recorder-generation/metadata.ts",
+      "python": "core/ai_model/workflows/recorder_generation/metadata.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "generateRecorderSessionMetadata",
+          "ts_params": [
+            "input",
+            "modelConfig"
+          ],
+          "python_params": [
+            "target",
+            "events",
+            "model_runtime",
+            "fallback_name",
+            "max_screenshots"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "web-integration",
+      "upstream": "bridge-mode/common.ts",
+      "python": "web_integration/bridge_mode/common.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "getBridgeServerHost",
+          "ts_params": [
+            "options?"
+          ],
+          "python_params": [
+            "host",
+            "allow_remote_access"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "web-integration",
+      "upstream": "bridge-mode/page-browser-side.ts",
+      "python": "web_integration/bridge_mode/page_browser_side.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [
+        "ExtensionBridgePageBrowserSide"
+      ],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "shared",
+      "upstream": "cli/interrupt.ts",
+      "python": "shared/cli/interrupt.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "createCliInterruptWaiter",
+          "ts_params": [
+            "watchdogMs",
+            "options"
+          ],
+          "python_params": [
+            "watchdog_ms",
+            "source",
+            "input_source",
+            "force_exit"
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "waitForCliInterrupt",
+          "ts_params": [
+            "watchdogMs",
+            "source",
+            "input"
+          ],
+          "python_params": [
+            "watchdog_ms",
+            "source"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "webdriver",
+      "upstream": "clients/WebDriverClient.ts",
+      "python": "webdriver/clients/webdriver_client.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "method",
+          "class": "WebDriverClient",
+          "name": "makeRequest",
+          "ts_params": [
+            "method",
+            "endpoint",
+            "data?",
+            "options?"
+          ],
+          "python_params": [
+            "self",
+            "method",
+            "path",
+            "body"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "common.ts",
+      "python": "core/common.py",
+      "missing_functions": [],
+      "moved_functions": [
+        {
+          "name": "findActionInActionSpaceOrThrow",
+          "params": [
+            "planType",
+            "actionSpace"
+          ],
+          "found_in": "midscene/core/device/__init__.py"
+        }
+      ],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "web-integration",
+      "upstream": "common/cache-helper.ts",
+      "python": "web_integration/common/cache_helper.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "judgeOrderSensitive",
+          "ts_params": [
+            "options",
+            "debug"
+          ],
+          "python_params": [
+            "options"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "dump/image-reference.ts",
+      "python": "core/dump/image_reference.py",
+      "missing_functions": [],
+      "moved_functions": [
+        {
+          "name": "normalizeScreenshotRef",
+          "params": [
+            "value"
+          ],
+          "found_in": "midscene/core/dump/screenshot_store.py"
+        }
+      ],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "dump/report-action-dump.ts",
+      "python": "core/dump/report_action_dump.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [
+        "ExecutionDump",
+        "ReportActionDump"
+      ],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "dump/report-artifact-writer.ts",
+      "python": "core/dump/report_artifact_writer.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [
+        "ReportArtifactWriter"
+      ],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "dump/report-session.ts",
+      "python": "core/dump/report_session.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [
+        "ReportSession"
+      ],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "dump/test-report-images.ts",
+      "python": "core/dump/test_report_images.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [
+        "TestReportImages"
+      ],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "element-describer.ts",
+      "python": "core/element_describer.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "verifyLocator",
+          "ts_params": [
+            "runtime",
+            "prompt",
+            "locateOpt",
+            "expectCenter",
+            "verifyLocateOption?"
+          ],
+          "python_params": [
+            "agent",
+            "prompt",
+            "expect_center",
+            "opt"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "shared",
+      "upstream": "env/global-config-manager.ts",
+      "python": "shared/env/global_config_manager.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "method",
+          "class": "GlobalConfigManager",
+          "name": "overrideAIConfig",
+          "ts_params": [
+            "newConfig",
+            "extendMode",
+            "// true"
+          ],
+          "python_params": [
+            "self",
+            "new_config",
+            "extend_mode"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "errors.ts",
+      "python": "core/errors.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [
+        "ServiceError"
+      ],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "ios",
+      "upstream": "input-focus.ts",
+      "python": "ios/input_focus.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "waitForInputFocus",
+          "ts_params": [
+            "request"
+          ],
+          "python_params": [
+            "request",
+            "timeout_ms"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "ios",
+      "upstream": "ios-webdriver-client.ts",
+      "python": "ios/ios_webdriver_client.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [
+        "IOSWebDriverClient"
+      ],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "web-integration",
+      "upstream": "playwright/page.ts",
+      "python": "web_integration/playwright/page.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [
+        "WebPage"
+      ],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "computer",
+      "upstream": "rdp/backend-client.ts",
+      "python": "computer/rdp/backend_client.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [
+        "HelperProcessRDPBackendClient"
+      ],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "computer",
+      "upstream": "rdp/helper-binary.ts",
+      "python": "computer/rdp/helper_binary.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "getRdpHelperBinaryPath",
+          "ts_params": [],
+          "python_params": [
+            "package_root"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "shared",
+      "upstream": "report-artifact.ts",
+      "python": "shared/report_artifact.py",
+      "missing_functions": [],
+      "moved_functions": [
+        {
+          "name": "assertReportArtifactPath",
+          "params": [
+            "path"
+          ],
+          "found_in": "midscene/core/dump/report_artifact_store.py"
+        },
+        {
+          "name": "parseReportArtifactManifest",
+          "params": [
+            "value"
+          ],
+          "found_in": "midscene/core/dump/report_artifact_store.py"
+        }
+      ],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "service/index.ts",
+      "python": "core/service/__init__.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [
+        "Service"
+      ],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/node/define-node.ts",
+      "python": "core/test_runner/node/define_node.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "defineNode",
+          "ts_params": [
+            "options"
+          ],
+          "python_params": [
+            "name",
+            "execute",
+            "title",
+            "description",
+            "string_input_key",
+            "input_schema"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "android",
+      "upstream": "ui-tree-capture.ts",
+      "python": "android/ui_tree_capture.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "captureAndroidUITree",
+          "ts_params": [
+            "options"
+          ],
+          "python_params": [
+            "run_adb_command",
+            "device_id"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "web-integration",
+      "upstream": "web-element.ts",
+      "python": "web_integration/web_element.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [
+        "WebElementInfoImpl"
+      ],
+      "missing_methods": [],
+      "signature_mismatch": []
+    }
+  ]
+}

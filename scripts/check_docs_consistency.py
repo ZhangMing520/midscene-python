@@ -34,13 +34,19 @@ ROOT = Path(__file__).resolve().parents[1]
 PLAN = ROOT / "docs" / "upstream-alignment-plan.md"
 DEVIATIONS = ROOT / "docs" / "upstream-deviations.md"
 GAPS = ROOT / "scripts" / "upstream_api_gaps.json"
+METHOD_GAPS = ROOT / "scripts" / "upstream_method_gaps.json"
+LEDGER = ROOT / "scripts" / "upstream_alignment_ledger.json"
 BASELINE = ROOT / "scripts" / "upstream_alignment_baseline.json"
 
 # Paths the plan tells readers to run or inspect.
 REQUIRED_FILES = [
     "scripts/check_upstream_alignment.py",
     "scripts/check_upstream_api_alignment.py",
+    "scripts/check_upstream_method_alignment.py",
+    "scripts/check_alignment_ratchet.py",
     "scripts/upstream_api_gaps.json",
+    "scripts/upstream_method_gaps.json",
+    "scripts/upstream_alignment_ledger.json",
     "scripts/upstream_alignment_baseline.json",
     "tests/test_report.py",
     "tests/test_report_markdown.py",
@@ -254,6 +260,42 @@ def check_counts(
         actual = [len(python_files), len(test_files)]
         checker.check("test file counts match", expected == actual,
                       f"doc={expected} repo={actual}")
+
+    method_gaps = load_json(METHOD_GAPS)
+    method_counts = method_gaps["counts"]  # type: ignore[index]
+    method_row = re.search(
+        r"(\d+) 个模块 / (\d+) 个函数 / (\d+) 个类 / (\d+) 个方法缺失", plan
+    )
+    checker.check("plan states method-level counts", bool(method_row))
+    if method_row:
+        expected = [int(value) for value in method_row.groups()]
+        actual = [
+            method_counts.get("modules_with_gaps", 0),
+            method_counts.get("missing_functions", 0),
+            method_counts.get("missing_classes", 0),
+            method_counts.get("missing_methods", 0),
+        ]
+        checker.check("method-level counts match", expected == actual,
+                      f"doc={expected} repo={actual}")
+
+    ledger = load_json(LEDGER)
+    ledger_counts = ledger["counts"]  # type: ignore[index]
+    aligned_count = status.get("aligned", 0)
+    checker.check("ledger has one row per aligned module",
+                  len(ledger["modules"]) == aligned_count,  # type: ignore[arg-type]
+                  f"ledger={len(ledger['modules'])} aligned={aligned_count}")  # type: ignore[index]
+    checker.check("ledger api_missing matches gap report",
+                  ledger_counts.get("api_missing") == missing_total,
+                  f"ledger={ledger_counts.get('api_missing')} repo={missing_total}")
+    checker.check(
+        "ledger method totals match method report",
+        ledger_counts.get("method_missing_functions")
+        == method_counts.get("missing_functions", 0)
+        and ledger_counts.get("method_missing_classes")
+        == method_counts.get("missing_classes", 0)
+        and ledger_counts.get("method_missing_methods")
+        == method_counts.get("missing_methods", 0),
+    )
 
     # Phase assignment: parse Phase 1 from the plan, then apply the
     # deterministic rule that the plan documents in section 7.5.

@@ -12,6 +12,7 @@
 |---|---|---|---|
 | 文件级 | `scripts/check_upstream_alignment.py` | 425 aligned / 0 merged / 0 pending / 105 exempt | 每个上游 `.ts` 有对应 Python 文件（或已登记豁免） |
 | 导出级 | `scripts/check_upstream_api_alignment.py` | 124 个模块有差异 / 329 个运行时导出缺失 / 154 个已迁移 | 映射文件里没有这些顶层运行时导出 |
+| 方法级 | `scripts/check_upstream_method_alignment.py` | 154 个模块 / 196 个函数 / 26 个类 / 294 个方法缺失 | 类与函数的方法、参数骨架缺口 |
 | 测试级 | `tests/`（205 个 Python 文件，其中 202 个 `test_*.py`） | 1750 passed / 287 skipped | 上游同名测试已同步，skip 表示已知能力缺口 |
 
 **关键结论**：文件级对齐 ≠ 功能完整。`core/report.ts` → `core/report.py` 文件存在，但 `report.py` 只有 `write_report_html`，所以文件级通过、导出级仍有 7 个缺口、测试级有 17 个 skip。
@@ -102,9 +103,9 @@
 - 输出：按模块分组的 `missing` / `moved`，以及按包汇总
 - 排除：interface/type、zod schema；纯 `export ... from` 的 barrel 不计缺失
 
-### 5.2 方法级清单（Phase 0 新增）
+### 5.2 方法级清单（已有）
 
-新增 `scripts/check_upstream_method_alignment.py`，输出：
+`scripts/check_upstream_method_alignment.py` 输出：
 
 ```json
 {
@@ -134,9 +135,10 @@
 - 名称归一化：`camelCase`/`PascalCase`/`UPPER_SNAKE` → `lower_snake_case`。
 - 比较结果分三类：`missing`（不存在）、`signature_mismatch`（存在但参数骨架不同）、`ok`。
 
-### 5.3 Ledger（Phase 0 新增）
+### 5.3 Ledger（已有）
 
-新增 `scripts/upstream_alignment_ledger.json`，每个模块一条：
+`scripts/upstream_alignment_ledger.json`，每个 aligned 模块一条（当前 425 条，
+`status` 以 ledger 为准）。示例：
 
 ```json
 {
@@ -160,16 +162,20 @@
 
 ledger 由脚本生成初稿，人工只维护 `status`、`skip_reasons`、`notes`、`owner`。
 
-### 5.4 CI Ratchet（Phase 0 新增）
+### 5.4 CI Ratchet（已有）
 
-新增 `scripts/check_alignment_ratchet.py`，对比本次与上次的 ledger：
+`scripts/check_alignment_ratchet.py` 把当前代码与已提交的 ledger 对比：
 
-- `missing` 总数不得增加；
-- `method_missing` 总数不得增加；
-- 每个测试文件的 `skipped_cases` 不得增加；
-- `status` 不得从 `done` 回退到 `partial/todo`。
+- 新增 `api_missing` / `method_missing_*` 直接失败；
+- `status` 不得从 `done` 回退到 `partial`；
+- 有缺口的模块不在 ledger 中直接失败。
 
-失败时打印新增缺口清单，直接用于 PR 阻断。
+每批完成后用 `--update` 缩小 ledger（默认拒绝写入新增缺口）：
+
+```bash
+.venv/bin/python scripts/check_alignment_ratchet.py
+.venv/bin/python scripts/check_alignment_ratchet.py --update
+```
 
 ### 5.5 文档一致性检查（已有）
 
@@ -246,11 +252,11 @@ ledger 由脚本生成初稿，人工只维护 `status`、`skip_reasons`、`note
 
 ### Phase 0：工具与基座（不改功能）
 
-- [ ] `check_upstream_method_alignment.py`
-- [ ] `upstream_alignment_ledger.json` 初稿（由现有 gap JSON 生成）
-- [ ] `check_alignment_ratchet.py`
-- [ ] 在 `docs/upstream-alignment-plan.md` 固定 DoD 与批次
-- [ ] 选 `core/report.ts` 做样板，只验证工具链，不要求一次补完
+- [x] `check_upstream_method_alignment.py`
+- [x] `upstream_alignment_ledger.json` 初稿（由现有 gap JSON 生成）
+- [x] `check_alignment_ratchet.py`
+- [x] 在 `docs/upstream-alignment-plan.md` 固定 DoD 与批次
+- [x] 选 `core/report.ts` 做样板，只验证工具链，不要求一次补完
 
 验收：工具能对 1 个模块输出函数/类/方法缺口，ledger 可生成，ratchet 可运行。
 
@@ -395,6 +401,7 @@ cd /home/zhangming/gitspace/midscene-python
 
 .venv/bin/python scripts/check_upstream_alignment.py
 .venv/bin/python scripts/check_upstream_api_alignment.py --json scripts/upstream_api_gaps.json
+.venv/bin/python scripts/check_upstream_method_alignment.py --json scripts/upstream_method_gaps.json
 .venv/bin/python scripts/check_alignment_ratchet.py
 .venv/bin/python scripts/check_docs_consistency.py
 ```
