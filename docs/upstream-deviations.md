@@ -45,6 +45,7 @@
 |---|---|---|
 | web agent tools 层 | 5 个 skip | Python SDK 未实现该层 |
 | CDP agent tools | 2 个 skip | Chrome DevTools Protocol 工具未实现 |
+| `TaskBuilder` planning feedback / handler registry | 2 个 skip | Python 的动作执行器不接收 `taskContext`，也没有 plan-to-task handler registry，无法在运行中的任务上挂 `planningFeedback` |
 | zod 原生描述符 | 约 6 个 skip | `nativeEnum` / `intersection` / `tuple-rest` / 构造器身份、refinement、default/transform 在 Python dict schema 中没有等价物 |
 
 > 这些 skip 的理由已写明具体能力缺口；实现对应能力后应改为真实断言。

@@ -13,7 +13,7 @@
 | 文件级 | `scripts/check_upstream_alignment.py` | 425 aligned / 0 merged / 0 pending / 105 exempt | 每个上游 `.ts` 有对应 Python 文件（或已登记豁免） |
 | 导出级 | `scripts/check_upstream_api_alignment.py` | 0 个模块有差异 / 0 个运行时导出缺失 / 0 个已迁移 | 映射文件里没有这些顶层运行时导出 |
 | 方法级 | `scripts/check_upstream_method_alignment.py` | 0 个模块 / 0 个函数 / 0 个类 / 0 个方法缺失（另 30 项已登记为等价签名） | 类与函数的方法、参数骨架缺口 |
-| 测试级 | `tests/`（220 个 Python 文件，其中 217 个 `test_*.py`） | 2390 passed / 170 skipped | 上游同名测试已同步；skip 原因分类见 `docs/upstream-deviations.md` §2.2 / §2.3 |
+| 测试级 | `tests/`（220 个 Python 文件，其中 217 个 `test_*.py`） | 2392 passed / 168 skipped | 上游同名测试已同步；skip 原因分类见 `docs/upstream-deviations.md` §2.2 / §2.3 |
 
 **关键结论**：文件级对齐 ≠ 功能完整。`core/report.ts` → `core/report.py` 文件存在，但 `report.py` 只有 `write_report_html`，所以文件级通过、导出级仍有 7 个缺口、测试级有 17 个 skip。
 
@@ -450,8 +450,8 @@ cd /home/zhangming/gitspace/midscene-python
 
 | 优先级 | 事项 | 说明 |
 |---|---|---|
-| 高 | 重新审计 skip | 已从 208 降至 170；报告合并、目录模式、`BatchRunner` 汇总、解析取消、导出转换、`beforeAll` 重试、配置优先级、`client_id` 校验与 `rectMatchesCacheFeature` 抛错等 38 个用例已改为真实断言。剩余可行动项：web/CDP agent tools、zod defaults/refinements、`TaskBuilder` 快路径延迟与 planning feedback、测试夹具 |
-| 高 | 实现可移植能力缺口 | 已完成 `ReportGenerator` 目录模式、`BatchRunner` 汇总接口、解析/重试取消、`beforeAll` 重试与全局配置覆盖；剩余 web/CDP agent tools 与 `TaskBuilder` 快路径 |
+| 高 | 重新审计 skip | 已从 208 降至 168；报告合并、目录模式、`BatchRunner` 汇总、解析取消、导出转换、`beforeAll` 重试、配置优先级、`client_id` 校验、`rectMatchesCacheFeature` 抛错与 `TaskBuilder` 快路径/`promptDisplay` 等 40 个用例已改为真实断言。剩余可行动项：web/CDP agent tools、zod defaults/refinements、`TaskBuilder` planning feedback 与 handler registry、测试夹具 |
+| 高 | 实现可移植能力缺口 | 已完成 `ReportGenerator` 目录模式、`BatchRunner` 汇总接口、解析/重试取消、`beforeAll` 重试、全局配置覆盖与动作快路径延迟；剩余 web/CDP agent tools 与 `TaskBuilder` planning feedback/registry |
 | 中 | 统一 `ReportSession` | 已用 `ReportArtifactStore` 支撑目录模式；单一会话宿主仍待收口 |
 | 中 | iOS / HarmonyOS 真机验收 | 需 WDA 与 DevEco 真机环境 |
 | 低 | CI 门禁 | 串行运行文件级、API 级、方法级、ratchet、文档一致性五个检查器 |

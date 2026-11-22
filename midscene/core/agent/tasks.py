@@ -117,6 +117,7 @@ class TaskExecutor:
                     "getDefaultModelRuntime",
                     lambda: planning_model,
                 ),
+                "waitAfterAction": self.wait_after_action,
             }
         )
         return await builder.build(plans, planning_model, locate_model, options)

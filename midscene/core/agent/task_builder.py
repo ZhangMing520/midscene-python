@@ -1,5 +1,6 @@
 """Action execution and locate resolution (upstream agent/task-builder.ts)."""
 
+import asyncio
 import time
 from typing import Any, Dict, List, Optional
 
@@ -53,6 +54,9 @@ class _TaskBuilderAgent:
         self._get_default_model_runtime = deps.get(
             "getDefaultModelRuntime", deps.get("get_default_model_runtime")
         )
+        self.wait_after_action = deps.get(
+            "waitAfterAction", deps.get("wait_after_action")
+        )
         self._provided_context = None
 
     def _get_task_cache(self):
@@ -79,6 +83,9 @@ class _TaskBuilderAgent:
         return await write_locate_cache(
             self, prompt_str, element, cache, cacheable, replace_index
         )
+
+    async def _locate_for_action(self, locate_param):
+        return await locate_for_action(self, locate_param)
 
     async def _rect_from_cache_feature(self, feature):
         return await rect_from_cache_feature(self, feature)
@@ -197,11 +204,37 @@ class TaskBuilder:
                 task_context: Dict[str, Any],
                 _plan=plan,
             ) -> Dict[str, Any]:
+                definition = find_action_in_action_space_or_throw(
+                    plan_type, self._agent.action_space
+                )
+                delay_before = _definition_field(
+                    definition, "delay_before_runner"
+                )
+                if delay_before is None:
+                    delay_before = 200
+                delay_after = _definition_field(
+                    definition, "delay_after_runner"
+                )
+                if delay_after is None:
+                    wait_after = self._agent.wait_after_action
+                    delay_after = 300 if wait_after is None else wait_after
+                await _run_before_invoke(
+                    self._agent.interface,
+                    plan_type,
+                    plan.get("param"),
+                    delay_before,
+                )
                 await execute_planning_action(
                     self._agent,
                     _plan,
                     distance_ratio=options.get("distanceRatio"),
                     cacheable=options.get("cacheable"),
+                )
+                await _run_after_invoke(
+                    self._agent.interface,
+                    plan_type,
+                    plan.get("param"),
+                    delay_after,
                 )
                 return {"output": None}
 
@@ -219,6 +252,75 @@ class TaskBuilder:
 
 async def _noop_executor(task_context: Dict[str, Any]) -> None:
     return None
+
+
+def _definition_field(definition: Any, name: str) -> Any:
+    if isinstance(definition, dict):
+        return definition.get(name)
+    return getattr(definition, name, None)
+
+
+async def _maybe_await(value: Any) -> Any:
+    if hasattr(value, "__await__"):
+        return await value
+    return value
+
+
+async def _run_before_invoke(
+    interface: Any, action_name: str, param: Any, delay_ms: float
+) -> None:
+    """Run the before-invoke hook in parallel with the pre-action delay."""
+    hook = getattr(interface, "before_invoke_action", None)
+    tasks = []
+    if callable(hook):
+
+        async def run_hook() -> None:
+            try:
+                await _maybe_await(hook(action_name, param, None))
+            except Exception as error:
+                raise RuntimeError(
+                    "error in running beforeInvokeAction for "
+                    f"{action_name}: {error}"
+                ) from error
+
+        tasks.append(run_hook())
+    if delay_ms > 0:
+        tasks.append(asyncio.sleep(delay_ms / 1000))
+    if not tasks:
+        return
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    for result in results:
+        if isinstance(result, BaseException):
+            raise result
+
+
+async def _run_after_invoke(
+    interface: Any, action_name: str, param: Any, delay_ms: float
+) -> None:
+    """Wait the post-action delay, then the default wait and after hook."""
+    if delay_ms > 0:
+        await asyncio.sleep(delay_ms / 1000)
+    default_wait = getattr(interface, "default_action_wait", None)
+    if callable(default_wait):
+        await _maybe_await(default_wait(action_name, param, None))
+    hook = getattr(interface, "after_invoke_action", None)
+    if callable(hook):
+        try:
+            await _maybe_await(hook(action_name, param, None))
+        except Exception as error:
+            raise RuntimeError(
+                "error in running afterInvokeAction for "
+                f"{action_name}: {error}"
+            ) from error
+
+
+def _with_prompt_display(element: Any, locate_param: Dict[str, Any]) -> Any:
+    """Replace the located description with the plan's promptDisplay."""
+    prompt_display = locate_param.get("promptDisplay")
+    if not prompt_display or not isinstance(element, dict):
+        return element
+    locate_param["description"] = prompt_display
+    return {**element, "description": prompt_display}
 
 
 async def execute_planning_action(
@@ -298,20 +400,23 @@ async def locate_for_action(agent, locate_param: Any) -> Dict[str, Any]:
             await agent._write_locate_cache(
                 prompt_str, cached_pixel, cache, cacheable, None
             )
-        return cached_pixel
+        return _with_prompt_display(cached_pixel, locate_param)
 
     replace_index: Optional[int] = matched["index"] if matched is not None else None
     if matched is not None:
         rect = await agent._rect_from_cache_feature(matched["cache"])
         if rect is not None:
-            return {
-                "center": [
-                    rect.left + rect.width / 2,
-                    rect.top + rect.height / 2,
-                ],
-                "rect": rect,
-                "description": prompt_str,
-            }
+            return _with_prompt_display(
+                {
+                    "center": [
+                        rect.left + rect.width / 2,
+                        rect.top + rect.height / 2,
+                    ],
+                    "rect": rect,
+                    "description": prompt_str,
+                },
+                locate_param,
+            )
         # Stale feature: re-locate and replace this entry in place.
 
     context = await agent._get_ui_context("locate")
@@ -324,7 +429,7 @@ async def locate_for_action(agent, locate_param: Any) -> Dict[str, Any]:
     await agent._write_locate_cache(
         prompt_str, element, cache, cacheable, replace_index
     )
-    return element
+    return _with_prompt_display(element, locate_param)
 
 
 async def run_locate(

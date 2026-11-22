@@ -2,13 +2,13 @@
 
 The Python port exposes the locate/action halves of upstream TaskBuilder as
 functions in ``midscene.core.agent.task_builder``. Cases that depend on the
-upstream plan-to-task registry (planningFeedbackMaxLength, promptDisplay
-rewriting, fast-path delays, planning feedback on live tasks) have no Python
-counterpart and are skipped with concrete reasons.
+upstream plan-to-task registry and planning feedback on live tasks have no
+Python counterpart and are skipped with concrete reasons.
 """
 
 from types import SimpleNamespace
 from typing import Any, Dict, List
+import time
 
 import pytest
 
@@ -31,6 +31,13 @@ class _LocateInterface:
     async def rect_matches_cache_feature(self, feature):
         self.resolved.append(feature)
         return None
+
+    async def get_context(self):
+        return SimpleNamespace(
+            shrunk_shot_to_logical_ratio=1.0,
+            screenshot_base64="data:image/png;base64,SCREENSHOT==",
+            size=SimpleNamespace(width=1000, height=800),
+        )
 
 
 class _TaskCache:
@@ -278,13 +285,62 @@ async def test_dispatches_plans_using_handler_registry():
     pass
 
 
-@pytest.mark.skip(
-    reason="task_builder.py does not rewrite locate results with promptDisplay; "
-    "that upstream behavior lives in TaskBuilder.createLocateTask"
-)
 @pytest.mark.asyncio
 async def test_uses_promptdisplay_for_the_located_element_passed_to_an_action():
-    pass
+    captured = {}
+
+    async def execute(param, device, locate_fn):
+        captured["element"] = await locate_fn(param["locate"])
+
+    tap = DeviceAction(
+        name="Tap",
+        description="mock tap action",
+        locate_fields=["locate"],
+        delay_before_runner=0,
+        delay_after_runner=0,
+        execute=execute,
+    )
+
+    async def locate(_prompt, _context, _runtime, _signal):
+        return {
+            "element": {
+                "center": [50, 50],
+                "rect": {"left": 40, "top": 40, "width": 20, "height": 20},
+                "description": (
+                    "<CONTEXT>favorite fruit rule</CONTEXT>"
+                    "<LOCATE_TARGET>orange</LOCATE_TARGET>"
+                ),
+            }
+        }
+
+    builder = task_builder.TaskBuilder(
+        {
+            "interfaceInstance": _LocateInterface(),
+            "service": {"locate": locate},
+            "actionSpace": [tap],
+            "getDefaultModelRuntime": lambda: None,
+        }
+    )
+    plan = {
+        "type": "Tap",
+        "param": {
+            "locate": {
+                "prompt": (
+                    "<CONTEXT>favorite fruit rule</CONTEXT>"
+                    "<LOCATE_TARGET>orange</LOCATE_TARGET>"
+                ),
+                "promptDisplay": "orange",
+                "context": "favorite fruit rule",
+            }
+        },
+    }
+    built = await builder.build([plan], None, None, {})
+    await built["tasks"][0]["executor"](
+        {"task": {"timing": {}}, "uiContext": None}
+    )
+
+    assert captured["element"]["description"] == "orange"
+    assert plan["param"]["locate"]["description"] == "orange"
 
 
 @pytest.mark.asyncio
@@ -304,13 +360,88 @@ async def test_throws_when_building_an_executable_task_for_an_action_outside_act
         )
 
 
-@pytest.mark.skip(
-    reason="task_builder.py executes actions directly; Python has no fast-path "
-    "delayBeforeRunner/delayAfterRunner scheduling in the planning executor"
-)
 @pytest.mark.asyncio
 async def test_supports_fast_path_action_delays_for_system_actions():
-    pass
+    default_events = []
+    fast_events = []
+
+    class _HookedInterface:
+        def __init__(self, events):
+            self.events = events
+
+        async def before_invoke_action(self, name, param, signal=None):
+            self.events.append(("before", time.monotonic()))
+
+        async def after_invoke_action(self, name, param, signal=None):
+            self.events.append(("after", time.monotonic()))
+
+        async def get_context(self):
+            return SimpleNamespace(
+                shrunk_shot_to_logical_ratio=1.0,
+                screenshot_base64="",
+                size=SimpleNamespace(width=1000, height=800),
+            )
+
+    async def default_call(_param, _device, _locate_fn):
+        default_events.append(("call", time.monotonic()))
+
+    async def fast_call(_param, _device, _locate_fn):
+        fast_events.append(("call", time.monotonic()))
+
+    default_action = DeviceAction(
+        name="DefaultExit",
+        description="default exit action",
+        execute=default_call,
+    )
+    fast_action = DeviceAction(
+        name="FastExit",
+        description="fast exit action",
+        delay_before_runner=0,
+        delay_after_runner=0,
+        execute=fast_call,
+    )
+
+    def build(interface, action, plan_type):
+        return task_builder.TaskBuilder(
+            {
+                "interfaceInstance": interface,
+                "actionSpace": [action],
+                "getDefaultModelRuntime": lambda: None,
+            }
+        )
+
+    default_builder = build(
+        _HookedInterface(default_events), default_action, "DefaultExit"
+    )
+    fast_builder = build(_HookedInterface(fast_events), fast_action, "FastExit")
+    default_tasks = (
+        await default_builder.build(
+            [{"type": "DefaultExit", "thought": "", "param": {}}], None, None
+        )
+    )["tasks"]
+    fast_tasks = (
+        await fast_builder.build(
+            [{"type": "FastExit", "thought": "", "param": {}}], None, None
+        )
+    )["tasks"]
+
+    task_context = {"task": {"timing": {}}, "uiContext": None}
+    await default_tasks[0]["executor"](task_context)
+    await fast_tasks[0]["executor"](task_context)
+
+    assert [event[0] for event in default_events] == ["before", "call", "after"]
+    default_before = default_events[0][1]
+    default_call_at = default_events[1][1]
+    default_after = default_events[2][1]
+    assert default_call_at - default_before >= 0.15
+    assert default_after - default_call_at >= 0.25
+
+    assert [event[0] for event in fast_events] == ["before", "call", "after"]
+    fast_before = fast_events[0][1]
+    fast_call_at = fast_events[1][1]
+    fast_after = fast_events[2][1]
+    assert fast_call_at - fast_before < 0.1
+    assert fast_after - fast_call_at < 0.1
 
 
 @pytest.mark.skip(
