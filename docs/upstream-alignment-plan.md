@@ -13,7 +13,7 @@
 | 文件级 | `scripts/check_upstream_alignment.py` | 429 aligned / 0 merged / 0 pending / 101 exempt | 每个上游 `.ts` 有对应 Python 文件（或已登记豁免） |
 | 导出级 | `scripts/check_upstream_api_alignment.py` | 0 个模块有差异 / 0 个运行时导出缺失 / 0 个已迁移 | 映射文件里没有这些顶层运行时导出 |
 | 方法级 | `scripts/check_upstream_method_alignment.py` | 0 个模块 / 0 个函数 / 0 个类 / 0 个方法缺失（另 30 项已登记为等价签名） | 类与函数的方法、参数骨架缺口 |
-| 测试级 | `tests/`（220 个 Python 文件，其中 217 个 `test_*.py`） | 2401 passed / 159 skipped | 上游同名测试已同步；skip 原因分类见 `docs/upstream-deviations.md` §2.2 / §2.3 |
+| 测试级 | `tests/`（220 个 Python 文件，其中 217 个 `test_*.py`） | 2411 passed / 149 skipped | 上游同名测试已同步；skip 原因分类见 `docs/upstream-deviations.md` §2.2 / §2.3 |
 
 **关键结论**：文件级对齐 ≠ 功能完整。`core/report.ts` → `core/report.py` 文件存在，但 `report.py` 只有 `write_report_html`，所以文件级通过、导出级仍有 7 个缺口、测试级有 17 个 skip。
 
@@ -450,8 +450,8 @@ cd /home/zhangming/gitspace/midscene-python
 
 | 优先级 | 事项 | 说明 |
 |---|---|---|
-| 高 | 重新审计 skip | 已从 208 降至 159；报告合并、目录模式、`BatchRunner` 汇总、解析取消、导出转换、`beforeAll` 重试、配置优先级、`client_id` 校验、`rectMatchesCacheFeature` 抛错、`TaskBuilder` 快路径/`promptDisplay` 与 web/CDP agent tools 等 49 个用例已改为真实断言。剩余可行动项：zod defaults/refinements、`TaskBuilder` planning feedback 与 handler registry、测试夹具 |
-| 高 | 实现可移植能力缺口 | 已完成 `ReportGenerator` 目录模式、`BatchRunner` 汇总接口、解析/重试取消、`beforeAll` 重试、全局配置覆盖、动作快路径延迟与 web/CDP agent tools；剩余 `TaskBuilder` planning feedback/registry |
+| 高 | 重新审计 skip | 已从 208 降至 149；报告合并、目录模式、`BatchRunner` 汇总、解析取消、导出转换、`beforeAll` 重试、配置优先级、`client_id` 校验、`rectMatchesCacheFeature` 抛错、`TaskBuilder` 快路径/`promptDisplay`/planning feedback/registry、zod 描述符能力（含 defaults/transforms/refinements）与 web/CDP agent tools 等 59 个用例已改为真实断言。剩余可行动项：测试夹具与平台/Node 专属项 |
+| 高 | 实现可移植能力缺口 | 已完成 `ReportGenerator` 目录模式、`BatchRunner` 汇总接口、解析/重试取消、`beforeAll` 重试、全局配置覆盖、动作快路径延迟、`TaskBuilder` planning feedback/registry、zod 描述符能力与 web/CDP agent tools |
 | 中 | 统一 `ReportSession` | 已用 `ReportArtifactStore` 支撑目录模式；单一会话宿主仍待收口 |
 | 中 | iOS / HarmonyOS 真机验收 | 需 WDA 与 DevEco 真机环境 |
 | 低 | CI 门禁 | 串行运行文件级、API 级、方法级、ratchet、文档一致性五个检查器 |

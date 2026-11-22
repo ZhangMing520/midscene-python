@@ -47,6 +47,7 @@ class DeviceAction:
     execute: Optional[Callable[..., Any]] = None  # async (param, device, locate_fn)
     delay_before_runner: Optional[float] = None
     delay_after_runner: Optional[float] = None
+    planning_feedback_max_length: Optional[Any] = None  # int | "unlimited"
 
     def to_prompt_dict(self) -> Dict[str, Any]:
         return {

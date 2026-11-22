@@ -123,6 +123,29 @@ def dump_action_param(
     return result
 
 
+def _param_field_schemas(schema: Any) -> Dict[str, Any]:
+    if isinstance(schema, dict):
+        properties = schema.get("properties")
+        if isinstance(properties, dict):
+            return properties
+        return schema
+    param_schema = getattr(schema, "param_schema", None)
+    return param_schema if isinstance(param_schema, dict) else {}
+
+
+def _apply_field_rules(name: str, field: Any, value: Any) -> Any:
+    """Apply the schema field's refinement and transform, if any."""
+    if not isinstance(field, dict):
+        return value
+    refine = field.get("refine", field.get("refinement"))
+    if callable(refine) and not refine(value):
+        raise ValueError(f"{name}: Invalid value")
+    transform = field.get("transform")
+    if callable(transform):
+        value = transform(value)
+    return value
+
+
 def parse_action_param(
     raw_param: Optional[Dict[str, Any]],
     schema: Any = None,
@@ -130,8 +153,9 @@ def parse_action_param(
 ) -> Optional[Dict[str, Any]]:
     """Validate/normalize action params (upstream parseActionParam).
 
-    Zod parsing is omitted: Python action parameters are already validated by
-    their executors. Coordinate and distance transforms are preserved.
+    Locator fields are excluded from schema parsing and restored afterwards,
+    mirroring upstream. Ordinary fields apply dict-descriptor refinements,
+    transforms and defaults.
     """
     if schema is None:
         return None
@@ -142,19 +166,31 @@ def parse_action_param(
     if options.get("distanceUnit") == "model-input-image-pixel" and ratio is not None:
         param = _screenshot_distances_to_logical(param, schema, ratio)
 
+    locate_fields = find_all_midscene_locator_field(schema)
+    parsed = dict(param)
+    for name, field in _param_field_schemas(schema).items():
+        if name in locate_fields:
+            continue
+        if name in param:
+            parsed[name] = _apply_field_rules(name, field, param[name])
+        elif isinstance(field, dict) and "default" in field:
+            parsed[name] = _apply_field_rules(
+                name, field, field["default"]
+            )
+
     if ratio is not None:
-        for field_name in find_all_midscene_locator_field(schema):
-            value = param.get(field_name)
+        for field_name in locate_fields:
+            value = parsed.get(field_name)
             if isinstance(value, dict) and value.get("center"):
                 center = value["center"]
-                param[field_name] = {
+                parsed[field_name] = {
                     **value,
                     "center": [
                         round(center[0] / ratio),
                         round(center[1] / ratio),
                     ],
                 }
-    return param
+    return parsed
 
 
 def validate_required_locate_fields(

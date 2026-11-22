@@ -41,15 +41,14 @@
 
 ### 2.2 尚未实现的能力（对应 skip）
 
-| 能力 | 影响 | 说明 |
-|---|---|---|
-| `TaskBuilder` planning feedback / handler registry | 2 个 skip | Python 的动作执行器不接收 `taskContext`，也没有 plan-to-task handler registry，无法在运行中的任务上挂 `planningFeedback` |
-| zod 原生描述符 | 约 6 个 skip | `nativeEnum` / `intersection` / `tuple-rest` / 构造器身份、refinement、default/transform 在 Python dict schema 中没有等价物 |
+本批次后已无此类 skip：`TaskBuilder` planning feedback / handler registry，以及
+zod `nativeEnum` / `intersection` / `tuple-rest` / 构造器身份 / refinement /
+default / transform 均已实现，对应用例已改为真实断言。
 
-> 这些 skip 的理由已写明具体能力缺口；实现对应能力后应改为真实断言。
 > `ReportGenerator` 目录模式、`BatchRunner` 汇总接口、解析/重试取消、报告合并与
-> 源报告删除、`beforeAll` 重试、全局配置覆盖、回调 `client_id` 校验与
-> `rectMatchesCacheFeature` 抛错已在后续批次补齐，对应 skip 已改为真实断言。
+> 源报告删除、`beforeAll` 重试、全局配置覆盖、回调 `client_id` 校验、
+> `rectMatchesCacheFeature` 抛错、`TaskBuilder` planning feedback / handler
+> registry 与 zod 描述符能力已在后续批次补齐，对应 skip 已改为真实断言。
 
 ### 2.3 Node / 测试环境专属（不移植）
 

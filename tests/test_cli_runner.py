@@ -3,11 +3,16 @@
 import json
 import re
 from pathlib import Path
+from types import MappingProxyType
 
 import pytest
 
 from midscene.shared.agent_tools.types import ToolDefinition, ToolResult
-from midscene.shared.cli.cli_args import parse_cli_args, parse_value
+from midscene.shared.cli.cli_args import (
+    format_cli_validation_error,
+    parse_cli_args,
+    parse_value,
+)
 from midscene.shared.cli.cli_error import CLIError, report_cli_error
 from midscene.shared.cli.cli_runner import remove_prefix, run_tools_cli
 
@@ -372,41 +377,101 @@ class TestParseCliArgs:
             "report": ["a.html", "b.html"]
         }
 
-    @pytest.mark.skip(
-        reason="Python schema descriptors do not model Zod nativeEnum/intersection/"
-        "tuple-rest/constructor identity"
-    )
     def test_decodes_native_enum_inputs(self):
-        pass
+        defn = _tool(
+            "configure",
+            schema={"mode": {"type": "nativeEnum", "enum": {"007": 3}}},
+        )
+        parsed = parse_cli_args(["--mode=3"], defn)
 
-    @pytest.mark.skip(
-        reason="Python schema descriptors do not model Zod nativeEnum/intersection/"
-        "tuple-rest/constructor identity"
-    )
+        assert parsed == {"mode": 3}
+        assert (
+            format_cli_validation_error("test-cli", "configure", defn, parsed)
+            is None
+        )
+
     def test_keeps_numeric_branches_reachable_beside_restricted_strings(self):
-        pass
+        schema = {
+            "mode": {
+                "type": "union",
+                "options": [
+                    {"type": "literal", "value": "auto"},
+                    {"type": "number"},
+                ],
+            },
+            "choice": {
+                "type": "union",
+                "options": [
+                    {"type": "enum", "enum": ["auto", "007"]},
+                    {"type": "number"},
+                ],
+            },
+            "native": {
+                "type": "nativeEnum",
+                "enum": {0: "Zero", "Zero": 0, "Text": "007"},
+            },
+        }
+        defn = _tool("demo", schema=schema)
 
-    @pytest.mark.skip(
-        reason="Python schema descriptors do not model Zod nativeEnum/intersection/"
-        "tuple-rest/constructor identity"
-    )
+        parsed = parse_cli_args(
+            ["--mode=42", "--choice=3", "--native=0"], defn
+        )
+        assert parsed == {"mode": 42, "choice": 3, "native": 0}
+        assert format_cli_validation_error("test-cli", "demo", defn, parsed) is None
+        assert parse_cli_args(
+            ["--mode=auto", "--choice=007", "--native=007"], defn
+        ) == {"mode": "auto", "choice": "007", "native": "007"}
+
     def test_recognizes_schema_fields_without_constructor_identity(self):
-        pass
+        string_field = {"type": "string"}
+        foreign_string_field = MappingProxyType(dict(string_field))
+        assert not isinstance(foreign_string_field, dict)
 
-    @pytest.mark.skip(
-        reason="Python schema descriptors do not model Zod nativeEnum/intersection/"
-        "tuple-rest/constructor identity"
-    )
+        defn = _tool("connect", schema={"deviceId": foreign_string_field})
+        assert parse_cli_args(["--deviceId=320336557157"], defn) == {
+            "deviceId": "320336557157"
+        }
+
     def test_preserves_raw_text_for_unsupported_concrete_schemas(self):
-        pass
+        schema = {"deviceId": {"type": "intersection"}}
+        defn = _tool("connect", schema=schema)
+        parsed = parse_cli_args(["--deviceId=320336557157"], defn)
 
-    @pytest.mark.skip(
-        reason="Python schema descriptors do not model positional tuple schemas"
-    )
+        assert parsed == {"deviceId": "320336557157"}
+        assert format_cli_validation_error("test-cli", "connect", defn, parsed) is None
+
     def test_selects_collection_branches_for_repeated_union_inputs_and_tuple_rest_items(
         self,
     ):
-        pass
+        schema = {
+            "values": {
+                "type": "union",
+                "options": [{"type": "string"}, {"type": "number[]"}],
+            },
+            "tuple": {
+                "type": "tuple",
+                "items": [{"type": "string"}],
+                "rest": {"type": "number"},
+            },
+        }
+        defn = _tool("demo", schema=schema)
+        parsed = parse_cli_args(
+            [
+                "--values=1",
+                "--values=2",
+                "--tuple=007",
+                "--tuple=3",
+                "--tuple=4",
+            ],
+            defn,
+        )
+
+        assert parsed == {"values": [1, 2], "tuple": ["007", 3, 4]}
+        assert format_cli_validation_error("test-cli", "demo", defn, parsed) is None
+        assert parse_cli_args(["--values=007"], defn) == {"values": "007"}
+        assert parse_cli_args(
+            ['--tuple=["007",3]', "--tuple=4"], defn
+        ) == {"tuple": ["007", 3, 4]}
 
 
 class TestRemovePrefix:

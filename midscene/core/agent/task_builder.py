@@ -1,6 +1,7 @@
 """Action execution and locate resolution (upstream agent/task-builder.ts)."""
 
 import asyncio
+import inspect
 import time
 from typing import Any, Dict, List, Optional
 
@@ -13,6 +14,10 @@ from midscene.core.agent.task_cache import TaskCache
 from midscene.core.agent.tasks import build_action_report_task
 from midscene.core.agent.utils import _strip_runtime_locate_result
 from midscene.core.ai_model.shared.multimodal_prompt import user_prompt_to_string
+from midscene.core.common import (
+    find_all_midscene_locator_field,
+    parse_action_param,
+)
 from midscene.core.device import (
     find_action_in_action_space_or_throw,
     scale_action_distances,
@@ -140,114 +145,173 @@ class TaskBuilder:
         """Convert planning actions into executable task descriptors."""
         options = options or {}
         tasks: List[Dict[str, Any]] = []
+        handlers = {
+            "Locate": self._handle_locate_plan,
+            "Finished": self._handle_finished_plan,
+        }
         for plan in plans:
-            plan_type = plan.get("type")
-            if plan_type == "Finished":
-                tasks.append(
-                    {
-                        "type": "Action Space",
-                        "subType": "Finished",
-                        "param": None,
-                        "thought": plan.get("thought"),
-                        "executor": _noop_executor,
-                    }
-                )
-                continue
-            if plan_type == "Locate":
-                locate_param = _normalize_locate_param(plan.get("param"))
-                if options.get("cacheable") is not None:
-                    locate_param = {
-                        **locate_param,
-                        "cacheable": options["cacheable"],
-                    }
-                if options.get("deepLocate"):
-                    locate_param.setdefault("deepLocate", True)
-                multimodal_prompt = options.get("multimodalPrompt")
-                prompt = locate_param.get("prompt")
-                if multimodal_prompt and prompt:
-                    if isinstance(prompt, str):
-                        locate_param["prompt"] = {
-                            "prompt": prompt,
-                            **multimodal_prompt,
-                        }
-                    elif isinstance(prompt, dict) and not prompt.get("images"):
-                        locate_param["prompt"] = {
-                            **prompt,
-                            **multimodal_prompt,
-                        }
-
-                async def locate_executor(
-                    task_context: Dict[str, Any],
-                    _param=locate_param,
-                ) -> Dict[str, Any]:
-                    previous = self._agent._provided_context
-                    if task_context.get("uiContext") is not None:
-                        self._agent._provided_context = task_context["uiContext"]
-                    try:
-                        element = await locate_for_action(self._agent, _param)
-                    finally:
-                        self._agent._provided_context = previous
-                    return {"output": {"element": element}}
-
-                tasks.append(
-                    {
-                        "type": "Planning",
-                        "subType": "Locate",
-                        "param": locate_param,
-                        "thought": plan.get("thought"),
-                        "executor": locate_executor,
-                    }
-                )
-                continue
-
-            async def action_executor(
-                task_context: Dict[str, Any],
-                _plan=plan,
-            ) -> Dict[str, Any]:
-                definition = find_action_in_action_space_or_throw(
-                    plan_type, self._agent.action_space
-                )
-                delay_before = _definition_field(
-                    definition, "delay_before_runner"
-                )
-                if delay_before is None:
-                    delay_before = 200
-                delay_after = _definition_field(
-                    definition, "delay_after_runner"
-                )
-                if delay_after is None:
-                    wait_after = self._agent.wait_after_action
-                    delay_after = 300 if wait_after is None else wait_after
-                await _run_before_invoke(
-                    self._agent.interface,
-                    plan_type,
-                    plan.get("param"),
-                    delay_before,
-                )
-                await execute_planning_action(
-                    self._agent,
-                    _plan,
-                    distance_ratio=options.get("distanceRatio"),
-                    cacheable=options.get("cacheable"),
-                )
-                await _run_after_invoke(
-                    self._agent.interface,
-                    plan_type,
-                    plan.get("param"),
-                    delay_after,
-                )
-                return {"output": None}
-
-            tasks.append(
-                {
-                    "type": "Action Space",
-                    "subType": plan_type,
-                    "param": plan.get("param"),
-                    "thought": plan.get("thought"),
-                    "executor": action_executor,
-                }
-            )
+            handler = handlers.get(plan.get("type"), self._handle_action_plan)
+            await handler(plan, tasks, options)
         return {"tasks": tasks}
+
+    async def _handle_finished_plan(
+        self,
+        plan: Dict[str, Any],
+        tasks: List[Dict[str, Any]],
+        options: Dict[str, Any],
+    ) -> None:
+        tasks.append(
+            {
+                "type": "Action Space",
+                "subType": "Finished",
+                "param": None,
+                "thought": plan.get("thought"),
+                "executor": _noop_executor,
+            }
+        )
+
+    async def _handle_locate_plan(
+        self,
+        plan: Dict[str, Any],
+        tasks: List[Dict[str, Any]],
+        options: Dict[str, Any],
+    ) -> None:
+        tasks.append(
+            self._create_locate_task(
+                plan.get("thought"), plan.get("param"), options
+            )
+        )
+
+    async def _handle_action_plan(
+        self,
+        plan: Dict[str, Any],
+        tasks: List[Dict[str, Any]],
+        options: Dict[str, Any],
+    ) -> None:
+        plan_type = plan.get("type")
+        definition = find_action_in_action_space_or_throw(
+            plan_type, self._agent.action_space
+        )
+        param = plan.get("param")
+
+        if isinstance(param, dict):
+            for field in find_all_midscene_locator_field(definition):
+                if not param.get(field):
+                    continue
+                # Every locate param gets a dedicated task so cache writing
+                # happens even when the plan already carries coordinates.
+                tasks.append(
+                    self._create_locate_task(
+                        plan.get("thought"),
+                        param[field],
+                        options,
+                        on_result=_write_param_result(param, field),
+                    )
+                )
+
+        async def action_executor(
+            task_context: Dict[str, Any],
+            _plan=plan,
+            _definition=definition,
+            _plan_type=plan_type,
+        ) -> Dict[str, Any]:
+            delay_before = _definition_field(
+                _definition, "delay_before_runner"
+            )
+            if delay_before is None:
+                delay_before = 200
+            delay_after = _definition_field(
+                _definition, "delay_after_runner"
+            )
+            if delay_after is None:
+                wait_after = self._agent.wait_after_action
+                delay_after = 300 if wait_after is None else wait_after
+            await _run_before_invoke(
+                self._agent.interface,
+                _plan_type,
+                _plan.get("param"),
+                delay_before,
+            )
+            action_result = await execute_planning_action(
+                self._agent,
+                _plan,
+                distance_ratio=options.get("distanceRatio"),
+                cacheable=options.get("cacheable"),
+                task_context=task_context,
+            )
+            await _run_after_invoke(
+                self._agent.interface,
+                _plan_type,
+                _plan.get("param"),
+                delay_after,
+            )
+            return {"output": action_result}
+
+        tasks.append(
+            {
+                "type": "Action Space",
+                "subType": plan_type,
+                "param": param,
+                "thought": plan.get("thought"),
+                "planningFeedbackMaxLength": _definition_field(
+                    definition, "planning_feedback_max_length"
+                ),
+                "executor": action_executor,
+            }
+        )
+
+    def _create_locate_task(
+        self,
+        thought: Any,
+        raw_param: Any,
+        options: Dict[str, Any],
+        on_result: Optional[Any] = None,
+    ) -> Dict[str, Any]:
+        locate_param = _normalize_locate_param(raw_param)
+        if options.get("cacheable") is not None:
+            locate_param = {
+                **locate_param,
+                "cacheable": options["cacheable"],
+            }
+        if options.get("deepLocate"):
+            locate_param.setdefault("deepLocate", True)
+        multimodal_prompt = options.get("multimodalPrompt")
+        prompt = locate_param.get("prompt")
+        if multimodal_prompt and prompt:
+            if isinstance(prompt, str):
+                locate_param["prompt"] = {
+                    "prompt": prompt,
+                    **multimodal_prompt,
+                }
+            elif isinstance(prompt, dict) and not prompt.get("images"):
+                locate_param["prompt"] = {
+                    **prompt,
+                    **multimodal_prompt,
+                }
+
+        async def locate_executor(
+            task_context: Dict[str, Any],
+            _param=locate_param,
+            _on_result=on_result,
+        ) -> Dict[str, Any]:
+            previous = self._agent._provided_context
+            if task_context.get("uiContext") is not None:
+                self._agent._provided_context = task_context["uiContext"]
+            try:
+                element = await locate_for_action(self._agent, _param)
+            finally:
+                self._agent._provided_context = previous
+            if _on_result is not None:
+                _on_result(element)
+            return {"output": {"element": element}}
+
+        return {
+            "type": "Planning",
+            "subType": "Locate",
+            "param": locate_param,
+            "thought": thought,
+            "executor": locate_executor,
+        }
 
 
 async def _noop_executor(task_context: Dict[str, Any]) -> None:
@@ -258,6 +322,31 @@ def _definition_field(definition: Any, name: str) -> Any:
     if isinstance(definition, dict):
         return definition.get(name)
     return getattr(definition, name, None)
+
+
+def _write_param_result(param: Dict[str, Any], field: str):
+    def write(result: Any) -> None:
+        param[field] = result
+
+    return write
+
+
+def _accepts_task_context(execute: Any) -> bool:
+    """Check whether an action executor wants the running task context."""
+    try:
+        parameters = inspect.signature(execute).parameters.values()
+    except (TypeError, ValueError):
+        return False
+    positional = 0
+    for parameter in parameters:
+        if parameter.kind is inspect.Parameter.VAR_POSITIONAL:
+            return True
+        if parameter.kind is inspect.Parameter.KEYWORD_ONLY:
+            if parameter.name == "task_context":
+                return True
+            continue
+        positional += 1
+    return positional >= 4
 
 
 async def _maybe_await(value: Any) -> Any:
@@ -328,13 +417,16 @@ async def execute_planning_action(
     action: Dict[str, Any],
     distance_ratio: Optional[float] = None,
     cacheable: Optional[bool] = None,
-) -> None:
+    task_context: Optional[Dict[str, Any]] = None,
+) -> Any:
     action_type = action.get("type")
     definition = find_action_in_action_space_or_throw(action_type, agent.action_space)
     param = action.get("param") or {}
     if distance_ratio is not None:
         param = scale_action_distances(param, definition, distance_ratio)
         action["param"] = param
+    # Execution-time schema pass: applies defaults, transforms and refinements.
+    param = parse_action_param(param, definition) or {}
     if cacheable is not None:
         locate_fields = (
             definition.get("locate_fields")
@@ -351,7 +443,16 @@ async def execute_planning_action(
     if definition.execute is None:
         raise NotImplementedError(f"Action {action_type} has no executor")
     logger.info(f"Executing action {action_type}: {param}")
-    await definition.execute(exec_param, agent.interface, agent._locate_for_action)
+    if task_context is not None and _accepts_task_context(definition.execute):
+        return await definition.execute(
+            exec_param,
+            agent.interface,
+            agent._locate_for_action,
+            task_context,
+        )
+    return await definition.execute(
+        exec_param, agent.interface, agent._locate_for_action
+    )
 
 
 async def locate_for_action(agent, locate_param: Any) -> Dict[str, Any]:

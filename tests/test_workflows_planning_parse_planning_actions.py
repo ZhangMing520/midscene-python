@@ -135,20 +135,48 @@ def test_shares_execution_validation_for_ordinary_parameters(param):
     ) == accepts(lambda: parse_action_param(param, definition))
 
 
-@pytest.mark.skip(
-    reason="Upstream relies on zod defaults/transforms; Python parse_action_param "
-    "returns raw params without applying schema defaults."
-)
 def test_preserves_raw_parameters_during_preflight_and_applies_defaults_at_execution():
     """preserves raw parameters during preflight and applies defaults at execution"""
+    definition = DeviceAction(
+        name="Input",
+        description="Input",
+        param_schema={
+            "value": {"type": "string", "transform": len},
+            "count": {"type": "number", "default": 1},
+        },
+    )
+    param = {"value": "hello"}
+
+    _parse([{"type": "Input", "param": param}], [definition])
+
+    assert param == {"value": "hello"}
+    assert parse_action_param(param, definition) == {"value": 5, "count": 1}
 
 
-@pytest.mark.skip(
-    reason="Upstream relies on zod field refinements; Python action param schemas "
-    "are plain dicts without refinement validation."
-)
 def test_shares_ordinary_field_refinements_when_a_locator_is_present():
     """shares ordinary field refinements when a locator is present"""
+    definition = DeviceAction(
+        name="Input",
+        description="Input",
+        param_schema={
+            "locate": {"type": "locate"},
+            "value": {
+                "type": "string",
+                "refine": lambda value: value != "invalid",
+            },
+        },
+        locate_fields=["locate"],
+    )
+    param = {
+        "locate": {"prompt": "field", "bbox": [10, 20, 30, 40]},
+        "value": "invalid",
+    }
+
+    _assert_raises(lambda: parse_action_param(param, definition), "value")
+    _assert_raises(
+        lambda: _parse([{"type": "Input", "param": param}], [definition]),
+        "Invalid parameters for action Input: value",
+    )
 
 
 @pytest.mark.parametrize(

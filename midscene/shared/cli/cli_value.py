@@ -40,6 +40,15 @@ def _type_names(field: Field) -> List[str]:
     return [part.strip() for part in str(raw).split("|")]
 
 
+def _union_options(field: Field) -> Optional[List[Field]]:
+    """Return the structured alternatives of a union descriptor."""
+    options = field.get("options")
+    if not isinstance(options, (list, tuple)):
+        return None
+    alternatives = [option for option in options if isinstance(option, dict)]
+    return alternatives or None
+
+
 def _accepts_type(type_name: str, field: Field, value: Any) -> Optional[bool]:
     name = type_name.strip().lower()
     if name.endswith("[]"):
@@ -59,7 +68,7 @@ def _accepts_type(type_name: str, field: Field, value: Any) -> Optional[bool]:
         return isinstance(value, bool)
     if name == "locate":
         return isinstance(value, (str, dict))
-    if name in ("array", "list"):
+    if name in ("array", "list", "tuple"):
         return isinstance(value, list)
     if name in ("object", "record", "dict"):
         return isinstance(value, dict)
@@ -69,6 +78,11 @@ def _accepts_type(type_name: str, field: Field, value: Any) -> Optional[bool]:
         return value == field.get("value")
     if name == "enum":
         return value in (field.get("enum") or [])
+    if name in ("nativeenum", "native_enum"):
+        values = field.get("enum", field.get("values"))
+        if isinstance(values, dict):
+            values = list(values.values())
+        return value in (values or [])
     if name in ("any", "unknown"):
         return None
     return None
@@ -76,6 +90,17 @@ def _accepts_type(type_name: str, field: Field, value: Any) -> Optional[bool]:
 
 def _accepts_value(field: Field, value: Any) -> Optional[bool]:
     """Only inspect scalar constraints; collections keep full validation."""
+    options = _union_options(field)
+    if options is not None:
+        unknown = False
+        for option in options:
+            result = _accepts_value(option, value)
+            if result is True:
+                return True
+            if result is None:
+                unknown = True
+        return None if unknown else False
+
     unknown = False
     for type_name in _type_names(field):
         result = _accepts_type(type_name, field, value)
@@ -91,30 +116,60 @@ def _uses_legacy_inference(field: Field) -> bool:
 
 
 def _get_input_fields(field: Field) -> List[Field]:
-    # Keep the actual alternatives: a repeated tuple argument must retain its
-    # position-specific schema.
-    return [field]
+    # Keep the actual alternatives: a string literal is not an arbitrary
+    # string, and a repeated tuple argument must retain its position-specific
+    # schema.
+    options = _union_options(field)
+    if options is None:
+        return [field]
+    flattened: List[Field] = []
+    for option in options:
+        flattened.extend(_get_input_fields(option))
+    return flattened or [field]
+
+
+def _collection_kind(field: Field) -> Optional[str]:
+    for name in _type_names(field):
+        lowered = name.lower()
+        if lowered == "tuple":
+            return "tuple"
+        if lowered in ("array", "list") or lowered.endswith("[]"):
+            return "array"
+    return None
 
 
 def _get_repeated_input_fields(fields: List[Field], index: int) -> List[Field]:
     collections = [
-        field
-        for field in fields
-        if any(name.lower().endswith("[]") or name.lower() in ("array", "tuple")
-               for name in _type_names(field))
+        field for field in fields if _collection_kind(field) is not None
     ]
     if not collections:
         return fields
     repeated: List[Field] = []
     for field in collections:
+        if _collection_kind(field) == "tuple":
+            items = field.get("items")
+            item: Any = None
+            if isinstance(items, (list, tuple)) and index < len(items):
+                item = items[index]
+            if item is None:
+                item = field.get("rest")
+            if isinstance(item, dict):
+                repeated.extend(_get_input_fields(item))
+            continue
         item = field.get("items")
         if isinstance(item, dict):
-            repeated.append(item)
+            repeated.extend(_get_input_fields(item))
             continue
         for name in _type_names(field):
-            if name.lower().endswith("[]"):
-                repeated.append({"type": name[:-2], "description": field.get("description", "")})
-            elif name.lower() == "array":
+            lowered = name.lower()
+            if lowered.endswith("[]"):
+                repeated.append(
+                    {
+                        "type": name[:-2],
+                        "description": field.get("description", ""),
+                    }
+                )
+            elif lowered in ("array", "list"):
                 repeated.append({"type": "any"})
     return repeated or fields
 

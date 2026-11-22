@@ -276,13 +276,51 @@ async def test_accepts_coordinate_only_planning_with_an_explicit_locate_model():
     assert agent.locate_calls == []
 
 
-@pytest.mark.skip(
-    reason="Python has no TaskBuilder plan-to-task handler registry; Agent.ai_act "
-    "records Planning/Action Space tasks without planningFeedbackMaxLength"
-)
 @pytest.mark.asyncio
 async def test_dispatches_plans_using_handler_registry():
-    pass
+    tap = DeviceAction(
+        name="Tap",
+        description="mock tap action",
+        param_schema={"locate": {"type": "locate"}},
+        locate_fields=["locate"],
+        planning_feedback_max_length=123,
+        execute=lambda *_args: None,
+    )
+    sleep = DeviceAction(
+        name="Sleep",
+        description="mock sleep action",
+        param_schema={"timeMs": {"type": "number"}},
+        execute=lambda *_args: None,
+    )
+
+    builder = task_builder.TaskBuilder(
+        {
+            "interfaceInstance": _LocateInterface(),
+            "actionSpace": [tap, sleep],
+            "getDefaultModelRuntime": lambda: None,
+        }
+    )
+    plans = [
+        {"type": "Locate", "thought": "find element", "param": {"prompt": "first"}},
+        {"type": "Finished", "thought": "all done", "param": None},
+        {"type": "Sleep", "thought": "take a break", "param": {"timeMs": 100}},
+        {
+            "type": "Tap",
+            "thought": "tap element",
+            "param": {"locate": {"prompt": "button"}},
+        },
+    ]
+
+    built = await builder.build(plans, None, None)
+
+    assert [(task["type"], task["subType"]) for task in built["tasks"]] == [
+        ("Planning", "Locate"),
+        ("Action Space", "Finished"),
+        ("Action Space", "Sleep"),
+        ("Planning", "Locate"),
+        ("Action Space", "Tap"),
+    ]
+    assert built["tasks"][-1]["planningFeedbackMaxLength"] == 123
 
 
 @pytest.mark.asyncio
@@ -290,7 +328,7 @@ async def test_uses_promptdisplay_for_the_located_element_passed_to_an_action():
     captured = {}
 
     async def execute(param, device, locate_fn):
-        captured["element"] = await locate_fn(param["locate"])
+        captured["element"] = param["locate"]
 
     tap = DeviceAction(
         name="Tap",
@@ -335,9 +373,9 @@ async def test_uses_promptdisplay_for_the_located_element_passed_to_an_action():
         },
     }
     built = await builder.build([plan], None, None, {})
-    await built["tasks"][0]["executor"](
-        {"task": {"timing": {}}, "uiContext": None}
-    )
+    task_context = {"task": {"timing": {}}, "uiContext": None}
+    await built["tasks"][0]["executor"](task_context)
+    await built["tasks"][1]["executor"](task_context)
 
     assert captured["element"]["description"] == "orange"
     assert plan["param"]["locate"]["description"] == "orange"
@@ -444,12 +482,56 @@ async def test_supports_fast_path_action_delays_for_system_actions():
     assert fast_after - fast_call_at < 0.1
 
 
-@pytest.mark.skip(
-    reason="Python ExecutionTask has no planningFeedback field on the running task"
-)
 @pytest.mark.asyncio
 async def test_allows_actions_to_attach_planning_feedback_to_the_running_task():
-    pass
+    async def action_call():
+        return "0\n"
+
+    async def execute(param, _device, _locate_fn, task_context):
+        output = await action_call()
+        if not task_context or not task_context.get("task"):
+            raise RuntimeError("executor context task is required")
+        task_context["task"]["planningFeedback"] = (
+            f"ReadState returned {param['key']}: {output}"
+        )
+        return output
+
+    read_state = DeviceAction(
+        name="ReadState",
+        description="read state",
+        delay_before_runner=0,
+        delay_after_runner=0,
+        execute=execute,
+    )
+    builder = task_builder.TaskBuilder(
+        {
+            "interfaceInstance": _LocateInterface(),
+            "actionSpace": [read_state],
+            "getDefaultModelRuntime": lambda: None,
+        }
+    )
+
+    built = await builder.build(
+        [
+            {
+                "type": "ReadState",
+                "thought": "read brightness state",
+                "param": {"key": "brightness"},
+            }
+        ],
+        None,
+        None,
+    )
+    task_context = {
+        "task": {"timing": {}},
+        "uiContext": SimpleNamespace(shrunk_shot_to_logical_ratio=1.0),
+    }
+    result = await built["tasks"][0]["executor"](task_context)
+
+    assert result == {"output": "0\n"}
+    assert task_context["task"]["planningFeedback"] == (
+        "ReadState returned brightness: 0\n"
+    )
 
 
 @pytest.mark.parametrize(
@@ -457,16 +539,7 @@ async def test_allows_actions_to_attach_planning_feedback_to_the_running_task():
     [
         ("model-input-image-pixel", 120, 1.5, 80),
         ("device-logical", 120, None, 120),
-        pytest.param(
-            "model-input-image-pixel",
-            None,
-            1.5,
-            100,
-            marks=pytest.mark.skip(
-                reason="Python action definitions do not declare JSON-schema "
-                "defaults, so a missing distance is left to the platform action"
-            ),
-        ),
+        ("model-input-image-pixel", None, 1.5, 100),
     ],
 )
 @pytest.mark.asyncio
@@ -481,7 +554,10 @@ async def test_preserves_the_distance_unit_and_device_unit_defaults(
     action = DeviceAction(
         name="CustomMove",
         description="custom move",
-        param_schema={"distance": {"type": "number"}},
+        param_schema={
+            "distance": {"type": "number", "default": 100},
+            "duration": {"type": "number", "default": 500},
+        },
         distance_fields=["distance"],
         execute=execute,
     )
@@ -493,10 +569,11 @@ async def test_preserves_the_distance_unit_and_device_unit_defaults(
         async def _locate_for_action(self, locate_param):
             return locate_param
 
+    param = {} if distance is None else {"distance": distance}
     await task_builder.execute_planning_action(
         _Agent(),
-        {"type": "CustomMove", "param": {"distance": distance}},
+        {"type": "CustomMove", "param": param},
         distance_ratio=ratio,
     )
 
-    assert captured[0]["distance"] == expected
+    assert captured[0] == {"distance": expected, "duration": 500}
