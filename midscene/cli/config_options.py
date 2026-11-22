@@ -2,6 +2,19 @@
 
 from typing import Any, Dict
 
+# Upstream defaultConfig.
+DEFAULT_CONFIG = {
+    "concurrent": 1,
+    "continueOnError": False,
+    "retry": 0,
+    "shareBrowserContext": False,
+    "reusePage": False,
+    "headed": False,
+    "keepWindow": False,
+    "dotenvOverride": False,
+    "dotenvDebug": False,
+}
+
 # Upstream midsceneYamlTargetKeys.
 YAML_TARGET_KEYS = (
     "web", "page", "browser", "target",
@@ -17,6 +30,7 @@ def pick_yaml_target_config(config: Dict[str, Any]) -> Dict[str, Any]:
 
 
 __all__ = [
+    "DEFAULT_CONFIG",
     "NATIVE_TARGET_KEYS",
     "WEB_TARGET_KEYS",
     "YAML_TARGET_KEYS",

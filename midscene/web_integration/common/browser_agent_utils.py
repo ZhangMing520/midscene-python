@@ -6,9 +6,11 @@ side counterpart of the context capture that the Playwright page used to own
 inline.
 """
 
+import asyncio
 import base64
 import importlib.metadata
 import re
+import weakref
 from typing import Any, Dict, Optional
 
 from loguru import logger
@@ -32,6 +34,7 @@ BROWSER_RUNTIME_CONFIG: Dict[str, Dict[str, str]] = {
 }
 
 _CHROME_SELECT_STYLE_ID = "midscene-force-select-rendering"
+_FORCE_SELECT_RENDERING_PAGES: "weakref.WeakSet[Any]" = weakref.WeakSet()
 _CHROME_SELECT_INIT_SCRIPT = """
 (() => {
   const addStyle = () => {
@@ -103,8 +106,30 @@ async def apply_force_chrome_select_rendering(
                 "correctly."
             )
 
+    # Only inject once per page to avoid stacking duplicate load listeners.
+    if page in _FORCE_SELECT_RENDERING_PAGES:
+        return
+    _FORCE_SELECT_RENDERING_PAGES.add(page)
+
     await page.add_init_script(_CHROME_SELECT_INIT_SCRIPT)
     await page.evaluate(_CHROME_SELECT_INIT_SCRIPT)
+
+    async def _reinject() -> None:
+        try:
+            await page.evaluate(_CHROME_SELECT_INIT_SCRIPT)
+        except Exception as error:
+            logger.debug(f"Failed to reapply select rendering style: {error}")
+
+    def _on_load(*_args: Any) -> None:
+        try:
+            asyncio.get_running_loop().create_task(_reinject())
+        except RuntimeError:
+            # No running loop: the init script already covers the next document.
+            pass
+
+    on = getattr(page, "on", None)
+    if on is not None:
+        on("load", _on_load)
 
 
 async def take_screenshot_base64(page: Any) -> str:

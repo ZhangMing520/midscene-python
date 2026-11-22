@@ -1,5 +1,7 @@
 """Shared CLI utilities (upstream packages/cli/src/cli-utils.ts)."""
 
+import glob
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -8,6 +10,36 @@ from rich.console import Console
 from midscene.cli.workflow_format import is_legacy_yaml_path
 
 _SERVE_SERVERS: dict = {}
+
+
+def match_yaml_files(
+    file_glob: str, options: Optional[dict] = None
+) -> list:
+    """Expand a YAML glob (upstream matchYamlFiles): directories expand to
+    ``**/*.yml``/``**/*.yaml``, results are absolute and sorted."""
+    base = Path((options or {}).get("cwd") or os.getcwd())
+    candidate = Path(file_glob)
+    if not candidate.is_absolute():
+        candidate = base / candidate
+
+    if candidate.is_dir():
+        patterns = [candidate / "**" / "*.yml", candidate / "**" / "*.yaml"]
+    else:
+        patterns = [candidate]
+
+    matches = []
+    for pattern in patterns:
+        matches.extend(glob.glob(str(pattern), recursive=True))
+
+    return sorted(
+        {
+            os.path.abspath(match)
+            for match in matches
+            if os.path.isfile(match)
+            and match.endswith((".yml", ".yaml"))
+            and "node_modules" not in Path(match).parts
+        }
+    )
 
 
 def _read_batch_config(path: str) -> dict:

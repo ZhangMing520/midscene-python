@@ -60,6 +60,59 @@ _ENV_VAR_REF = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
 
 _TOP_LEVEL_KEY = re.compile(r"[A-Za-z_][\w-]*\s*:")
 
+_WEB_TARGET_SOURCES = ("page", "browser", "web", "target")
+
+
+def resolve_web_target(config: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Resolve the single web target section (upstream resolveWebTarget)."""
+    entries = [
+        (source, config[source])
+        for source in _WEB_TARGET_SOURCES
+        if source in config
+    ]
+
+    if not entries:
+        return None
+
+    if len(entries) > 1:
+        specified = ", ".join(source for source, _ in entries)
+        raise ValueError(
+            "[midscene] Only one web target can be specified, but found "
+            f"multiple: {specified}. Please specify only one of: page, "
+            "browser, web, or target."
+        )
+
+    source, target = entries[0]
+    explicit_mode = target.get("mode") if isinstance(target, dict) else None
+    if explicit_mode not in (None, "page", "browser"):
+        raise ValueError(
+            "[midscene] web target mode must be either \"page\" or "
+            f"\"browser\", but got \"{explicit_mode}\"."
+        )
+    if source == "page" and explicit_mode == "browser":
+        raise ValueError(
+            "[midscene] page target cannot use mode: browser. Use browser: "
+            "instead."
+        )
+    if source == "browser" and explicit_mode == "page":
+        raise ValueError(
+            "[midscene] browser target cannot use mode: page. Use page: "
+            "instead."
+        )
+
+    mode = (
+        "page"
+        if source == "page"
+        else "browser"
+        if source == "browser"
+        else explicit_mode or "page"
+    )
+    return {
+        "source": source,
+        "mode": mode,
+        "target": {**(target or {}), "mode": mode},
+    }
+
 
 def _interpolate_env_vars(content: str) -> str:
     """Replace ${VAR} references line by line (upstream interpolateYamlScriptEnvVars).
