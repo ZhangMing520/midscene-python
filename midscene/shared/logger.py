@@ -10,6 +10,8 @@ from typing import Any, Callable, Dict, Optional
 
 from loguru import logger
 
+from midscene.shared.common import get_midscene_run_sub_dir
+
 # Console handler/scope context (upstream runWithConsoleLogHandler / Scope).
 _console_handler: contextvars.ContextVar = contextvars.ContextVar(
     "midscene_console_handler", default=None
@@ -17,6 +19,29 @@ _console_handler: contextvars.ContextVar = contextvars.ContextVar(
 _console_scope: contextvars.ContextVar = contextvars.ContextVar(
     "midscene_console_scope", default=None
 )
+
+
+_log_directory_resolver: Optional[Callable[[], str]] = None
+
+
+def set_log_directory_resolver(
+    resolver: Optional[Callable[[], str]],
+) -> None:
+    """Override the directory used by file logs in the current process.
+
+    Callers that do not configure a resolver keep the standard
+    ``midscene_run/log`` location. This is process-local so an app can isolate
+    its logs without changing the run directory itself.
+    """
+    global _log_directory_resolver
+    _log_directory_resolver = resolver
+
+
+def get_log_directory() -> str:
+    """Return the directory file-log sinks should write to."""
+    if _log_directory_resolver is not None:
+        return _log_directory_resolver()
+    return get_midscene_run_sub_dir("log")
 
 
 def _console_warn(*args: Any) -> None:

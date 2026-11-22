@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-11-22T08:55:43+00:00",
+  "generated_at": "2026-11-22T09:06:56+00:00",
   "upstream_root": "/home/zhangming/gitspace/midscene",
   "counts": {
     "modules": 425,
-    "api_missing": 281,
-    "method_missing_functions": 167,
+    "api_missing": 240,
+    "method_missing_functions": 143,
     "method_missing_classes": 19,
     "method_missing_methods": 104,
     "signature_mismatch": 50
@@ -4359,40 +4359,15 @@
       "python": "core/dump/html_utils.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "escapeContent",
-        "extractReportArtifactPathAsync",
-        "extractTestRunReportDumpSync",
-        "parseDumpScript",
-        "parseDumpScriptAttributes",
-        "streamDumpScriptsAsync",
-        "streamImageScriptsToFile",
-        "streamScanTags",
-        "streamScanTagsAsync",
-        "unescapeContent"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [
-        {
-          "name": "collectImageScriptIds",
-          "found_in": "midscene/core/dump/screenshot_store.py"
-        },
         {
           "name": "extractImageByIdSync",
           "found_in": "midscene/core/screenshot_item.py"
         }
       ],
-      "method_missing_functions": [
-        "collectImageScriptIds",
-        "extractReportArtifactPathAsync",
-        "extractTestRunReportDumpSync",
-        "parseDumpScript",
-        "parseDumpScriptAttributes",
-        "streamDumpScriptsAsync",
-        "streamImageScriptsToFile",
-        "streamScanTags",
-        "streamScanTagsAsync"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -6503,10 +6478,8 @@
       "python": "shared/env/constants.py",
       "package": "shared",
       "batch": "P2",
-      "status": "partial",
-      "api_missing": [
-        "DEFAULT_MODEL_CONFIG_KEYS_LEGACY"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
@@ -6599,10 +6572,8 @@
       "python": "shared/env/parse_model_config.py",
       "package": "shared",
       "batch": "P2",
-      "status": "partial",
-      "api_missing": [
-        "getUITarsModelVersion"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
@@ -6619,9 +6590,6 @@
       "status": "partial",
       "api_missing": [
         "MIDSCENE_DANGEROUSLY_PRINT_ALL_CONFIG",
-        "MIDSCENE_OPENAI_HTTP_PROXY",
-        "MIDSCENE_OPENAI_INIT_CONFIG_JSON",
-        "MIDSCENE_OPENAI_SOCKS_PROXY",
         "UITarsModelVersion",
         "UNUSED_ENV_KEYS"
       ],
@@ -6959,6 +6927,18 @@
           "found_in": "midscene/shared/env/__init__.py"
         },
         {
+          "name": "MIDSCENE_OPENAI_HTTP_PROXY",
+          "found_in": "midscene/shared/env/constants.py"
+        },
+        {
+          "name": "MIDSCENE_OPENAI_INIT_CONFIG_JSON",
+          "found_in": "midscene/shared/env/constants.py"
+        },
+        {
+          "name": "MIDSCENE_OPENAI_SOCKS_PROXY",
+          "found_in": "midscene/shared/env/constants.py"
+        },
+        {
           "name": "MIDSCENE_PLANNING_MODEL_API_KEY",
           "found_in": "midscene/shared/env/__init__.py"
         },
@@ -7245,17 +7225,10 @@
       "python": "shared/img/box_select.py",
       "package": "shared",
       "batch": "P2",
-      "status": "partial",
-      "api_missing": [
-        "annotateRects",
-        "compositeElementInfoImg",
-        "compositePointMarkerImg",
-        "processImageElementInfo"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "annotateRects"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -7297,50 +7270,10 @@
       "python": "shared/img/transform.py",
       "package": "shared",
       "batch": "P2",
-      "status": "partial",
-      "api_missing": [
-        "constrainBase64ImageToMaxSize",
-        "convertBase64ImageToJpeg",
-        "convertImgBufferToJpeg",
-        "createImgBase64ByFormat",
-        "httpImg2Base64",
-        "inferBase64ImageFormat",
-        "localImg2Base64",
-        "normalizeBase64Image",
-        "normalizeScreenshotBase64",
-        "padBase64ImageToMinimumSize",
-        "paddingToMatchBlock",
-        "photonFromBase64",
-        "photonToBase64",
-        "preProcessImageUrl",
-        "resizeAndConvertImgBuffer",
-        "resizeBase64ImageToJpeg",
-        "resizeImgBase64",
-        "saveBase64Image",
-        "scaleImage",
-        "zoomForGPT4o"
-      ],
-      "api_moved": [
-        {
-          "name": "parseBase64",
-          "found_in": "midscene/shared/agent_tools/base_tools.py"
-        }
-      ],
-      "method_missing_functions": [
-        "constrainBase64ImageToMaxSize",
-        "convertBase64ImageToJpeg",
-        "convertImgBufferToJpeg",
-        "padBase64ImageToMinimumSize",
-        "paddingToMatchBlock",
-        "photonFromBase64",
-        "photonToBase64",
-        "resizeAndConvertImgBuffer",
-        "resizeBase64ImageToJpeg",
-        "resizeImgBase64",
-        "saveBase64Image",
-        "scaleImage",
-        "zoomForGPT4o"
-      ],
+      "status": "done",
+      "api_missing": [],
+      "api_moved": [],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -7382,14 +7315,10 @@
       "python": "shared/logger.py",
       "package": "shared",
       "batch": "P2",
-      "status": "partial",
-      "api_missing": [
-        "setLogDirectoryResolver"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "setLogDirectoryResolver"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -7431,10 +7360,8 @@
       "python": "shared/report_artifact.py",
       "package": "shared",
       "batch": "P2",
-      "status": "partial",
-      "api_missing": [
-        "REPORT_ARTIFACT_SCHEMA_VERSION"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [
         {
           "name": "REPORT_ARTIFACT_SCRIPT_TYPE",

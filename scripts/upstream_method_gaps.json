@@ -1,8 +1,8 @@
 {
   "upstream_root": "/home/zhangming/gitspace/midscene",
   "counts": {
-    "modules_with_gaps": 135,
-    "missing_functions": 167,
+    "modules_with_gaps": 132,
+    "missing_functions": 143,
     "moved_functions": 21,
     "missing_classes": 19,
     "missing_methods": 104,
@@ -803,107 +803,6 @@
       ]
     },
     {
-      "package": "shared",
-      "upstream": "img/transform.ts",
-      "python": "shared/img/transform.py",
-      "missing_functions": [
-        {
-          "name": "constrainBase64ImageToMaxSize",
-          "params": [
-            "inputBase64",
-            "options"
-          ]
-        },
-        {
-          "name": "convertBase64ImageToJpeg",
-          "params": [
-            "inputBase64",
-            "jpegQuality"
-          ]
-        },
-        {
-          "name": "convertImgBufferToJpeg",
-          "params": [
-            "inputData",
-            "quality"
-          ]
-        },
-        {
-          "name": "padBase64ImageToMinimumSize",
-          "params": [
-            "imageBase64",
-            "minimum"
-          ]
-        },
-        {
-          "name": "paddingToMatchBlock",
-          "params": [
-            "image",
-            "blockSize"
-          ]
-        },
-        {
-          "name": "photonFromBase64",
-          "params": [
-            "base64"
-          ]
-        },
-        {
-          "name": "photonToBase64",
-          "params": [
-            "image",
-            "quality"
-          ]
-        },
-        {
-          "name": "resizeAndConvertImgBuffer",
-          "params": [
-            "inputFormat",
-            "inputData",
-            "newSize"
-          ]
-        },
-        {
-          "name": "resizeBase64ImageToJpeg",
-          "params": [
-            "inputBase64",
-            "options"
-          ]
-        },
-        {
-          "name": "resizeImgBase64",
-          "params": [
-            "inputBase64",
-            "newSize"
-          ]
-        },
-        {
-          "name": "saveBase64Image",
-          "params": [
-            "options"
-          ]
-        },
-        {
-          "name": "scaleImage",
-          "params": [
-            "imageBase64",
-            "scale"
-          ]
-        },
-        {
-          "name": "zoomForGPT4o",
-          "params": [
-            "originalWidth",
-            "originalHeight"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
       "package": "computer",
       "upstream": "device.ts",
       "python": "computer/device.py",
@@ -989,89 +888,6 @@
           "python_owner": "midscene/computer/device.py"
         }
       ],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "dump/html-utils.ts",
-      "python": "core/dump/html_utils.py",
-      "missing_functions": [
-        {
-          "name": "collectImageScriptIds",
-          "params": [
-            "filePath"
-          ]
-        },
-        {
-          "name": "extractReportArtifactPathAsync",
-          "params": [
-            "filePath"
-          ]
-        },
-        {
-          "name": "extractTestRunReportDumpSync",
-          "params": [
-            "filePath"
-          ]
-        },
-        {
-          "name": "parseDumpScript",
-          "params": [
-            "html"
-          ]
-        },
-        {
-          "name": "parseDumpScriptAttributes",
-          "params": [
-            "html"
-          ]
-        },
-        {
-          "name": "streamDumpScriptsAsync",
-          "params": [
-            "filePath",
-            "visitor"
-          ]
-        },
-        {
-          "name": "streamImageScriptsToFile",
-          "params": [
-            "srcFilePath",
-            "destFilePath",
-            "writtenImageIds"
-          ]
-        },
-        {
-          "name": "streamScanTags",
-          "params": [
-            "filePath",
-            "openTag",
-            "closeTag",
-            "onMatch"
-          ]
-        },
-        {
-          "name": "streamScanTagsAsync",
-          "params": [
-            "filePath",
-            "openTag",
-            "closeTag",
-            "onMatch"
-          ]
-        }
-      ],
-      "moved_functions": [
-        {
-          "name": "extractImageByIdSync",
-          "params": [
-            "htmlPath",
-            "imageId"
-          ],
-          "found_in": "midscene/core/dump/screenshot_store.py"
-        }
-      ],
-      "missing_classes": [],
-      "missing_methods": [],
       "signature_mismatch": []
     },
     {
@@ -2885,42 +2701,6 @@
       "signature_mismatch": []
     },
     {
-      "package": "shared",
-      "upstream": "img/box-select.ts",
-      "python": "shared/img/box_select.py",
-      "missing_functions": [
-        {
-          "name": "annotateRects",
-          "params": [
-            "imgBase64",
-            "rects",
-            "prompt?"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "shared",
-      "upstream": "logger.ts",
-      "python": "shared/logger.py",
-      "missing_functions": [
-        {
-          "name": "setLogDirectoryResolver",
-          "params": [
-            "resolver"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
       "package": "cli",
       "upstream": "openai/login.ts",
       "python": "cli/openai/login.py",
@@ -4043,6 +3823,25 @@
           ]
         }
       ]
+    },
+    {
+      "package": "core",
+      "upstream": "dump/html-utils.ts",
+      "python": "core/dump/html_utils.py",
+      "missing_functions": [],
+      "moved_functions": [
+        {
+          "name": "extractImageByIdSync",
+          "params": [
+            "htmlPath",
+            "imageId"
+          ],
+          "found_in": "midscene/core/dump/screenshot_store.py"
+        }
+      ],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
     },
     {
       "package": "core",

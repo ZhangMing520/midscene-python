@@ -7,6 +7,15 @@ import pytest
 from midscene.shared import logger as logger_module
 
 
+def test_overrides_the_file_log_directory_for_the_current_process(tmp_path):
+    """overrides the file log directory for the current process"""
+    try:
+        logger_module.set_log_directory_resolver(lambda: str(tmp_path))
+        assert logger_module.get_log_directory() == str(tmp_path)
+    finally:
+        logger_module.set_log_directory_resolver(None)
+
+
 def test_does_not_throw_when_console_logging_cannot_write(monkeypatch):
     """does not throw when console logging cannot write"""
     debug_calls = []

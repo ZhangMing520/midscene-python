@@ -9,9 +9,13 @@ from midscene.core.dump.screenshot_restoration import (
     restore_image_references,
     restore_report_image_references,
 )
+from midscene.core.dump.html_utils import (
+    escape_content,
+    parse_dump_script,
+    parse_dump_script_attributes,
+    unescape_content,
+)
 from midscene.core.utils import (
-    anti_escape_script_tag,
-    escape_script_tag,
     insert_content_before_closing_html,
     report_html_content,
 )
@@ -34,13 +38,49 @@ def _screenshot_ref(image_id: str, captured_at: int = 1) -> dict:
 
 
 def test_should_escape_and_unescape_content_correctly():
-    original = "<script>alert(1)</script>"
+    """should escape and unescape content correctly"""
+    original = '<script>alert("test")</script>'
 
-    escaped = escape_script_tag(original)
+    escaped = escape_content(original)
 
-    assert "<" not in escaped
-    assert ">" not in escaped
-    assert anti_escape_script_tag(escaped) == original
+    assert "<script>" not in escaped
+    assert unescape_content(escaped) == original
+
+
+def test_should_handle_empty_string():
+    """should handle empty string"""
+    assert escape_content("") == ""
+    assert unescape_content("") == ""
+
+
+def test_should_parse_dump_script_content_from_html():
+    """should parse dump script content from HTML"""
+    value = '{"test": "data"}'
+    html = f'<script type="midscene_web_dump">{escape_content(value)}</script>'
+    assert parse_dump_script(html) == value
+
+
+def test_should_throw_error_if_no_dump_script_found():
+    """should throw error if no dump script found"""
+    with pytest.raises(ValueError, match="No dump script found in HTML"):
+        parse_dump_script("<div>No dump</div>")
+
+
+def test_should_parse_attributes_from_dump_script():
+    """should parse attributes from dump script"""
+    html = (
+        '<script type="midscene_web_dump" name="test" version="1.0">'
+        "content</script>"
+    )
+    assert parse_dump_script_attributes(html) == {
+        "name": "test",
+        "version": "1.0",
+    }
+
+
+def test_should_return_empty_object_for_missing_dump_script():
+    """should return empty object for missing dump script"""
+    assert parse_dump_script_attributes("<div>No dump</div>") == {}
 
 
 def test_should_generate_dump_script_tag_without_attributes():

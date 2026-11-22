@@ -1,17 +1,19 @@
 """HTML report helpers (upstream dump/html-utils.ts).
 
-The Python SDK only writes self-contained HTML reports, so the Node streaming
-scanner is reduced to: escape dump payloads, inject dump scripts into the
-report template, and persist dump/log artifacts.
+Escapes dump payloads, injects dump scripts into the report template, persists
+dump/log artifacts, and streams script tags out of large report files without
+loading the whole document into memory.
 """
 
+import asyncio
+import codecs
 import json
 import os
 import re
 import uuid
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterator, List, Optional, Union
-from urllib.parse import quote
+from typing import Any, Callable, Dict, Iterator, List, Optional, Set, Union
+from urllib.parse import quote, unquote
 
 from loguru import logger
 
@@ -42,6 +44,11 @@ def escape_script_tag(value: str) -> str:
 def anti_escape_script_tag(value: str) -> str:
     """Reverse `escape_script_tag`."""
     return value.replace("__midscene_lt__", "<").replace("__midscene_gt__", ">")
+
+
+# Upstream aliases (html-utils.ts): escapeContent / unescapeContent.
+escape_content = escape_script_tag
+unescape_content = anti_escape_script_tag
 
 
 def get_report_tpl() -> str:
@@ -168,6 +175,59 @@ def write_log_file(opts: Dict[str, Any]) -> Optional[str]:
     return str(Path(target_dir) / f"{file_name}.{file_ext}")
 
 
+TagMatchCallback = Callable[[str], bool]
+
+
+class _StreamingTagMatcher:
+    """Incremental matcher for open/close tagged chunks (upstream StreamingTagMatcher)."""
+
+    def __init__(
+        self,
+        open_tag: str,
+        close_tag: str,
+        on_match: TagMatchCallback,
+    ) -> None:
+        self._open_tag = open_tag
+        self._close_tag = close_tag
+        self._on_match = on_match
+        self._leftover = ""
+        self._capturing = False
+        self._current_content = ""
+
+    def push(self, next_chunk: str) -> bool:
+        chunk = self._leftover + next_chunk
+        self._leftover = ""
+        search_start = 0
+
+        while search_start < len(chunk):
+            if not self._capturing:
+                start_index = chunk.find(self._open_tag, search_start)
+                if start_index == -1:
+                    retained = max(0, len(self._open_tag) - 1)
+                    self._leftover = chunk[-retained:] if retained else ""
+                    return False
+                self._capturing = True
+                search_start = start_index + len(self._open_tag)
+
+            end_index = chunk.find(self._close_tag, search_start)
+            if end_index != -1:
+                self._current_content += chunk[search_start:end_index]
+                if self._on_match(self._current_content):
+                    return True
+                self._capturing = False
+                self._current_content = ""
+                search_start = end_index + len(self._close_tag)
+                continue
+
+            retained = max(0, len(self._close_tag) - 1)
+            content_end = max(search_start, len(chunk) - retained)
+            self._current_content += chunk[search_start:content_end]
+            self._leftover = chunk[content_end:]
+            return False
+
+        return False
+
+
 def _iter_tag_contents(
     file_path: str,
     open_tag: str,
@@ -175,44 +235,58 @@ def _iter_tag_contents(
     chunk_size: int = STREAMING_CHUNK_SIZE,
 ) -> Iterator[str]:
     """Yield the contents between matching tags while keeping memory bounded."""
-    with open(file_path, "r", encoding="utf-8") as handle:
-        pending = ""
-        capturing = False
-        content = ""
+    matches: List[str] = []
+    matcher = _StreamingTagMatcher(
+        open_tag,
+        close_tag,
+        lambda content: matches.append(content) or False,
+    )
+    decoder = codecs.getincrementaldecoder("utf-8")()
+    with open(file_path, "rb") as handle:
         while True:
             chunk = handle.read(chunk_size)
             if not chunk:
                 break
-            data = pending + chunk
-            pending = ""
-            search = 0
-            while True:
-                if not capturing:
-                    start = data.find(open_tag, search)
-                    if start == -1:
-                        keep = max(0, len(open_tag) - 1)
-                        pending = data[-keep:] if keep else ""
-                        break
-                    search = start + len(open_tag)
-                    capturing = True
-                    content = ""
-                    continue
-                end = data.find(close_tag, search)
-                if end == -1:
-                    keep = max(0, len(close_tag) - 1)
-                    if keep:
-                        cut = max(search, len(data) - keep)
-                        content += data[search:cut]
-                        pending = data[cut:]
-                    else:
-                        content += data[search:]
-                        pending = ""
-                    break
-                content += data[search:end]
-                yield content
-                capturing = False
-                content = ""
-                search = end + len(close_tag)
+            matcher.push(decoder.decode(chunk))
+            while matches:
+                yield matches.pop(0)
+    matcher.push(decoder.decode(b"", final=True))
+    while matches:
+        yield matches.pop(0)
+
+
+def stream_scan_tags(
+    file_path: str,
+    open_tag: str,
+    close_tag: str,
+    on_match: TagMatchCallback,
+) -> None:
+    """Stream through a file and invoke ``on_match`` for each complete tag.
+
+    Memory usage: O(chunk_size + tag_size), not O(file_size).
+    """
+    matcher = _StreamingTagMatcher(open_tag, close_tag, on_match)
+    decoder = codecs.getincrementaldecoder("utf-8")()
+    with open(file_path, "rb") as handle:
+        while True:
+            chunk = handle.read(STREAMING_CHUNK_SIZE)
+            if not chunk:
+                break
+            if matcher.push(decoder.decode(chunk)):
+                return
+    matcher.push(decoder.decode(b"", final=True))
+
+
+async def stream_scan_tags_async(
+    file_path: str,
+    open_tag: str,
+    close_tag: str,
+    on_match: TagMatchCallback,
+) -> None:
+    """Asynchronously stream tags without blocking the event loop."""
+    await asyncio.to_thread(
+        stream_scan_tags, file_path, open_tag, close_tag, on_match
+    )
 
 
 _SCRIPT_TYPE_PATTERN = re.compile(
@@ -233,15 +307,33 @@ def stream_dump_scripts_sync(
     visitor: Callable[[Dict[str, str]], bool],
 ) -> None:
     """Stream every ``midscene_web_dump`` script; return early when asked."""
-    for content in _iter_tag_contents(file_path, "<script", "</script>"):
+    def visit(content: str) -> bool:
         tag_end = content.find(">")
         if tag_end == -1:
-            continue
+            return False
         if _script_type(content[:tag_end]) != "midscene_web_dump":
-            continue
+            return False
         open_tag = "<script" + content[: tag_end + 1]
-        if visitor({"openTag": open_tag, "content": content[tag_end + 1 :]}):
-            return
+        return visitor({"openTag": open_tag, "content": content[tag_end + 1 :]})
+
+    stream_scan_tags(file_path, "<script", "</script>", visit)
+
+
+async def stream_dump_scripts_async(
+    file_path: str,
+    visitor: Callable[[Dict[str, str]], bool],
+) -> None:
+    """Consume complete elements so dump-tag strings in the Viewer are never payloads."""
+    def visit(content: str) -> bool:
+        tag_end = content.find(">")
+        if tag_end == -1:
+            return False
+        if _script_type(content[:tag_end]) != "midscene_web_dump":
+            return False
+        open_tag = "<script" + content[: tag_end + 1]
+        return visitor({"openTag": open_tag, "content": content[tag_end + 1 :]})
+
+    await stream_scan_tags_async(file_path, "<script", "</script>", visit)
 
 
 def extract_all_dump_scripts_sync(file_path: str) -> List[Dict[str, str]]:
@@ -289,17 +381,80 @@ def stream_inline_report_images(
             return
 
 
-def extract_report_artifact_path_sync(file_path: str) -> Optional[str]:
-    """Extract the manifest path declared by a directory report."""
-    for content in _iter_tag_contents(file_path, "<script", "</script>"):
+def _report_artifact_path_extractor(
+    file_path: str,
+) -> Dict[str, Any]:
+    """Build the visitor/state pair used by the sync and async extractors."""
+    state: Dict[str, Any] = {"path": None}
+
+    def visit(content: str) -> bool:
         tag_end = content.find(">")
         if tag_end == -1:
-            continue
+            return False
         if _script_type(content[:tag_end]) != REPORT_ARTIFACT_SCRIPT_TYPE:
-            continue
+            return False
+        if state["path"] is not None:
+            raise ValueError(
+                f"Report contains multiple artifact entries: {file_path}"
+            )
         value = json.loads(anti_escape_script_tag(content[tag_end + 1 :]))
-        return assert_report_artifact_path(value)
-    return None
+        state["path"] = assert_report_artifact_path(value)
+        return False
+
+    return {"state": state, "visit": visit}
+
+
+def extract_report_artifact_path_sync(file_path: str) -> Optional[str]:
+    """Extract the manifest path declared by a directory report."""
+    extractor = _report_artifact_path_extractor(file_path)
+    stream_scan_tags(
+        file_path, "<script", "</script>", extractor["visit"]
+    )
+    return extractor["state"]["path"]
+
+
+async def extract_report_artifact_path_async(
+    file_path: str,
+) -> Optional[str]:
+    """Asynchronously extract the manifest path declared by a directory report."""
+    extractor = _report_artifact_path_extractor(file_path)
+    await stream_scan_tags_async(
+        file_path, "<script", "</script>", extractor["visit"]
+    )
+    return extractor["state"]["path"]
+
+
+def extract_test_run_report_dump_sync(
+    file_path: str,
+) -> Optional[Dict[str, Any]]:
+    """Extract the single Midscene Test report dump from an HTML file."""
+    state: Dict[str, Any] = {"result": None}
+
+    def visit(content: str) -> bool:
+        tag_end = content.find(">")
+        if tag_end == -1:
+            return False
+        if _script_type(content[:tag_end]) != TEST_RUN_REPORT_SCRIPT_TYPE:
+            return False
+        if state["result"] is not None:
+            raise ValueError(
+                f"Report contains multiple Midscene Test dumps: {file_path}"
+            )
+        parsed = json.loads(anti_escape_script_tag(content[tag_end + 1 :]))
+        if (
+            not isinstance(parsed, dict)
+            or parsed.get("schemaVersion") != 1
+            or parsed.get("kind") != "test-runner"
+            or not isinstance(parsed.get("projects"), list)
+        ):
+            raise ValueError(f"Invalid Midscene Test report dump: {file_path}")
+        state["result"] = parsed
+        return False
+
+    # Consume executable scripts as whole elements: the embedded viewer itself
+    # contains report-writer source with data-tag strings that are not payloads.
+    stream_scan_tags(file_path, "<script", "</script>", visit)
+    return state["result"]
 
 
 def parse_image_scripts(html: str) -> Dict[str, str]:
@@ -311,6 +466,91 @@ def parse_image_scripts(html: str) -> Dict[str, str]:
     for match in pattern.finditer(html):
         image_map[match.group(1)] = anti_escape_script_tag(match.group(2))
     return image_map
+
+
+def parse_dump_script(html: str) -> str:
+    """Return the LAST dump payload embedded in an HTML string."""
+    script_open_tag = '<script type="midscene_web_dump"'
+    close_tag = "</script>"
+
+    last_open_index = html.rfind(script_open_tag)
+    if last_open_index == -1:
+        raise ValueError("No dump script found in HTML")
+
+    tag_end_index = html.find(">", last_open_index)
+    if tag_end_index == -1:
+        raise ValueError("No dump script found in HTML")
+
+    close_index = html.find(close_tag, tag_end_index)
+    if close_index == -1:
+        raise ValueError("No dump script found in HTML")
+
+    return unescape_content(html[tag_end_index + 1 : close_index])
+
+
+def parse_dump_script_attributes(html: str) -> Dict[str, str]:
+    """Decode the attributes of the first ``midscene_web_dump`` script tag."""
+    match = re.search(r'<script type="midscene_web_dump"([^>]*)>', html)
+    if not match:
+        return {}
+
+    attributes: Dict[str, str] = {}
+    for attribute in re.finditer(r'(\w+)="([^"]*)"', match.group(1)):
+        key, value = attribute.group(1), attribute.group(2)
+        if key != "type":
+            attributes[key] = unquote(value)
+    return attributes
+
+
+_IMAGE_SCRIPT_ID_PATTERN = re.compile(
+    r'^ data-id="([a-z0-9_-]{1,128})">', re.IGNORECASE
+)
+
+
+def _parse_image_script_id(content_after_type: str) -> Optional[str]:
+    match = _IMAGE_SCRIPT_ID_PATTERN.match(content_after_type)
+    return match.group(1) if match else None
+
+
+def stream_image_scripts_to_file(
+    src_file_path: str,
+    dest_file_path: str,
+    written_image_ids: Optional[Set[str]] = None,
+) -> None:
+    """Stream image script tags from source file directly to output file.
+
+    Memory usage: O(single_image_size), not O(all_images_size).
+    """
+    open_tag = '<script type="midscene-image"'
+    close_tag = "</script>"
+    written = written_image_ids if written_image_ids is not None else set()
+
+    def visit(content: str) -> bool:
+        image_id = _parse_image_script_id(content)
+        if not image_id or image_id in written:
+            return False
+        with open(dest_file_path, "a", encoding="utf-8") as handle:
+            handle.write(f"{open_tag}{content}{close_tag}\n")
+        written.add(image_id)
+        return False
+
+    stream_scan_tags(src_file_path, open_tag, close_tag, visit)
+
+
+async def collect_image_script_ids(file_path: str) -> Set[str]:
+    """Collect IDs of real inline image script tags without loading the report."""
+    image_ids: Set[str] = set()
+
+    def visit(content: str) -> bool:
+        image_id = _parse_image_script_id(content)
+        if image_id:
+            image_ids.add(image_id)
+        return False
+
+    await stream_scan_tags_async(
+        file_path, '<script type="midscene-image"', "</script>", visit
+    )
+    return image_ids
 
 
 def _encode_attribute(value: Any) -> str:
@@ -486,10 +726,14 @@ __all__ = [
     "STREAMING_CHUNK_SIZE",
     "TEST_RUN_REPORT_SCRIPT_TYPE",
     "anti_escape_script_tag",
+    "collect_image_script_ids",
+    "escape_content",
     "escape_script_tag",
     "extract_all_dump_scripts_sync",
     "extract_last_dump_script_sync",
+    "extract_report_artifact_path_async",
     "extract_report_artifact_path_sync",
+    "extract_test_run_report_dump_sync",
     "generate_agent_report_comment",
     "generate_dump_script_tag",
     "generate_image_script_tag",
@@ -499,10 +743,17 @@ __all__ = [
     "get_report_tpl",
     "insert_content_before_closing_html",
     "insert_script_before_closing_html",
+    "parse_dump_script",
+    "parse_dump_script_attributes",
     "parse_image_scripts",
     "report_html_content",
+    "stream_dump_scripts_async",
     "stream_dump_scripts_sync",
+    "stream_image_scripts_to_file",
     "stream_inline_report_images",
+    "stream_scan_tags",
+    "stream_scan_tags_async",
+    "unescape_content",
     "write_dump_report",
     "write_log_file",
 ]

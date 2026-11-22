@@ -4,10 +4,10 @@
     "runtime_exports": 1151,
     "schema_exports": 56,
     "type_exports": 983,
-    "modules_with_gaps": 117,
-    "missing": 281,
-    "moved": 162,
-    "modules_with_missing": 111
+    "modules_with_gaps": 112,
+    "missing": 240,
+    "moved": 163,
+    "modules_with_missing": 104
   },
   "by_package": {
     "android": {
@@ -27,8 +27,8 @@
     },
     "core": {
       "modules": 79,
-      "missing": 155,
-      "moved": 31
+      "missing": 145,
+      "moved": 30
     },
     "harmony": {
       "modules": 1,
@@ -41,9 +41,9 @@
       "moved": 0
     },
     "shared": {
-      "modules": 10,
-      "missing": 58,
-      "moved": 130
+      "modules": 5,
+      "missing": 27,
+      "moved": 132
     },
     "web-integration": {
       "modules": 7,
@@ -94,40 +94,6 @@
     },
     {
       "package": "shared",
-      "upstream": "img/transform.ts",
-      "python": "shared/img/transform.py",
-      "runtime_exports": 24,
-      "missing": [
-        "constrainBase64ImageToMaxSize",
-        "convertBase64ImageToJpeg",
-        "convertImgBufferToJpeg",
-        "createImgBase64ByFormat",
-        "httpImg2Base64",
-        "inferBase64ImageFormat",
-        "localImg2Base64",
-        "normalizeBase64Image",
-        "normalizeScreenshotBase64",
-        "padBase64ImageToMinimumSize",
-        "paddingToMatchBlock",
-        "photonFromBase64",
-        "photonToBase64",
-        "preProcessImageUrl",
-        "resizeAndConvertImgBuffer",
-        "resizeBase64ImageToJpeg",
-        "resizeImgBase64",
-        "saveBase64Image",
-        "scaleImage",
-        "zoomForGPT4o"
-      ],
-      "moved": [
-        {
-          "name": "parseBase64",
-          "found_in": "midscene/shared/agent_tools/base_tools.py"
-        }
-      ]
-    },
-    {
-      "package": "shared",
       "upstream": "extractor/util.ts",
       "python": "shared/extractor/util.py",
       "runtime_exports": 20,
@@ -172,34 +138,6 @@
         {
           "name": "normalizeFilePaths",
           "found_in": "midscene/core/agent/file_chooser.py"
-        }
-      ]
-    },
-    {
-      "package": "core",
-      "upstream": "dump/html-utils.ts",
-      "python": "core/dump/html_utils.py",
-      "runtime_exports": 26,
-      "missing": [
-        "escapeContent",
-        "extractReportArtifactPathAsync",
-        "extractTestRunReportDumpSync",
-        "parseDumpScript",
-        "parseDumpScriptAttributes",
-        "streamDumpScriptsAsync",
-        "streamImageScriptsToFile",
-        "streamScanTags",
-        "streamScanTagsAsync",
-        "unescapeContent"
-      ],
-      "moved": [
-        {
-          "name": "collectImageScriptIds",
-          "found_in": "midscene/core/dump/screenshot_store.py"
-        },
-        {
-          "name": "extractImageByIdSync",
-          "found_in": "midscene/core/screenshot_item.py"
         }
       ]
     },
@@ -350,15 +288,182 @@
       "moved": []
     },
     {
+      "package": "core",
+      "upstream": "ai-model/models/deepseek/locate-protocol.ts",
+      "python": "core/ai_model/models/deepseek/locate_protocol.py",
+      "runtime_exports": 4,
+      "missing": [
+        "deepSeekElementLocateProtocol",
+        "deepSeekSearchAreaProtocol",
+        "parseDeepSeekLocateOutput",
+        "parseDeepSeekSearchAreaOutput"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/utils.ts",
+      "python": "core/ai_model/service_caller/utils.py",
+      "runtime_exports": 9,
+      "missing": [
+        "INTERNAL_CALL_ID_FIELD",
+        "appendAIRequestFailureSummary",
+        "stringifyForDebug",
+        "toError"
+      ],
+      "moved": [
+        {
+          "name": "AIResponseParseError",
+          "found_in": "midscene/core/ai_model/__init__.py"
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/recorder-generation/common.ts",
+      "python": "core/ai_model/workflows/recorder_generation/common.py",
+      "runtime_exports": 10,
+      "missing": [
+        "createMessageContent",
+        "extractInputDescriptions",
+        "filterEventsByType",
+        "prepareRecorderGenerationContext"
+      ],
+      "moved": [
+        {
+          "name": "getScreenshotsForLLM",
+          "found_in": "midscene/core/ai_model/workflows/recorder_generation/metadata.py"
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/recorder-generation/playwright.ts",
+      "python": "core/ai_model/workflows/recorder_generation/playwright.py",
+      "runtime_exports": 10,
+      "missing": [
+        "createMessageContent",
+        "extractInputDescriptions",
+        "filterEventsByType",
+        "generatePlaywrightTestStream"
+      ],
+      "moved": [
+        {
+          "name": "createEventCounts",
+          "found_in": "midscene/core/ai_model/workflows/recorder_generation/__init__.py"
+        },
+        {
+          "name": "getScreenshotsForLLM",
+          "found_in": "midscene/core/ai_model/workflows/recorder_generation/metadata.py"
+        },
+        {
+          "name": "processEventsForLLM",
+          "found_in": "midscene/core/ai_model/workflows/recorder_generation/__init__.py"
+        }
+      ]
+    },
+    {
+      "package": "web-integration",
+      "upstream": "common/viewport.ts",
+      "python": "web_integration/common/viewport.py",
+      "runtime_exports": 7,
+      "missing": [
+        "defaultPuppeteerWindowViewportSize",
+        "defaultStaticPageViewportSize",
+        "resolveViewportSize",
+        "resolveWebViewportSize"
+      ],
+      "moved": []
+    },
+    {
+      "package": "computer",
+      "upstream": "utils.ts",
+      "python": "computer/utils.py",
+      "runtime_exports": 5,
+      "missing": [
+        "checkAccessibilityPermission",
+        "checkComputerEnvironment",
+        "checkScreenRecordingPermission",
+        "getConnectedDisplays"
+      ],
+      "moved": []
+    },
+    {
+      "package": "android",
+      "upstream": "adb-shell.ts",
+      "python": "android/adb_shell.py",
+      "runtime_exports": 3,
+      "missing": [
+        "buildRunAdbShellPlanningFeedback",
+        "getAdbShellStdoutOrThrow",
+        "runAdbShellStdoutOrThrow"
+      ],
+      "moved": []
+    },
+    {
+      "package": "computer",
+      "upstream": "agent.ts",
+      "python": "computer/agent.py",
+      "runtime_exports": 4,
+      "missing": [
+        "agentForComputer",
+        "agentForRDPComputer",
+        "agentFromComputer"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "agent/ui-observer.ts",
+      "python": "core/agent/ui_observer.py",
+      "runtime_exports": 3,
+      "missing": [
+        "UIObservationImpl",
+        "UIObserverImpl",
+        "uiContextFromObservationRecord"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/default-planning-protocol.ts",
+      "python": "core/ai_model/model_adapter/default_planning_protocol.py",
+      "runtime_exports": 5,
+      "missing": [
+        "buildActionDescription",
+        "createDefaultMidscenePlanningProtocol",
+        "createMidscenePlanningActionOutputParser"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "device/input-strategy.ts",
+      "python": "core/device/input_strategy.py",
+      "runtime_exports": 5,
+      "missing": [
+        "resolveInputStrategy",
+        "sendTextSequentially",
+        "shouldInputSequentially"
+      ],
+      "moved": [
+        {
+          "name": "inputStrategies",
+          "found_in": "midscene/web_integration/playwright/page.py"
+        },
+        {
+          "name": "resolveTextInputOptions",
+          "found_in": "midscene/web_integration/playwright/page.py"
+        }
+      ]
+    },
+    {
       "package": "shared",
       "upstream": "env/types.ts",
       "python": "shared/env/types.py",
       "runtime_exports": 127,
       "missing": [
         "MIDSCENE_DANGEROUSLY_PRINT_ALL_CONFIG",
-        "MIDSCENE_OPENAI_HTTP_PROXY",
-        "MIDSCENE_OPENAI_INIT_CONFIG_JSON",
-        "MIDSCENE_OPENAI_SOCKS_PROXY",
         "UITarsModelVersion",
         "UNUSED_ENV_KEYS"
       ],
@@ -696,6 +801,18 @@
           "found_in": "midscene/shared/env/__init__.py"
         },
         {
+          "name": "MIDSCENE_OPENAI_HTTP_PROXY",
+          "found_in": "midscene/shared/env/constants.py"
+        },
+        {
+          "name": "MIDSCENE_OPENAI_INIT_CONFIG_JSON",
+          "found_in": "midscene/shared/env/constants.py"
+        },
+        {
+          "name": "MIDSCENE_OPENAI_SOCKS_PROXY",
+          "found_in": "midscene/shared/env/constants.py"
+        },
+        {
           "name": "MIDSCENE_PLANNING_MODEL_API_KEY",
           "found_in": "midscene/shared/env/__init__.py"
         },
@@ -846,189 +963,6 @@
         {
           "name": "STRING_ENV_KEYS",
           "found_in": "midscene/shared/env/global_config_manager.py"
-        }
-      ]
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/models/deepseek/locate-protocol.ts",
-      "python": "core/ai_model/models/deepseek/locate_protocol.py",
-      "runtime_exports": 4,
-      "missing": [
-        "deepSeekElementLocateProtocol",
-        "deepSeekSearchAreaProtocol",
-        "parseDeepSeekLocateOutput",
-        "parseDeepSeekSearchAreaOutput"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/service-caller/utils.ts",
-      "python": "core/ai_model/service_caller/utils.py",
-      "runtime_exports": 9,
-      "missing": [
-        "INTERNAL_CALL_ID_FIELD",
-        "appendAIRequestFailureSummary",
-        "stringifyForDebug",
-        "toError"
-      ],
-      "moved": [
-        {
-          "name": "AIResponseParseError",
-          "found_in": "midscene/core/ai_model/__init__.py"
-        }
-      ]
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/workflows/recorder-generation/common.ts",
-      "python": "core/ai_model/workflows/recorder_generation/common.py",
-      "runtime_exports": 10,
-      "missing": [
-        "createMessageContent",
-        "extractInputDescriptions",
-        "filterEventsByType",
-        "prepareRecorderGenerationContext"
-      ],
-      "moved": [
-        {
-          "name": "getScreenshotsForLLM",
-          "found_in": "midscene/core/ai_model/workflows/recorder_generation/metadata.py"
-        }
-      ]
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/workflows/recorder-generation/playwright.ts",
-      "python": "core/ai_model/workflows/recorder_generation/playwright.py",
-      "runtime_exports": 10,
-      "missing": [
-        "createMessageContent",
-        "extractInputDescriptions",
-        "filterEventsByType",
-        "generatePlaywrightTestStream"
-      ],
-      "moved": [
-        {
-          "name": "createEventCounts",
-          "found_in": "midscene/core/ai_model/workflows/recorder_generation/__init__.py"
-        },
-        {
-          "name": "getScreenshotsForLLM",
-          "found_in": "midscene/core/ai_model/workflows/recorder_generation/metadata.py"
-        },
-        {
-          "name": "processEventsForLLM",
-          "found_in": "midscene/core/ai_model/workflows/recorder_generation/__init__.py"
-        }
-      ]
-    },
-    {
-      "package": "web-integration",
-      "upstream": "common/viewport.ts",
-      "python": "web_integration/common/viewport.py",
-      "runtime_exports": 7,
-      "missing": [
-        "defaultPuppeteerWindowViewportSize",
-        "defaultStaticPageViewportSize",
-        "resolveViewportSize",
-        "resolveWebViewportSize"
-      ],
-      "moved": []
-    },
-    {
-      "package": "shared",
-      "upstream": "img/box-select.ts",
-      "python": "shared/img/box_select.py",
-      "runtime_exports": 4,
-      "missing": [
-        "annotateRects",
-        "compositeElementInfoImg",
-        "compositePointMarkerImg",
-        "processImageElementInfo"
-      ],
-      "moved": []
-    },
-    {
-      "package": "computer",
-      "upstream": "utils.ts",
-      "python": "computer/utils.py",
-      "runtime_exports": 5,
-      "missing": [
-        "checkAccessibilityPermission",
-        "checkComputerEnvironment",
-        "checkScreenRecordingPermission",
-        "getConnectedDisplays"
-      ],
-      "moved": []
-    },
-    {
-      "package": "android",
-      "upstream": "adb-shell.ts",
-      "python": "android/adb_shell.py",
-      "runtime_exports": 3,
-      "missing": [
-        "buildRunAdbShellPlanningFeedback",
-        "getAdbShellStdoutOrThrow",
-        "runAdbShellStdoutOrThrow"
-      ],
-      "moved": []
-    },
-    {
-      "package": "computer",
-      "upstream": "agent.ts",
-      "python": "computer/agent.py",
-      "runtime_exports": 4,
-      "missing": [
-        "agentForComputer",
-        "agentForRDPComputer",
-        "agentFromComputer"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "agent/ui-observer.ts",
-      "python": "core/agent/ui_observer.py",
-      "runtime_exports": 3,
-      "missing": [
-        "UIObservationImpl",
-        "UIObserverImpl",
-        "uiContextFromObservationRecord"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/model-adapter/default-planning-protocol.ts",
-      "python": "core/ai_model/model_adapter/default_planning_protocol.py",
-      "runtime_exports": 5,
-      "missing": [
-        "buildActionDescription",
-        "createDefaultMidscenePlanningProtocol",
-        "createMidscenePlanningActionOutputParser"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "device/input-strategy.ts",
-      "python": "core/device/input_strategy.py",
-      "runtime_exports": 5,
-      "missing": [
-        "resolveInputStrategy",
-        "sendTextSequentially",
-        "shouldInputSequentially"
-      ],
-      "moved": [
-        {
-          "name": "inputStrategies",
-          "found_in": "midscene/web_integration/playwright/page.py"
-        },
-        {
-          "name": "resolveTextInputOptions",
-          "found_in": "midscene/web_integration/playwright/page.py"
         }
       ]
     },
@@ -1768,42 +1702,12 @@
       "moved": []
     },
     {
-      "package": "shared",
-      "upstream": "env/constants.ts",
-      "python": "shared/env/constants.py",
-      "runtime_exports": 5,
-      "missing": [
-        "DEFAULT_MODEL_CONFIG_KEYS_LEGACY"
-      ],
-      "moved": []
-    },
-    {
-      "package": "shared",
-      "upstream": "env/parse-model-config.ts",
-      "python": "shared/env/parse_model_config.py",
-      "runtime_exports": 5,
-      "missing": [
-        "getUITarsModelVersion"
-      ],
-      "moved": []
-    },
-    {
       "package": "core",
       "upstream": "errors.ts",
       "python": "core/errors.py",
       "runtime_exports": 1,
       "missing": [
         "ServiceError"
-      ],
-      "moved": []
-    },
-    {
-      "package": "shared",
-      "upstream": "logger.ts",
-      "python": "shared/logger.py",
-      "runtime_exports": 6,
-      "missing": [
-        "setLogDirectoryResolver"
       ],
       "moved": []
     },
@@ -1836,21 +1740,6 @@
         "HelperProcessRDPBackendClient"
       ],
       "moved": []
-    },
-    {
-      "package": "shared",
-      "upstream": "report-artifact.ts",
-      "python": "shared/report_artifact.py",
-      "runtime_exports": 4,
-      "missing": [
-        "REPORT_ARTIFACT_SCHEMA_VERSION"
-      ],
-      "moved": [
-        {
-          "name": "REPORT_ARTIFACT_SCRIPT_TYPE",
-          "found_in": "midscene/core/dump/html_utils.py"
-        }
-      ]
     },
     {
       "package": "core",
@@ -2000,6 +1889,19 @@
     },
     {
       "package": "core",
+      "upstream": "dump/html-utils.ts",
+      "python": "core/dump/html_utils.py",
+      "runtime_exports": 26,
+      "missing": [],
+      "moved": [
+        {
+          "name": "extractImageByIdSync",
+          "found_in": "midscene/core/screenshot_item.py"
+        }
+      ]
+    },
+    {
+      "package": "core",
       "upstream": "dump/image-reference.ts",
       "python": "core/dump/image_reference.py",
       "runtime_exports": 7,
@@ -2042,6 +1944,19 @@
         {
           "name": "overrideAIConfig",
           "found_in": "midscene/core/ai_model/__init__.py"
+        }
+      ]
+    },
+    {
+      "package": "shared",
+      "upstream": "report-artifact.ts",
+      "python": "shared/report_artifact.py",
+      "runtime_exports": 4,
+      "missing": [],
+      "moved": [
+        {
+          "name": "REPORT_ARTIFACT_SCRIPT_TYPE",
+          "found_in": "midscene/core/dump/html_utils.py"
         }
       ]
     },

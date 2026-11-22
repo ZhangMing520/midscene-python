@@ -15,6 +15,7 @@ import pytest
 
 from midscene.core.dump.execution_recorder import ExecutionRecorder
 from midscene.shared.report_artifact import (
+    REPORT_ARTIFACT_SCHEMA_VERSION,
     ReportArtifactError,
     ReportArtifactStore,
     assert_report_artifact_path,
@@ -168,6 +169,11 @@ def test_retains_the_existing_group_and_all_eight_process_publishers_including_l
 # ---------------------------------------------------------------------------
 # packages/shared/tests/unit-test/report-artifact.test.ts
 # ---------------------------------------------------------------------------
+
+
+def test_exposes_the_schema_version_supported_by_the_manifest_contract():
+    """exposes the schema version supported by the manifest contract"""
+    assert REPORT_ARTIFACT_SCHEMA_VERSION == 1
 
 
 def _manifest():

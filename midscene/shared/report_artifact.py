@@ -25,7 +25,11 @@ from midscene.core.dump.report_artifact_store import (
 )
 from midscene.core.dump.report_artifact_writer import export_report_artifact
 
+# Browser-safe contract for a self-contained directory report.
+REPORT_ARTIFACT_SCHEMA_VERSION = SCHEMA_VERSION
+
 __all__ = [
+    "REPORT_ARTIFACT_SCHEMA_VERSION",
     "ReportArtifactError",
     "ReportArtifactStore",
     "SCHEMA_VERSION",

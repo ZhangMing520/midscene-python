@@ -16,8 +16,9 @@ from midscene.shared.env import (
     MODEL_FAMILY_VALUES,
     PLANNING_MODEL_CONFIG_KEYS,
 )
+from midscene.shared.env.constants import DEFAULT_MODEL_CONFIG_KEYS_LEGACY
 from midscene.shared.env.parse_model_config import (
-    get_uitars_model_version,
+    get_ui_tars_model_version,
     legacy_config_to_model_family,
     parse_openai_sdk_config,
     validate_model_family,
@@ -72,14 +73,14 @@ def test_rejects_the_invalid_value(keys, value):
 
 def test_should_return_undefined_when_model_family_is_missing():
     """should return undefined when model family is missing"""
-    assert get_uitars_model_version() is None
+    assert get_ui_tars_model_version() is None
 
 
 def test_should_map_ui_tars_variants_to_correct_version():
     """should map ui-tars variants to correct version"""
-    assert get_uitars_model_version("vlm-ui-tars") == "1.0"
-    assert get_uitars_model_version("vlm-ui-tars-doubao") == "doubao-1.5-20B"
-    assert get_uitars_model_version("vlm-ui-tars-doubao-1.5") == "doubao-1.5-20B"
+    assert get_ui_tars_model_version("vlm-ui-tars") == "1.0"
+    assert get_ui_tars_model_version("vlm-ui-tars-doubao") == "doubao-1.5-20B"
+    assert get_ui_tars_model_version("vlm-ui-tars-doubao-1.5") == "doubao-1.5-20B"
 
 
 def test_should_return_undefined_for_non_ui_tars_models():
@@ -93,7 +94,30 @@ def test_should_return_undefined_for_non_ui_tars_models():
         "kimi",
         "xiaomi-mimo",
     ):
-        assert get_uitars_model_version(family) is None
+        assert get_ui_tars_model_version(family) is None
+
+
+def test_legacy_default_keys_use_openai_compatible_environment_names():
+    """legacy default keys use OpenAI-compatible environment names"""
+    assert DEFAULT_MODEL_CONFIG_KEYS_LEGACY["openaiApiKey"] == "OPENAI_API_KEY"
+    assert DEFAULT_MODEL_CONFIG_KEYS_LEGACY["openaiBaseURL"] == "OPENAI_BASE_URL"
+    assert (
+        DEFAULT_MODEL_CONFIG_KEYS_LEGACY["socksProxy"]
+        == "MIDSCENE_OPENAI_SOCKS_PROXY"
+    )
+    assert (
+        DEFAULT_MODEL_CONFIG_KEYS_LEGACY["httpProxy"]
+        == "MIDSCENE_OPENAI_HTTP_PROXY"
+    )
+    assert (
+        DEFAULT_MODEL_CONFIG_KEYS_LEGACY["openaiExtraConfig"]
+        == "MIDSCENE_OPENAI_INIT_CONFIG_JSON"
+    )
+    assert (
+        DEFAULT_MODEL_CONFIG_KEYS_LEGACY["modelFamily"]
+        == "DEFAULT_MODEL_CONFIG_KEYS has no modelFamily key"
+    )
+    assert DEFAULT_MODEL_CONFIG_KEYS_LEGACY["timeout"] == "MIDSCENE_MODEL_TIMEOUT"
 
 
 @pytest.mark.parametrize("family", ["tencent-hy", "qwen4"])
