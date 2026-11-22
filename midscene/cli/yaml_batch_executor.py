@@ -5,6 +5,8 @@ MidsceneYamlConfig schema in packages/core/src/yaml.ts.
 
 Config keys: files (required), concurrent, continueOnError, retry, summary,
 setup, shareBrowserContext / reusePage (web-only, sequential only).
+Batch-level target sections are the upstream globalConfig: they deep-merge
+into each script with the global values winning on conflict.
 Result types: success | failed | partialFailed | notExecuted.
 """
 
@@ -20,7 +22,6 @@ from midscene.cli.config_options import (
     NATIVE_TARGET_KEYS as _NATIVE_TARGET_KEYS,
 )
 from midscene.cli.config_options import WEB_TARGET_KEYS as _WEB_TARGET_KEYS
-from midscene.cli.config_options import YAML_TARGET_KEYS as _TARGET_KEYS
 from midscene.cli.execution_summary import (
     create_not_executed_yaml_result,
     is_batch_successful,
@@ -105,12 +106,13 @@ def _web_overrides(config: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _native_overrides(config: Dict[str, Any]) -> Dict[str, Any]:
-    """Batch-level native target section merged into each script of that
-    platform (upstream globalConfig merge for android/ios/harmony/computer)."""
-    for key in _NATIVE_TARGET_KEYS:
-        if isinstance(config.get(key), dict):
-            return {key: dict(config[key])}
-    return {}
+    """Batch-level native target sections merged into each script
+    (upstream globalConfig merge for android/ios/harmony/computer)."""
+    return {
+        key: dict(config[key])
+        for key in _NATIVE_TARGET_KEYS
+        if isinstance(config.get(key), dict)
+    }
 
 
 def load_batch_config(path: str) -> Dict[str, Any]:
@@ -129,13 +131,10 @@ def merge_web_overrides(
     script: Dict[str, Any], overrides: Dict[str, Any]
 ) -> Dict[str, Any]:
     """Deep-merge the batch-level web env into a script's own web env; the
-    script's own keys win. A script aimed at a native target keeps its section
-    untouched and never gains a web block."""
+    global config wins (upstream lodash merge order)."""
     if not overrides:
         return script
     merged = dict(script)
-    if any(merged.get(key) is not None for key in _NATIVE_TARGET_KEYS):
-        return merged
     web_key = next(
         (
             key
@@ -145,7 +144,7 @@ def merge_web_overrides(
         None,
     )
     if web_key:
-        merged[web_key] = {**overrides, **merged[web_key]}
+        merged[web_key] = {**merged[web_key], **overrides}
     else:
         merged["web"] = dict(overrides)
     return merged
@@ -182,10 +181,12 @@ async def run_yaml_batch(
     hook_error: Optional[str] = None
 
     try:
-        # beforeAll (alias: setup): failure aborts the whole batch.
+        # beforeAll (alias: setup): failure aborts the whole batch. Retries use
+        # a fresh player per attempt, so a failed prerequisite never leaks its
+        # runtime into the main files.
         if cfg["before_all"]:
             setup_result = await _run_one(
-                cfg, player_factory, cfg["before_all"], retries=0
+                cfg, player_factory, cfg["before_all"], retries=cfg["retry"]
             )
             results.append(setup_result)
             if not setup_result["success"]:
@@ -384,10 +385,12 @@ async def _run_one(
     for attempt in range(1, max_attempts + 1):
         player = player_factory(content, file_path)
         last_error = None
+        run_error = None
         try:
             await player.run()
         except Exception as e:
-            last_error = str(e)
+            run_error = str(e)
+            last_error = run_error
         if last_error is None:
             last_error = (
                 "; ".join(
@@ -396,14 +399,18 @@ async def _run_one(
                 )
                 or None
             )
-        success = getattr(player, "status", "done") != "error" and last_error is None
+        status = getattr(player, "status", "done")
+        success = status != "error" and last_error is None
         attempts.append({"attempt": attempt, "success": success})
         if success:
+            output_path = getattr(player, "output_path", None)
+            if output_path and not Path(output_path).exists():
+                output_path = None
             return {
                 "file": file_path,
                 "success": True,
                 "executed": True,
-                "output": getattr(player, "output_path", None),
+                "output": output_path,
                 "attempts": attempts,
                 "duration": int((time.time() - start) * 1000),
                 "resultType": "success",
@@ -421,14 +428,18 @@ async def _run_one(
         "error": last_error,
         "attempts": attempts,
         "duration": int((time.time() - start) * 1000),
-        "resultType": "failed",
+        # A task failure without a player-level error is a partial failure.
+        "resultType": (
+            "partialFailed"
+            if status != "error" and run_error is None
+            else "failed"
+        ),
     }
 
 
 def _apply_web_overrides(content: str, overrides: Dict[str, Any]) -> str:
-    """Apply batch-level web env overrides to a script without a web
-    section: prepend a web block (script-level keys always win because we
-    only inject when the script declares none)."""
+    """Merge the batch-level web env into a script; the global config wins on
+    conflicting keys (upstream merge order) while script-only keys survive."""
     if not overrides:
         return content
     try:
@@ -437,24 +448,22 @@ def _apply_web_overrides(content: str, overrides: Dict[str, Any]) -> str:
         return content
     if not isinstance(doc, dict):
         return content
-    has_own = any(
-        isinstance(doc.get(k), dict) for k in _WEB_TARGET_KEYS
+    web_key = next(
+        (k for k in _WEB_TARGET_KEYS if isinstance(doc.get(k), dict)), None
     )
-    has_native_target = any(
-        doc.get(k) is not None for k in _NATIVE_TARGET_KEYS
-    )
-    if has_own or has_native_target:
-        return content
-    web_block = yaml.safe_dump({"web": overrides}, allow_unicode=True)
-    return web_block + content
+    if web_key:
+        doc[web_key] = {**doc[web_key], **overrides}
+    else:
+        doc["web"] = dict(overrides)
+    return yaml.safe_dump(doc, allow_unicode=True, sort_keys=False)
 
 
 def _apply_native_overrides(
     content: str, overrides: Dict[str, Any]
 ) -> str:
-    """Deep-merge the batch-level native target section into a script of
-    the same platform; the script's own keys win. A script targeting
-    another platform (or another target) is left untouched."""
+    """Deep-merge every batch-level native target section into a script; the
+    global config wins on conflict (upstream merge order) while script-only
+    keys survive."""
     if not overrides:
         return content
     try:
@@ -463,15 +472,9 @@ def _apply_native_overrides(
         return content
     if not isinstance(doc, dict):
         return content
-    key, values = next(iter(overrides.items()))
-    declared = [k for k in _TARGET_KEYS if doc.get(k) is not None]
-    if declared and declared[0] != key:
-        return content
-    own = doc.get(key)
-    if isinstance(own, dict):
-        doc[key] = {**values, **own}
-    else:
-        doc[key] = dict(values)
+    for key, values in overrides.items():
+        own = doc.get(key)
+        doc[key] = {**own, **values} if isinstance(own, dict) else dict(values)
     return yaml.safe_dump(doc, allow_unicode=True, sort_keys=False)
 
 

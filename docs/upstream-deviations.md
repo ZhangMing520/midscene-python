@@ -24,6 +24,8 @@
 
 ## 2. 已知功能偏差
 
+### 2.1 已实现但行为不同
+
 | 项 | 现状 | 说明 |
 |---|---|---|
 | 统一 `ReportSession` 宿主生命周期 | 未实现 | Python 保留 `ReportArtifactStore` + `export_report_artifact` 组合 |
@@ -32,6 +34,34 @@
 | iOS / HarmonyOS 真机验收 | 待环境 | 代码已移植；WDA / DevEco 真机端到端需用户环境验证 |
 | 旧计划缓存的距离语义 | 无缓存版本号 | 历史缓存若存的是“模型输入图像像素”距离，回放会按逻辑距离解释（上游同样存在）；升级后建议清空一次 `midscene_run/cache` |
 | GPT 系列 bbox 边界 | 半开区间 | 允许 `right == width` / `bottom == height`；闭区间家族不变 |
+| verbose `aiAct` 进度载荷 | 契约不同 | Python 渲染器消费的 progress payload 与上游时间线不完全一致，相关 5 个用例按行为差异 skip |
+| 报告导出截图格式 | inline 用 data URI，directory 用外置资产 | directory 导出会内容寻址去重并写 `midscene_screenshot_ref`；inline 保持 data URI |
+| 批处理输出路径 | 总是暴露 | Python 结果始终包含 `output_path`；上游用 `node:fs` 可选校验文件是否存在 |
+| 终端中断 | `termios` | Python 从进程 stdin 捕获 Ctrl+C，不是可注入的输入流 |
+
+### 2.2 尚未实现的能力（对应 skip）
+
+| 能力 | 影响 | 说明 |
+|---|---|---|
+| web agent tools 层 | 5 个 skip | Python SDK 未实现该层 |
+| CDP agent tools | 2 个 skip | Chrome DevTools Protocol 工具未实现 |
+| zod 原生描述符 | 约 6 个 skip | `nativeEnum` / `intersection` / `tuple-rest` / 构造器身份、refinement、default/transform 在 Python dict schema 中没有等价物 |
+
+> 这些 skip 的理由已写明具体能力缺口；实现对应能力后应改为真实断言。
+> `ReportGenerator` 目录模式、`BatchRunner` 汇总接口、解析/重试取消、报告合并与
+> 源报告删除、`beforeAll` 重试、全局配置覆盖、回调 `client_id` 校验与
+> `rectMatchesCacheFeature` 抛错已在后续批次补齐，对应 skip 已改为真实断言。
+
+### 2.3 Node / 测试环境专属（不移植）
+
+| 项 | 影响 | 原因 |
+|---|---|---|
+| rstest 包装器与逐目标结果文件 | 5 个 skip | Node 测试运行器专属；等价能力由 `run_yaml_batch_with_case_ids` 覆盖 |
+| 多进程发布器 | 2 个 skip | 上游 fork 八个 TypeScript publisher 子进程，Python 无等价子进程发布器 |
+| TypeScript 编译器静态解析 | 2 个 skip | 上游用 TS Compiler API 解析 `device.ts` 的 `*Raw`/`visualActions` 结构；Python 源码没有该结构 |
+| 快照夹具 | 3 个 skip | help 文本 / prompt 快照在 Python 侧没有对应存储 |
+| 目录报告夹具 | 2 个 skip | 真实目录报告 fixture 不在仓库中 |
+| 原始脚本闭合 token 风险 | 1 个 skip | 上游针对打包产物检查，Python 源码未打包，不存在该风险 |
 
 ## 3. 已核实的上游行为事实
 

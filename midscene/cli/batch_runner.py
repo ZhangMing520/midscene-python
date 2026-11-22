@@ -3,8 +3,11 @@
 from typing import Any, Callable, Dict, List
 
 from midscene.cli.execution_summary import (
+    get_execution_summary,
     get_result_files_by_type,
+    get_summary_absolute_path,
     is_batch_successful,
+    print_execution_summary,
 )
 from midscene.cli.yaml_batch_error import YamlBatchExecutionError
 from midscene.cli.yaml_batch_executor import (
@@ -48,17 +51,30 @@ class BatchRunner:
         finally:
             self.hook_error = state.get("hook_error")
 
+    def get_execution_summary(self) -> Dict[str, Any]:
+        return get_execution_summary(self.results)
+
     def get_results(self) -> List[Dict[str, Any]]:
         return list(self.results)
 
     def get_failed_files(self) -> List[str]:
         return get_result_files_by_type(self.results, "failed")
 
+    def get_partial_failed_files(self) -> List[str]:
+        return get_result_files_by_type(self.results, "partialFailed")
+
     def get_successful_files(self) -> List[str]:
         return get_result_files_by_type(self.results, "success")
 
     def get_not_executed_files(self) -> List[str]:
         return get_result_files_by_type(self.results, "notExecuted")
+
+    def print_execution_summary(self) -> bool:
+        summary = self.config.get("summary")
+        summary_path = (
+            str(get_summary_absolute_path(summary)) if summary else ""
+        )
+        return print_execution_summary(self.results, summary_path)
 
     def _apply_web_overrides(
         self, content: str, overrides: Dict[str, Any]

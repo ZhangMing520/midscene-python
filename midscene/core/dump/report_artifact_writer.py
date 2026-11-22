@@ -8,14 +8,17 @@ import asyncio
 import base64
 import json
 import os
+import re
 import shutil
 import tempfile
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Union
+from urllib.parse import unquote
 
 from midscene.core.dump.html_utils import (
     DATA_SCREENSHOT_MODE_ATTR,
+    anti_escape_script_tag,
     generate_dump_script_tag,
     generate_image_script_tag,
     generate_report_artifact_script_tag,
@@ -29,7 +32,12 @@ from midscene.core.dump.image_reference import (
     normalize_stored_image_ref,
 )
 from midscene.core.dump.report_artifact_publication import publish_report_artifact
-from midscene.core.dump.report_artifact_reader import _load_report_dump_for_export
+from midscene.core.dump.report_artifact_reader import (
+    _load_report_dump_for_export,
+    read_report_artifact_manifest,
+    read_report_dump_scripts,
+    read_report_runner_dump,
+)
 from midscene.core.dump.report_artifact_store import (
     ReportArtifactError,
     assert_report_artifact_path,
@@ -333,44 +341,122 @@ def _validate_export_file_name(file_name: str) -> None:
         )
 
 
-def export_report_artifact(
-    report_path: Union[str, Path],
-    output_dir: Union[str, Path],
-    report_file_name: str,
-    output_format: str = "single-html",
-    overwrite: bool = False,
-) -> str:
-    """Export a report as a standalone HTML file or an HTML + asset folder.
+def _parse_group_attributes(open_tag: str) -> Dict[str, str]:
+    attributes: Dict[str, str] = {}
+    for match in re.finditer(r'([^\s=]+)="([^"]*)"', open_tag):
+        key, value = match.group(1), match.group(2)
+        if key == "type":
+            continue
+        attributes[key] = unquote(value)
+    return attributes
 
-    Accepts either a directory artifact (``report.json``) or a single-file
-    report, validates the destination, then publishes atomically.
-    """
+
+def _dedupe_executions_keep_latest(
+    executions: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    latest: Dict[str, int] = {}
+    for index, execution in enumerate(executions):
+        if isinstance(execution, dict) and execution.get("id"):
+            latest[execution["id"]] = index
+    result: List[Dict[str, Any]] = []
+    for index, execution in enumerate(executions):
+        execution_id = execution.get("id") if isinstance(execution, dict) else None
+        if execution_id and latest.get(execution_id) != index:
+            continue
+        result.append(execution)
+    return result
+
+
+def _export_streamed_report_artifact(
+    input_path: Path,
+    output: Path,
+    artifact: Path,
+    destination: Path,
+    external: bool,
+    overwrite: bool,
+    report_file_name: str,
+) -> str:
+    """Export a streaming/directory report through the shared artifact writer."""
+    manifest = read_report_artifact_manifest(input_path)
+    runner = read_report_runner_dump(input_path)
+    groups: Dict[str, Dict[str, Any]] = {}
+    for source in read_report_dump_scripts(input_path):
+        attributes = _parse_group_attributes(source["openTag"])
+        group_id = attributes.get("data-group-id")
+        if not group_id:
+            raise ReportArtifactError(
+                "Report execution group is missing its ID."
+            )
+        content = (
+            source["content"]
+            if manifest is not None
+            else anti_escape_script_tag(source["content"])
+        )
+        dump = json.loads(content)
+        previous = groups.get(group_id)
+        if previous is not None:
+            dump["executions"] = _dedupe_executions_keep_latest(
+                [
+                    *(previous["dump"].get("executions") or []),
+                    *(dump.get("executions") or []),
+                ]
+            )
+        groups[group_id] = {"dump": dump, "attributes": attributes}
+
+    if not groups and not runner:
+        raise ReportArtifactError(
+            "No report execution data was found in the input."
+        )
+
+    hint = next(iter(groups.values()), {}).get("attributes", {}).get(
+        "data-report-kind"
+    )
+    if manifest is not None:
+        kind = manifest["kind"]
+    elif hint in ("agent", "test"):
+        kind = hint
+    else:
+        kind = "test" if runner else "agent"
+    report_id = (manifest or {}).get("reportId") or (runner or {}).get("runId")
+
+    output.mkdir(parents=True, exist_ok=True)
+    temporary = Path(tempfile.mkdtemp(dir=output, prefix=".report-export-"))
+    try:
+        writer = ReportArtifactWriter(
+            temporary / "index.html", external, kind, report_id
+        )
+        writer.initialize_sync()
+        for group_id, group in groups.items():
+            writer.add_group_sync(
+                group_id,
+                json.dumps(group["dump"], ensure_ascii=False),
+                str(input_path),
+                group["attributes"],
+            )
+        writer.finish_sync(runner)
+        publish_report_artifact(
+            temporary if external else temporary / "index.html",
+            artifact if external else destination,
+            directory=external,
+            overwrite=overwrite,
+        )
+        return str(destination)
+    finally:
+        shutil.rmtree(temporary, ignore_errors=True)
+
+
+def _export_legacy_report_artifact(
+    input_path: Path,
+    output: Path,
+    artifact: Path,
+    destination: Path,
+    external: bool,
+    overwrite: bool,
+    report_file_name: str,
+) -> str:
+    """Export a legacy self-contained ``midscene_report_dump`` report."""
     from midscene.core.dump.screenshot_restoration import _externalize_images
     from midscene.core.report_html_template import render_report_html
-
-    _validate_export_file_name(report_file_name)
-    if output_format not in ("single-html", "html-and-external-assets"):
-        raise ReportArtifactError(
-            "output_format must be 'single-html' or 'html-and-external-assets'"
-        )
-
-    input_path = Path(report_path).resolve()
-    output = Path(output_dir).resolve()
-    external = output_format == "html-and-external-assets"
-    artifact = output / report_file_name
-    destination = artifact / "index.html" if external else output / (
-        f"{report_file_name}.html"
-    )
-    if input_path == destination or (
-        external
-        and str(input_path).startswith(f"{artifact}{os.sep}")
-    ):
-        raise ReportArtifactError(
-            "Export destination must differ from the input report."
-        )
-    existing = artifact if external else destination
-    if not overwrite and existing.exists():
-        raise ReportArtifactError(f"Report artifact already exists: {existing}")
 
     dump = _load_report_dump_for_export(input_path)
     if not dump.get("executions") and not dump.get("runner"):
@@ -408,6 +494,65 @@ def export_report_artifact(
         return str(destination)
     finally:
         shutil.rmtree(temporary, ignore_errors=True)
+
+
+def export_report_artifact(
+    report_path: Union[str, Path],
+    output_dir: Union[str, Path],
+    report_file_name: str,
+    output_format: str = "single-html",
+    overwrite: bool = False,
+) -> str:
+    """Export a report as a standalone HTML file or an HTML + asset folder.
+
+    Accepts either a directory artifact (``report.json``) or a single-file
+    report, validates the destination, then publishes atomically.
+    """
+    _validate_export_file_name(report_file_name)
+    if output_format not in ("single-html", "html-and-external-assets"):
+        raise ReportArtifactError(
+            "output_format must be 'single-html' or 'html-and-external-assets'"
+        )
+
+    input_path = Path(report_path).resolve()
+    output = Path(output_dir).resolve()
+    external = output_format == "html-and-external-assets"
+    artifact = output / report_file_name
+    destination = artifact / "index.html" if external else output / (
+        f"{report_file_name}.html"
+    )
+    if input_path == destination or (
+        external
+        and str(input_path).startswith(f"{artifact}{os.sep}")
+    ):
+        raise ReportArtifactError(
+            "Export destination must differ from the input report."
+        )
+    existing = artifact if external else destination
+    if not overwrite and existing.exists():
+        raise ReportArtifactError(f"Report artifact already exists: {existing}")
+
+    if read_report_dump_scripts(input_path) or read_report_runner_dump(
+        input_path
+    ):
+        return _export_streamed_report_artifact(
+            input_path,
+            output,
+            artifact,
+            destination,
+            external,
+            overwrite,
+            report_file_name,
+        )
+    return _export_legacy_report_artifact(
+        input_path,
+        output,
+        artifact,
+        destination,
+        external,
+        overwrite,
+        report_file_name,
+    )
 
 
 __all__ = [

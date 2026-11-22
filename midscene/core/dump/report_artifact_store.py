@@ -230,6 +230,7 @@ class ReportArtifactStore:
         self._execution_paths: Dict[str, str] = {}
         self._next_execution = 0
         self._finalized = False
+        self._has_published = False
 
     # -- writing -----------------------------------------------------------
 
@@ -265,11 +266,12 @@ class ReportArtifactStore:
         return path
 
     def finalize(self) -> None:
-        """Mark every group complete; later writes are rejected."""
+        """Mark this store's own group complete; later writes are rejected."""
         if self._finalized:
             return
-        for group in self.manifest["groups"]:
-            group["status"] = "complete"
+        # Only the group owned by this store is sealed. Other writers' groups
+        # that appear in the merged manifest must keep their own status.
+        self.manifest["groups"][0]["status"] = "complete"
         self._publish()
         self._finalized = True
 
@@ -285,7 +287,10 @@ class ReportArtifactStore:
 
         def publish() -> None:
             nonlocal manifest
-            if self.reuse_existing_report and manifest_path.exists():
+            if (
+                (self.reuse_existing_report or self._has_published)
+                and manifest_path.exists()
+            ):
                 try:
                     previous = validate_manifest(
                         json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -316,9 +321,11 @@ class ReportArtifactStore:
             write_report_artifact_file(
                 manifest_path, json.dumps(manifest, ensure_ascii=False)
             )
+            # Keep the store's own manifest immutable so subsequent writes only
+            # mutate this writer's group; other groups are re-merged on publish.
+            self._has_published = True
 
         with_report_artifact_lock(self.root, publish)
-        self.manifest = manifest
 
 
 __all__ = [

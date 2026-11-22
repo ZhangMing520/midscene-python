@@ -1,14 +1,15 @@
 """Report generation helpers (upstream dump/report-session.ts).
 
-The Python SDK renders a single self-contained HTML report, so the streaming
-writer from upstream is reduced to: keep the latest state of every execution
-and flush it through `write_report_html`. Directory (`html-and-external-assets`)
-reports are not produced here.
+`ReportGenerator` keeps the latest state of every execution and publishes it as
+either a single self-contained HTML file (inline mode) or the versioned
+`report.json` + `data/` + `screenshots/` directory artifact
+(`html-and-external-assets`).
 """
 
 import asyncio
 import json
 import os
+import re
 import shutil
 import time
 import uuid
@@ -17,7 +18,26 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Protocol, TypedDict
 
 from midscene.core.dump.execution_recorder import ExecutionRecorder
-from midscene.core.report import write_report_html
+from midscene.core.dump.html_utils import (
+    DATA_SCREENSHOT_MODE_ATTR,
+    generate_agent_report_comment,
+    generate_dump_script_tag,
+    generate_image_script_tag,
+    generate_report_artifact_script_tag,
+    generate_test_run_report_script_tag,
+    get_base_url_fix_script,
+    get_report_tpl,
+)
+from midscene.core.dump.image_reference import normalize_stored_image_ref
+from midscene.core.dump.report_action_dump import ExecutionDump, ReportActionDump
+from midscene.core.dump.report_artifact_reader import (
+    read_report_artifact_manifest,
+)
+from midscene.core.dump.report_artifact_store import (
+    ReportArtifactStore,
+    write_report_artifact_file,
+)
+from midscene.core.dump.screenshot_store import ReportImageStore
 from midscene.shared.env import get_midscene_run_dir
 
 __all__ = [
@@ -397,16 +417,30 @@ def current_report_session() -> Optional[ReportSession]:
 
 
 class ReportGenerator:
-    """Accumulate executions and render the latest state to one HTML report."""
+    """Accumulate executions and publish the latest state as a report.
+
+    Inline reports append ``midscene_web_dump``/``midscene-image`` scripts to a
+    single HTML file; directory reports split facts into the versioned
+    ``report.json`` + ``data/`` + ``screenshots/`` artifact layout. Both modes
+    keep the latest state per execution id.
+    """
 
     def __init__(
         self,
         report_path: Optional[str] = None,
         auto_print: bool = True,
         dump: Optional[Dict[str, Any]] = None,
+        screenshot_mode: str = "inline",
+        persist_execution_dump: bool = False,
+        reuse_existing_report: bool = False,
     ):
         self.report_path = report_path
         self.auto_print = auto_print
+        self.screenshot_mode = (
+            screenshot_mode if screenshot_mode in ("inline", "directory") else "inline"
+        )
+        self.persist_execution_dump = bool(persist_execution_dump)
+        self.reuse_existing_report = bool(reuse_existing_report)
         self.report_attributes: Dict[str, str] = {}
         self._dump: Dict[str, Any] = dump or {}
         existing_executions = self._dump.get("executions")
@@ -416,30 +450,77 @@ class ReportGenerator:
             else None
         )
         self._written = False
+        self._dirty = False
         self._finalized = False
         self._printed = False
+        self._initialized = False
         self._report_stream_id = uuid.uuid4().hex
         self._last_report_meta: Optional[ReportMeta] = None
         self._source_directory: Optional[str] = None
+        self._execution_comment_key_by_object: Dict[int, str] = {}
+        self._execution_comment_key_index = 0
+        self._execution_log_index = 0
+        self._execution_log_file_index_by_key: Dict[str, int] = {}
+        self._artifact_store: Optional[ReportArtifactStore] = None
+        self._screenshot_store: Optional[ReportImageStore] = None
+
+        if self.report_path:
+            report_dir = os.path.dirname(self.report_path) or "."
+            if self.screenshot_mode == "directory":
+                self._artifact_store = ReportArtifactStore(
+                    report_dir,
+                    self._report_stream_id,
+                    "agent",
+                    self.reuse_existing_report,
+                    os.path.basename(self.report_path),
+                )
+            self._screenshot_store = ReportImageStore(
+                mode="inline" if self.screenshot_mode == "inline" else "directory",
+                report_path=self.report_path,
+                screenshots_dir=(
+                    os.path.join(report_dir, "screenshots")
+                    if self.screenshot_mode == "directory"
+                    or self.persist_execution_dump
+                    else None
+                ),
+                write_inline_image=(
+                    self._append_inline_image
+                    if self.screenshot_mode == "inline"
+                    else None
+                ),
+                also_write_file_copy=self.persist_execution_dump,
+                reuse_existing_report=self.reuse_existing_report,
+            )
+        if self.reuse_existing_report:
+            self._hydrate_state_from_existing_report()
 
     @classmethod
     def create(cls, report_file_name: str, opts: Dict[str, Any]) -> IReportGenerator:
         """Factory mirroring upstream ReportGenerator.create."""
         assert_report_generation_options(opts)
-        output_format = opts.get("outputFormat")
+        output_format = opts.get("outputFormat", opts.get("output_format"))
         validate_report_file_name(report_file_name, output_format)
         if opts.get("generateReport") is False:
             return null_report_generator
 
         report_root_dir = Path(get_midscene_run_dir("report"))
-        if output_format == "html-and-external-assets":
-            # The Python SDK only emits the single-file report format.
+        directory_mode = output_format == "html-and-external-assets"
+        if directory_mode:
             report_path = report_root_dir / report_file_name / "index.html"
         else:
             report_path = report_root_dir / ensure_html_file_name(report_file_name)
         return cls(
             report_path=str(report_path),
             auto_print=opts.get("autoPrintReportMsg", True),
+            screenshot_mode="directory" if directory_mode else "inline",
+            persist_execution_dump=bool(
+                opts.get(
+                    "persistExecutionDump", opts.get("persist_execution_dump")
+                )
+            ),
+            reuse_existing_report=bool(
+                opts.get("reuseExistingReport", opts.get("reuse_existing_report"))
+            ),
         )
 
     def on_execution_update(
@@ -459,24 +540,41 @@ class ReportGenerator:
             )
         self._recorder.report_meta = report_meta
         self._recorder.record(execution)
-        self._written = False
+        self._dirty = True
 
     async def flush(self) -> None:
-        if self._written or not self._dump or not self.report_path:
+        if self._finalized:
             return
-        path = Path(self.report_path)
-        html_path = write_report_html(
-            self._dump,
-            path.stem,
-            str(path.parent),
-        )
-        if html_path:
-            self._written = True
-            self._print_report_path(html_path)
+        if self._written and not self._dirty:
+            return
+        if not self.report_path:
+            return
+        if self.screenshot_mode == "directory":
+            self._flush_directory()
+        else:
+            self._flush_inline()
 
     async def finalize(self) -> Optional[str]:
         if not self._finalized:
             await self.flush()
+            if self._artifact_store is not None:
+                if self._initialized:
+                    self._artifact_store.finalize()
+            elif self._initialized:
+                self._append_agent_report_comment()
+                try:
+                    from midscene.core.dump.report_dump_compactor import (
+                        compact_report_dumps,
+                    )
+
+                    compact_report_dumps(self.report_path)
+                except Exception as error:  # noqa: BLE001 - keep the raw report
+                    from loguru import logger
+
+                    logger.warning(
+                        f"Failed to compact report {self.report_path}; keeping "
+                        f"the uncompressed report: {error}"
+                    )
             self._finalized = True
         return self.report_path if self._written else None
 
@@ -562,10 +660,308 @@ class ReportGenerator:
                 self._dump.setdefault("executions", [])
             )
         self._recorder.report_meta = meta
+        report_meta = self._last_report_meta or dict(meta)
+        executions = list(self._recorder.executions)
+        agent_dump = ReportActionDump(
+            {**report_meta, "executions": executions}
+        )
+        report_id = (
+            self.report_attributes.get("data-report-id")
+            or self.report_attributes.get("data-group-id")
+            or self._report_stream_id
+        )
+        from midscene.core.test_runner.reporting.agent_report import (
+            build_agent_test_run_report_dump,
+        )
+
+        dump = build_agent_test_run_report_dump(
+            input,
+            agent_dump.to_json(),
+            {
+                "reportId": report_id,
+                "scopeId": scope_id,
+                "sourcePath": self.report_path or "",
+            },
+        )
+        for diagnostic in dump.get("diagnostics") or []:
+            from loguru import logger
+
+            logger.warning(diagnostic.get("message"))
         self.enable_source_snapshots(scope_id)
         await self.create_source_snapshot(scope_id)
-        await self.flush()
+
+        if self._artifact_store is not None:
+            for execution in executions:
+                self._write_execution_to_artifact(execution)
+            if not executions:
+                # An empty execution group still carries setup/collection
+                # diagnostics.
+                self._artifact_store.write_execution(
+                    "empty",
+                    agent_dump.serialize(),
+                    self._dump_script_attributes(),
+                )
+                if not self._initialized:
+                    self._initialize_directory_report()
+            self._artifact_store.write_runner(
+                json.dumps(dump, ensure_ascii=False)
+            )
+        else:
+            self._flush_inline()
+            if not self._initialized:
+                self._initialize_inline_report()
+            with open(self.report_path, "a", encoding="utf-8") as handle:
+                handle.write(
+                    "\n" + generate_test_run_report_script_tag(dump)
+                )
+
+        self._written = True
+        self._dirty = False
+        self._print_report_path()
         return self.report_path
+
+    # -- publication -------------------------------------------------------
+
+    def _initialize_inline_report(self) -> None:
+        Path(self.report_path).parent.mkdir(parents=True, exist_ok=True)
+        Path(self.report_path).write_text(get_report_tpl(), encoding="utf-8")
+        self._initialized = True
+
+    def _initialize_directory_report(self) -> None:
+        Path(self.report_path).parent.mkdir(parents=True, exist_ok=True)
+        write_report_artifact_file(
+            self.report_path,
+            f"{get_report_tpl()}{get_base_url_fix_script()}\n"
+            f"{generate_report_artifact_script_tag('report.json')}",
+        )
+        self._initialized = True
+
+    def _flush_inline(self) -> None:
+        executions = (
+            list(self._recorder.executions) if self._recorder is not None else []
+        )
+        if not executions:
+            return
+        if not self._initialized:
+            self._initialize_inline_report()
+        for execution in executions:
+            self._write_execution_inline(execution)
+            if self.persist_execution_dump:
+                self._persist_execution_dump_file(execution)
+        self._written = True
+        self._dirty = False
+        self._print_report_path()
+
+    def _flush_directory(self) -> None:
+        executions = (
+            list(self._recorder.executions) if self._recorder is not None else []
+        )
+        if not executions:
+            return
+        if not self._initialized:
+            self._initialize_directory_report()
+        assert self._artifact_store is not None
+        for execution in executions:
+            self._write_execution_to_artifact(execution)
+        self._written = True
+        self._dirty = False
+        self._print_report_path()
+
+    def _append_inline_image(self, image_id: str, data: str) -> None:
+        with open(self.report_path, "a", encoding="utf-8") as handle:
+            handle.write(f"\n{generate_image_script_tag(image_id, data)}")
+
+    def _write_execution_inline(self, execution: Any) -> None:
+        dump_execution = self._as_execution_dump(execution)
+        self._persist_screenshots(dump_execution)
+        reference_refs = self._persist_reference_images(dump_execution)
+        single_dump = ReportActionDump(
+            {**(self._last_report_meta or {}), "executions": [dump_execution]}
+        )
+        serialized = single_dump.serialize_with_reference_images(
+            reference_refs
+        )
+        with open(self.report_path, "a", encoding="utf-8") as handle:
+            handle.write(
+                "\n"
+                + generate_dump_script_tag(
+                    serialized, self._dump_script_attributes()
+                )
+            )
+
+    def _write_execution_to_artifact(self, execution: Any) -> None:
+        assert self._artifact_store is not None
+        dump_execution = self._as_execution_dump(execution)
+        self._persist_screenshots(dump_execution)
+        reference_refs = self._persist_reference_images(dump_execution)
+        single_dump = ReportActionDump(
+            {**(self._last_report_meta or {}), "executions": [dump_execution]}
+        )
+        serialized = single_dump.serialize_with_reference_images(
+            reference_refs
+        )
+        self._artifact_store.write_execution(
+            self._execution_comment_key(execution),
+            serialized,
+            self._dump_script_attributes(),
+        )
+
+    def _persist_screenshots(self, dump_execution: ExecutionDump) -> None:
+        if self._screenshot_store is None:
+            return
+        for screenshot in dump_execution.collect_screenshots():
+            self._screenshot_store.persist(screenshot)
+
+    def _persist_reference_images(
+        self, dump_execution: ExecutionDump
+    ) -> Dict[str, Any]:
+        refs: Dict[str, Any] = {}
+        if self._screenshot_store is None:
+            return refs
+        for image_url in dump_execution.get_reference_image_urls():
+            refs[image_url] = self._screenshot_store.persist_reference_image(
+                image_url
+            )
+        return refs
+
+    def _dump_script_attributes(self) -> Dict[str, str]:
+        return {
+            "data-group-id": self._report_stream_id,
+            DATA_SCREENSHOT_MODE_ATTR: self.screenshot_mode,
+            **self.report_attributes,
+            "data-report-kind": "agent",
+        }
+
+    def _append_agent_report_comment(self) -> None:
+        if self._recorder is None or not self._recorder.executions:
+            return
+        report_dump = ReportActionDump(
+            {
+                **(self._last_report_meta or self._snapshot_meta()),
+                "executions": self._recorder.executions,
+            }
+        )
+        with open(self.report_path, "a", encoding="utf-8") as handle:
+            handle.write("\n" + generate_agent_report_comment(report_dump.to_json()))
+
+    def _execution_comment_key(self, execution: Any) -> str:
+        execution_id = _execution_id(execution)
+        if execution_id:
+            return f"id:{execution_id}"
+        object_key = id(execution)
+        existing = self._execution_comment_key_by_object.get(object_key)
+        if existing is not None:
+            return existing
+        key = f"no-id:{self._execution_comment_key_index}"
+        self._execution_comment_key_index += 1
+        self._execution_comment_key_by_object[object_key] = key
+        return key
+
+    def _execution_log_key(self, execution: Any) -> str:
+        execution_id = _execution_id(execution)
+        if not execution_id:
+            raise ValueError(
+                "ReportGenerator: execution.id is required for persisting "
+                "execution dumps"
+            )
+        return f"id:{execution_id}"
+
+    def _execution_dump_directory(self) -> str:
+        report_dir = os.path.dirname(self.report_path) or "."
+        if self.screenshot_mode == "inline":
+            return os.path.join(
+                report_dir,
+                ".execution-dumps",
+                os.path.basename(self.report_path),
+            )
+        return report_dir
+
+    def _persist_execution_dump_file(self, execution: Any) -> None:
+        directory = self._execution_dump_directory()
+        os.makedirs(directory, exist_ok=True)
+        key = self._execution_log_key(execution)
+        file_index = self._execution_log_file_index_by_key.get(key)
+        if file_index is None:
+            self._execution_log_index += 1
+            file_index = self._execution_log_index
+            self._execution_log_file_index_by_key[key] = file_index
+        dump_execution = self._as_execution_dump(execution)
+        single_dump = ReportActionDump(
+            {**(self._last_report_meta or {}), "executions": [dump_execution]}
+        )
+        reference_refs = self._persist_reference_images(dump_execution)
+        serialized = single_dump.serialize_with_reference_images(
+            reference_refs, 2
+        )
+        if self.screenshot_mode == "inline":
+            serialized = json.dumps(
+                self._rewrite_inline_dump_refs_to_files(json.loads(serialized)),
+                ensure_ascii=False,
+                indent=2,
+            )
+        write_report_artifact_file(
+            os.path.join(directory, f"{file_index}.execution.json"),
+            serialized,
+        )
+
+    def _rewrite_inline_dump_refs_to_files(self, value: Any) -> Any:
+        ref = normalize_stored_image_ref(value)
+        if ref is not None:
+            if ref.get("storage") != "inline" or self._screenshot_store is None:
+                return value
+            try:
+                path = self._screenshot_store.get_file_path(ref["id"])
+            except ValueError:
+                return value
+            return {
+                **ref,
+                "storage": "file",
+                "path": f"../../{path[2:] if path.startswith('./') else path}",
+            }
+        if isinstance(value, dict):
+            return {
+                key: self._rewrite_inline_dump_refs_to_files(item)
+                for key, item in value.items()
+            }
+        if isinstance(value, list):
+            return [
+                self._rewrite_inline_dump_refs_to_files(item) for item in value
+            ]
+        return value
+
+    def _hydrate_state_from_existing_report(self) -> None:
+        if not self.report_path or not os.path.exists(self.report_path):
+            return
+        if (
+            self._artifact_store is not None
+            and read_report_artifact_manifest(self.report_path) is None
+        ):
+            raise ValueError(
+                "Cannot reuse an incompatible directory report. Choose a new "
+                "reportFileName or regenerate the report."
+            )
+        self._initialized = True
+        if not self.persist_execution_dump:
+            return
+        directory = self._execution_dump_directory()
+        if not os.path.isdir(directory):
+            return
+        indices = [
+            int(match.group(1))
+            for match in (
+                re.match(r"^(\d+)\.execution\.json$", name)
+                for name in os.listdir(directory)
+            )
+            if match
+        ]
+        if indices:
+            self._execution_log_index = max(indices)
+
+    @staticmethod
+    def _as_execution_dump(execution: Any) -> ExecutionDump:
+        if isinstance(execution, ExecutionDump):
+            return execution
+        return ExecutionDump.from_json(execution)
 
     def _merge_report_meta(self, report_meta: ReportMeta) -> None:
         self._last_report_meta = dict(report_meta)
@@ -590,12 +986,20 @@ class ReportGenerator:
                 continue
             self.report_attributes[key] = str(value)
 
-    def _print_report_path(self, html_path: str) -> None:
-        if not self.auto_print or self._printed:
+    def _print_report_path(self) -> None:
+        if not self.auto_print or self._printed or not self.report_path:
             return
         self._printed = True
         if os.environ.get("MIDSCENE_REPORT_QUIET"):
             return
         from loguru import logger
 
-        logger.info(f"Midscene - report file updated: {html_path}")
+        if self.screenshot_mode == "directory":
+            logger.info(
+                "Midscene - report file updated: npx serve "
+                f"{os.path.dirname(self.report_path)}"
+            )
+        else:
+            logger.info(
+                f"Midscene - report file updated: {self.report_path}"
+            )

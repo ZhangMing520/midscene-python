@@ -3,9 +3,7 @@ packages/web-integration/tests/ai/web/puppeteer/iframe-xpath.test.ts.
 
 The upstream cases use a Puppeteer agent and an AI model for the locate cases.
 Only the cache-feature cases are ported here, driven through the Playwright
-page against an inline same-origin iframe. The invalid-compound-xpath case is
-kept but skipped because the Python implementation returns ``None`` instead of
-raising, which is an intentional driver difference rather than a test gap.
+page against an inline same-origin iframe.
 """
 
 import pytest
@@ -86,10 +84,6 @@ async def test_rect_matches_cache_feature_should_resolve_compound_xpath_and_retu
     assert rect.top >= _IFRAME_TOP
 
 
-@pytest.mark.skip(
-    reason="upstream expects rectMatchesCacheFeature to throw; the Python "
-    "implementation returns None for unresolved xpaths"
-)
 @pytest.mark.asyncio
 async def test_rect_matches_cache_feature_should_throw_for_invalid_compound_xpath(
     web_page,

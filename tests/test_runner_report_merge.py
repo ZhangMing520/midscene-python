@@ -1,14 +1,18 @@
-"""Synced from upstream packages/core/tests/unit-test/runner-report-merge.test.ts.
+"""Synced from upstream packages/core/tests/unit-test/runner-report-merge.test.ts."""
 
-The Python port exposes merge_test_run_report_dumps (pure dump merging) but no
-ReportMergingTool/mergeReportFiles HTML orchestration, so the host-status case
-is skipped. The remaining cases keep the upstream names and asserted ids.
-"""
-
+import json
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, List
 
 import pytest
 
+from midscene.core.dump.html_utils import (
+    generate_dump_script_tag,
+    generate_test_run_report_script_tag,
+)
+from midscene.core.dump.report_artifact_reader import read_report_runner_dump
+from midscene.core.report import ReportMergingTool
 from midscene.core.test_runner.reporting.merge_report import (
     merge_test_run_report_dumps,
 )
@@ -16,6 +20,175 @@ from midscene.core.test_runner.reporting.metrics import sum_test_run_report_metr
 from midscene.core.test_runner.reporting.test_run_report import (
     build_test_run_report_dump,
 )
+from midscene.core.utils import get_version
+
+_TIME = "2026-09-10T00:00:00.000Z"
+_TIME_MS = int(
+    datetime.strptime(_TIME, "%Y-%m-%dT%H:%M:%S.%fZ")
+    .replace(tzinfo=timezone.utc)
+    .timestamp()
+    * 1000
+)
+
+
+def _runner_step(step_id: str, report_id: str) -> Dict[str, Any]:
+    return {
+        "id": step_id,
+        "phase": "steps",
+        "stepIndex": 0,
+        "node": "aiAct",
+        "title": "Submit",
+        "status": "success",
+        "continuedAfterError": False,
+        "startedAt": _TIME,
+        "endedAt": _TIME,
+        "durationMs": 0,
+        "agentDetails": [{"reportId": report_id, "executionId": "shared-execution"}],
+    }
+
+
+def _runner_dump(report_id: str) -> Dict[str, Any]:
+    lifecycle = {
+        "documentId": "document",
+        "sourcePath": "/fixtures/case.yaml",
+        "status": "success",
+        "beforeAll": [{**_runner_step("setup", report_id), "phase": "beforeAll"}],
+        "afterAll": [],
+        "scopeReportIds": [report_id],
+    }
+
+    def attempt(attempt_index: int, status: str = "success") -> Dict[str, Any]:
+        return {
+            **lifecycle,
+            "documentRunId": f"file-attempt-{attempt_index + 1}",
+            "attemptIndex": attempt_index,
+            "status": status,
+            **(
+                {
+                    "teardownErrors": [
+                        {"name": "Error", "message": "old cleanup failed"}
+                    ]
+                }
+                if status == "failed"
+                else {}
+            ),
+        }
+
+    return {
+        "schemaVersion": 1,
+        "kind": "test-runner",
+        "runId": "run",
+        "status": "success",
+        "startedAt": _TIME,
+        "endedAt": _TIME,
+        "durationMs": 0,
+        "summary": {
+            "total": 1,
+            "passed": 1,
+            "failed": 0,
+            "notRun": 0,
+            "filtered": 0,
+            "collectionErrors": 0,
+            "documentFailures": 0,
+            "projectFailures": 0,
+        },
+        "metrics": {
+            "modelCallCount": 7,
+            "modelTimeMs": 100,
+            "promptTokens": 99,
+            "cachedInputTokens": 0,
+            "completionTokens": 1,
+            "totalTokens": 100,
+        },
+        "projects": [
+            {
+                "projectId": "project",
+                "name": "web",
+                "platform": "web",
+                "status": "success",
+                "retry": 1,
+                "collectionErrors": [],
+                "documents": [
+                    {
+                        **lifecycle,
+                        "logicalDocumentId": "document",
+                        "documentRunId": "file-attempt-2",
+                        "attemptIndex": 1,
+                        "attempts": [
+                            attempt(0, "failed"),
+                            attempt(1),
+                        ],
+                        "cases": [
+                            {
+                                "caseId": "case",
+                                "name": "submit",
+                                "caseIndex": 0,
+                                "status": "success",
+                                "attempts": [
+                                    {
+                                        "attemptId": f"attempt-{index}",
+                                        "attemptIndex": index,
+                                        "status": (
+                                            "success" if index else "failed"
+                                        ),
+                                        "startedAt": _TIME,
+                                        "endedAt": _TIME,
+                                        "durationMs": 0,
+                                        "beforeEach": [],
+                                        "afterEach": [],
+                                        "steps": [
+                                            _runner_step(
+                                                f"step-{index}", report_id
+                                            )
+                                        ],
+                                        "scopeReportIds": [report_id],
+                                    }
+                                    for index in (0, 1)
+                                ],
+                            }
+                        ],
+                    }
+                ],
+            }
+        ],
+    }
+
+
+def _write_source(directory: Path, name: str, dump: Dict[str, Any]) -> str:
+    report_path = directory / f"{name}.html"
+    agent = {
+        "sdkVersion": get_version(),
+        "groupName": name,
+        "groupDescription": None,
+        "modelBriefs": [],
+        "executions": [
+            {
+                "id": "shared-execution",
+                "name": "Submit",
+                "logTime": _TIME_MS,
+                "tasks": [
+                    {
+                        "taskId": "assert",
+                        "type": "Insight",
+                        "subType": "Assert",
+                        "status": "finished",
+                        "param": {},
+                        "recorder": [],
+                    }
+                ],
+            }
+        ],
+    }
+    content = generate_dump_script_tag(
+        json.dumps(agent),
+        {
+            "data-group-id": f"{name}-group",
+            "data-report-id": f"{name}-group",
+        },
+    )
+    content += "\n" + generate_test_run_report_script_tag(dump)
+    report_path.write_text(content, encoding="utf-8")
+    return str(report_path)
 
 
 def _step(node: str = "echo", meta: Dict[str, Any] = None, **input_value) -> Dict[str, Any]:
@@ -240,9 +413,58 @@ def test_rejects_an_invalid_source_execution_timestamp():
         )
 
 
-@pytest.mark.skip(
-    reason="Python has no ReportMergingTool/mergeReportFiles host-status pipeline; "
-    "retaining a host failure requires the HTML report merger"
-)
-def test_retains_host_status_without_changing_successful_yaml_actions():
-    pass
+@pytest.mark.parametrize("test_status", ["failed", "timedOut", "interrupted"])
+def test_retains_host_status_without_changing_successful_yaml_actions(
+    tmp_path, test_status
+):
+    source_dump = _runner_dump("yaml-group")
+    source = _write_source(tmp_path, "yaml", source_dump)
+
+    tool = ReportMergingTool()
+    tool.append(
+        {
+            "reportFilePath": source,
+            "reportAttributes": {
+                "testTitle": "outer test",
+                "testId": "outer",
+                "testDescription": "",
+                "testDuration": 100,
+                "testStatus": test_status,
+            },
+        }
+    )
+    output = tool.merge_reports(
+        "host-failed", {"outputDir": str(tmp_path)}
+    )
+    assert output is not None
+
+    merged = read_report_runner_dump(output)
+    assert merged["status"] == "failed"
+    assert merged["summary"]["total"] == 1
+    assert merged["summary"]["passed"] == 1
+    assert merged["summary"]["failed"] == 0
+    assert merged["summary"]["documentFailures"] == 1
+    assert merged["projects"][0]["status"] == "failed"
+
+    document = merged["projects"][0]["documents"][0]
+    assert document["status"] == "failed"
+    host_result = document["afterAll"][-1]
+    assert host_result["node"] == "runner:host-result"
+    assert host_result["status"] == "failed"
+    assert test_status in host_result["error"]["message"]
+    assert document["attempts"][-1]["afterAll"][-1]["node"] == (
+        "runner:host-result"
+    )
+    assert [
+        attempt["status"] for attempt in document["cases"][0]["attempts"]
+    ] == ["failed", "success"]
+    assert document["cases"][0]["attempts"][-1]["steps"][0]["status"] == (
+        "success"
+    )
+    assert source_dump["status"] == "success"
+
+    second_tool = ReportMergingTool()
+    second_tool.append({"reportFilePath": output})
+    second = second_tool.merge_reports("again", {"outputDir": str(tmp_path)})
+    assert second is not None
+    assert read_report_runner_dump(second)["summary"]["documentFailures"] == 1

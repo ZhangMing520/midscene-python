@@ -395,7 +395,7 @@ class BrowserPageActionsMixin:
 
     async def rect_matches_cache_feature(
         self, feature: Dict[str, Any]
-    ) -> Optional[Rect]:
+    ) -> Rect:
         """Resolve cached xpaths back to the first matching element rect."""
         xpaths = sanitize_xpaths((feature or {}).get("xpaths"))
         for xpath in xpaths:
@@ -408,7 +408,10 @@ class BrowserPageActionsMixin:
                 continue
             if rect:
                 return Rect(**rect)
-        return None
+        raise RuntimeError(
+            "No matching element rect found for the provided cache feature "
+            f"(tried {len(xpaths)} xpath(s): {', '.join(xpaths)})"
+        )
 
     async def keyboard_press(self, key: str) -> None:
         try:

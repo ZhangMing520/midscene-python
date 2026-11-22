@@ -431,7 +431,7 @@ class AbstractInterface(ABC):
     async def rect_matches_cache_feature(
         self, feature: Dict[str, Any]
     ) -> Optional[Rect]:
-        """Resolve a cached feature back to a rect, or None when it is stale."""
+        """Resolve a cached feature back to a rect; raise when it is stale."""
         raise NotImplementedError(
             "rect_matches_cache_feature is not supported on this interface"
         )

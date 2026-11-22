@@ -487,15 +487,38 @@ async def test_counts_queue_waiting_against_each_attempt_timeout_without_sending
         await __shutdown_codex_app_server_for_tests()
 
 
-@pytest.mark.skip(
-    reason=(
-        "the Python provider has no provider-owned turn deadline; model "
-        "timeouts are enforced by asyncio.wait_for in call_generative_ai"
-    )
-)
 @pytest.mark.parametrize("timeout", [0, 25])
-def test_does_not_create_a_turn_deadline_from_timeout(timeout: int) -> None:
-    pass
+@pytest.mark.asyncio
+async def test_does_not_create_a_turn_deadline_from_timeout(
+    monkeypatch, timeout: int
+) -> None:
+    """does not create a turn deadline from timeout %s"""
+    install_fake_process(monkeypatch)
+    await __shutdown_codex_app_server_for_tests()
+
+    class _AbortSignal:
+        def __init__(self) -> None:
+            self.aborted = False
+
+        def is_set(self) -> bool:
+            return False
+
+    signal = _AbortSignal()
+    try:
+        result = await call_ai_with_codex_app_server(
+            [{"role": "user", "content": "hello"}],
+            {**BASE_MODEL_CONFIG, "timeout": timeout},
+            {
+                "resolveImageDetail": resolve_image_detail,
+                "abortSignal": signal,
+            },
+        )
+
+        # Passing a short timeout must not add a provider-owned model deadline.
+        assert result["content"] == "hello"
+        assert signal.aborted is False
+    finally:
+        await __shutdown_codex_app_server_for_tests()
 
 
 @pytest.mark.asyncio

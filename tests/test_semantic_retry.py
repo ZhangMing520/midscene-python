@@ -1,9 +1,11 @@
 """Synced from upstream packages/core/tests/unit-test/semantic-retry.test.ts.
 
-The Python retry loop has no abort-signal parameter (cancellation is expected
-to propagate as task cancellation), so the three upstream cancellation cases
-are skipped. The retry/feedback behavior is ported directly.
+Cancellation mirrors the upstream ``abortSignal``: an aborted signal is
+observed before the call, after a successful parse, after a parse failure,
+and after ``onParseRetry``/the retry delay.
 """
+
+import asyncio
 
 import pytest
 
@@ -11,32 +13,108 @@ from midscene.core.ai_model.service_caller.semantic_retry import (
     call_ai_and_parse_with_retry,
     with_semantic_retry_feedback,
 )
-
-_ABORT_SKIP = pytest.mark.skip(
-    reason="Python call_ai_and_parse_with_retry has no abortSignal parameter to "
-    "observe cancellation during parsing/retry"
-)
+from midscene.shared.types import AbortError, AbortSignal
 
 
-@_ABORT_SKIP
 @pytest.mark.asyncio
 async def test_preserves_cancellation_when_asynchronous_parsing_succeeds_after_cancellation():
     """preserves cancellation when asynchronous parsing succeeds after cancellation"""
-    pass
+    signal = AbortSignal()
+    reason = "cancelled during parsing"
+    calls = []
+    parse_errors = []
+
+    async def call_ai(retry_attempt, previous_parse_error=None):
+        calls.append(retry_attempt)
+        return "response"
+
+    async def parse_response(_response):
+        await asyncio.sleep(0)
+        signal.abort(reason)
+        return "parsed"
+
+    def to_parse_error(error, response):
+        parse_errors.append(error)
+        return RuntimeError("parse failed")
+
+    with pytest.raises(AbortError, match=reason):
+        await call_ai_and_parse_with_retry(
+            call_ai=call_ai,
+            parse_response=parse_response,
+            to_parse_error=to_parse_error,
+            parse_retry_times=1,
+            abort_signal=signal,
+        )
+
+    assert calls == [0]
+    assert parse_errors == []
 
 
-@_ABORT_SKIP
 @pytest.mark.asyncio
 async def test_preserves_cancellation_when_parsing_fails_after_the_signal_is_aborted():
     """preserves cancellation when parsing fails after the signal is aborted"""
-    pass
+    signal = AbortSignal()
+    reason = "cancelled during parsing"
+    calls = []
+    parse_errors = []
+
+    async def call_ai(retry_attempt, previous_parse_error=None):
+        calls.append(retry_attempt)
+        return "response"
+
+    def parse_response(_response):
+        signal.abort(reason)
+        raise ValueError("invalid response")
+
+    def to_parse_error(error, response):
+        parse_errors.append(error)
+        return RuntimeError("parse failed")
+
+    with pytest.raises(AbortError, match=reason):
+        await call_ai_and_parse_with_retry(
+            call_ai=call_ai,
+            parse_response=parse_response,
+            to_parse_error=to_parse_error,
+            parse_retry_times=1,
+            abort_signal=signal,
+        )
+
+    assert calls == [0]
+    assert parse_errors == []
 
 
-@_ABORT_SKIP
 @pytest.mark.asyncio
 async def test_preserves_cancellation_from_onparseretry_with_no_retry_delay():
     """preserves cancellation from onParseRetry with no retry delay"""
-    pass
+    signal = AbortSignal()
+    reason = "cancelled by caller"
+    calls = []
+    parse_errors = []
+
+    async def call_ai(retry_attempt, previous_parse_error=None):
+        calls.append(retry_attempt)
+        return "invalid"
+
+    def parse_response(_response):
+        raise ValueError("invalid response")
+
+    def to_parse_error(error, response):
+        parse_errors.append(error)
+        return RuntimeError("parse failed")
+
+    with pytest.raises(AbortError, match=reason):
+        await call_ai_and_parse_with_retry(
+            call_ai=call_ai,
+            parse_response=parse_response,
+            to_parse_error=to_parse_error,
+            parse_retry_times=1,
+            parse_retry_interval=0,
+            abort_signal=signal,
+            on_parse_retry=lambda _error, _response: signal.abort(reason),
+        )
+
+    assert calls == [0]
+    assert parse_errors == []
 
 
 @pytest.mark.asyncio

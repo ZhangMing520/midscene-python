@@ -252,13 +252,33 @@ def test_accepts_verified_id_token_despite_local_clock_mismatch(clock_mismatch):
     """accepts a verified ID token despite local clock mismatch"""
 
 
-@pytest.mark.skip(
-    reason=(
-        "Upstream rejects a callback whose client_id differs from the "
-        "registration; the Python core callback parser only rejects the "
-        "dynamic client id"
-    )
-)
-def test_reuses_supplied_registration_and_host_identifiers():
+def test_reuses_supplied_registration_and_host_identifiers(monkeypatch):
     """reuses supplied registration and host identifiers"""
+    exchange_calls = []
+
+    async def fake_exchange(attempt, callback):
+        exchange_calls.append(callback)
+        return _fake_exchange(attempt, callback)
+
+    monkeypatch.setattr(f"{_SIWC_MODULE}.exchange_siwc_code", fake_exchange)
+
+    async def on_authorization(url):
+        query = parse_qs(urlparse(url).query)
+        assert "agent_name_hint" not in query
+        assert query["client_id"][0] == "oaiapp_test"
+        assert await _get(_callback_url(url, client_id="other-client")) == 400
+        assert await _get(_callback_url(url)) == 200
+
+    result = asyncio.run(
+        login_module.login_with_openai(
+            {
+                "hostId": "urn:uuid:test-host",
+                "clientId": "oaiapp_test",
+                "onAuthorization": on_authorization,
+            }
+        )
+    )
+
+    assert result["ext_agent_host_id"] == "urn:uuid:test-host"
+    assert len(exchange_calls) == 1
 
