@@ -1,0 +1,2141 @@
+{
+  "upstream_root": "/home/zhangming/gitspace/midscene",
+  "counts": {
+    "runtime_exports": 1151,
+    "schema_exports": 56,
+    "type_exports": 983,
+    "modules_with_gaps": 124,
+    "missing": 329,
+    "moved": 154,
+    "modules_with_missing": 120
+  },
+  "by_package": {
+    "android": {
+      "modules": 5,
+      "missing": 7,
+      "moved": 1
+    },
+    "cli": {
+      "modules": 6,
+      "missing": 22,
+      "moved": 0
+    },
+    "computer": {
+      "modules": 4,
+      "missing": 15,
+      "moved": 0
+    },
+    "core": {
+      "modules": 86,
+      "missing": 202,
+      "moved": 24
+    },
+    "harmony": {
+      "modules": 1,
+      "missing": 1,
+      "moved": 0
+    },
+    "ios": {
+      "modules": 3,
+      "missing": 3,
+      "moved": 0
+    },
+    "shared": {
+      "modules": 10,
+      "missing": 59,
+      "moved": 129
+    },
+    "web-integration": {
+      "modules": 7,
+      "missing": 18,
+      "moved": 0
+    },
+    "webdriver": {
+      "modules": 2,
+      "missing": 2,
+      "moved": 0
+    }
+  },
+  "modules": [
+    {
+      "package": "core",
+      "upstream": "dump/html-utils.ts",
+      "python": "core/dump/html_utils.py",
+      "runtime_exports": 26,
+      "missing": [
+        "DATA_SCREENSHOT_MODE_ATTR",
+        "STREAMING_CHUNK_SIZE",
+        "collectImageScriptIds",
+        "escapeContent",
+        "extractAllDumpScriptsSync",
+        "extractLastDumpScriptSync",
+        "extractReportArtifactPathAsync",
+        "extractReportArtifactPathSync",
+        "extractTestRunReportDumpSync",
+        "generateAgentReportComment",
+        "generateDumpScriptTag",
+        "generateImageScriptTag",
+        "generateReportArtifactScriptTag",
+        "generateTestRunReportScriptTag",
+        "getBaseUrlFixScript",
+        "parseDumpScript",
+        "parseDumpScriptAttributes",
+        "parseImageScripts",
+        "streamDumpScriptsAsync",
+        "streamDumpScriptsSync",
+        "streamImageScriptsToFile",
+        "streamInlineReportImages",
+        "streamScanTags",
+        "streamScanTagsAsync",
+        "unescapeContent"
+      ],
+      "moved": [
+        {
+          "name": "extractImageByIdSync",
+          "found_in": "midscene/core/screenshot_item.py"
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "device/index.ts",
+      "python": "core/device/__init__.py",
+      "runtime_exports": 24,
+      "missing": [
+        "createDefaultMobileActions",
+        "defineActionClearInput",
+        "defineActionCursorMove",
+        "defineActionDoubleClick",
+        "defineActionDragAndDrop",
+        "defineActionHover",
+        "defineActionInput",
+        "defineActionKeyboardPress",
+        "defineActionLongPress",
+        "defineActionMiddleClick",
+        "defineActionPinch",
+        "defineActionRegisterFileChooserAccept",
+        "defineActionRightClick",
+        "defineActionScroll",
+        "defineActionSleep",
+        "defineActionSwipe",
+        "defineActionTap",
+        "defineActionsFromInputPrimitives",
+        "normalizeMobileSwipeParam",
+        "resolveSwipeInputPrimitive",
+        "z"
+      ],
+      "moved": [
+        {
+          "name": "defineAction",
+          "found_in": "midscene/core/agent/test_runner_nodes.py"
+        }
+      ]
+    },
+    {
+      "package": "shared",
+      "upstream": "img/transform.ts",
+      "python": "shared/img/transform.py",
+      "runtime_exports": 24,
+      "missing": [
+        "constrainBase64ImageToMaxSize",
+        "convertBase64ImageToJpeg",
+        "convertImgBufferToJpeg",
+        "createImgBase64ByFormat",
+        "httpImg2Base64",
+        "inferBase64ImageFormat",
+        "localImg2Base64",
+        "normalizeBase64Image",
+        "normalizeScreenshotBase64",
+        "padBase64ImageToMinimumSize",
+        "paddingToMatchBlock",
+        "photonFromBase64",
+        "photonToBase64",
+        "preProcessImageUrl",
+        "resizeAndConvertImgBuffer",
+        "resizeBase64ImageToJpeg",
+        "resizeImgBase64",
+        "saveBase64Image",
+        "scaleImage",
+        "zoomForGPT4o"
+      ],
+      "moved": [
+        {
+          "name": "parseBase64",
+          "found_in": "midscene/shared/agent_tools/base_tools.py"
+        }
+      ]
+    },
+    {
+      "package": "shared",
+      "upstream": "extractor/util.ts",
+      "python": "shared/extractor/util.py",
+      "runtime_exports": 20,
+      "missing": [
+        "elementRect",
+        "generateId",
+        "getNodeAttributes",
+        "getNodeFromCacheList",
+        "getPseudoElementContent",
+        "getRect",
+        "getTopDocument",
+        "hasOverflowY",
+        "midsceneGenerateHash",
+        "setExtractTextWithPositionOnWindow",
+        "setGenerateHashOnWindow",
+        "setMidsceneVisibleRectOnWindow",
+        "setNodeHashCacheListOnWindow",
+        "setNodeToCacheList",
+        "validTextNodeContent"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "agent/utils.ts",
+      "python": "core/agent/utils.py",
+      "runtime_exports": 12,
+      "missing": [
+        "commonContextParser",
+        "createScreenshotBoundUIContext",
+        "getMidsceneVersion",
+        "ifLocateParamHasLocatedPixelResult",
+        "matchElementFromCache",
+        "matchElementFromPlan",
+        "normalizeScrollType",
+        "parsePrompt",
+        "printReportMsg",
+        "transformLogicalElementToScreenshot",
+        "transformLogicalRectToScreenshotRect"
+      ],
+      "moved": [
+        {
+          "name": "normalizeFilePaths",
+          "found_in": "midscene/core/agent/file_chooser.py"
+        }
+      ]
+    },
+    {
+      "package": "cli",
+      "upstream": "printer.ts",
+      "python": "cli/printer.py",
+      "runtime_exports": 10,
+      "missing": [
+        "contextInfo",
+        "contextTaskListSummary",
+        "currentSpinningFrame",
+        "formatYamlProgressSnapshot",
+        "indent",
+        "isTTY",
+        "singleTaskInfo",
+        "spinnerFrames",
+        "spinnerInterval"
+      ],
+      "moved": []
+    },
+    {
+      "package": "shared",
+      "upstream": "utils.ts",
+      "python": "shared/utils.py",
+      "runtime_exports": 15,
+      "missing": [
+        "assert",
+        "generateHashId",
+        "ifInBrowser",
+        "ifInNode",
+        "ifInWorker",
+        "isPlainObject",
+        "logMsg",
+        "repeat",
+        "sha256Hex"
+      ],
+      "moved": [
+        {
+          "name": "antiEscapeScriptTag",
+          "found_in": "midscene/core/utils.py"
+        },
+        {
+          "name": "escapeScriptTag",
+          "found_in": "midscene/core/utils.py"
+        },
+        {
+          "name": "replaceIllegalPathCharsAndSpace",
+          "found_in": "midscene/core/agent/task_cache.py"
+        },
+        {
+          "name": "uuid",
+          "found_in": "midscene/android/scrcpy_manager.py"
+        }
+      ]
+    },
+    {
+      "package": "cli",
+      "upstream": "execution-summary.ts",
+      "python": "cli/execution_summary.py",
+      "runtime_exports": 17,
+      "missing": [
+        "createExecutedYamlResult",
+        "createUnexpectedYamlResult",
+        "createYamlAttempt",
+        "getYamlAttemptsDuration",
+        "isYamlPlayerSuccessful",
+        "notExecutedError",
+        "printExecutionFinished",
+        "resolveYamlMaxAttempts"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "agent/ui-utils.ts",
+      "python": "core/agent/ui_utils.py",
+      "runtime_exports": 7,
+      "missing": [
+        "extractInsightParam",
+        "locateParamStr",
+        "paramStr",
+        "pullParamStr",
+        "scrollParamStr",
+        "taskTitleStr",
+        "typeStr"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/request-timeout.ts",
+      "python": "core/ai_model/service_caller/request_timeout.py",
+      "runtime_exports": 8,
+      "missing": [
+        "AIRequestTimeoutError",
+        "AI_CALL_HARD_TIMEOUT_CODE",
+        "DEFAULT_AI_CALL_TIMEOUT_MS",
+        "buildRequestAbortSignal",
+        "isHardTimeoutError",
+        "runWithAbortSignal",
+        "waitForRetry"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/recorder-generation/yaml.ts",
+      "python": "core/ai_model/workflows/recorder_generation/yaml.py",
+      "runtime_exports": 13,
+      "missing": [
+        "createMessageContent",
+        "extractInputDescriptions",
+        "filterEventsByType",
+        "generateRecorderYamlTest",
+        "generateRecorderYamlTestStream",
+        "generateYamlTestStream",
+        "prepareRecorderGenerationContext"
+      ],
+      "moved": [
+        {
+          "name": "createEventCounts",
+          "found_in": "midscene/core/ai_model/workflows/recorder_generation/__init__.py"
+        },
+        {
+          "name": "getScreenshotsForLLM",
+          "found_in": "midscene/core/ai_model/workflows/recorder_generation/metadata.py"
+        },
+        {
+          "name": "processEventsForLLM",
+          "found_in": "midscene/core/ai_model/workflows/recorder_generation/__init__.py"
+        }
+      ]
+    },
+    {
+      "package": "computer",
+      "upstream": "device.ts",
+      "python": "computer/device.py",
+      "runtime_exports": 8,
+      "missing": [
+        "LIBNUT_FALLBACK_EDGE_DETENTS",
+        "getDisplayInfoBinary",
+        "getPhasedScrollBinary",
+        "mapDisplayLocalPointToGlobal",
+        "readDarwinDisplayGeometries",
+        "resolveDarwinDisplayGeometryFromList",
+        "runPhasedScroll"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "report.ts",
+      "python": "core/report.py",
+      "runtime_exports": 8,
+      "missing": [
+        "ReportMergingTool",
+        "TestRunReportAssembler",
+        "collectDedupedExecutions",
+        "dedupeExecutionsKeepLatest",
+        "isDirectoryModeReport",
+        "removeReportArtifact",
+        "splitReportHtmlByExecution"
+      ],
+      "moved": [
+        {
+          "name": "exportReportArtifact",
+          "found_in": "midscene/core/__init__.py"
+        }
+      ]
+    },
+    {
+      "package": "web-integration",
+      "upstream": "bridge-mode/common.ts",
+      "python": "web_integration/bridge_mode/common.py",
+      "runtime_exports": 11,
+      "missing": [
+        "BridgeErrorCodeNoClientConnected",
+        "BridgeEvent",
+        "BridgePageType",
+        "DefaultLocalEndpoint",
+        "KeyboardEvent",
+        "MouseEvent"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "dump/report-artifact-reader.ts",
+      "python": "core/dump/report_artifact_reader.py",
+      "runtime_exports": 6,
+      "missing": [
+        "readReportActionDump",
+        "readReportArtifactManifest",
+        "readReportArtifactManifestAsync",
+        "readReportDumpScripts",
+        "readReportRunnerDump",
+        "streamReportDumpScripts"
+      ],
+      "moved": []
+    },
+    {
+      "package": "shared",
+      "upstream": "env/types.ts",
+      "python": "shared/env/types.py",
+      "runtime_exports": 127,
+      "missing": [
+        "MIDSCENE_DANGEROUSLY_PRINT_ALL_CONFIG",
+        "MIDSCENE_OPENAI_HTTP_PROXY",
+        "MIDSCENE_OPENAI_INIT_CONFIG_JSON",
+        "MIDSCENE_OPENAI_SOCKS_PROXY",
+        "UITarsModelVersion",
+        "UNUSED_ENV_KEYS"
+      ],
+      "moved": [
+        {
+          "name": "ALL_ENV_KEYS",
+          "found_in": "midscene/shared/env/global_config_manager.py"
+        },
+        {
+          "name": "BASIC_ENV_KEYS",
+          "found_in": "midscene/shared/env/basic.py"
+        },
+        {
+          "name": "BOOLEAN_ENV_KEYS",
+          "found_in": "midscene/shared/env/global_config_manager.py"
+        },
+        {
+          "name": "DOCKER_CONTAINER",
+          "found_in": "midscene/shared/env/constants.py"
+        },
+        {
+          "name": "GLOBAL_ENV_KEYS",
+          "found_in": "midscene/shared/env/global_config_manager.py"
+        },
+        {
+          "name": "MATCH_BY_POSITION",
+          "found_in": "midscene/shared/env/constants.py"
+        },
+        {
+          "name": "MIDSCENE_ADB_PATH",
+          "found_in": "midscene/shared/env/constants.py"
+        },
+        {
+          "name": "MIDSCENE_ADB_REMOTE_HOST",
+          "found_in": "midscene/shared/env/constants.py"
+        },
+        {
+          "name": "MIDSCENE_ADB_REMOTE_PORT",
+          "found_in": "midscene/shared/env/constants.py"
+        },
+        {
+          "name": "MIDSCENE_ANDROID_IME_STRATEGY",
+          "found_in": "midscene/shared/env/constants.py"
+        },
+        {
+          "name": "MIDSCENE_ANDROID_SCREENSHOT_STRATEGY",
+          "found_in": "midscene/shared/env/constants.py"
+        },
+        {
+          "name": "MIDSCENE_CACHE",
+          "found_in": "midscene/core/utils.py"
+        },
+        {
+          "name": "MIDSCENE_CACHE_MAX_FILENAME_LENGTH",
+          "found_in": "midscene/shared/env/constants.py"
+        },
+        {
+          "name": "MIDSCENE_CHROME_PATH",
+          "found_in": "midscene/shared/env/constants.py"
+        },
+        {
+          "name": "MIDSCENE_DEBUG_MODE",
+          "found_in": "midscene/core/utils.py"
+        },
+        {
+          "name": "MIDSCENE_DEBUG_MODEL_PROFILE",
+          "found_in": "midscene/shared/env/basic.py"
+        },
+        {
+          "name": "MIDSCENE_DEBUG_MODEL_RESPONSE",
+          "found_in": "midscene/shared/env/basic.py"
+        },
+        {
+          "name": "MIDSCENE_INSIGHT_MODEL_API_KEY",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_INSIGHT_MODEL_AUTH_MODE",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_INSIGHT_MODEL_BASE_URL",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_INSIGHT_MODEL_ENDPOINT",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_INSIGHT_MODEL_EXTRA_BODY_JSON",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_INSIGHT_MODEL_FAMILY",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_INSIGHT_MODEL_HTTP_PROXY",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_INSIGHT_MODEL_INIT_CONFIG_JSON",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_INSIGHT_MODEL_NAME",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_INSIGHT_MODEL_PROTOCOL",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_INSIGHT_MODEL_REASONING_BUDGET",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_INSIGHT_MODEL_REASONING_EFFORT",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_INSIGHT_MODEL_REASONING_ENABLED",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_INSIGHT_MODEL_RESPONSE_FORMAT",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_INSIGHT_MODEL_RETRY_COUNT",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_INSIGHT_MODEL_RETRY_INTERVAL",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_INSIGHT_MODEL_SOCKS_PROXY",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_INSIGHT_MODEL_STREAM_MODE",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_INSIGHT_MODEL_TEMPERATURE",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_INSIGHT_MODEL_TIMEOUT",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_IOS_DEVICE_CLASS_OVERRIDE",
+          "found_in": "midscene/shared/env/constants.py"
+        },
+        {
+          "name": "MIDSCENE_IOS_DEVICE_UDID",
+          "found_in": "midscene/shared/env/constants.py"
+        },
+        {
+          "name": "MIDSCENE_IOS_SIMULATOR_UDID",
+          "found_in": "midscene/shared/env/constants.py"
+        },
+        {
+          "name": "MIDSCENE_LANGFUSE_DEBUG",
+          "found_in": "midscene/shared/env/constants.py"
+        },
+        {
+          "name": "MIDSCENE_LANGSMITH_DEBUG",
+          "found_in": "midscene/shared/env/constants.py"
+        },
+        {
+          "name": "MIDSCENE_LOCATE_MODEL_API_KEY",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_LOCATE_MODEL_AUTH_MODE",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_LOCATE_MODEL_BASE_URL",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_LOCATE_MODEL_ENDPOINT",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_LOCATE_MODEL_EXTRA_BODY_JSON",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_LOCATE_MODEL_FAMILY",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_LOCATE_MODEL_HTTP_PROXY",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_LOCATE_MODEL_INIT_CONFIG_JSON",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_LOCATE_MODEL_NAME",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_LOCATE_MODEL_PROTOCOL",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_LOCATE_MODEL_REASONING_BUDGET",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_LOCATE_MODEL_REASONING_EFFORT",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_LOCATE_MODEL_REASONING_ENABLED",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_LOCATE_MODEL_RESPONSE_FORMAT",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_LOCATE_MODEL_RETRY_COUNT",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_LOCATE_MODEL_RETRY_INTERVAL",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_LOCATE_MODEL_SOCKS_PROXY",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_LOCATE_MODEL_STREAM_MODE",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_LOCATE_MODEL_TEMPERATURE",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_LOCATE_MODEL_TIMEOUT",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_MCP_CHROME_PATH",
+          "found_in": "midscene/shared/env/constants.py"
+        },
+        {
+          "name": "MIDSCENE_MODEL_API_KEY",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_MODEL_AUTH_MODE",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_MODEL_BASE_URL",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_MODEL_ENDPOINT",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_MODEL_EXTRA_BODY_JSON",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_MODEL_FAMILY",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_MODEL_HTTP_PROXY",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_MODEL_INIT_CONFIG_JSON",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_MODEL_NAME",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_MODEL_PROTOCOL",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_MODEL_REASONING_BUDGET",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_MODEL_REASONING_EFFORT",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_MODEL_REASONING_ENABLED",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_MODEL_RESPONSE_FORMAT",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_MODEL_RETRY_COUNT",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_MODEL_RETRY_INTERVAL",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_MODEL_SOCKS_PROXY",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_MODEL_STREAM_MODE",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_MODEL_TEMPERATURE",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_MODEL_TIMEOUT",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_PLANNING_MODEL_API_KEY",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_PLANNING_MODEL_AUTH_MODE",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_PLANNING_MODEL_BASE_URL",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_PLANNING_MODEL_ENDPOINT",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_PLANNING_MODEL_EXTRA_BODY_JSON",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_PLANNING_MODEL_FAMILY",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_PLANNING_MODEL_HTTP_PROXY",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_PLANNING_MODEL_INIT_CONFIG_JSON",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_PLANNING_MODEL_NAME",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_PLANNING_MODEL_PROTOCOL",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_PLANNING_MODEL_REASONING_BUDGET",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_PLANNING_MODEL_REASONING_EFFORT",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_PLANNING_MODEL_REASONING_ENABLED",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_PLANNING_MODEL_RESPONSE_FORMAT",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_PLANNING_MODEL_RETRY_COUNT",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_PLANNING_MODEL_RETRY_INTERVAL",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_PLANNING_MODEL_SOCKS_PROXY",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_PLANNING_MODEL_STREAM_MODE",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_PLANNING_MODEL_TEMPERATURE",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_PLANNING_MODEL_TIMEOUT",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_PREFERRED_LANGUAGE",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_RECORD_MODEL_CALL",
+          "found_in": "midscene/core/ai_model/service_caller/model_call_recorder.py"
+        },
+        {
+          "name": "MIDSCENE_REPLANNING_CYCLE_LIMIT",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_REPORT_QUIET",
+          "found_in": "midscene/shared/env/constants.py"
+        },
+        {
+          "name": "MIDSCENE_REPORT_TAG_NAME",
+          "found_in": "midscene/shared/env/constants.py"
+        },
+        {
+          "name": "MIDSCENE_RUN_DIR",
+          "found_in": "midscene/core/agent/task_cache.py"
+        },
+        {
+          "name": "MIDSCENE_USE_DOUBAO_VISION",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_USE_GEMINI",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_USE_QWEN3_VL",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_USE_QWEN_VL",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_USE_VLM_UI_TARS",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MIDSCENE_USE_VL_MODEL",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "MODEL_ENV_KEYS",
+          "found_in": "midscene/shared/env/global_config_manager.py"
+        },
+        {
+          "name": "MODEL_FAMILY_VALUES",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "NUMBER_ENV_KEYS",
+          "found_in": "midscene/shared/env/global_config_manager.py"
+        },
+        {
+          "name": "OPENAI_API_KEY",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "OPENAI_BASE_URL",
+          "found_in": "midscene/shared/env/__init__.py"
+        },
+        {
+          "name": "STRING_ENV_KEYS",
+          "found_in": "midscene/shared/env/global_config_manager.py"
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/deepseek/locate-protocol.ts",
+      "python": "core/ai_model/models/deepseek/locate_protocol.py",
+      "runtime_exports": 4,
+      "missing": [
+        "deepSeekElementLocateProtocol",
+        "deepSeekSearchAreaProtocol",
+        "parseDeepSeekLocateOutput",
+        "parseDeepSeekSearchAreaOutput"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/utils.ts",
+      "python": "core/ai_model/service_caller/utils.py",
+      "runtime_exports": 9,
+      "missing": [
+        "INTERNAL_CALL_ID_FIELD",
+        "appendAIRequestFailureSummary",
+        "stringifyForDebug",
+        "toError"
+      ],
+      "moved": [
+        {
+          "name": "AIResponseParseError",
+          "found_in": "midscene/core/ai_model/__init__.py"
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/recorder-generation/common.ts",
+      "python": "core/ai_model/workflows/recorder_generation/common.py",
+      "runtime_exports": 10,
+      "missing": [
+        "createMessageContent",
+        "extractInputDescriptions",
+        "filterEventsByType",
+        "prepareRecorderGenerationContext"
+      ],
+      "moved": [
+        {
+          "name": "getScreenshotsForLLM",
+          "found_in": "midscene/core/ai_model/workflows/recorder_generation/metadata.py"
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/recorder-generation/playwright.ts",
+      "python": "core/ai_model/workflows/recorder_generation/playwright.py",
+      "runtime_exports": 10,
+      "missing": [
+        "createMessageContent",
+        "extractInputDescriptions",
+        "filterEventsByType",
+        "generatePlaywrightTestStream"
+      ],
+      "moved": [
+        {
+          "name": "createEventCounts",
+          "found_in": "midscene/core/ai_model/workflows/recorder_generation/__init__.py"
+        },
+        {
+          "name": "getScreenshotsForLLM",
+          "found_in": "midscene/core/ai_model/workflows/recorder_generation/metadata.py"
+        },
+        {
+          "name": "processEventsForLLM",
+          "found_in": "midscene/core/ai_model/workflows/recorder_generation/__init__.py"
+        }
+      ]
+    },
+    {
+      "package": "web-integration",
+      "upstream": "common/viewport.ts",
+      "python": "web_integration/common/viewport.py",
+      "runtime_exports": 7,
+      "missing": [
+        "defaultPuppeteerWindowViewportSize",
+        "defaultStaticPageViewportSize",
+        "resolveViewportSize",
+        "resolveWebViewportSize"
+      ],
+      "moved": []
+    },
+    {
+      "package": "shared",
+      "upstream": "img/box-select.ts",
+      "python": "shared/img/box_select.py",
+      "runtime_exports": 4,
+      "missing": [
+        "annotateRects",
+        "compositeElementInfoImg",
+        "compositePointMarkerImg",
+        "processImageElementInfo"
+      ],
+      "moved": []
+    },
+    {
+      "package": "computer",
+      "upstream": "utils.ts",
+      "python": "computer/utils.py",
+      "runtime_exports": 5,
+      "missing": [
+        "checkAccessibilityPermission",
+        "checkComputerEnvironment",
+        "checkScreenRecordingPermission",
+        "getConnectedDisplays"
+      ],
+      "moved": []
+    },
+    {
+      "package": "android",
+      "upstream": "adb-shell.ts",
+      "python": "android/adb_shell.py",
+      "runtime_exports": 3,
+      "missing": [
+        "buildRunAdbShellPlanningFeedback",
+        "getAdbShellStdoutOrThrow",
+        "runAdbShellStdoutOrThrow"
+      ],
+      "moved": []
+    },
+    {
+      "package": "computer",
+      "upstream": "agent.ts",
+      "python": "computer/agent.py",
+      "runtime_exports": 4,
+      "missing": [
+        "agentForComputer",
+        "agentForRDPComputer",
+        "agentFromComputer"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "agent/ui-observer.ts",
+      "python": "core/agent/ui_observer.py",
+      "runtime_exports": 3,
+      "missing": [
+        "UIObservationImpl",
+        "UIObserverImpl",
+        "uiContextFromObservationRecord"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/default-planning-protocol.ts",
+      "python": "core/ai_model/model_adapter/default_planning_protocol.py",
+      "runtime_exports": 5,
+      "missing": [
+        "buildActionDescription",
+        "createDefaultMidscenePlanningProtocol",
+        "createMidscenePlanningActionOutputParser"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "device/input-strategy.ts",
+      "python": "core/device/input_strategy.py",
+      "runtime_exports": 5,
+      "missing": [
+        "resolveInputStrategy",
+        "sendTextSequentially",
+        "shouldInputSequentially"
+      ],
+      "moved": [
+        {
+          "name": "inputStrategies",
+          "found_in": "midscene/web_integration/playwright/page.py"
+        },
+        {
+          "name": "resolveTextInputOptions",
+          "found_in": "midscene/web_integration/playwright/page.py"
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "dump/report-action-dump.ts",
+      "python": "core/dump/report_action_dump.py",
+      "runtime_exports": 3,
+      "missing": [
+        "ExecutionDump",
+        "GroupedActionDump",
+        "ReportActionDump"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "dump/screenshot-restoration.ts",
+      "python": "core/dump/screenshot_restoration.py",
+      "runtime_exports": 3,
+      "missing": [
+        "createInlineImageResolver",
+        "restoreImageReferences",
+        "restoreReportImageReferences"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "dump/screenshot-store.ts",
+      "python": "core/dump/screenshot_store.py",
+      "runtime_exports": 7,
+      "missing": [
+        "ReportImageStore",
+        "ScreenshotStore",
+        "resolveScreenshotSource"
+      ],
+      "moved": []
+    },
+    {
+      "package": "web-integration",
+      "upstream": "web-page.ts",
+      "python": "web_integration/web_page.py",
+      "runtime_exports": 3,
+      "missing": [
+        "commonWebActionsForWebPage",
+        "createWebInputPrimitives",
+        "getKeyCommands"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "agent/agent-options.ts",
+      "python": "core/agent/agent_options.py",
+      "runtime_exports": 2,
+      "missing": [
+        "normalizeAgentOptions",
+        "withAgentDefaults"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "agent/cache-config.ts",
+      "python": "core/agent/cache_config.py",
+      "runtime_exports": 2,
+      "missing": [
+        "normalizeAgentCacheConfig",
+        "validateAgentCacheInput"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "agent/screenshot-preparation.ts",
+      "python": "core/agent/screenshot_preparation.py",
+      "runtime_exports": 2,
+      "missing": [
+        "prepareRawScreenshot",
+        "prepareScreenshotForPersistence"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "agent/tasks.ts",
+      "python": "core/agent/tasks.py",
+      "runtime_exports": 3,
+      "missing": [
+        "TaskExecutor",
+        "recordAndReleaseScreenshotSequence"
+      ],
+      "moved": [
+        {
+          "name": "TaskExecutionError",
+          "found_in": "midscene/core/__init__.py"
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/gemini.ts",
+      "python": "core/ai_model/models/gemini.py",
+      "runtime_exports": 2,
+      "missing": [
+        "extractGeminiContentAndReasoning",
+        "geminiAdapters"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/openai-request-context.ts",
+      "python": "core/ai_model/service_caller/openai/openai_request_context.py",
+      "runtime_exports": 2,
+      "missing": [
+        "formatOpenAIAPIErrorDetails",
+        "wrapOpenAICompatibleFetch"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/siwc/network.ts",
+      "python": "core/ai_model/service_caller/openai/siwc/network.py",
+      "runtime_exports": 2,
+      "missing": [
+        "createSiwcJWKSet",
+        "fetchSiwc"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/shared/model-locate-result/pixel-mapper.ts",
+      "python": "core/ai_model/shared/model_locate_result/pixel_mapper.py",
+      "runtime_exports": 9,
+      "missing": [
+        "mapLocateResultToPixelRect",
+        "roundPixelBbox"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/shared/model-locate-result/types.ts",
+      "python": "core/ai_model/shared/model_locate_result/types.py",
+      "runtime_exports": 2,
+      "missing": [
+        "isBboxLocateResultValue",
+        "isPointLocateResultValue"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/recorder-generation/markdown.ts",
+      "python": "core/ai_model/workflows/recorder_generation/markdown.py",
+      "runtime_exports": 3,
+      "missing": [
+        "convertRecordLogIntoMarkdown",
+        "generateRecorderMarkdownReplay"
+      ],
+      "moved": []
+    },
+    {
+      "package": "cli",
+      "upstream": "args.ts",
+      "python": "cli/args.py",
+      "runtime_exports": 2,
+      "missing": [
+        "findOnlyItemInArgs",
+        "orderMattersParse"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "dump/report-session.ts",
+      "python": "core/dump/report_session.py",
+      "runtime_exports": 2,
+      "missing": [
+        "ReportSession",
+        "currentReportSession"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "index.ts",
+      "python": "core/__init__.py",
+      "runtime_exports": 4,
+      "missing": [
+        "Service",
+        "z"
+      ],
+      "moved": []
+    },
+    {
+      "package": "shared",
+      "upstream": "report-artifact.ts",
+      "python": "shared/report_artifact.py",
+      "runtime_exports": 4,
+      "missing": [
+        "REPORT_ARTIFACT_SCHEMA_VERSION",
+        "REPORT_ARTIFACT_SCRIPT_TYPE"
+      ],
+      "moved": []
+    },
+    {
+      "package": "web-integration",
+      "upstream": "web-element.ts",
+      "python": "web_integration/web_element.py",
+      "runtime_exports": 2,
+      "missing": [
+        "WebElementInfoImpl",
+        "limitOpenNewTabScript"
+      ],
+      "moved": []
+    },
+    {
+      "package": "android",
+      "upstream": "adb.ts",
+      "python": "android/adb.py",
+      "runtime_exports": 1,
+      "missing": [
+        "createAndroidAdb"
+      ],
+      "moved": []
+    },
+    {
+      "package": "android",
+      "upstream": "agent.ts",
+      "python": "android/agent.py",
+      "runtime_exports": 2,
+      "missing": [
+        "agentFromAdbDevice"
+      ],
+      "moved": []
+    },
+    {
+      "package": "harmony",
+      "upstream": "agent.ts",
+      "python": "harmony/agent.py",
+      "runtime_exports": 2,
+      "missing": [
+        "agentFromHdcDevice"
+      ],
+      "moved": []
+    },
+    {
+      "package": "ios",
+      "upstream": "agent.ts",
+      "python": "ios/agent.py",
+      "runtime_exports": 2,
+      "missing": [
+        "agentFromWebDriverAgent"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "agent/action-readiness.ts",
+      "python": "core/agent/action_readiness.py",
+      "runtime_exports": 3,
+      "missing": [
+        "ActionReadiness"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "agent/agent.ts",
+      "python": "core/agent/agent.py",
+      "runtime_exports": 2,
+      "missing": [
+        "createAgent"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "agent/file-chooser.ts",
+      "python": "core/agent/file_chooser.py",
+      "runtime_exports": 4,
+      "missing": [
+        "normalizeFileChooserAccept"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "agent/metrics.ts",
+      "python": "core/agent/metrics.py",
+      "runtime_exports": 1,
+      "missing": [
+        "MetricsCollector"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "agent/record-to-report.ts",
+      "python": "core/agent/record_to_report.py",
+      "runtime_exports": 1,
+      "missing": [
+        "normalizeRecordToReportScreenshot"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "agent/task-builder.ts",
+      "python": "core/agent/task_builder.py",
+      "runtime_exports": 2,
+      "missing": [
+        "locatePlanForLocate"
+      ],
+      "moved": [
+        {
+          "name": "TaskBuilder",
+          "found_in": "midscene/core/agent/agent.py"
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "agent/usage-intent.ts",
+      "python": "core/agent/usage_intent.py",
+      "runtime_exports": 1,
+      "missing": [
+        "withUsageIntent"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/chat-completion.ts",
+      "python": "core/ai_model/model_adapter/chat_completion.py",
+      "runtime_exports": 1,
+      "missing": [
+        "resolveChatCompletion"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/is-openrouter.ts",
+      "python": "core/ai_model/model_adapter/is_openrouter.py",
+      "runtime_exports": 1,
+      "missing": [
+        "isOpenRouter"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/openrouter-reasoning.ts",
+      "python": "core/ai_model/model_adapter/openrouter_reasoning.py",
+      "runtime_exports": 1,
+      "missing": [
+        "buildOpenRouterReasoningParams"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/resolve.ts",
+      "python": "core/ai_model/model_adapter/resolve.py",
+      "runtime_exports": 1,
+      "missing": [
+        "ResolvedModelAdapter"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/responses.ts",
+      "python": "core/ai_model/model_adapter/responses.py",
+      "runtime_exports": 2,
+      "missing": [
+        "resolveResponses"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/temperature-with-semantic-retry.ts",
+      "python": "core/ai_model/model_adapter/temperature_with_semantic_retry.py",
+      "runtime_exports": 1,
+      "missing": [
+        "getTemperatureWithSemanticRetry"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/ant-ling/adapter.ts",
+      "python": "core/ai_model/models/ant_ling/adapter.py",
+      "runtime_exports": 1,
+      "missing": [
+        "antLingAdapters"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/auto-glm/adapter.ts",
+      "python": "core/ai_model/models/auto_glm/adapter.py",
+      "runtime_exports": 1,
+      "missing": [
+        "autoGlmAdapters"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/deepseek/adapter.ts",
+      "python": "core/ai_model/models/deepseek/adapter.py",
+      "runtime_exports": 1,
+      "missing": [
+        "deepSeekAdapters"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/default.ts",
+      "python": "core/ai_model/models/default.py",
+      "runtime_exports": 1,
+      "missing": [
+        "defaultOpenAICompatibleAdapterConfig"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/doubao.ts",
+      "python": "core/ai_model/models/doubao.py",
+      "runtime_exports": 2,
+      "missing": [
+        "doubaoAdapters"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/glm.ts",
+      "python": "core/ai_model/models/glm.py",
+      "runtime_exports": 1,
+      "missing": [
+        "glmAdapters"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/gpt.ts",
+      "python": "core/ai_model/models/gpt.py",
+      "runtime_exports": 1,
+      "missing": [
+        "gptAdapters"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/jev/adapter.ts",
+      "python": "core/ai_model/models/jev/adapter.py",
+      "runtime_exports": 1,
+      "missing": [
+        "jevAdapters"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/jev/image.ts",
+      "python": "core/ai_model/models/jev/image.py",
+      "runtime_exports": 3,
+      "missing": [
+        "prepareReferences"
+      ],
+      "moved": [
+        {
+          "name": "mapJevBox",
+          "found_in": "midscene/core/ai_model/models/jev/locate.py"
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/kimi.ts",
+      "python": "core/ai_model/models/kimi.py",
+      "runtime_exports": 1,
+      "missing": [
+        "kimiAdapters"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/mimo.ts",
+      "python": "core/ai_model/models/mimo.py",
+      "runtime_exports": 1,
+      "missing": [
+        "mimoAdapters"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/qwen.ts",
+      "python": "core/ai_model/models/qwen.py",
+      "runtime_exports": 1,
+      "missing": [
+        "qwenAdapters"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/registry.ts",
+      "python": "core/ai_model/models/registry.py",
+      "runtime_exports": 3,
+      "missing": [
+        "MODEL_ADAPTER_CONFIGS"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/stepfun.ts",
+      "python": "core/ai_model/models/stepfun.py",
+      "runtime_exports": 1,
+      "missing": [
+        "stepFunAdapters"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/tencent-hy.ts",
+      "python": "core/ai_model/models/tencent_hy.py",
+      "runtime_exports": 1,
+      "missing": [
+        "tencentHyAdapters"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/ui-tars/adapter.ts",
+      "python": "core/ai_model/models/ui_tars/adapter.py",
+      "runtime_exports": 1,
+      "missing": [
+        "uiTarsAdapters"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/ui-tars/prompt.ts",
+      "python": "core/ai_model/models/ui_tars/prompt.py",
+      "runtime_exports": 2,
+      "missing": [
+        "getSummary"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/call-ai.ts",
+      "python": "core/ai_model/service_caller/call_ai.py",
+      "runtime_exports": 2,
+      "missing": [
+        "callSystemOneAI"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/call-openai.ts",
+      "python": "core/ai_model/service_caller/openai/call_openai.py",
+      "runtime_exports": 1,
+      "missing": [
+        "callOpenAI"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/chat-completion/chat-completion.ts",
+      "python": "core/ai_model/service_caller/openai/chat_completion/chat_completion.py",
+      "runtime_exports": 2,
+      "missing": [
+        "callChatCompletion"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/openai-client.ts",
+      "python": "core/ai_model/service_caller/openai/openai_client.py",
+      "runtime_exports": 1,
+      "missing": [
+        "createClient"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/responses/responses.ts",
+      "python": "core/ai_model/service_caller/openai/responses/responses.py",
+      "runtime_exports": 2,
+      "missing": [
+        "callResponses"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/proxy/proxy.ts",
+      "python": "core/ai_model/service_caller/proxy/proxy.py",
+      "runtime_exports": 1,
+      "missing": [
+        "createProxyAgentIfNeeded"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/shared/multimodal-prompt.ts",
+      "python": "core/ai_model/shared/multimodal_prompt.py",
+      "runtime_exports": 4,
+      "missing": [
+        "prepareUserPrompt"
+      ],
+      "moved": [
+        {
+          "name": "multimodalPromptToMessages",
+          "found_in": "midscene/core/ai_model/model_adapter/locate_prompt_order.py"
+        },
+        {
+          "name": "preparedReferenceImagesToMessages",
+          "found_in": "midscene/core/ai_model/model_adapter/locate_prompt_order.py"
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/grounding/locate.ts",
+      "python": "core/ai_model/workflows/grounding/locate.py",
+      "runtime_exports": 2,
+      "missing": [
+        "genericLocate"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/grounding/planning-action-locate.ts",
+      "python": "core/ai_model/workflows/grounding/planning_action_locate.py",
+      "runtime_exports": 1,
+      "missing": [
+        "resolvePlanningTapLocator"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/planning/custom-planning.ts",
+      "python": "core/ai_model/workflows/planning/custom_planning.py",
+      "runtime_exports": 2,
+      "missing": [
+        "buildCustomPlanningMessages"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/planning/locate-normalization.ts",
+      "python": "core/ai_model/workflows/planning/locate_normalization.py",
+      "runtime_exports": 2,
+      "missing": [
+        "normalizePlanningActionFields"
+      ],
+      "moved": []
+    },
+    {
+      "package": "web-integration",
+      "upstream": "bridge-mode/browser.ts",
+      "python": "web_integration/bridge_mode/browser.py",
+      "runtime_exports": 1,
+      "missing": [
+        "ExtensionBridgePageBrowserSide"
+      ],
+      "moved": []
+    },
+    {
+      "package": "web-integration",
+      "upstream": "bridge-mode/page-browser-side.ts",
+      "python": "web_integration/bridge_mode/page_browser_side.py",
+      "runtime_exports": 1,
+      "missing": [
+        "ExtensionBridgePageBrowserSide"
+      ],
+      "moved": []
+    },
+    {
+      "package": "cli",
+      "upstream": "cli-utils.ts",
+      "python": "cli/cli_utils.py",
+      "runtime_exports": 2,
+      "missing": [
+        "parseProcessArgs"
+      ],
+      "moved": []
+    },
+    {
+      "package": "ios",
+      "upstream": "device.ts",
+      "python": "ios/device.py",
+      "runtime_exports": 2,
+      "missing": [
+        "WDA_HTTP_METHODS"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "dump/report-artifact-publication.ts",
+      "python": "core/dump/report_artifact_publication.py",
+      "runtime_exports": 2,
+      "missing": [
+        "publishReportArtifactSync"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "dump/report-artifact-writer.ts",
+      "python": "core/dump/report_artifact_writer.py",
+      "runtime_exports": 1,
+      "missing": [
+        "ReportArtifactWriter"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "dump/report-dump-compactor.ts",
+      "python": "core/dump/report_dump_compactor.py",
+      "runtime_exports": 1,
+      "missing": [
+        "compactReportDumps"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "dump/test-report-images.ts",
+      "python": "core/dump/test_report_images.py",
+      "runtime_exports": 1,
+      "missing": [
+        "TestReportImages"
+      ],
+      "moved": []
+    },
+    {
+      "package": "shared",
+      "upstream": "env/constants.ts",
+      "python": "shared/env/constants.py",
+      "runtime_exports": 5,
+      "missing": [
+        "DEFAULT_MODEL_CONFIG_KEYS_LEGACY"
+      ],
+      "moved": []
+    },
+    {
+      "package": "shared",
+      "upstream": "env/parse-model-config.ts",
+      "python": "shared/env/parse_model_config.py",
+      "runtime_exports": 5,
+      "missing": [
+        "getUITarsModelVersion"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "errors.ts",
+      "python": "core/errors.py",
+      "runtime_exports": 1,
+      "missing": [
+        "ServiceError"
+      ],
+      "moved": []
+    },
+    {
+      "package": "shared",
+      "upstream": "logger.ts",
+      "python": "shared/logger.py",
+      "runtime_exports": 6,
+      "missing": [
+        "setLogDirectoryResolver"
+      ],
+      "moved": []
+    },
+    {
+      "package": "cli",
+      "upstream": "openai/login.ts",
+      "python": "cli/openai/login.py",
+      "runtime_exports": 1,
+      "missing": [
+        "loginWithOpenAI"
+      ],
+      "moved": []
+    },
+    {
+      "package": "web-integration",
+      "upstream": "playwright/page.ts",
+      "python": "web_integration/playwright/page.py",
+      "runtime_exports": 1,
+      "missing": [
+        "WebPage"
+      ],
+      "moved": []
+    },
+    {
+      "package": "computer",
+      "upstream": "rdp/backend-client.ts",
+      "python": "computer/rdp/backend_client.py",
+      "runtime_exports": 3,
+      "missing": [
+        "HelperProcessRDPBackendClient"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "report-cli.ts",
+      "python": "core/report_cli.py",
+      "runtime_exports": 4,
+      "missing": [
+        "createReportCliCommands"
+      ],
+      "moved": [
+        {
+          "name": "reportFileToMarkdown",
+          "found_in": "midscene/core/report_markdown.py"
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "report-html-template.ts",
+      "python": "core/report_html_template.py",
+      "runtime_exports": 1,
+      "missing": [
+        "REPORT_HTML_TEMPLATE"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "report-markdown.ts",
+      "python": "core/report_markdown.py",
+      "runtime_exports": 2,
+      "missing": [
+        "executionToMarkdown"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "service/index.ts",
+      "python": "core/service/__init__.py",
+      "runtime_exports": 1,
+      "missing": [
+        "Service"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "types.ts",
+      "python": "core/types.py",
+      "runtime_exports": 1,
+      "missing": [
+        "aiActProgressScope"
+      ],
+      "moved": []
+    },
+    {
+      "package": "android",
+      "upstream": "ui-tree.ts",
+      "python": "android/ui_tree.py",
+      "runtime_exports": 1,
+      "missing": [
+        "uiautomatorXmlToUiNode"
+      ],
+      "moved": []
+    },
+    {
+      "package": "android",
+      "upstream": "utils.ts",
+      "python": "android/utils.py",
+      "runtime_exports": 2,
+      "missing": [
+        "getConnectedDevicesWithDetails"
+      ],
+      "moved": [
+        {
+          "name": "getConnectedDevices",
+          "found_in": "midscene/harmony/utils.py"
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "utils.ts",
+      "python": "core/utils.py",
+      "runtime_exports": 16,
+      "missing": [
+        "uploadTestInfoToServer"
+      ],
+      "moved": []
+    },
+    {
+      "package": "ios",
+      "upstream": "utils.ts",
+      "python": "ios/utils.py",
+      "runtime_exports": 2,
+      "missing": [
+        "checkMacOSPlatform"
+      ],
+      "moved": []
+    },
+    {
+      "package": "webdriver",
+      "upstream": "utils/base-url.ts",
+      "python": "webdriver/utils/base_url.py",
+      "runtime_exports": 1,
+      "missing": [
+        "normalizeWebDriverBaseUrl"
+      ],
+      "moved": []
+    },
+    {
+      "package": "webdriver",
+      "upstream": "utils/request.ts",
+      "python": "webdriver/utils/request.py",
+      "runtime_exports": 2,
+      "missing": [
+        "makeWebDriverRequest"
+      ],
+      "moved": []
+    },
+    {
+      "package": "cli",
+      "upstream": "yaml-batch-executor.ts",
+      "python": "cli/yaml_batch_executor.py",
+      "runtime_exports": 2,
+      "missing": [
+        "runYamlBatchWithCaseIds"
+      ],
+      "moved": []
+    },
+    {
+      "package": "core",
+      "upstream": "yaml/utils.ts",
+      "python": "core/yaml/utils.py",
+      "runtime_exports": 7,
+      "missing": [
+        "resolveYamlOutputConfig"
+      ],
+      "moved": [
+        {
+          "name": "parseLegacyYamlScript",
+          "found_in": "midscene/core/yaml_runtime.py"
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "agent/agent-report-manager.ts",
+      "python": "core/agent/agent_report_manager.py",
+      "runtime_exports": 1,
+      "missing": [],
+      "moved": [
+        {
+          "name": "AgentReportManager",
+          "found_in": "midscene/core/agent/agent.py"
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "agent/task-cache.ts",
+      "python": "core/agent/task_cache.py",
+      "runtime_exports": 3,
+      "missing": [],
+      "moved": [
+        {
+          "name": "debug",
+          "found_in": "midscene/shared/agent_tools/base_tools.py"
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "dump/image-reference.ts",
+      "python": "core/dump/image_reference.py",
+      "runtime_exports": 7,
+      "missing": [],
+      "moved": [
+        {
+          "name": "normalizeScreenshotRef",
+          "found_in": "midscene/core/screenshot_item.py"
+        }
+      ]
+    },
+    {
+      "package": "shared",
+      "upstream": "env/utils.ts",
+      "python": "shared/env/utils.py",
+      "runtime_exports": 4,
+      "missing": [],
+      "moved": [
+        {
+          "name": "globalConfigManager",
+          "found_in": "midscene/shared/env/global_config_manager.py"
+        },
+        {
+          "name": "globalModelConfigManager",
+          "found_in": "midscene/shared/env/global_config_manager.py"
+        },
+        {
+          "name": "overrideAIConfig",
+          "found_in": "midscene/core/ai_model/__init__.py"
+        }
+      ]
+    }
+  ]
+}
