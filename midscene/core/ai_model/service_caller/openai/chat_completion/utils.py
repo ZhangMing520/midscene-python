@@ -29,9 +29,26 @@ def resolve_content_with_reasoning_fallback(
 
 
 def to_chat_messages(messages: List[dict], image_detail: str) -> List[dict]:
-    """Convert internal messages to OpenAI chat-completion wire format."""
+    """Convert internal messages to OpenAI chat-completion wire format.
+
+    Conversation-history entries (``input-message`` / ``model-output``) are
+    flattened to ordinary messages first, matching upstream ``toChatMessages``.
+    """
     wire_messages: List[dict] = []
-    for message in messages:
+    for entry in messages:
+        if entry.get("type") == "model-output" and "output" in entry:
+            output = entry.get("output") or {}
+            if output.get("type") != "chat-completion":
+                raise ValueError(
+                    "Cannot replay Responses output in a Chat Completions conversation"
+                )
+            wire_messages.append(output.get("rawValue"))
+            continue
+        message = (
+            entry["message"]
+            if entry.get("type") == "input-message"
+            else entry
+        )
         raw_assistant = message.get("raw_assistant_message")
         if isinstance(raw_assistant, dict):
             # Kimi K3 requires replaying the complete assistant message

@@ -4,6 +4,7 @@ Turns a raw execution task into the structured action descriptor carried by
 progress events. Formatting for display stays with consumers.
 """
 
+import math
 from typing import Any, Dict, Optional, Tuple
 
 _MAX_COMPACT_STRING_LENGTH = 180
@@ -62,7 +63,11 @@ def error_message_for_ai_act(error: Any) -> str:
 
 
 def _number(value: Any) -> Optional[float]:
-    if isinstance(value, (int, float)) and not isinstance(value, bool):
+    if (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+    ):
         return value
     return None
 

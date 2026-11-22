@@ -282,7 +282,7 @@ async def test_throws_when_planned_action_is_not_in_action_space(mock_interface)
                 conversation_history=ConversationHistory(),
             )
 
-    assert "DoMagic not found" in str(exc.value)
+    assert "not in the current action space" in str(exc.value)
 
 
 @pytest.mark.asyncio

@@ -49,7 +49,16 @@ def find_all_midscene_locator_field(
     """Return locator field names from a DeviceAction or schema mapping."""
     fields = _field(schema, "locate_fields")
     if isinstance(fields, list):
-        return list(fields)
+        if not required_only:
+            return list(fields)
+        param_schema = _field(schema, "param_schema")
+        required: List[str] = []
+        for name in fields:
+            field = param_schema.get(name) if isinstance(param_schema, dict) else None
+            if isinstance(field, dict) and field.get("optional") is True:
+                continue
+            required.append(name)
+        return required
     if isinstance(schema, dict):
         properties = schema.get("properties")
         if isinstance(properties, dict):
@@ -152,7 +161,10 @@ def validate_required_locate_fields(
     param: Optional[Dict[str, Any]], schema: Any
 ) -> None:
     for field in find_all_midscene_locator_field(schema, True):
-        if not (param or {}).get(field):
+        value = (param or {}).get(field)
+        # Match JS truthiness: empty objects/arrays are truthy, unlike Python.
+        present = bool(value) or isinstance(value, (dict, list))
+        if not present:
             raise ValueError(f"{field}: Required locate field is not provided")
 
 

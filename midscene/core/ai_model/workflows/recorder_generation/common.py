@@ -90,6 +90,82 @@ def get_global_default_config() -> Dict[str, Any]:
     return get_global_model_config_manager().get_model_config("default")
 
 
+MAX_RECORDER_GENERATION_SEMANTIC_TEXT_LENGTH = 1200
+MAX_RECORDER_GENERATION_SEMANTIC_ERROR_LENGTH = 400
+
+_AI_ANALYZING_PLACEHOLDER = "AI is analyzing element..."
+
+
+def _clean_recorder_semantic_field(value: Optional[str]) -> Optional[str]:
+    if isinstance(value, str) and value.strip() == _AI_ANALYZING_PLACEHOLDER:
+        return None
+    return value
+
+
+def _truncate_recorder_generation_text(value: str, max_length: int) -> str:
+    if len(value) <= max_length:
+        return value
+    return f"{value[:max_length]}... [truncated {len(value) - max_length} chars]"
+
+
+def _compact_semantic_text(value: Optional[str]) -> Optional[str]:
+    cleaned = _clean_recorder_semantic_field(value)
+    return (
+        _truncate_recorder_generation_text(
+            cleaned, MAX_RECORDER_GENERATION_SEMANTIC_TEXT_LENGTH
+        )
+        if cleaned
+        else None
+    )
+
+
+def _compact_semantic_error(value: Optional[str]) -> Optional[str]:
+    return (
+        _truncate_recorder_generation_text(
+            value, MAX_RECORDER_GENERATION_SEMANTIC_ERROR_LENGTH
+        )
+        if value
+        else None
+    )
+
+
+def compact_recorder_semantic_for_generation(
+    semantic: Optional[Dict[str, Any]],
+) -> Optional[Dict[str, Any]]:
+    """Compact semantic text and drop fallback audit chains.
+
+    Mirrors upstream ``compactRecorderSemanticForGeneration`` so metadata prompts
+    never include long error chains or stale fallback sources.
+    """
+    if not semantic:
+        return None
+
+    compacted: Dict[str, Any] = {
+        "source": semantic.get("source"),
+        "status": semantic.get("status"),
+        "confidence": semantic.get("confidence"),
+        "elementDescription": _compact_semantic_text(
+            semantic.get("elementDescription")
+        ),
+        "replayInstruction": _compact_semantic_text(
+            semantic.get("replayInstruction")
+        ),
+        "actionSummary": _compact_semantic_text(semantic.get("actionSummary")),
+        "error": _compact_semantic_error(semantic.get("error")),
+    }
+    ai_describe = semantic.get("aiDescribe")
+    if ai_describe:
+        compacted["aiDescribe"] = {
+            "verifyPrompt": ai_describe.get("verifyPrompt"),
+            "verifyPassed": ai_describe.get("verifyPassed"),
+            "deepLocate": ai_describe.get("deepLocate"),
+            "centerDistance": ai_describe.get("centerDistance"),
+            "expectedCenter": ai_describe.get("expectedCenter"),
+            "actualCenter": ai_describe.get("actualCenter"),
+        }
+    return compacted
+
+
 def _recorder_stream_options(
     options: Dict[str, Any],
 ) -> Optional[Dict[str, Any]]:

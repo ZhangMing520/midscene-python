@@ -8,9 +8,26 @@ from midscene.core.ai_model.service_caller.openai.chat_completion.utils import (
 
 
 def to_responses_input(messages: List[dict], image_detail: str) -> List[dict]:
-    """Convert internal messages to the Responses API input format."""
+    """Convert internal messages to the Responses API input format.
+
+    Conversation-history entries (``input-message`` / ``model-output``) are
+    flattened to input items first, matching upstream ``toResponsesInput``.
+    """
     input_items: List[dict] = []
-    for message in messages:
+    for entry in messages:
+        if entry.get("type") == "model-output" and "output" in entry:
+            output = entry.get("output") or {}
+            if output.get("type") != "responses":
+                raise ValueError(
+                    "Cannot replay Chat Completions output in a Responses conversation"
+                )
+            input_items.extend(output.get("rawValue") or [])
+            continue
+        message = (
+            entry["message"]
+            if entry.get("type") == "input-message"
+            else entry
+        )
         content = message.get("content")
         if isinstance(content, str):
             input_items.append({"role": message["role"], "content": content})

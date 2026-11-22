@@ -6,6 +6,9 @@ import json
 from midscene.core.ai_model.service_caller.model_call import (
     call_ai_with_object_response,
 )
+from midscene.core.ai_model.workflows.recorder_generation.common import (
+    compact_recorder_semantic_for_generation,
+)
 
 SESSION_METADATA_PROMPT = """Generate a concise title (5-7 words) and brief description (1-2 sentences) for a Studio recording of user actions.
 
@@ -35,6 +38,8 @@ def _event_screenshot(event: Dict[str, Any]) -> Optional[str]:
 def get_screenshots_for_llm(
     events: List[Dict[str, Any]], limit: int = 1
 ) -> List[str]:
+    if limit <= 0:
+        return []
     shots: List[str] = []
     for event in events:
         shot = _event_screenshot(event)
@@ -69,8 +74,32 @@ def summarize_recorder_events(
         "totalActions": len(events),
         "firstUrl": urls[0] if urls else (target.get("values") or {}).get("url", ""),
         "lastUrl": urls[-1] if urls else "",
-        "events": events[:20],
+        "events": [
+            {
+                key: value
+                for key, value in {
+                    "type": event.get("type"),
+                    "actionType": event.get("actionType"),
+                    "url": event.get("url"),
+                    "title": event.get("title"),
+                    "value": event.get("value"),
+                    "description": _event_description(event),
+                    "semantic": compact_recorder_semantic_for_generation(
+                        event.get("semantic")
+                    ),
+                }.items()
+                if value is not None
+            }
+            for event in events[:20]
+        ],
     }
+
+
+def _event_description(event: Dict[str, Any]) -> str:
+    semantic = event.get("semantic") or {}
+    if semantic.get("status") == "ready" and semantic.get("elementDescription"):
+        return semantic["elementDescription"]
+    return event.get("description") or ""
 
 
 def normalize_metadata_value(value: Any) -> str:

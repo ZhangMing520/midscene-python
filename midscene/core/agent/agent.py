@@ -312,9 +312,11 @@ class Agent:
         if base_context:
             parts.append(base_context)
         if dom_included:
-            from midscene.core.agent.prompt_context import render_ai_context
+            from midscene.core.agent.prompt_context import (
+                render_page_element_context,
+            )
 
-            rendered = render_ai_context(context)
+            rendered = render_page_element_context(context)
             if rendered:
                 parts.append(rendered)
         return "\n\n".join(parts) if parts else None

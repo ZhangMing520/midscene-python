@@ -1,6 +1,6 @@
 """Interactive SIWC login flow (upstream packages/cli/src/openai/login.ts)."""
 
-from typing import Optional
+from typing import Any, Callable, Optional
 import asyncio
 import threading
 import time
@@ -14,9 +14,13 @@ from midscene.cli.openai.credentials import _save_credentials
 
 
 def login_with_openai(
-    console: Console,
+    console: Optional[Console] = None,
     port: Optional[int] = None,
     client_id: Optional[str] = None,
+    host_id: Optional[str] = None,
+    on_authorization: Optional[Callable[[str], None]] = None,
+    no_open: bool = False,
+    signal: Any = None,
 ) -> bool:
     """Sign in with your ChatGPT plan (SIWC) and store credentials."""
     from midscene.core.ai_model.service_caller.openai.siwc.authorization import (
@@ -25,7 +29,8 @@ def login_with_openai(
         parse_siwc_callback,
     )
 
-    host_id = f"urn:uuid:{uuid.uuid4()}"
+    console = console or Console()
+    host_id = host_id or f"urn:uuid:{uuid.uuid4()}"
     captured: dict = {}
 
     class CallbackHandler(BaseHTTPRequestHandler):
@@ -67,7 +72,10 @@ def login_with_openai(
 
     console.print("[blue]Opening the authorization URL...[/blue]")
     console.print(auth["url"])
-    webbrowser.open(auth["url"])
+    if on_authorization is not None:
+        on_authorization(auth["url"])
+    if not no_open:
+        webbrowser.open(auth["url"])
 
     server_thread = threading.Thread(target=server.serve_forever, daemon=True)
     server_thread.start()

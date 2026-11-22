@@ -1,18 +1,27 @@
 """Load `.env` config from the current directory (upstream dotenv-loader.ts)."""
 
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 from rich.console import Console
 
 
 def load_dotenv_config(
-    console: Console, override: bool = False, debug: bool = False
+    console: Optional[Console] = None,
+    override: bool = False,
+    debug: bool = False,
+    log: Optional[Callable[[str], None]] = None,
 ) -> None:
     """Load `.env` from the current directory (upstream dotenv-loader).
 
     Existing environment variables win unless `override` is set."""
     import os
+
+    def emit(message: str) -> None:
+        if log is not None:
+            log(message)
+        elif console is not None:
+            console.print(f"[dim]{message}[/dim]")
 
     path = Path(".env")
     if not path.exists():
@@ -28,11 +37,11 @@ def load_dotenv_config(
             continue
         if key in os.environ and not override:
             if debug:
-                console.print(f"[dim].env: {key} kept from environment[/dim]")
+                emit(f".env: {key} kept from environment")
             continue
         os.environ[key] = value
         if debug:
-            console.print(f"[dim].env: {key} loaded[/dim]")
+            emit(f".env: {key} loaded")
 
 
 def _load_dotenv(

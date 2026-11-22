@@ -1,11 +1,16 @@
 """Tree helpers for element descriptions (upstream extractor/tree.ts)."""
 
 import json
+import re
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from midscene.core.types import UINode, UITree
 
 NODE_SIZE_THRESHOLD = 4
+
+# Python NodeType.IMAGE corresponds to upstream's `IMG Node`; its description
+# tag name is `img` (upstream derives it from "IMG Node".toLowerCase()).
+_NODE_TYPE_TAG_NAMES = {"image": "img"}
 
 
 def truncate_text(
@@ -82,6 +87,9 @@ def description_of_tree(
             else:
                 node_type = getattr(current.node_type, "value", current.node_type)
                 node_type_string = str(node_type).lower()
+                node_type_string = _NODE_TYPE_TAG_NAMES.get(
+                    node_type_string, node_type_string
+                )
             rect_attributes = {
                 "left": current.rect.left,
                 "top": current.rect.top,
@@ -106,7 +114,8 @@ def description_of_tree(
         result = f"{indent_str}{before}{content_with_indent}{children}\n{indent_str}{after}"
         return result if result.strip() else ""
 
-    return build_content_tree(tree, 0, visible_only)
+    result = build_content_tree(tree, 0, visible_only)
+    return re.sub(r"^\s*\n", "", result, flags=re.MULTILINE)
 
 
 def tree_to_list(tree: UITree) -> List[UINode]:

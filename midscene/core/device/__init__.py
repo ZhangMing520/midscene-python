@@ -64,10 +64,13 @@ def find_action_in_action_space_or_throw(
         name = action["name"] if isinstance(action, dict) else action.name
         if name == action_type:
             return action
+    available = ", ".join(
+        action["name"] if isinstance(action, dict) else action.name
+        for action in action_space
+    )
     raise ValueError(
-        f"Action type {action_type} not found in action space. "
-        f"Available actions: "
-        f"{[a['name'] if isinstance(a, dict) else a.name for a in action_space]}"
+        f"Action type '{action_type}' is not in the current action space. "
+        f"Available actions: {available or '(none)'}"
     )
 
 

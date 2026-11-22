@@ -21,13 +21,33 @@ def _represent_str_as_literal(dumper, data):
 _LiteralBlockDumper.add_representer(str, _represent_str_as_literal)
 
 
+def _strip_undefined(value: Any) -> Any:
+    """Drop ``None`` object keys to match JSON.stringify's undefined omission."""
+    if isinstance(value, dict):
+        return {
+            key: _strip_undefined(item)
+            for key, item in value.items()
+            if item is not None
+        }
+    if isinstance(value, list):
+        return [_strip_undefined(item) for item in value]
+    return value
+
+
 def serialize_action_descriptions(
     action_descriptions: List[Any], action_space_format: str = "yaml"
 ) -> str:
     if action_space_format == "jsonl":
         import json as _json
 
-        return "\n".join(_json.dumps(d, ensure_ascii=False) for d in action_descriptions)
+        return "\n".join(
+            _json.dumps(
+                _strip_undefined(description),
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
+            for description in action_descriptions
+        )
     return yaml.dump(
         action_descriptions,
         Dumper=_LiteralBlockDumper,
