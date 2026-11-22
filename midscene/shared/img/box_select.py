@@ -63,7 +63,11 @@ def composite_point_marker(
     )
 
 
-def composite_rect_marker(image_base64: str, rect: Dict[str, float]) -> str:
+def composite_rect_marker(
+    image_base64: str,
+    rect: Dict[str, float],
+    border_thickness: int = 0,
+) -> str:
     """Bordered rect with a center cross (upstream compositeElementInfoImg)."""
     Image, ImageDraw = _pil()
     image = decode_base64_image(image_base64)
@@ -71,7 +75,9 @@ def composite_rect_marker(image_base64: str, rect: Dict[str, float]) -> str:
     draw = ImageDraw.Draw(overlay)
     left, top = float(rect["left"]), float(rect["top"])
     right, bottom = left + float(rect["width"]), top + float(rect["height"])
-    thickness = 1 if (right - left) <= 40 and (bottom - top) <= 40 else 2
+    thickness = border_thickness or (
+        1 if (right - left) <= 40 and (bottom - top) <= 40 else 2
+    )
     center_x, center_y = (left + right) / 2, (top + bottom) / 2
     draw.rectangle(
         [left, top, right, bottom], outline=MARKER_COLOR, width=thickness

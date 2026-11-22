@@ -20,7 +20,13 @@ from midscene.core.ai_model.shared.multimodal_prompt import (
     get_screenshot_base64,
     get_shot_size,
 )
-from midscene.core.ai_model.workflows.grounding.search_area import expand_search_area
+from midscene.core.service.utils import (
+    get_describe_deep_context_areas,
+    get_describe_marker_border_thickness,
+    get_describe_marker_rect,
+    get_rect_in_crop,
+    recover_describe_response_from_parse_error,
+)
 
 DESCRIBE_DEFAULT_RECT_SIZE = 30
 DESCRIBE_CROP_MAX_LONG_EDGE = 1000
@@ -45,7 +51,11 @@ def _marked_payload(
 ) -> str:
     if is_point and point is not None:
         return box_select.composite_point_marker(screenshot, point)
-    return box_select.composite_rect_marker(screenshot, rect)
+    return box_select.composite_rect_marker(
+        screenshot,
+        get_describe_marker_rect(rect),
+        get_describe_marker_border_thickness(rect),
+    )
 
 
 def _deep_context_images(
@@ -56,7 +66,7 @@ def _deep_context_images(
     point: Optional[Dict[str, float]],
 ) -> List[Dict[str, Any]]:
     """Focused crop around the target, marked again and upscaled when small."""
-    area = expand_search_area(rect, shot_size)
+    area = get_describe_deep_context_areas(rect, shot_size)[0]["rect"]
     cropped, crop_size = transform.crop_by_rect(screenshot, area)
     if is_point and point is not None:
         marked = box_select.composite_point_marker(
@@ -64,14 +74,11 @@ def _deep_context_images(
             {"x": point["x"] - area["left"], "y": point["y"] - area["top"]},
         )
     else:
+        target_in_crop = get_rect_in_crop(rect, area, crop_size)
         marked = box_select.composite_rect_marker(
             cropped,
-            {
-                "left": rect["left"] - area["left"],
-                "top": rect["top"] - area["top"],
-                "width": rect["width"],
-                "height": rect["height"],
-            },
+            get_describe_marker_rect(target_in_crop),
+            get_describe_marker_border_thickness(target_in_crop),
         )
     resized = transform.resize_long_edge(
         marked, DESCRIBE_CROP_MAX_LONG_EDGE, DESCRIBE_CROP_UPSCALE_MAX_RATIO
@@ -166,16 +173,26 @@ async def ai_describe_element(
     )
 
     async def call_ai(retry_attempt: int, previous_parse_error: Optional[Any] = None):
-        return await call_generative_ai(
-            with_semantic_retry_feedback(messages, previous_parse_error),
-            model_runtime,
-            {
-                "semanticRetryAttempt": retry_attempt,
-                "expectedJsonObjectResponse": True,
-            },
-        )
+        try:
+            return await call_generative_ai(
+                with_semantic_retry_feedback(messages, previous_parse_error),
+                model_runtime,
+                {
+                    "semanticRetryAttempt": retry_attempt,
+                    "expectedJsonObjectResponse": True,
+                },
+            )
+        except Exception as error:
+            # Upstream recovers a description from a malformed JSON response
+            # instead of failing the whole describe call.
+            recovered = recover_describe_response_from_parse_error(error)
+            if recovered is None:
+                raise
+            return {"_recovered": recovered}
 
     def parse_response(response: Dict[str, Any]) -> Dict[str, Any]:
+        if "_recovered" in response:
+            return response["_recovered"]
         raw_response = response["content"]
         parsed = parse_model_response_json(raw_response, source="generic-object")
         if not isinstance(parsed, dict):
