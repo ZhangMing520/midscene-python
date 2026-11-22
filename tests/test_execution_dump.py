@@ -327,3 +327,43 @@ async def test_preserves_report_file_name_and_group_metadata(
     assert path.name == "suite-report.json"
     assert dump["groupName"] == "My Suite"
     assert dump["groupDescription"] == "Regression run"
+
+
+class TestDump:
+    def test_report_dump_structure(self):
+        from midscene.core.dump import ExecutionDumpBuilder, build_execution_task, build_service_dump
+
+        builder = ExecutionDumpBuilder(group_name="g", device_type="web")
+        service_dump = build_service_dump(
+            "locate",
+            {"element": "the button"},
+            None,
+            {"durationMs": 12, "rawResponse": "r", "usage": {"total_tokens": 5}},
+            matched_element=[{"center": [1, 2]}],
+            deep_locate=True,
+        )
+        task = build_execution_task("Insight", "Locate", {"prompt": "the button"}, log=service_dump)
+        builder.add_execution("Tap - the button", [task])
+        dump = builder.to_dict()
+
+        assert dump["sdkVersion"]
+        assert dump["groupName"] == "g"
+        assert dump["deviceType"] == "web"
+        execution = dump["executions"][0]
+        assert execution["name"] == "Tap - the button"
+        assert execution["tasks"][0]["type"] == "Insight"
+        assert execution["tasks"][0]["subType"] == "Locate"
+        assert execution["tasks"][0]["log"]["type"] == "locate"
+        assert execution["tasks"][0]["log"]["deepLocate"] is True
+
+    def test_dump_writes_to_disk(self, tmp_path, monkeypatch):
+        from midscene.core.dump import ExecutionDumpBuilder, build_execution_task
+
+        monkeypatch.setenv("MIDSCENE_RUN_DIR", str(tmp_path))
+        builder = ExecutionDumpBuilder(group_name="g")
+        builder.add_execution("Sleep", [build_execution_task("Action Space", "Sleep", {"timeMs": 1})])
+        path = builder.write_to_disk("unit-dump")
+        assert path
+        content = json.loads(open(path).read())
+        assert content["executions"][0]["tasks"][0]["subType"] == "Sleep"
+
