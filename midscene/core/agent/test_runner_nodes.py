@@ -399,7 +399,9 @@ def _build_locate_param(prompt: Any, options: Optional[Dict[str, Any]]) -> Any:
     return build_detailed_locate_param(prompt, options)
 
 
-def _value_result(value: Any) -> Dict[str, Any]:
+def _value_result(
+    value: Any, _input_value: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
     return {"data": value}
 
 

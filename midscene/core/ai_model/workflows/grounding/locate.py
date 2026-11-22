@@ -22,6 +22,9 @@ from midscene.core.ai_model.workflows.grounding.types import (
     LocateModelResponse,
     LocateResult,
 )
+from midscene.core.ai_model.workflows.grounding.search_area_mapping import (
+    map_search_area_result_to_original_result,
+)
 from midscene.core.ai_model.workflows.grounding.utils import (
     format_locate_model_context,
     prepare_locate_model_input,
@@ -34,6 +37,7 @@ async def ai_locate_element(
     model_runtime: ModelRuntime,
     locate_image: Optional[LocateImage] = None,
     abort_signal: Optional[Any] = None,
+    search_config: Optional[Dict[str, Any]] = None,
 ) -> LocateResult:
     """Locate an element by description; returns a LocateResult-like dict:
 
@@ -45,11 +49,20 @@ async def ai_locate_element(
         raise ValueError("cannot find the target element description")
 
     if locate_image is None:
-        locate_image = {
-            "imageBase64": _get_screenshot(context),
-            "width": _get_size(context)["width"],
-            "height": _get_size(context)["height"],
-        }
+        if search_config and search_config.get("image"):
+            search_image = search_config["image"]
+            locate_image = {
+                "imageBase64": search_image["imageBase64"],
+                "width": search_image["width"],
+                "height": search_image["height"],
+            }
+        else:
+            shot_size = _get_size(context)
+            locate_image = {
+                "imageBase64": _get_screenshot(context),
+                "width": shot_size["width"],
+                "height": shot_size["height"],
+            }
 
     adapter = model_runtime.adapter
     locate_adapter = resolve_locate(adapter)
@@ -63,11 +76,19 @@ async def ai_locate_element(
         located = response.get("locatedPixelResult")
         element = None
         if located and located.get("center"):
-            element = {
-                "center": located["center"],
-                "rect": located.get("rect"),
-                "description": description_text,
-            }
+            mapping = (search_config or {}).get("mapping")
+            if mapping:
+                element = {
+                    **map_search_area_result_to_original_result(located, mapping),
+                    "description": description_text,
+                }
+            else:
+                element = {
+                    "center": located["center"],
+                    "description": description_text,
+                }
+                if located.get("rect"):
+                    element["rect"] = located["rect"]
         return {
             "parse_result": {
                 "element": element,

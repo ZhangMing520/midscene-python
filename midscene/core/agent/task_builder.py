@@ -61,28 +61,23 @@ async def locate_for_action(agent, locate_param: Any) -> Dict[str, Any]:
     if not isinstance(locate_param, dict):
         raise ValueError(f"locate parameter must be an object, got {locate_param!r}")
     prompt = locate_param.get("prompt")
-    if not prompt:
+    cached_pixel = locate_param.get("locatedPixelResult")
+    has_plan_coordinates = (
+        isinstance(cached_pixel, dict) and bool(cached_pixel.get("center"))
+    )
+    # Upstream accepts a coordinate-only plan (no prompt) when the plan already
+    # carries locatedPixelResult.
+    if not prompt and not has_plan_coordinates:
         raise ValueError("locate parameter requires a prompt")
 
-    prompt_str = user_prompt_to_string(prompt)
+    prompt_str = user_prompt_to_string(prompt) if prompt else ""
     cacheable = locate_param.get("cacheable", True)
     cache = agent._get_task_cache()
     deep_locate = bool(locate_param.get("deepLocate"))
 
-    cached_pixel = locate_param.get("locatedPixelResult")
-    # Upstream task-builder: elementFromPlan = locateParam.deepLocate
-    # ? undefined : planLocatedElement. With deepLocate the plan
-    # coordinates are only a search-area hint for the two-stage locate.
-    if cached_pixel and cached_pixel.get("center") and not deep_locate:
-        # Fresh plan coordinates take precedence over the cache. Record the
-        # feature once for future runs, unless an entry already exists.
-        if not (cache is not None and cache.has_locate_cache(prompt_str)):
-            await agent._write_locate_cache(
-                prompt_str, cached_pixel, cache, cacheable, None
-            )
-        return cached_pixel
-
-    replace_index: Optional[int] = None
+    # Upstream consults the locate cache before choosing between a plan hit and
+    # AI locate, so a plan hit can report whether an entry already exists.
+    matched: Optional[Dict[str, Any]] = None
     if (
         cache is not None
         and cacheable is not False
@@ -91,19 +86,32 @@ async def locate_for_action(agent, locate_param: Any) -> Dict[str, Any]:
         )
     ):
         matched = cache.match_locate_cache(prompt_str)
-        if matched is not None:
-            rect = await agent._rect_from_cache_feature(matched["cache"])
-            if rect is not None:
-                return {
-                    "center": [
-                        rect.left + rect.width / 2,
-                        rect.top + rect.height / 2,
-                    ],
-                    "rect": rect,
-                    "description": prompt_str,
-                }
-            # Stale feature: re-locate and replace this entry in place.
-            replace_index = matched["index"]
+
+    # Upstream task-builder: elementFromPlan = locateParam.deepLocate
+    # ? undefined : planLocatedElement. With deepLocate the plan
+    # coordinates are only a search-area hint for the two-stage locate.
+    if has_plan_coordinates and not deep_locate:
+        # Fresh plan coordinates take precedence over the cache. Record the
+        # feature once for future runs, unless an entry already exists.
+        if matched is None:
+            await agent._write_locate_cache(
+                prompt_str, cached_pixel, cache, cacheable, None
+            )
+        return cached_pixel
+
+    replace_index: Optional[int] = matched["index"] if matched is not None else None
+    if matched is not None:
+        rect = await agent._rect_from_cache_feature(matched["cache"])
+        if rect is not None:
+            return {
+                "center": [
+                    rect.left + rect.width / 2,
+                    rect.top + rect.height / 2,
+                ],
+                "rect": rect,
+                "description": prompt_str,
+            }
+        # Stale feature: re-locate and replace this entry in place.
 
     context = await agent._get_ui_context("locate")
     element = await agent._run_locate(

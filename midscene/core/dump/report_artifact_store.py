@@ -12,6 +12,7 @@ publishers never clobber each other.
 """
 
 import json
+import math
 import os
 import re
 import time
@@ -20,6 +21,9 @@ from typing import Any, Callable, Dict, Optional, Union
 
 SCHEMA_VERSION = 1
 REPORT_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{1,128}$")
+REPORT_ARTIFACT_PATH_PATTERN = re.compile(
+    r"^(?:\./)?[a-zA-Z0-9_.-]+(?:/[a-zA-Z0-9_.-]+)*$"
+)
 ARTIFACT_KINDS = ("agent", "test")
 ARTIFACT_STATUSES = ("running", "complete")
 
@@ -34,6 +38,18 @@ def validate_report_id(report_id: str) -> str:
     return report_id
 
 
+def assert_report_artifact_path(path: Any) -> str:
+    """Reject artifact references that could escape the report directory."""
+    stripped = path[2:] if isinstance(path, str) and path.startswith("./") else path
+    if (
+        not isinstance(path, str)
+        or not REPORT_ARTIFACT_PATH_PATTERN.match(path)
+        or any(part in (".", "..") for part in stripped.split("/"))
+    ):
+        raise ReportArtifactError(f"Invalid report artifact path: {path}")
+    return path
+
+
 def validate_manifest(manifest: Any) -> Dict[str, Any]:
     """Check the manifest shape before it is written or trusted."""
     if not isinstance(manifest, dict):
@@ -45,29 +61,70 @@ def validate_manifest(manifest: Any) -> Dict[str, Any]:
     if manifest.get("status") not in ARTIFACT_STATUSES:
         raise ReportArtifactError("Report manifest status is invalid")
     validate_report_id(manifest.get("reportId"))
-    if not isinstance(manifest.get("entry"), str) or not manifest["entry"]:
-        raise ReportArtifactError("Report manifest needs an entry file")
+    entry = manifest.get("entry")
+    if (
+        not isinstance(entry, str)
+        or not entry.endswith(".html")
+        or "/" in entry
+        or "\\" in entry
+    ):
+        raise ReportArtifactError("Report manifest needs an HTML entry file")
     groups = manifest.get("groups")
     if not isinstance(groups, list):
         raise ReportArtifactError("Report manifest groups must be a list")
+    seen_ids = set()
     for group in groups:
         if not isinstance(group, dict):
             raise ReportArtifactError("Report group must be an object")
-        if not isinstance(group.get("id"), str) or not group["id"]:
+        group_id = group.get("id")
+        if not isinstance(group_id, str) or not group_id:
             raise ReportArtifactError("Report group needs an id")
+        if group_id in seen_ids:
+            raise ReportArtifactError("Report group ids must be unique")
+        seen_ids.add(group_id)
         if group.get("status") not in ARTIFACT_STATUSES:
             raise ReportArtifactError("Report group status is invalid")
-        if not isinstance(group.get("attributes"), dict):
+        attributes = group.get("attributes")
+        if not isinstance(attributes, dict):
             raise ReportArtifactError("Report group attributes must be an object")
+        for attribute in attributes.values():
+            if not isinstance(attribute, (str, int, float, bool)) or (
+                isinstance(attribute, (int, float))
+                and not isinstance(attribute, bool)
+                and not math.isfinite(attribute)
+            ):
+                raise ReportArtifactError(
+                    "Report group attributes must be portable values"
+                )
         dumps = group.get("dumps")
-        if not isinstance(dumps, list) or not all(
-            isinstance(dump, str) for dump in dumps
-        ):
+        if not isinstance(dumps, list):
             raise ReportArtifactError("Report group dumps must be relative paths")
+        for dump in dumps:
+            assert_report_artifact_path(dump)
+    if groups:
+        expected_status = (
+            "complete"
+            if all(group["status"] == "complete" for group in groups)
+            else "running"
+        )
+        if manifest["status"] != expected_status:
+            raise ReportArtifactError(
+                "Report manifest status is inconsistent with its groups"
+            )
     runner = manifest.get("runner")
-    if runner is not None and not isinstance(runner, str):
-        raise ReportArtifactError("Report manifest runner must be a path")
+    if runner is not None:
+        assert_report_artifact_path(runner)
     return manifest
+
+
+def parse_report_artifact_manifest(value: Any) -> Dict[str, Any]:
+    """Validate a manifest value against the portable artifact contract."""
+    try:
+        return validate_manifest(value)
+    except ReportArtifactError as error:
+        raise ReportArtifactError(
+            "Invalid or unsupported report artifact manifest"
+        ) from error
 
 
 def serialize_payload(payload: Any) -> str:
@@ -267,10 +324,13 @@ class ReportArtifactStore:
 __all__ = [
     "ARTIFACT_KINDS",
     "ARTIFACT_STATUSES",
+    "REPORT_ARTIFACT_PATH_PATTERN",
     "REPORT_ID_PATTERN",
     "ReportArtifactError",
     "ReportArtifactStore",
     "SCHEMA_VERSION",
+    "assert_report_artifact_path",
+    "parse_report_artifact_manifest",
     "serialize_payload",
     "validate_manifest",
     "validate_report_id",

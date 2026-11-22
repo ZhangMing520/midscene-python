@@ -1579,3 +1579,12 @@ class Agent:
     @staticmethod
     def _to_logical_coords(element: Dict[str, Any], context: UIContext) -> Dict[str, Any]:
         return ui_utils.to_logical_coords(element, context)
+
+    @staticmethod
+    def get_test_runner_node_definitions() -> List[Any]:
+        """Common Agent Nodes consumed by the Test Runner adapters."""
+        from midscene.core.agent.test_runner_nodes import (
+            COMMON_AGENT_TEST_RUNNER_NODE_DEFINITIONS,
+        )
+
+        return COMMON_AGENT_TEST_RUNNER_NODE_DEFINITIONS

@@ -5,9 +5,11 @@ branches collapse to the filesystem behavior. Environment access is read
 directly here to avoid importing the model configuration layer.
 """
 
+import contextvars
 import os
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Optional
+from typing import Iterator, Optional
 
 DEFAULT_RUN_DIR_NAME = "midscene_run"
 
@@ -16,6 +18,9 @@ ERROR_CODE_NOT_IMPLEMENTED_AS_DESIGNED = "NOT_IMPLEMENTED_AS_DESIGNED"
 _MIDSCENE_RUN_DIR = "MIDSCENE_RUN_DIR"
 
 _configured_run_dir: Optional[str] = None
+
+# Per-task/async-scope override, so concurrent Test runs stay isolated.
+_run_directory_context = contextvars.ContextVar("midscene_run_dir", default=None)
 
 
 def _validate_run_dir(value: str) -> str:
@@ -37,11 +42,26 @@ def set_midscene_run_dir(run_dir: Optional[str]) -> None:
 
 def get_midscene_run_dir() -> str:
     """Return the configured run directory name (not resolved)."""
-    return _validate_run_dir(
-        _configured_run_dir
-        or os.environ.get(_MIDSCENE_RUN_DIR)
-        or DEFAULT_RUN_DIR_NAME
-    )
+    context_value = _run_directory_context.get()
+    if context_value is not None:
+        return _validate_run_dir(context_value)
+    if _configured_run_dir is not None:
+        return _validate_run_dir(_configured_run_dir)
+    env_value = os.environ.get(_MIDSCENE_RUN_DIR)
+    if env_value is not None:
+        return _validate_run_dir(env_value)
+    return _validate_run_dir(DEFAULT_RUN_DIR_NAME)
+
+
+@contextmanager
+def run_with_midscene_run_dir(run_dir: str) -> Iterator[None]:
+    """Isolate concurrent/nested run directories within the current context."""
+    resolved = str(Path(_validate_run_dir(run_dir)).resolve())
+    token = _run_directory_context.set(resolved)
+    try:
+        yield
+    finally:
+        _run_directory_context.reset(token)
 
 
 def resolve_midscene_run_dir(base_dir: str) -> str:
@@ -70,5 +90,6 @@ __all__ = [
     "get_midscene_run_dir",
     "get_midscene_run_sub_dir",
     "resolve_midscene_run_dir",
+    "run_with_midscene_run_dir",
     "set_midscene_run_dir",
 ]

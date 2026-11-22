@@ -9,6 +9,9 @@ from midscene.core.ai_model.service_caller.types import AIResponseParseError
 from midscene.core.ai_model.model_adapter.image_preprocess import (
     prepare_model_image,
 )
+from midscene.core.ai_model.model_adapter.locate_prompt_order import (
+    multimodal_prompt_to_messages,
+)
 from midscene.core.ai_model.shared.multimodal_prompt import (
     ensure_data_url,
     user_prompt_to_string,
@@ -47,17 +50,32 @@ async def run_planning_action_locate(
         shot_size["height"],
         None,
     )
+    # Auto-GLM places its prompt in a system message and the screenshot in a
+    # history entry, matching upstream buildCustomPlanningMessages.
     messages = [
         {
-            "role": "user",
-            "content": (
-                f"{definition['build_system_prompt']()}Tap: "
-                f"{user_prompt_to_string(target_element_description)}"
-            ),
+            "role": "system",
+            "content": definition["build_system_prompt"](),
         },
         {
             "role": "user",
-            "content": [{"type": "image", "url": prepared["image_base64"]}],
+            "content": [
+                {
+                    "type": "text",
+                    "text": (
+                        "Tap: "
+                        f"{user_prompt_to_string(target_element_description)}"
+                    ),
+                }
+            ],
+        },
+        *multimodal_prompt_to_messages(target_element_description),
+        {
+            "type": "input-message",
+            "message": {
+                "role": "user",
+                "content": [{"type": "image", "url": prepared["image_base64"]}],
+            },
         },
     ]
     try:
