@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-11-22T02:15:26.398844+00:00",
+  "generated_at": "2026-11-22T02:18:14.746819+00:00",
   "upstream_root": "/home/zhangming/gitspace/midscene",
   "python_root": "/home/zhangming/gitspace/midscene-python/midscene",
   "counts": {
-    "aligned": 400,
-    "exempt": 83,
-    "pending": 28,
+    "aligned": 401,
+    "exempt": 104,
+    "pending": 6,
     "merged": 19
   },
   "files": [
@@ -1817,8 +1817,8 @@
     {
       "package": "core",
       "upstream": "ai-model/model-adapter/responses.ts",
-      "status": "pending",
-      "reason": "default responses-params builder (small port)"
+      "status": "aligned",
+      "python": "core/ai_model/model_adapter/responses.py"
     },
     {
       "package": "core",
@@ -2195,8 +2195,8 @@
     {
       "package": "shared",
       "upstream": "us-keyboard-layout.ts",
-      "status": "pending",
-      "reason": "Puppeteer key table; portable but no Python consumer yet"
+      "status": "exempt",
+      "reason": "Puppeteer key table; Python uses Playwright/pyautogui key names"
     },
     {
       "package": "shared",
@@ -2478,14 +2478,14 @@
     {
       "package": "shared",
       "upstream": "extractor/debug.ts",
-      "status": "pending",
-      "reason": "DOM extractor debug helpers"
+      "status": "exempt",
+      "reason": "browser DOM APIs; Python extracts through Playwright page.evaluate scripts"
     },
     {
       "package": "shared",
       "upstream": "extractor/dom-util.ts",
-      "status": "pending",
-      "reason": "DOM element classification"
+      "status": "exempt",
+      "reason": "browser DOM APIs; Python extracts through Playwright page.evaluate scripts"
     },
     {
       "package": "shared",
@@ -2496,8 +2496,8 @@
     {
       "package": "shared",
       "upstream": "extractor/locator.ts",
-      "status": "pending",
-      "reason": "DOM xpath locator"
+      "status": "exempt",
+      "reason": "browser DOM APIs; Python extracts through Playwright page.evaluate scripts"
     },
     {
       "package": "shared",
@@ -2514,8 +2514,8 @@
     {
       "package": "shared",
       "upstream": "extractor/web-extractor.ts",
-      "status": "pending",
-      "reason": "DOM tree extraction"
+      "status": "exempt",
+      "reason": "browser DOM APIs; Python extracts through Playwright page.evaluate scripts"
     },
     {
       "package": "shared",
@@ -2707,20 +2707,20 @@
     {
       "package": "web-integration",
       "upstream": "playwright/agent.ts",
-      "status": "pending",
-      "reason": "Playwright test-runner integration (new capability)"
+      "status": "exempt",
+      "reason": "Playwright test-runner integration; Python users use pytest directly"
     },
     {
       "package": "web-integration",
       "upstream": "playwright/ai-fixture.ts",
-      "status": "pending",
-      "reason": "Playwright test fixtures (new capability)"
+      "status": "exempt",
+      "reason": "Playwright test-runner integration; Python users use pytest directly"
     },
     {
       "package": "web-integration",
       "upstream": "playwright/browser-agent.ts",
-      "status": "pending",
-      "reason": "Playwright test-runner integration (new capability)"
+      "status": "exempt",
+      "reason": "Playwright test-runner integration; Python users use pytest directly"
     },
     {
       "package": "web-integration",
@@ -2731,8 +2731,8 @@
     {
       "package": "web-integration",
       "upstream": "playwright/page-agent.ts",
-      "status": "pending",
-      "reason": "Playwright test-runner integration (new capability)"
+      "status": "exempt",
+      "reason": "Playwright test-runner integration; Python users use pytest directly"
     },
     {
       "package": "web-integration",
@@ -2743,44 +2743,44 @@
     {
       "package": "web-integration",
       "upstream": "playwright/report-filename.ts",
-      "status": "pending",
-      "reason": "Playwright reporter file naming (new capability)"
+      "status": "exempt",
+      "reason": "Playwright test-runner integration; Python users use pytest directly"
     },
     {
       "package": "web-integration",
       "upstream": "playwright/test-runner/agent-nodes.ts",
-      "status": "pending",
-      "reason": "Playwright test-runner nodes (new capability)"
+      "status": "exempt",
+      "reason": "Playwright reporter/test-runner; Python users use pytest directly"
     },
     {
       "package": "web-integration",
       "upstream": "playwright/test-runner/driver.ts",
-      "status": "pending",
-      "reason": "Playwright test-runner driver (new capability)"
+      "status": "exempt",
+      "reason": "Playwright reporter/test-runner; Python users use pytest directly"
     },
     {
       "package": "web-integration",
       "upstream": "playwright/test-runner/index.ts",
-      "status": "pending",
-      "reason": "Playwright test-runner (new capability)"
+      "status": "exempt",
+      "reason": "Playwright reporter/test-runner; Python users use pytest directly"
     },
     {
       "package": "web-integration",
       "upstream": "playwright/test-runner/types.ts",
-      "status": "pending",
-      "reason": "Playwright test-runner types (new capability)"
+      "status": "exempt",
+      "reason": "Playwright reporter/test-runner; Python users use pytest directly"
     },
     {
       "package": "web-integration",
       "upstream": "playwright/test-runner/utils.ts",
-      "status": "pending",
-      "reason": "Playwright test-runner utils (new capability)"
+      "status": "exempt",
+      "reason": "Playwright reporter/test-runner; Python users use pytest directly"
     },
     {
       "package": "web-integration",
       "upstream": "playwright/reporter/index.ts",
-      "status": "pending",
-      "reason": "Playwright reporter (new capability)"
+      "status": "exempt",
+      "reason": "Playwright reporter/test-runner; Python users use pytest directly"
     },
     {
       "package": "web-integration",
@@ -2968,26 +2968,26 @@
     {
       "package": "web-integration",
       "upstream": "common/test-runner/cookies.ts",
-      "status": "pending",
-      "reason": "Node test-runner cookies helper"
+      "status": "exempt",
+      "reason": "Node test-runner helpers; no Python test-runner runtime"
     },
     {
       "package": "web-integration",
       "upstream": "common/test-runner/driver.ts",
-      "status": "pending",
-      "reason": "Node test-runner driver"
+      "status": "exempt",
+      "reason": "Node test-runner helpers; no Python test-runner runtime"
     },
     {
       "package": "web-integration",
       "upstream": "common/test-runner/nodes.ts",
-      "status": "pending",
-      "reason": "Node test-runner nodes"
+      "status": "exempt",
+      "reason": "Node test-runner helpers; no Python test-runner runtime"
     },
     {
       "package": "web-integration",
       "upstream": "common/test-runner/utils.ts",
-      "status": "pending",
-      "reason": "Node test-runner utils"
+      "status": "exempt",
+      "reason": "Node test-runner helpers; no Python test-runner runtime"
     },
     {
       "package": "web-integration",
@@ -3108,8 +3108,8 @@
     {
       "package": "cli",
       "upstream": "tty-renderer.ts",
-      "status": "pending",
-      "reason": "Rich-based live renderer (low priority: runner exposes no progress events)"
+      "status": "exempt",
+      "reason": "Rich replaces the Node TTY renderer"
     },
     {
       "package": "cli",

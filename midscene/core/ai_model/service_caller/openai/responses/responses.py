@@ -33,22 +33,20 @@ def prepare_responses(
     if "temperature" in adapter.unsupported_user_config:
         user_config.pop("temperature", None)
     builder = getattr(adapter, "build_responses_params", None)
-    adapter_params = (
-        builder(
+    if builder:
+        adapter_params = builder(
             midscene_defaults,
             user_config,
             bool(options.get("expectedJsonObjectResponse")),
         )
-        if builder
-        else {
-            **midscene_defaults,
-            **{
-                key: value
-                for key, value in user_config.items()
-                if value is not None and value != "unset"
-            },
-        }
-    )
+    else:
+        from midscene.core.ai_model.model_adapter.responses import (
+            build_default_responses_params,
+        )
+
+        adapter_params = build_default_responses_params(
+            midscene_defaults, user_config
+        )
     if model_config.get("temperature") == "unset":
         adapter_params.pop("temperature", None)
     request_body: Dict[str, Any] = {

@@ -170,6 +170,16 @@ EXEMPT: List[Tuple[str, str, str]] = [
     ),
     ("shared", r"^zod-schema-utils\.ts$", "Zod-specific helpers"),
     (
+        "shared",
+        r"^extractor/(debug|dom-util|locator|web-extractor)\.ts$",
+        "browser DOM APIs; Python extracts through Playwright page.evaluate scripts",
+    ),
+    (
+        "shared",
+        r"^us-keyboard-layout\.ts$",
+        "Puppeteer key table; Python uses Playwright/pyautogui key names",
+    ),
+    (
         "android",
         r"^(agent-tools|cli|test-runner-nodes)\.ts$",
         "Node CLI / test-runner bindings",
@@ -219,7 +229,23 @@ EXEMPT: List[Tuple[str, str, str]] = [
         r"^(agent-tools.*|bin|cli|cli-options|platform|utils)\.ts$",
         "Node CLI / agent tooling",
     ),
+    (
+        "web-integration",
+        r"^playwright/(agent|ai-fixture|browser-agent|page-agent|report-filename)\.ts$",
+        "Playwright test-runner integration; Python users use pytest directly",
+    ),
+    (
+        "web-integration",
+        r"^playwright/(reporter|test-runner)/.*\.ts$",
+        "Playwright reporter/test-runner; Python users use pytest directly",
+    ),
+    (
+        "web-integration",
+        r"^common/test-runner/.*\.ts$",
+        "Node test-runner helpers; no Python test-runner runtime",
+    ),
     ("cli", r"^framework/.*\.ts$", "rstest (Node) test framework"),
+    ("cli", r"^tty-renderer\.ts$", "Rich replaces the Node TTY renderer"),
 ]
 
 # Known portable work that is simply not done yet.
@@ -242,84 +268,7 @@ PENDING: Dict[Tuple[str, str], str] = {
         "core",
         "ai-model/service-caller/codex/codex-app-server.ts",
     ): "Codex binary + stdio JSON-RPC",
-    (
-        "core",
-        "ai-model/model-adapter/responses.ts",
-    ): "default responses-params builder (small port)",
-    ("shared", "extractor/debug.ts"): "DOM extractor debug helpers",
-    ("shared", "extractor/dom-util.ts"): "DOM element classification",
-    ("shared", "extractor/locator.ts"): "DOM xpath locator",
-    ("shared", "extractor/web-extractor.ts"): "DOM tree extraction",
-    (
-        "shared",
-        "us-keyboard-layout.ts",
-    ): "Puppeteer key table; portable but no Python consumer yet",
-    (
-        "web-integration",
-        "playwright/agent.ts",
-    ): "Playwright test-runner integration (new capability)",
-    (
-        "web-integration",
-        "playwright/ai-fixture.ts",
-    ): "Playwright test fixtures (new capability)",
-    (
-        "web-integration",
-        "playwright/browser-agent.ts",
-    ): "Playwright test-runner integration (new capability)",
-    (
-        "web-integration",
-        "playwright/page-agent.ts",
-    ): "Playwright test-runner integration (new capability)",
-    (
-        "web-integration",
-        "playwright/report-filename.ts",
-    ): "Playwright reporter file naming (new capability)",
-    (
-        "web-integration",
-        "playwright/reporter/index.ts",
-    ): "Playwright reporter (new capability)",
-    (
-        "web-integration",
-        "playwright/test-runner/agent-nodes.ts",
-    ): "Playwright test-runner nodes (new capability)",
-    (
-        "web-integration",
-        "playwright/test-runner/driver.ts",
-    ): "Playwright test-runner driver (new capability)",
-    (
-        "web-integration",
-        "playwright/test-runner/index.ts",
-    ): "Playwright test-runner (new capability)",
-    (
-        "web-integration",
-        "playwright/test-runner/types.ts",
-    ): "Playwright test-runner types (new capability)",
-    (
-        "web-integration",
-        "playwright/test-runner/utils.ts",
-    ): "Playwright test-runner utils (new capability)",
-    (
-        "web-integration",
-        "common/test-runner/cookies.ts",
-    ): "Node test-runner cookies helper",
-    (
-        "web-integration",
-        "common/test-runner/driver.ts",
-    ): "Node test-runner driver",
-    (
-        "web-integration",
-        "common/test-runner/nodes.ts",
-    ): "Node test-runner nodes",
-    (
-        "web-integration",
-        "common/test-runner/utils.ts",
-    ): "Node test-runner utils",
-    (
-        "cli",
-        "tty-renderer.ts",
-    ): "Rich-based live renderer (low priority: runner exposes no progress events)",
 }
-
 
 def snake(name: str) -> str:
     name = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", name)
