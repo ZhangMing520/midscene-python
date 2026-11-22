@@ -3,55 +3,55 @@
 from typing import Any, Dict, List, Optional
 import json
 import re
-from midscene.core.ai_model.models.registry import ModelRuntime, get_model_runtime
-from midscene.core.ai_model.service_caller.call_ai import call_ai_with_string_response
 
+from midscene.core.ai_model.service_caller.call_ai import (
+    call_ai_with_string_response,
+    call_generative_ai,
+)
 from midscene.core.ai_model.workflows.recorder_generation.common import (
-    _recorder_stream_options,
-    get_global_default_config,
+    create_event_counts,
+    create_message_content,
+    extract_input_descriptions,
+    filter_events_by_type,
+    get_screenshots_for_llm,
     prepare_event_summary,
-    stringify_target_block,
+    prepare_recorder_generation_context,
+    process_events_for_llm,
+    recorder_stream_options,
+    resolve_model_runtime,
+    stringify_target_block as _stringify_target_block,
     validate_events,
 )
-
-# Upstream YAML_EXAMPLE_CODE is a long reference test file; the generation
-# prompt embeds it verbatim. Keep a compact pointer plus the API contract
-# section that the model must follow.
-YAML_API_CONTRACT = """
-IMPORTANT: Follow these exact type signatures for AI functions:
-aiAct(prompt: string, options?: { cacheable?: boolean }): Promise<string | undefined>
-aiInput(text: string, locate: string, options?: { deepLocate?: boolean, cacheable?: boolean }): Promise<void>
-aiTap(locate: string, options?: { deepLocate?: boolean, cacheable?: boolean }): Promise<void>
-aiHover(locate: string): Promise<void>
-aiDoubleClick(locate: string): Promise<void>
-aiKeyboardPress(key: string, locate?: string): Promise<void>
-aiScroll(locate: string | undefined, options: { direction?: 'up' | 'down' | 'left' | 'right', scrollType?: 'singleAction' | 'scrollToBottom' | 'scrollToTop' | 'scrollToRight' | 'scrollToLeft', distance?: number | null }): Promise<void>
-aiAssert(assertion: string, options?: { errorMessage?: string }): Promise<void>
-aiWaitFor(prompt: string, options?: { timeout?: number }): Promise<void>
-aiQuery<T>(queryObject: Record<string, string>): Promise<T>
-"""
+from midscene.shared.constants import YAML_EXAMPLE_CODE
 
 
 def create_default_web_target(
     events: List[Dict[str, Any]], options: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
-    """Default web target from the first navigation event
-    (upstream createDefaultWebTarget)."""
+    """Default web target from the first navigation event (upstream)."""
     options = options or {}
-    navigation = [e for e in events if e.get("type") == "navigation"]
+    navigation_events = [
+        event for event in events if event.get("type") == "navigation"
+    ]
     navigation_info = options.get("navigationInfo") or {}
-    first_url = next(
-        (u for u in navigation_info.get("urls", []) if u), None
-    ) or next((e.get("url") for e in navigation if e.get("url")), "")
-    first_viewport = navigation_info.get("initialViewport") or next(
-        (e.get("pageInfo") for e in events if e.get("pageInfo")), None
+    first_url = (
+        next((url for url in navigation_info.get("urls") or [] if url), None)
+        or next(
+            (event.get("url") for event in navigation_events if event.get("url")),
+            "",
+        )
     )
+    first_viewport = navigation_info.get("initialViewport") or next(
+        (event.get("pageInfo") for event in events if event.get("pageInfo")), None
+    )
+
     values: Dict[str, Any] = {"url": first_url}
     if isinstance(first_viewport, dict):
         if first_viewport.get("width"):
             values["viewportWidth"] = first_viewport["width"]
         if first_viewport.get("height"):
             values["viewportHeight"] = first_viewport["height"]
+
     return {
         "platformId": "web",
         "deviceId": first_url or None,
@@ -60,31 +60,40 @@ def create_default_web_target(
     }
 
 
-def _yaml_language_instruction(language: Optional[str]) -> str:
-    if not language or not language.strip():
+def get_yaml_language_instruction(language: Optional[str]) -> str:
+    normalized = (language or "").strip()
+    if not normalized:
         return ""
     return (
-        f"\nLanguage requirement:\n"
-        f"- Write all human-readable YAML content in {language.strip()}.\n"
+        "\nLanguage requirement:\n"
+        f"- Write all human-readable YAML content in {normalized}.\n"
         "- Keep YAML keys, field names, and Midscene API names unchanged."
     )
 
 
+def _json_dumps(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, indent=2, default=str)
+
+
 def create_yaml_prompt(
     yaml_summary: Dict[str, Any],
-    target: Dict[str, Any],
-    target_block: str,
     screenshot_assets: Optional[List[Dict[str, Any]]] = None,
     language: Optional[str] = None,
+    target_block: str = "",
+    target: Optional[Dict[str, Any]] = None,
 ) -> List[Dict[str, Any]]:
     """Build the generation prompt (upstream createYamlPrompt)."""
+    screenshot_assets = screenshot_assets or []
+    target = target or {"platformId": (yaml_summary or {}).get("platformId", "web")}
+    events = yaml_summary.get("events") or []
+
     prompt: List[Dict[str, Any]] = [
         {
             "role": "system",
             "content": (
                 "You are an expert in Midscene.js YAML test generation. "
                 "Generate clean, accurate YAML following these rules: "
-                + YAML_API_CONTRACT
+                f"{YAML_EXAMPLE_CODE}"
             ),
         },
         {
@@ -98,19 +107,24 @@ Target platform:
 {target_block}
 
 Event Summary:
-{json.dumps(yaml_summary, ensure_ascii=False, indent=2, default=str)}
+{_json_dumps(yaml_summary)}
 
 Screenshot assets:
-{json.dumps([
+{_json_dumps([
     {
         "eventIndex": asset.get("eventIndex"),
         "eventHashId": asset.get("eventHashId"),
         "eventType": asset.get("eventType"),
         "relativePath": asset.get("relativePath"),
-        "description": (yaml_summary.get("events") or [{}])[asset.get("eventIndex", 0)].get("description"),
+        "description": (
+            events[asset.get("eventIndex", 0)].get("description")
+            if isinstance(asset.get("eventIndex"), int)
+            and 0 <= asset.get("eventIndex", 0) < len(events)
+            else None
+        ),
     }
-    for asset in (screenshot_assets or [])
-], ensure_ascii=False, indent=2)}
+    for asset in screenshot_assets
+])}
 
 Convert events:
 - navigation → target URL or aiAction only when the target platform supports it
@@ -121,7 +135,7 @@ Convert events:
 - Add aiAssert for important state changes
 - Prefer event.semantic.replayInstruction and event.semantic.elementDescription when event.semantic.source is "aiDescribe" or "recorderAI" and event.semantic.status is "ready".
 - If event.semantic.source is "heuristic" or event.semantic.status is "pending"/"failed", use the screenshot/context to write the best visual instruction, and avoid raw coordinates unless there is no reliable semantic description.
-- Screenshot assets are context only. Use their eventIndex/eventHashId relationship to understand the matching event, but do not include screenshot file paths in the YAML unless the Midscene YAML API explicitly needs them.{_yaml_language_instruction(language)}
+- Screenshot assets are context only. Use their eventIndex/eventHashId relationship to understand the matching event, but do not include screenshot file paths in the YAML unless the Midscene YAML API explicitly needs them.{get_yaml_language_instruction(language)}
 
 Important: Return ONLY the raw YAML content. Do NOT wrap the response in markdown code blocks (no ```yaml or ```). Start directly with the YAML content.""",
         },
@@ -154,51 +168,135 @@ Important: Return ONLY the raw YAML content. Do NOT wrap the response in markdow
 
 
 def normalize_generated_yaml(content: str) -> str:
-    """Strip code fences if the model wrapped the YAML (upstream
-    normalizeGeneratedYaml)."""
+    """Strip code fences if the model wrapped the YAML (upstream)."""
     trimmed = content.strip()
-    fenced = re.match(r"^```(?:ya?ml)?\s*([\s\S]*?)\s*```$", trimmed, re.IGNORECASE)
+    fenced = re.match(
+        r"^```(?:ya?ml)?\s*([\s\S]*?)\s*```$", trimmed, re.IGNORECASE
+    )
     return (fenced.group(1) if fenced else trimmed).strip() + "\n"
+
+
+def create_recorder_yaml_prompt(
+    input_payload: Dict[str, Any],
+) -> List[Dict[str, Any]]:
+    context = prepare_recorder_generation_context(input_payload)
+    target = input_payload["target"]
+    yaml_summary = {
+        **context["summary"],
+        "target": target,
+        "includeTimestamps": bool(input_payload.get("includeTimestamps")),
+    }
+    return create_yaml_prompt(
+        yaml_summary,
+        context["screenshotAssets"],
+        input_payload.get("language"),
+        _stringify_target_block(target),
+        target,
+    )
+
+
+async def generate_recorder_yaml_test(
+    input_payload: Dict[str, Any], model_config: Any
+) -> str:
+    try:
+        prompt = create_recorder_yaml_prompt(input_payload)
+        response = await call_ai_with_string_response(
+            prompt, resolve_model_runtime(model_config)
+        )
+        content = (response or {}).get("content")
+        if isinstance(content, str) and content:
+            return normalize_generated_yaml(content)
+        raise RuntimeError(
+            "Failed to generate recorder YAML test configuration"
+        )
+    except Exception as error:
+        raise RuntimeError(
+            f"Failed to generate recorder YAML test: {error}"
+        ) from error
+
+
+async def generate_recorder_yaml_test_stream(
+    input_payload: Dict[str, Any],
+    options: Dict[str, Any],
+    model_config: Any,
+) -> Dict[str, Any]:
+    try:
+        prompt = create_recorder_yaml_prompt(input_payload)
+        runtime = resolve_model_runtime(model_config)
+        stream_options = recorder_stream_options(options)
+        if stream_options:
+            response = await call_generative_ai(prompt, runtime, stream_options)
+            return {**response, "isStreamed": True}
+
+        response = await call_ai_with_string_response(prompt, runtime)
+        content = (response or {}).get("content")
+        if isinstance(content, str) and content:
+            return {
+                "content": normalize_generated_yaml(content),
+                "usage": (response or {}).get("usage"),
+                "isStreamed": False,
+            }
+        raise RuntimeError(
+            "Failed to generate recorder YAML test configuration"
+        )
+    except Exception as error:
+        raise RuntimeError(
+            f"Failed to generate recorder YAML test: {error}"
+        ) from error
 
 
 async def generate_yaml_test(
     events: List[Dict[str, Any]],
     options: Optional[Dict[str, Any]] = None,
-    model_runtime: Optional[ModelRuntime] = None,
+    model_config: Any = None,
 ) -> str:
-    """Convert recorded events into a Midscene YAML test
-    (upstream generateYamlTest)."""
-    try:
-        validate_events(events)
-        options = dict(options or {})
-        target = options.get("target") or create_default_web_target(events, options)
-        summary = prepare_event_summary(events, options)
-        summary = {
-            **summary,
-            "target": target,
-            "includeTimestamps": bool(options.get("includeTimestamps")),
-        }
-        target_block = stringify_target_block(target)
-        prompt = create_yaml_prompt(
-            summary,
-            target,
-            target_block,
-            screenshot_assets=options.get("screenshotAssets"),
-            language=options.get("language"),
-        )
-        runtime = model_runtime or get_model_runtime(
-            get_global_default_config()
-        )
-        stream_options = _recorder_stream_options(options)
-        if stream_options:
-            response = await call_ai_with_string_response(
-                prompt, runtime, stream_options
-            )
-        else:
-            response = await call_ai_with_string_response(prompt, runtime)
-        content = response.get("content")
-        if not isinstance(content, str) or not content.strip():
-            raise RuntimeError("Failed to generate recorder YAML test configuration")
-        return normalize_generated_yaml(content)
-    except Exception as error:
-        raise RuntimeError(f"Failed to generate recorder YAML test: {error}") from error
+    """Generates YAML test configuration from recorded events using AI."""
+    options = dict(options or {})
+    return await generate_recorder_yaml_test(
+        {
+            **options,
+            "target": create_default_web_target(events, options),
+            "events": events,
+        },
+        model_config,
+    )
+
+
+async def generate_yaml_test_stream(
+    events: List[Dict[str, Any]],
+    options: Optional[Dict[str, Any]] = None,
+    model_config: Any = None,
+) -> Dict[str, Any]:
+    """Generates YAML test configuration with streaming support."""
+    options = dict(options or {})
+    return await generate_recorder_yaml_test_stream(
+        {
+            **options,
+            "target": create_default_web_target(events, options),
+            "events": events,
+        },
+        options,
+        model_config,
+    )
+
+
+__all__ = [
+    "create_default_web_target",
+    "create_event_counts",
+    "create_message_content",
+    "create_recorder_yaml_prompt",
+    "create_yaml_prompt",
+    "extract_input_descriptions",
+    "filter_events_by_type",
+    "generate_recorder_yaml_test",
+    "generate_recorder_yaml_test_stream",
+    "generate_yaml_test",
+    "generate_yaml_test_stream",
+    "get_screenshots_for_llm",
+    "get_yaml_language_instruction",
+    "normalize_generated_yaml",
+    "prepare_event_summary",
+    "prepare_recorder_generation_context",
+    "process_events_for_llm",
+    "validate_events",
+]

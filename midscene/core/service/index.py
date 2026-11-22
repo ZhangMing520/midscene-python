@@ -6,6 +6,7 @@ workflows/grounding/section-locate.ts.
 """
 
 from typing import Any, Dict, Optional
+import time
 
 from midscene.core.ai_model.models.registry import ModelRuntime
 from midscene.core.ai_model.service_caller.call_ai import call_generative_ai
@@ -154,3 +155,166 @@ async def locate_service(
 def adapter_has_search_area(model_runtime: ModelRuntime) -> bool:
     """Standard adapters support section locate; custom locate adapters may not."""
     return model_runtime.adapter.locate_kind == "standard"
+
+
+class Service:
+    """Locate/extract/describe orchestration (upstream ``Service`` class)."""
+
+    def __init__(self, ui_context: Any, opt: Optional[Dict[str, Any]] = None):
+        if ui_context is None:
+            raise ValueError("uiContext is required for Service")
+        opt = opt or {}
+        if callable(ui_context) and not isinstance(ui_context, dict):
+            self.context_retriever_fn = ui_context
+        else:
+            async def retrieve() -> Any:
+                return ui_context
+
+            self.context_retriever_fn = retrieve
+        self.task_info = opt.get("taskInfo")
+
+    async def _resolve_context(self, ui_context: Optional[Any] = None) -> Any:
+        if ui_context is not None:
+            return ui_context
+        context = self.context_retriever_fn()
+        if hasattr(context, "__await__"):
+            context = await context
+        return context
+
+    async def locate(
+        self,
+        query: Dict[str, Any],
+        opt: Optional[Dict[str, Any]] = None,
+        model_runtime: Optional[ModelRuntime] = None,
+        abort_signal: Optional[Any] = None,
+    ) -> Dict[str, Any]:
+        from midscene.core.service.utils import create_service_dump
+
+        opt = opt or {}
+        query_prompt = query.get("prompt")
+        if not query_prompt:
+            raise ValueError("query is required for locate")
+        start_time = int(time.time() * 1000)
+        context = await self._resolve_context(opt.get("uiContext"))
+        response = await locate_service(
+            query_prompt,
+            context,
+            model_runtime,
+            bool(query.get("deepLocate")),
+            opt.get("planLocatedElement"),
+        )
+        task_info = {
+            **(self.task_info or {}),
+            "durationMs": int(time.time() * 1000) - start_time,
+            "rawResponse": response.get("raw_response"),
+            "usage": response.get("usage"),
+            "searchArea": response.get("search_area"),
+            "searchAreaUsage": response.get("search_area_usage"),
+        }
+        element = response.get("element")
+        dump = create_service_dump(
+            {
+                "type": "locate",
+                "userQuery": {"element": query_prompt},
+                "matchedElement": [element] if element else [],
+                "data": None,
+                "taskInfo": task_info,
+                "deepLocate": bool(response.get("deep_locate")),
+                "error": (
+                    "\n".join(response.get("errors") or [])
+                    if response.get("errors")
+                    else None
+                ),
+            }
+        )
+        if response.get("errors"):
+            from midscene.core.errors import ServiceError
+
+            raise ServiceError("\n".join(response["errors"]), dump)
+        return {"element": element, "dump": dump}
+
+    async def extract(
+        self,
+        data_demand: Any,
+        model_runtime: Optional[ModelRuntime],
+        task_type: str,
+        opt: Optional[Dict[str, Any]] = None,
+        page_description: Optional[str] = None,
+        multimodal_prompt: Optional[Dict[str, Any]] = None,
+        ui_context: Optional[Any] = None,
+        execution_options: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        from midscene.core.ai_model.workflows.insight import (
+            ai_extract_element_info,
+        )
+        from midscene.core.service.utils import create_service_dump
+
+        opt = opt or {}
+        start_time = int(time.time() * 1000)
+        context = await self._resolve_context(ui_context)
+        response = await ai_extract_element_info(
+            task_type,
+            data_demand,
+            context,
+            model_runtime,
+            page_description or "",
+            bool(opt.get("screenshotIncluded", True)),
+            opt.get("context"),
+        )
+        parse_result = response.get("parse_result") or {}
+        error_log = None
+        if parse_result.get("errors"):
+            error_log = "AI response error: \n" + "\n".join(
+                parse_result["errors"]
+            )
+        task_info = {
+            **(self.task_info or {}),
+            "durationMs": int(time.time() * 1000) - start_time,
+            "rawResponse": response.get("raw_response"),
+            "formatResponse": parse_result,
+            "usage": response.get("usage"),
+        }
+        data = parse_result.get("data")
+        dump = create_service_dump(
+            {
+                "type": task_type,
+                "userQuery": {"dataDemand": data_demand},
+                "data": data,
+                "taskInfo": task_info,
+                "error": error_log,
+            }
+        )
+        if error_log and not data:
+            from midscene.core.errors import ServiceError
+
+            raise ServiceError(error_log, dump)
+        return {
+            "data": data,
+            "thought": parse_result.get("thought"),
+            "usage": response.get("usage"),
+            "reasoning_content": response.get("reasoning_content"),
+            "dump": dump,
+        }
+
+    async def describe(
+        self,
+        target: Any,
+        model_runtime: Optional[ModelRuntime],
+        opt: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        from midscene.core.service.describe import ai_describe_element
+
+        opt = opt or {}
+        context = await self._resolve_context(opt.get("uiContext"))
+        response = await ai_describe_element(
+            context, target, model_runtime, bool(opt.get("deepDescribe"))
+        )
+        return response
+
+
+__all__ = [
+    "Service",
+    "adapter_has_search_area",
+    "ai_locate_section",
+    "locate_service",
+]

@@ -8,6 +8,9 @@ from midscene.core.ai_model.model_adapter.temperature_with_semantic_retry import
 from midscene.core.ai_model.model_adapter.types import (
     ModelRequestUserConfig,
 )
+from midscene.core.ai_model.models.default import (
+    build_chat_completion_params_from_context,
+)
 
 
 def _build_auto_glm_params(
@@ -22,4 +25,34 @@ def _build_auto_glm_params(
     return config
 
 
-__all__ = ["_build_auto_glm_params"]
+def _create_auto_glm_adapter_config(is_multilingual: bool) -> Dict[str, Any]:
+    return {
+        "chat_completion": {
+            "build_chat_completion_params": build_chat_completion_params_from_context(
+                _build_auto_glm_params
+            ),
+        },
+        "planning": {
+            "kind": "custom",
+            "cache_enabled": False,
+            "default_replanning_cycle_limit": 100,
+            "planner": {"multilingual": is_multilingual},
+        },
+        "locate": {
+            "kind": "custom",
+            "planning_tap_locator": {"multilingual": is_multilingual},
+        },
+    }
+
+
+auto_glm_adapters = {
+    "auto-glm": _create_auto_glm_adapter_config(False),
+    "auto-glm-multilingual": _create_auto_glm_adapter_config(True),
+}
+
+
+__all__ = [
+    "_build_auto_glm_params",
+    "_create_auto_glm_adapter_config",
+    "auto_glm_adapters",
+]

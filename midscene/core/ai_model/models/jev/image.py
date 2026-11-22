@@ -77,3 +77,11 @@ async def _prepare_jev_references(prompt: Any) -> Dict[str, Any]:
         references.append(reference)
         image_map[entry["key"]] = prepare_jev_image(url)
     return {"references": references, "images": image_map}
+
+
+async def prepare_references(prompt: Any) -> Dict[str, Any]:
+    """Prepare markdown reference images for a Jev request."""
+    return await _prepare_jev_references(prompt)
+
+
+__all__ = ["prepare_jev_image", "prepare_references"]

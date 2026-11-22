@@ -100,6 +100,69 @@ async def ai_locate_element(
             or response.get("reasoning_content"),
         }
 
+    locate_response = await generic_locate(
+        {
+            "targetElementDescription": target_element_description,
+            "locateImage": locate_image,
+            "options": {
+                "modelRuntime": model_runtime,
+                "abortSignal": abort_signal,
+            },
+        }
+    )
+    errors = locate_response.get("errors") or []
+    located = locate_response.get("locatedPixelResult")
+    base = {
+        "raw_response": locate_response.get("raw_response"),
+        "usage": locate_response.get("usage"),
+        "reasoning_content": locate_response.get("reasoning_content"),
+    }
+    if not located:
+        return {"parse_result": {"element": None, "errors": errors}, **base}
+
+    try:
+        mapping = (search_config or {}).get("mapping")
+        if mapping:
+            mapped = map_search_area_result_to_original_result(located, mapping)
+        else:
+            mapped = {"center": located["center"]}
+            if located.get("rect"):
+                mapped["rect"] = located["rect"]
+        return {
+            "parse_result": {
+                "element": {**mapped, "description": description_text},
+                "errors": [],
+            },
+            **base,
+        }
+    except Exception as error:
+        message = f"Failed to parse locate result: {error}"
+        return {
+            "parse_result": {
+                "element": None,
+                "errors": [*errors, message] if errors else [message],
+            },
+            **base,
+        }
+
+
+async def generic_locate(locate_request: Dict[str, Any]) -> Dict[str, Any]:
+    """Locate an element with the adapter's standard locate protocol.
+
+    Mirrors upstream ``genericLocate`` and returns a locate model response:
+    ``locatedPixelResult``, ``rawResponse``/``raw_response``, usage, reasoning
+    content and ``errors``.
+    """
+    target_element_description = locate_request["targetElementDescription"]
+    locate_image = locate_request["locateImage"]
+    options = locate_request.get("options") or {}
+    model_runtime = options["modelRuntime"]
+    adapter = model_runtime.adapter
+    locate_adapter = resolve_locate(adapter)
+    if locate_adapter["kind"] != "standard":
+        raise ValueError("generic locate requires a standard locate adapter")
+
+    description_text = user_prompt_to_string(target_element_description)
     element_adapter = locate_adapter["element"]
     protocol = element_adapter["protocol"]
     result_codec = element_adapter["result_codec"]
@@ -163,10 +226,7 @@ async def ai_locate_element(
         if parsed_locate_result["kind"] == "not-found":
             return {
                 **base,
-                "parse_result": {
-                    "element": None,
-                    "errors": [locate_error] if locate_error else [],
-                },
+                "errors": [locate_error] if locate_error else [],
             }
 
         try:
@@ -179,14 +239,8 @@ async def ai_locate_element(
             )
             return {
                 **base,
-                "parse_result": {
-                    "element": {
-                        "center": result["center"],
-                        "rect": result.get("rect"),
-                        "description": description_text,
-                    },
-                    "errors": [],
-                },
+                "locatedPixelResult": result,
+                "errors": [],
             }
         except Exception as error:
             message = "\n".join(
@@ -208,7 +262,7 @@ async def ai_locate_element(
         )
 
     try:
-        result = await call_ai_and_parse_with_retry(
+        return await call_ai_and_parse_with_retry(
             call_ai=call_ai,
             parse_response=parse_response,
             to_parse_error=to_parse_error,
@@ -218,26 +272,18 @@ async def ai_locate_element(
                 f"retrying locate after coordinate parsing failed: {error}"
             ),
         )
-        return result
     except AIResponseParseError as call_error:
         return {
             "raw_response": call_error.raw_response,
             "usage": call_error.usage,
             "reasoning_content": call_error.reasoning_content,
-            "parse_result": {
-                "element": None,
-                "errors": [call_error.message],
-            },
+            "errors": [call_error.message],
         }
     except Exception as call_error:
         error_message = str(call_error)
         return {
             "raw_response": error_message,
-            "usage": None,
-            "parse_result": {
-                "element": None,
-                "errors": [f"AI call error: {error_message}"],
-            },
+            "errors": [f"AI call error: {error_message}"],
         }
 
 

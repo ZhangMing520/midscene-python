@@ -18,6 +18,9 @@ from midscene.core.ai_model.model_adapter.temperature_with_semantic_retry import
 from midscene.core.ai_model.model_adapter.types import (
     ModelRequestUserConfig,
 )
+from midscene.core.ai_model.models.default import (
+    build_chat_completion_params_from_context,
+)
 
 
 def _build_ant_ling_params(
@@ -46,4 +49,25 @@ ANT_LING_LOCATE_FORMAT = {
 }
 
 
-__all__ = ["ANT_LING_LOCATE_FORMAT", "_build_ant_ling_params"]
+ant_ling_adapters = {
+    "ant-ling": {
+        "supported_protocols": ["openai-chat"],
+        "chat_completion": {
+            "build_chat_completion_params": build_chat_completion_params_from_context(
+                _build_ant_ling_params
+            ),
+        },
+        "locate": {
+            "element": {
+                "result_format": ANT_LING_LOCATE_FORMAT,
+            },
+        },
+    },
+}
+
+
+__all__ = [
+    "ANT_LING_LOCATE_FORMAT",
+    "_build_ant_ling_params",
+    "ant_ling_adapters",
+]

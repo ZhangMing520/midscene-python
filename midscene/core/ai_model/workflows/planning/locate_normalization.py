@@ -1,6 +1,6 @@
 """Planning locate parameter normalization (upstream workflows/planning/locate-normalization.ts)."""
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 
 def normalize_planning_locate_parameter(
@@ -37,4 +37,59 @@ def normalize_planning_locate_parameter(
     return normalized
 
 
-__all__ = ["normalize_planning_locate_parameter"]
+def _action_locate_fields(action_definition: Any) -> list:
+    action_dict = (
+        action_definition
+        if isinstance(action_definition, dict)
+        else action_definition.to_prompt_dict()
+    )
+    return list(action_dict.get("locate_fields", []))
+
+
+def normalize_planning_action_fields(
+    actions: List[Dict[str, Any]],
+    action_space: List[Any],
+    include_locate_in_planning: bool,
+    locate_result_codec: Optional[Any],
+    locate_result_context: Optional[Dict[str, Any]],
+) -> None:
+    """Normalize locate params on planned actions in place.
+
+    Mirrors upstream ``normalizePlanningActionFields``: actions outside the
+    action space are skipped, and only fields declared as Midscene locators
+    are converted.
+    """
+    for action in actions:
+        action_in_space = next(
+            (
+                candidate
+                for candidate in action_space
+                if (
+                    candidate.get("name")
+                    if isinstance(candidate, dict)
+                    else getattr(candidate, "name", None)
+                )
+                == action.get("type")
+            ),
+            None,
+        )
+        if action_in_space is None:
+            continue
+
+        param = action.get("param") or {}
+        for field in _action_locate_fields(action_in_space):
+            locate_parameter = param.get(field)
+            if not locate_parameter:
+                continue
+            param[field] = normalize_planning_locate_parameter(
+                locate_parameter,
+                locate_result_codec,
+                locate_result_context,
+                include_locate_in_planning,
+            )
+
+
+__all__ = [
+    "normalize_planning_action_fields",
+    "normalize_planning_locate_parameter",
+]

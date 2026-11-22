@@ -5,5 +5,12 @@ from typing import Optional
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 
-def _is_openrouter(base_url: Optional[str]) -> bool:
+def is_open_router(base_url: Optional[str] = None) -> bool:
     return base_url == OPENROUTER_BASE_URL
+
+
+# Backward-compatible private alias used across the model adapters.
+_is_openrouter = is_open_router
+
+
+__all__ = ["OPENROUTER_BASE_URL", "_is_openrouter", "is_open_router"]

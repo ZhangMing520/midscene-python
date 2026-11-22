@@ -18,6 +18,9 @@ from midscene.core.ai_model.model_adapter.temperature_with_semantic_retry import
 from midscene.core.ai_model.model_adapter.types import (
     ModelRequestUserConfig,
 )
+from midscene.core.ai_model.models.default import (
+    build_chat_completion_params_from_context,
+)
 
 def _build_mimo_params(
     midscene_defaults: Dict[str, Any],
@@ -35,3 +38,18 @@ def _build_mimo_params(
             "type": "enabled" if reasoning_enabled is True else "disabled"
         }
     return config
+
+
+mimo_adapters = {
+    "xiaomi-mimo": {
+        "chat_completion": {
+            "build_chat_completion_params": build_chat_completion_params_from_context(
+                _build_mimo_params
+            ),
+            "use_reasoning_as_content_fallback": True,
+        },
+    },
+}
+
+
+__all__ = ["_build_mimo_params", "mimo_adapters"]

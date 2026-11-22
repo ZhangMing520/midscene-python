@@ -25,6 +25,71 @@ def test_prepares_multimodal_prompt_and_readable_time_from_user_prompt():
 
 class TestReferenceImages:
     @pytest.mark.asyncio
+    async def test_prepare_user_prompt_preserves_text_order_and_names(
+        self, monkeypatch
+    ):
+        from midscene.core.ai_model.shared import multimodal_prompt as context_utils
+
+        calls: List[Any] = []
+
+        def fake_resolve(image, convert_http):
+            calls.append((image["url"], convert_http))
+            return f"resolved:{image['url']}"
+
+        monkeypatch.setattr(context_utils, "resolve_reference_image", fake_resolve)
+        result = await context_utils.prepare_user_prompt(
+            {
+                "prompt": "find the button",
+                "images": [
+                    {"name": "first", "url": "a.png"},
+                    {"name": "duplicate", "url": "a.png"},
+                    {"name": "second", "url": "b.png"},
+                ],
+                "convertHttpImage2Base64": True,
+            }
+        )
+
+        assert result == {
+            "text": "find the button",
+            "referenceImages": [
+                {"name": "first", "url": "resolved:a.png"},
+                {"name": "duplicate", "url": "resolved:a.png"},
+                {"name": "second", "url": "resolved:b.png"},
+            ],
+        }
+        assert sorted(calls) == [("a.png", True), ("b.png", True)]
+
+    @pytest.mark.asyncio
+    async def test_prepare_user_prompt_supports_string_prompts(self):
+        from midscene.core.ai_model.shared import multimodal_prompt as context_utils
+
+        result = await context_utils.prepare_user_prompt("just text")
+
+        assert result == {"text": "just text", "referenceImages": []}
+
+    @pytest.mark.asyncio
+    async def test_prepare_user_prompt_defaults_http_conversion_to_false(
+        self, monkeypatch
+    ):
+        from midscene.core.ai_model.shared import multimodal_prompt as context_utils
+
+        captured: List[Any] = []
+        monkeypatch.setattr(
+            context_utils,
+            "resolve_reference_image",
+            lambda image, convert_http: captured.append(convert_http) or image["url"],
+        )
+
+        result = await context_utils.prepare_user_prompt(
+            {"prompt": "p", "images": [{"name": "r", "url": "https://x/y.png"}]}
+        )
+
+        assert result["referenceImages"] == [
+            {"name": "r", "url": "https://x/y.png"}
+        ]
+        assert captured == [False]
+
+    @pytest.mark.asyncio
     async def test_prepare_dedupes_urls(self, monkeypatch):
         from midscene.core.ai_model.shared import multimodal_prompt as context_utils
 

@@ -221,3 +221,74 @@ class TestAgentUtils:
         )
         utils.print_report_msg("report.html")
         assert messages == ["Midscene - report file updated: report.html"]
+
+
+def test_report_html_template_matches_the_template_used_by_get_report_tpl():
+    from midscene.core import report_html_template
+    from midscene.core.dump.html_utils import get_report_tpl
+
+    assert report_html_template.REPORT_HTML_TEMPLATE == report_html_template._TEMPLATE
+    assert report_html_template.REPORT_HTML_TEMPLATE == get_report_tpl()
+
+
+def test_core_misc_exports_are_available():
+    from midscene.core import Service, ServiceError
+    from midscene.core.errors import ServiceError as DirectServiceError
+    from midscene.core.service import Service as DirectService
+    from midscene.core.service.index import Service as IndexService
+    from midscene.core.types import AI_ACT_PROGRESS_SCOPE
+
+    assert Service is DirectService is IndexService
+    assert ServiceError is DirectServiceError
+    assert AI_ACT_PROGRESS_SCOPE == "aiAct"
+    with pytest.raises(ValueError):
+        Service(None)
+
+
+@pytest.mark.asyncio
+async def test_upload_test_info_to_server_reports_each_repo_once(monkeypatch):
+    import asyncio
+
+    from midscene.core import utils as core_utils
+
+    core_utils._reset_upload_state()
+    calls = []
+
+    async def fake_git_info():
+        return {"repoUrl": "git@example.com:org/repo.git", "userEmail": "dev@example.com"}
+
+    async def fake_post(server_url, payload):
+        calls.append((server_url, payload))
+
+    monkeypatch.setattr(core_utils, "_get_git_info_async", fake_git_info)
+    monkeypatch.setattr(core_utils, "_post_test_info", fake_post)
+
+    await core_utils.upload_test_info_to_server("https://report/1", "https://server")
+    await asyncio.sleep(0)
+    assert calls == [
+        (
+            "https://server",
+            {
+                "repo_url": "git@example.com:org/repo.git",
+                "test_url": "https://report/1",
+                "user_email": "dev@example.com",
+            },
+        )
+    ]
+
+    await core_utils.upload_test_info_to_server("https://report/2", "https://server")
+    await asyncio.sleep(0)
+    assert len(calls) == 1
+
+    core_utils._reset_upload_state()
+
+
+@pytest.mark.asyncio
+async def test_upload_test_info_to_server_is_a_noop_without_a_server(monkeypatch):
+    from midscene.core import utils as core_utils
+
+    async def fail():
+        raise AssertionError("git should not be read")
+
+    monkeypatch.setattr(core_utils, "_get_git_info_async", fail)
+    await core_utils.upload_test_info_to_server("https://report/1", None)

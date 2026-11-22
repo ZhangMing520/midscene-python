@@ -428,3 +428,18 @@ class TestModelFallback:
         )
         assert runtime.model_fallback is None
 
+
+
+class TestPrepareReferences:
+    @pytest.mark.asyncio
+    async def test_collects_reference_images(self):
+        from midscene.core.ai_model.models.jev.image import prepare_references
+
+        data_uri = "data:image/png;base64," + make_png_base64(2, 2)
+        result = await prepare_references(
+            {"images": [{"url": data_uri, "name": "reference"}]}
+        )
+        assert len(result["images"]) == 1
+        assert result["references"] == [
+            {"image": "`reference_0`", "name": "reference"}
+        ]

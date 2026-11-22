@@ -15,6 +15,16 @@ def user_prompt_to_string(prompt: Any) -> str:
     return str(prompt)
 
 
+def user_prompt_to_multimodal_prompt(prompt: Any) -> Optional[Dict[str, Any]]:
+    """TUserPrompt -> TMultimodalPrompt (None when no images are provided)."""
+    if not isinstance(prompt, dict) or not prompt.get("images"):
+        return None
+    return {
+        "images": prompt["images"],
+        "convertHttpImage2Base64": bool(prompt.get("convertHttpImage2Base64")),
+    }
+
+
 def ensure_data_url(image_base64: str) -> str:
     if image_base64.startswith("data:"):
         return image_base64
@@ -89,6 +99,51 @@ async def prepare_reference_images(images: Any, convert_http: bool) -> List[str]
 
     await asyncio.gather(*(prepare_one(url) for url in unique_urls))
     return [prepared[url] for url in urls if prepared.get(url)]
+
+
+async def _prepare_reference_image_entries(
+    multimodal_prompt: Optional[Dict[str, Any]],
+) -> List[Dict[str, str]]:
+    """Resolve unique URLs once, preserving image order and names."""
+    images = (multimodal_prompt or {}).get("images") or []
+    convert_http = bool(
+        (multimodal_prompt or {}).get("convertHttpImage2Base64")
+    )
+    urls: List[str] = [
+        item["url"]
+        for item in images
+        if isinstance(item, dict) and isinstance(item.get("url"), str)
+    ]
+    unique_urls = list(dict.fromkeys(urls))
+    semaphore = asyncio.Semaphore(5)
+    prepared: Dict[str, Optional[str]] = {}
+
+    async def prepare_one(url: str) -> None:
+        async with semaphore:
+            prepared[url] = await asyncio.to_thread(
+                resolve_reference_image, {"url": url}, convert_http
+            )
+
+    await asyncio.gather(*(prepare_one(url) for url in unique_urls))
+    entries: List[Dict[str, str]] = []
+    for image in images:
+        if not isinstance(image, dict):
+            continue
+        url = image.get("url")
+        resolved = prepared.get(url) if isinstance(url, str) else None
+        if resolved:
+            entries.append({"name": image.get("name") or "", "url": resolved})
+    return entries
+
+
+async def prepare_user_prompt(user_prompt: Any) -> Dict[str, Any]:
+    """Resolve a user prompt into text plus prepared reference images."""
+    return {
+        "text": user_prompt_to_string(user_prompt),
+        "referenceImages": await _prepare_reference_image_entries(
+            user_prompt_to_multimodal_prompt(user_prompt)
+        ),
+    }
 
 
 def get_screenshot_base64(context: Any) -> str:

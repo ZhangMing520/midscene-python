@@ -6,12 +6,13 @@ from midscene.core.ai_model.model_adapter.types import (
     ModelRequestUserConfig,
 )
 
+
 def _reasoning_enabled(user_config: ModelRequestUserConfig) -> Union[bool, str]:
     reasoning_enabled = user_config.get("reasoningEnabled")
     return False if reasoning_enabled is None else reasoning_enabled
 
 
-def _build_openrouter_reasoning_params(
+def build_open_router_reasoning_params(
     user_config: ModelRequestUserConfig,
     control_method: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
@@ -39,3 +40,14 @@ def _build_openrouter_reasoning_params(
         reasoning["max_tokens"] = user_config["reasoningBudget"]
 
     return {"reasoning": reasoning}
+
+
+# Backward-compatible private alias used across the model adapters.
+_build_openrouter_reasoning_params = build_open_router_reasoning_params
+
+
+__all__ = [
+    "_build_openrouter_reasoning_params",
+    "_reasoning_enabled",
+    "build_open_router_reasoning_params",
+]

@@ -22,6 +22,9 @@ from midscene.core.ai_model.model_adapter.temperature_with_semantic_retry import
 from midscene.core.ai_model.model_adapter.types import (
     ModelRequestUserConfig,
 )
+from midscene.core.ai_model.models.default import (
+    build_chat_completion_params_from_context,
+)
 
 def _build_kimi_params(
     midscene_defaults: Dict[str, Any],
@@ -94,3 +97,37 @@ KIMI_LOCATE_FORMAT = {
     "coordinates": KIMI_NORMALIZED_POINT_COORDS,
     "parseRawLocateValue": _parse_kimi_raw_locate_value,
 }
+
+
+kimi_adapters = {
+    "kimi": {
+        "chat_completion": {
+            "build_chat_completion_params": build_chat_completion_params_from_context(
+                _build_kimi_params
+            ),
+            "use_reasoning_as_content_fallback": True,
+        },
+        "locate": {"element": {"result_format": KIMI_LOCATE_FORMAT}},
+    },
+    "kimi3": {
+        "chat_completion": {
+            "build_chat_completion_params": build_chat_completion_params_from_context(
+                _build_kimi3_params
+            ),
+            "use_reasoning_as_content_fallback": True,
+            "replay_raw_assistant_message": True,
+        },
+        "locate": {"element": {"result_format": KIMI_LOCATE_FORMAT}},
+    },
+}
+
+
+__all__ = [
+    "KIMI_LOCATE_FORMAT",
+    "KIMI_NORMALIZED_POINT_COORDS",
+    "KIMI_PIXEL_POINT_COORDS",
+    "_build_kimi3_params",
+    "_build_kimi_params",
+    "_parse_kimi_raw_locate_value",
+    "kimi_adapters",
+]

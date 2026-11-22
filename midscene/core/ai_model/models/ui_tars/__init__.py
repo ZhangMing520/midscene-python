@@ -6,6 +6,7 @@ from midscene.core.ai_model.models.ui_tars.adapter import (
     UI_TARS_LOCATE_FORMAT,
     UI_TARS_POINT_COORDS,
     _build_ui_tars_params,
+    ui_tars_adapters,
 )
 from midscene.core.ai_model.models.ui_tars.parser import (
     parse_ui_tars_action_calls,
@@ -28,4 +29,5 @@ __all__ = [
     "parse_ui_tars_action_calls",
     "parse_ui_tars_planning_response",
     "transform_ui_tars_actions",
+    "ui_tars_adapters",
 ]

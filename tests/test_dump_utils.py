@@ -10,11 +10,15 @@ from midscene.core.dump.screenshot_restoration import (
     restore_report_image_references,
 )
 from midscene.core.dump.html_utils import (
+    anti_escape_script_tag,
     escape_content,
+    generate_dump_script_tag,
     parse_dump_script,
     parse_dump_script_attributes,
     unescape_content,
 )
+from midscene.core.dump.report_artifact_reader import read_report_dump_scripts
+from midscene.core.dump.report_dump_compactor import compact_report_dumps
 from midscene.core.utils import (
     insert_content_before_closing_html,
     report_html_content,
@@ -25,6 +29,66 @@ _IMAGE_MAP = {
     "img2": "data:image/png;base64,def456",
 }
 _RESOLVER = create_inline_image_resolver(_IMAGE_MAP)
+
+
+def test_compact_report_dumps_merges_repeated_group_tags(tmp_path):
+    first = {
+        "group": {"id": "g", "name": "group"},
+        "executions": [{"id": "a", "name": "first", "tasks": []}],
+    }
+    second = {
+        "group": {"id": "g", "name": "group"},
+        "executions": [
+            {"id": "a", "name": "latest", "tasks": []},
+            {"id": "b", "name": "new", "tasks": []},
+        ],
+    }
+    report_path = tmp_path / "report.html"
+    report_path.write_text(
+        "<html><body>"
+        + generate_dump_script_tag(
+            json.dumps(first), {"data-group-id": "g"}
+        )
+        + generate_dump_script_tag(
+            json.dumps(second), {"data-group-id": "g"}
+        )
+        + "</body></html>",
+        encoding="utf-8",
+    )
+
+    stats = compact_report_dumps(str(report_path))
+
+    assert stats["beforeDumpCount"] == 2
+    assert stats["afterDumpCount"] == 1
+    scripts = read_report_dump_scripts(report_path)
+    assert len(scripts) == 1
+    compacted = json.loads(
+        anti_escape_script_tag(scripts[0]["content"]).strip()
+    )
+    assert [item["name"] for item in compacted["executions"]] == [
+        "latest",
+        "new",
+    ]
+
+
+def test_compact_report_dumps_leaves_already_compacted_reports_unchanged(tmp_path):
+    dump = {
+        "group": {"id": "g", "name": "group"},
+        "executions": [{"id": "a", "name": "only", "tasks": []}],
+    }
+    report_path = tmp_path / "report.html"
+    html = (
+        "<html><body>"
+        + generate_dump_script_tag(json.dumps(dump), {"data-group-id": "g"})
+        + "</body></html>"
+    )
+    report_path.write_text(html, encoding="utf-8")
+
+    stats = compact_report_dumps(str(report_path))
+
+    assert stats["beforeDumpCount"] == 1
+    assert stats["afterDumpCount"] == 1
+    assert report_path.read_text(encoding="utf-8") == html
 
 
 def _screenshot_ref(image_id: str, captured_at: int = 1) -> dict:

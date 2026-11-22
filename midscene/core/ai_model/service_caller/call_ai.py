@@ -27,17 +27,21 @@ from midscene.core.ai_model.service_caller.model_call_recorder import (
 )
 from midscene.core.ai_model.service_caller.request_timeout import (
     resolve_effective_timeout_ms,
+    run_with_abort_signal,
+    wait_for_retry,
 )
+from midscene.core.ai_model.service_caller.system_one import call_system_one
 from midscene.core.ai_model.service_caller.types import (
-    AIResponseParseError,
     CodexAppServerNotSupportedError,
     DEFAULT_MODEL_PROTOCOL,
 )
 from midscene.core.ai_model.service_caller.utils import (
+    append_ai_request_failure_summary,
     build_usage_info,
     is_codex_app_server_provider,
     next_internal_call_id,
     normalize_retry_count,
+    to_error,
 )
 
 # Kept for compatibility with callers importing the error from this module.
@@ -45,6 +49,7 @@ __all__ = [
     "CodexAppServerNotSupportedError",
     "call_ai_with_string_response",
     "call_generative_ai",
+    "call_system_one_ai",
 ]
 
 
@@ -104,7 +109,7 @@ async def call_generative_ai(
 
     max_attempts = normalize_retry_count(model_config.get("retryCount")) + 1
     retry_interval = model_config.get("retryInterval") or 2000
-    attempt_errors: List[str] = []
+    attempt_errors: List[Dict[str, Any]] = []
     start_time = time.time()
     attempt = 0
     siwc_refreshed = False
@@ -205,33 +210,104 @@ async def call_generative_ai(
             api_key = refreshed_key
             attempt -= 1
             continue
-        except AIResponseParseError:
-            # A structurally invalid/empty completion is retryable upstream.
-            if chunk_delivered or attempt >= max_attempts:
-                raise
-            logger.warning(
-                f"AI response parsing failed (attempt {attempt}/{max_attempts}), "
-                f"retrying in {retry_interval}ms..."
-            )
-            await asyncio.sleep(retry_interval / 1000)
         except Exception as error:
+            abort_signal = options.get("abortSignal") or options.get("abort_signal")
+            if abort_signal is not None:
+                abort_signal.throw_if_aborted()
             # Once a chunk has been delivered, retrying would duplicate output.
             if chunk_delivered:
                 raise
-            attempt_errors.append(str(error))
+            last_error = to_error(error)
+            if isinstance(last_error, TimeoutError):
+                # Public contract: a hard timeout surfaces as RuntimeError so
+                # callers can rely on the retry summary and error type.
+                last_error = RuntimeError(
+                    str(last_error)
+                    or f"AI call timed out after {effective_timeout}ms"
+                )
+            attempt_errors.append({"attempt": attempt, "error": last_error})
             if attempt >= max_attempts:
-                retries = max(0, len(attempt_errors) - 1)
-                retry_label = "retry" if retries == 1 else "retries"
-                raise RuntimeError(
-                    f"AI model request failed after {retries} {retry_label} "
-                    f"({len(attempt_errors)}/{max_attempts} attempts). "
-                    f"Last error: {error}"
-                ) from error
+                raise append_ai_request_failure_summary(
+                    last_error, attempt_errors, max_attempts
+                )
             logger.warning(
                 f"AI call failed (attempt {attempt}/{max_attempts}), retrying in "
-                f"{retry_interval}ms... Error: {error}"
+                f"{retry_interval}ms... Error: {last_error}"
             )
-            await asyncio.sleep(retry_interval / 1000)
+            await wait_for_retry(retry_interval, abort_signal)
+
+    raise RuntimeError("AI model request failed: unknown error")
+
+
+async def call_system_one_ai(
+    request: Dict[str, Any],
+    model_runtime: ModelRuntime,
+    options: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Call the System One (Jev) protocol with the shared retry/timeout policy."""
+    options = dict(options or {})
+    abort_signal = options.get("abortSignal") or options.get("abort_signal")
+    if abort_signal is not None:
+        abort_signal.throw_if_aborted()
+    if options.get("stream"):
+        raise RuntimeError("Jev does not support streaming output")
+    if model_runtime.config.get("modelFamily") != "jev":
+        raise RuntimeError(
+            "System One currently only supports the Jev model family in Midscene"
+        )
+
+    max_attempts = normalize_retry_count(
+        model_runtime.config.get("retryCount")
+    ) + 1
+    retry_interval = model_runtime.config.get("retryInterval")
+    if retry_interval is None:
+        retry_interval = 2000
+    effective_timeout = resolve_effective_timeout_ms(
+        model_runtime.config.get("timeout")
+    )
+    attempt_errors: List[Dict[str, Any]] = []
+    start_time = time.time()
+
+    for attempt in range(1, max_attempts + 1):
+        if abort_signal is not None:
+            abort_signal.throw_if_aborted()
+        try:
+            if abort_signal is not None:
+                parsed = await run_with_abort_signal(
+                    abort_signal,
+                    lambda: call_system_one(model_runtime, request),
+                )
+            else:
+                parsed = await call_system_one(model_runtime, request)
+            time_cost = int((time.time() - start_time) * 1000)
+            result = {
+                "content": parsed.get("content"),
+                "answers": parsed.get("answers"),
+                "usage": parsed.get("usage"),
+                "responseModelName": parsed.get("response_model_name"),
+                "isStreamed": False,
+                "timeCost": time_cost,
+            }
+            if result["usage"] and model_runtime.on_usage:
+                model_runtime.on_usage(result["usage"])
+            return result
+        except Exception as error:
+            if abort_signal is not None:
+                abort_signal.throw_if_aborted()
+            last_error = to_error(error)
+            if isinstance(last_error, TimeoutError):
+                # Public contract: a hard timeout surfaces as RuntimeError so
+                # callers can rely on the retry summary and error type.
+                last_error = RuntimeError(
+                    str(last_error)
+                    or f"AI call timed out after {effective_timeout}ms"
+                )
+            attempt_errors.append({"attempt": attempt, "error": last_error})
+            if attempt >= max_attempts:
+                raise append_ai_request_failure_summary(
+                    last_error, attempt_errors, max_attempts
+                )
+            await wait_for_retry(retry_interval, abort_signal)
 
     raise RuntimeError("AI model request failed: unknown error")
 

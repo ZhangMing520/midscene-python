@@ -80,13 +80,9 @@ def _raise_http_error(
 ) -> None:
     if _is_siwc_token_expired(status_code, body):
         raise SiwcTokenExpiredError(body[:2000])
-    details = ""
-    request_id = (context or {}).get("responseRequestId")
-    if request_id and not request_id.get("ok"):
-        details = (
-            "\nOpenAI error response request ID "
-            f"(status {request_id.get('status')}): {request_id.get('requestId')}"
-        )
+    details = openai_request_context.format_open_aiapi_error_details(
+        None, context or {}
+    )
     raise RuntimeError(
         f"LLM service response error, status: {status_code}, body: {body[:2000]}"
         f"{details}"
@@ -227,6 +223,49 @@ async def stream_lines(
         if record_event:
             record_event({"type": "error", "error": fetch_error})
         raise RuntimeError(f"OpenAI fetch error: {fetch_error}") from e
+
+
+async def create_client(options: Dict[str, Any]) -> Dict[str, Any]:
+    """Create the HTTP transport and request-diagnostics context.
+
+    Upstream builds an OpenAI SDK client; the Python SDK talks to the same wire
+    protocol through httpx, so ``openai`` holds an ``httpx.AsyncClient``.
+    """
+    model_config = _client_option(options, "modelConfig", "model_config") or {}
+    record_event = _client_option(options, "recordEvent", "record_event")
+    execution_id = _client_option(options, "executionId", "execution_id")
+    effective_timeout = _client_option(
+        options, "effectiveTimeoutMs", "effective_timeout_ms"
+    )
+
+    context: openai_request_context.OpenAIRequestContext = {}
+    if record_event is not None:
+        context["recordEvent"] = record_event
+
+    base_url = (
+        model_config.get("openaiBaseURL") or "https://api.openai.com/v1"
+    ).rstrip("/")
+    client_kwargs: Dict[str, Any] = {
+        "base_url": base_url,
+        "headers": request_headers(model_config, execution_id),
+        "proxy": resolve_proxy(model_config),
+    }
+    if effective_timeout is not None:
+        client_kwargs["timeout"] = httpx.Timeout(
+            effective_timeout / 1000
+        )
+
+    return {
+        "openai": httpx.AsyncClient(**client_kwargs),
+        "openAIRequestContext": context,
+    }
+
+
+def _client_option(options: Dict[str, Any], *keys: str, default: Any = None) -> Any:
+    for key in keys:
+        if key in options:
+            return options[key]
+    return default
 
 
 # Backwards-compatible aliases for the pre-split helper names.

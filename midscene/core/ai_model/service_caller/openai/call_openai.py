@@ -23,6 +23,58 @@ from midscene.core.ai_model.service_caller.openai.responses.stream import (
 )
 
 
+async def call_open_ai(
+    context: Dict[str, Any],
+    prepared: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Upstream-shaped entry point over the shared OpenAI transport.
+
+    ``context`` carries the model runtime, call options, execution id and
+    recording callback; ``prepared`` is a ``{kind, input}`` dispatch record.
+    """
+    model_runtime = _context_value(context, "modelRuntime", "model_runtime")
+    options = _context_value(context, "options") or {}
+    abort_signal = _context_value(
+        context, "requestSignal", "request_signal"
+    )
+    if abort_signal is not None:
+        abort_signal.throw_if_aborted()
+
+    kind = prepared.get("kind")
+    input_data = prepared.get("input") or prepared
+    if "request_body" not in input_data and "requestParams" in input_data:
+        input_data = {**input_data, "request_body": input_data["requestParams"]}
+
+    protocol = "openai-responses" if kind == "responses" else "openai-chat"
+    if "stream" in options:
+        stream = options["stream"] is True
+    else:
+        stream = model_runtime.config.get("streamMode") == "stream"
+    on_chunk = options.get("onChunk") or options.get("on_chunk")
+
+    return await call_openai(
+        model_runtime,
+        protocol,
+        input_data,
+        stream,
+        on_chunk=on_chunk,
+        effective_timeout=_context_value(
+            context, "effectiveTimeoutMs", "effective_timeout_ms"
+        ),
+        execution_id=_context_value(context, "executionId", "execution_id"),
+        record_event=_context_value(context, "recordEvent", "record_event"),
+    )
+
+
+def _context_value(
+    context: Dict[str, Any], *keys: str, default: Any = None
+) -> Any:
+    for key in keys:
+        if key in context:
+            return context[key]
+    return default
+
+
 async def call_openai(
     model_runtime: Any,
     protocol: str,

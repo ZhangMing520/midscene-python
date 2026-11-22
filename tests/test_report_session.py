@@ -45,3 +45,58 @@ class TestTestOwnedReportRecords:
         agent.record_to_report("note", {"content": "x"})
         await agent.destroy()
         assert list((tmp_path / "report").glob("*.json"))
+
+
+class TestReportSession:
+    def test_rejects_relative_directories(self):
+        from midscene.core.dump.report_session import ReportSession
+
+        with pytest.raises(ValueError, match="absolute"):
+            ReportSession("relative/report")
+
+    def test_requires_run_before_creating_a_writer(self, tmp_path):
+        from midscene.core.dump.report_session import ReportSession
+
+        session = ReportSession(str(tmp_path / "report"))
+        with pytest.raises(RuntimeError, match="Start the report session"):
+            session.create_recorder(lambda: False)
+
+    @pytest.mark.asyncio
+    async def test_tracks_context_captures_snapshots_and_prunes(self, tmp_path):
+        from midscene.core.dump.report_session import (
+            ReportSession,
+            current_report_session,
+        )
+
+        session = ReportSession(str(tmp_path / "report"))
+
+        async def work():
+            assert current_report_session() is session
+            writer = session.create_recorder(lambda: False)
+            writer.on_execution_update(
+                {"id": "e1", "name": "first", "tasks": []},
+                {"testId": "test-1"},
+            )
+            source = await writer.create_source_snapshot("scope-1", ["e1"])
+            assert source["collection"]["status"] == "complete"
+            assert json.loads(
+                open(source["dumpPath"], encoding="utf-8").read()
+            )["executions"][0]["id"] == "e1"
+            writer.on_execution_update(
+                {"id": "e2", "name": "second", "tasks": []},
+                {"testId": "test-1"},
+            )
+            return source
+
+        source = await session.run(work)
+        assert source["sourcePath"] == source["dumpPath"]
+        assert current_report_session() is None
+
+        remaining = await session.finish()
+        assert len(remaining) == 1
+        assert remaining[0]["dumpPath"] != source["dumpPath"]
+        assert (tmp_path / "report" / "report.json").exists()
+
+        await session.prune()
+        assert not (tmp_path / "report" / "report.json").exists()
+        assert len(list((tmp_path / "report").glob("*.json"))) == 2

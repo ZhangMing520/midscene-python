@@ -5,7 +5,9 @@ id (keeping the latest state) and merges multiple reports into one HTML report.
 """
 
 import json
+import os
 import re
+import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -128,11 +130,129 @@ def merge_report_files(
     return {"mergedReportPath": result}
 
 
+def compact_report_dumps(report_path: str) -> Dict[str, Any]:
+    """Merge repeated dump scripts per group, keeping the latest executions.
+
+    Upstream streams the file in chunks; the Python report is a text document,
+    so the same rewrite runs on the decoded HTML. Directory reports have no
+    inline scripts to compact and are returned unchanged.
+    """
+    from midscene.core.dump.html_utils import (
+        anti_escape_script_tag,
+        escape_script_tag,
+    )
+    from midscene.core.dump.report_artifact_reader import read_report_dump_scripts
+
+    path = Path(report_path)
+    before = path.stat()
+    dump_scripts = read_report_dump_scripts(path)
+    if not dump_scripts:
+        return {
+            "beforeBytes": before.st_size,
+            "afterBytes": before.st_size,
+            "beforeDumpCount": 0,
+            "afterDumpCount": 0,
+        }
+
+    group_re = re.compile(r'data-group-id="([^"]+)"')
+    groups: Dict[str, Dict[str, Any]] = {}
+    tag_count = 0
+    for script in dump_scripts:
+        match = group_re.search(script["openTag"])
+        if not match:
+            continue
+        group_id = match.group(1)
+        group = groups.setdefault(
+            group_id,
+            {
+                "baseDump": None,
+                "executionsByKey": {},
+                "firstOpenTag": script["openTag"],
+                "noIdExecutionIndex": 0,
+                "tagCount": 0,
+            },
+        )
+        dump = json.loads(anti_escape_script_tag(script["content"]).strip())
+        if group["baseDump"] is None:
+            group["baseDump"] = dump
+        group["tagCount"] += 1
+        tag_count += 1
+        for execution in dump.get("executions") or []:
+            execution_key = (
+                f"id:{execution['id']}"
+                if execution.get("id")
+                else f"no-id:{group['noIdExecutionIndex']}"
+            )
+            if not execution.get("id"):
+                group["noIdExecutionIndex"] += 1
+            group["executionsByKey"][execution_key] = execution
+
+    after_dump_count = len(groups)
+    if tag_count <= after_dump_count:
+        return {
+            "beforeBytes": before.st_size,
+            "afterBytes": before.st_size,
+            "beforeDumpCount": tag_count,
+            "afterDumpCount": after_dump_count,
+        }
+
+    compacted_tags: Dict[str, str] = {}
+    for group_id, group in groups.items():
+        base_dump = dict(group["baseDump"] or {})
+        base_dump["executions"] = list(group["executionsByKey"].values())
+        compacted_tags[group_id] = (
+            f"{group['firstOpenTag']}"
+            f"{escape_script_tag(json.dumps(base_dump, ensure_ascii=False))}"
+            "</script>"
+        )
+
+    html = path.read_text(encoding="utf-8")
+    script_re = re.compile(r"<script\b[^>]*>.*?</script>", re.DOTALL)
+    seen_tags_by_group: Dict[str, int] = {}
+    output: List[str] = []
+    last_index = 0
+
+    for match in script_re.finditer(html):
+        open_tag_end = match.start() + html[match.start() :].find(">") + 1
+        open_tag = html[match.start() : open_tag_end]
+        group_match = group_re.search(open_tag)
+        if not group_match or group_match.group(1) not in groups:
+            continue
+        group_id = group_match.group(1)
+        output.append(html[last_index : match.start()])
+        seen_count = seen_tags_by_group.get(group_id, 0) + 1
+        seen_tags_by_group[group_id] = seen_count
+        if seen_count == groups[group_id]["tagCount"]:
+            output.append(compacted_tags[group_id])
+        last_index = match.end()
+
+    output.append(html[last_index:])
+    temporary_path = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+    try:
+        temporary_path.write_text("".join(output), encoding="utf-8")
+        after = temporary_path.stat()
+        os.replace(temporary_path, path)
+    except Exception:
+        try:
+            temporary_path.unlink()
+        except OSError:
+            pass
+        raise
+
+    return {
+        "beforeBytes": before.st_size,
+        "afterBytes": after.st_size,
+        "beforeDumpCount": tag_count,
+        "afterDumpCount": after_dump_count,
+    }
+
+
 __all__ = [
     "_DUMP_HEADER_KEYS",
     "_REPORT_DUMP_PATTERN",
     "_dedupe_executions",
     "collect_report_executions",
+    "compact_report_dumps",
     "merge_report_files",
     "read_report_dump",
     "resolve_report_html_path",

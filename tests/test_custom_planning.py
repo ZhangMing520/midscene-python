@@ -74,3 +74,58 @@ async def test_consumes_pending_feedback_in_the_latest_screenshot_message(monkey
         "type": "image",
         "url": "data:image/png;base64,SCREENSHOT==",
     }
+
+
+class TestBuildCustomPlanningMessages:
+    def test_places_system_prompt_in_system_message(self):
+        from midscene.core.ai_model.workflows.planning.custom_planning import (
+            build_custom_planning_messages,
+        )
+
+        history = ConversationHistory()
+        messages = build_custom_planning_messages(
+            system_prompt="system prompt",
+            user_instruction_text="do it",
+            conversation_history=history,
+            messages_config={
+                "build_system_prompt": lambda: "system prompt",
+                "system_prompt_placement": "system-message",
+                "history_image_limit": 1,
+            },
+            screenshot_url="data:image/png;base64,abc",
+        )
+        assert messages[0] == {"role": "system", "content": "system prompt"}
+        assert messages[1] == {
+            "role": "user",
+            "content": [{"type": "text", "text": "do it"}],
+        }
+        assert messages[2] == {
+            "type": "input-message",
+            "message": {
+                "role": "user",
+                "content": [
+                    {"type": "image", "url": "data:image/png;base64,abc"}
+                ],
+            },
+        }
+
+    def test_combines_prompts_when_placement_is_user_message(self):
+        from midscene.core.ai_model.workflows.planning.custom_planning import (
+            build_custom_planning_messages,
+        )
+
+        messages = build_custom_planning_messages(
+            system_prompt="system prompt\n",
+            user_instruction_text="do it",
+            conversation_history=ConversationHistory(),
+            messages_config={
+                "build_system_prompt": lambda: "system prompt\n",
+                "system_prompt_placement": "user-message",
+            },
+            screenshot_url="data:image/png;base64,abc",
+            include_screenshot=False,
+        )
+        assert messages[0] == {
+            "role": "user",
+            "content": "system prompt\ndo it",
+        }

@@ -35,6 +35,8 @@ from midscene.core.dump import get_task_search_area, get_task_service_dump
 from midscene.core.agent.ui_observer import UIObserver, UIObservation
 from midscene.core.agent.run_gherkin_scenario import run_gherkin_scenario, parse_gherkin_scenario
 from midscene.core.common import build_yaml_flow_from_plans, user_prompt_to_string
+from midscene.core.errors import ServiceError
+from midscene.core.service import Service
 from midscene.core.screenshot_item import ScreenshotItem
 from midscene.core.task_runner import TaskExecutionError, TaskRunner
 from midscene.core.utils import get_version, process_cache_config
@@ -79,6 +81,8 @@ __all__ = [
     "UIObserver",
     "UIObservation",
     "ScreenshotItem",
+    "Service",
+    "ServiceError",
     "TaskRunner",
     "TaskExecutionError",
     "build_yaml_flow_from_plans",

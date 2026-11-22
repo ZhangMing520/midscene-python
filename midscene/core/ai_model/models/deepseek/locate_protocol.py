@@ -1,6 +1,6 @@
 """DeepSeek locate protocol (upstream ai-model/models/deepseek/locate-protocol.ts)."""
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from midscene.core.ai_model.shared.model_locate_result import (
     create_locate_result_value,
@@ -70,7 +70,7 @@ _DEEPSEEK_POINT_PATTERN = (
 
 
 def _deepseek_element_parse_raw_response(
-    content: str, prompt_spec: Dict[str, Any]
+    content: str, prompt_spec: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     import re as _re
 
@@ -84,7 +84,7 @@ def _deepseek_element_parse_raw_response(
 
 
 def _deepseek_search_area_parse_raw_response(
-    content: str, prompt_spec: Dict[str, Any]
+    content: str, prompt_spec: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     import re as _re
 
@@ -98,6 +98,16 @@ def _deepseek_search_area_parse_raw_response(
     if len(raw_boxes) > 1:
         result["references"] = list(raw_boxes[1:])
     return result
+
+
+def parse_deep_seek_locate_output(content: str) -> Dict[str, Any]:
+    """Parse a DeepSeek element locate response (upstream parseDeepSeekLocateOutput)."""
+    return _deepseek_element_parse_raw_response(content)
+
+
+def parse_deep_seek_search_area_output(content: str) -> Dict[str, Any]:
+    """Parse a DeepSeek search-area response (upstream parseDeepSeekSearchAreaOutput)."""
+    return _deepseek_search_area_parse_raw_response(content)
 
 
 def _deepseek_element_response_instructions(prompt_spec: Dict[str, Any]) -> str:
@@ -184,9 +194,18 @@ DEEPSEEK_SEARCH_AREA_LOCATE_PROTOCOL = {
 }
 
 
+deep_seek_element_locate_protocol = DEEPSEEK_ELEMENT_LOCATE_PROTOCOL
+
+deep_seek_search_area_protocol = DEEPSEEK_SEARCH_AREA_LOCATE_PROTOCOL
+
+
 __all__ = [
     "DEEPSEEK_ELEMENT_LOCATE_FORMAT",
     "DEEPSEEK_ELEMENT_LOCATE_PROTOCOL",
     "DEEPSEEK_SEARCH_AREA_LOCATE_FORMAT",
     "DEEPSEEK_SEARCH_AREA_LOCATE_PROTOCOL",
+    "deep_seek_element_locate_protocol",
+    "deep_seek_search_area_protocol",
+    "parse_deep_seek_locate_output",
+    "parse_deep_seek_search_area_output",
 ]

@@ -10,10 +10,28 @@ from midscene.core.ai_model.service_caller.openai.chat_completion.chat_completio
     _adapter_user_config,
     _strip_undefined,
 )
+from midscene.core.ai_model.service_caller.openai.responses.non_stream import (
+    call_responses_non_streaming,
+)
+from midscene.core.ai_model.service_caller.openai.responses.stream import (
+    call_responses_stream,
+)
 from midscene.core.ai_model.service_caller.openai.responses.utils import (
     to_responses_input,
 )
 from midscene.core.ai_model.service_caller.utils import resolve_image_detail
+
+
+async def call_responses(
+    options: Dict[str, Any], stream: bool
+) -> Dict[str, Any]:
+    """Dispatch to the stream/non-stream parser (upstream callResponses)."""
+    if stream:
+        return await call_responses_stream(
+            options["lines"],
+            options.get("onChunk") or options.get("on_chunk"),
+        )
+    return call_responses_non_streaming(options["payload"])
 
 
 def prepare_responses(

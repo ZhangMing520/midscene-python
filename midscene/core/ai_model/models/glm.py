@@ -18,6 +18,9 @@ from midscene.core.ai_model.model_adapter.temperature_with_semantic_retry import
 from midscene.core.ai_model.model_adapter.types import (
     ModelRequestUserConfig,
 )
+from midscene.core.ai_model.models.default import (
+    build_chat_completion_params_from_context,
+)
 
 def _build_glm_params(
     midscene_defaults: Dict[str, Any],
@@ -41,3 +44,23 @@ GLM_LOCATE_FORMAT = {
     "resultKey": "bbox",
     "coordinates": {"shape": "bbox", "order": "xy", "normalizedBy": 1000, "rounding": "round"},
 }
+
+
+glm_adapters = {
+    "glm-v": {
+        "chat_completion": {
+            "build_chat_completion_params": build_chat_completion_params_from_context(
+                _build_glm_params
+            ),
+            "use_reasoning_as_content_fallback": True,
+        },
+        "locate": {
+            "element": {
+                "result_format": GLM_LOCATE_FORMAT,
+            },
+        },
+    },
+}
+
+
+__all__ = ["GLM_LOCATE_FORMAT", "_build_glm_params", "glm_adapters"]

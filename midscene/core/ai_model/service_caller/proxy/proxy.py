@@ -47,4 +47,20 @@ def resolve_proxy_agent(
     return None
 
 
-__all__ = ["resolve_proxy_agent", "sanitize_proxy_url"]
+def create_proxy_agent_if_needed(
+    socks_proxy: Optional[str] = None,
+    http_proxy: Optional[str] = None,
+) -> Optional[str]:
+    """Return the proxy URL handed to httpx (upstream ProxyAgent equivalent).
+
+    httpx accepts proxy URLs directly, so this validates and normalizes the
+    configured URL instead of constructing an undici dispatcher.
+    """
+    return resolve_proxy_agent(socks_proxy=socks_proxy, http_proxy=http_proxy)
+
+
+__all__ = [
+    "create_proxy_agent_if_needed",
+    "resolve_proxy_agent",
+    "sanitize_proxy_url",
+]

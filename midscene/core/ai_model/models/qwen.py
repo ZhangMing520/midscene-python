@@ -22,6 +22,9 @@ from midscene.core.ai_model.model_adapter.temperature_with_semantic_retry import
 from midscene.core.ai_model.model_adapter.types import (
     ModelRequestUserConfig,
 )
+from midscene.core.ai_model.models.default import (
+    build_chat_completion_params_from_context,
+)
 
 def _build_qwen_params(
     midscene_defaults: Dict[str, Any],
@@ -161,3 +164,74 @@ def _parse_qwen_locate_json(raw: str, source: str = "generic-object") -> Any:
     ):
         return parsed[0]
     return parsed
+
+
+_QWEN_MESSAGE_EXTRACTION = {
+    "kind": "default",
+    "reasoning_content_keys": ["reasoning_content", "reasoning"],
+}
+
+_QWEN_NORMALIZED_BBOX_LOCATE = {
+    "element": {"result_format": QWEN3_LOCATE_FORMAT},
+}
+
+
+def _qwen_chat_completion(builder):
+    return {
+        "build_chat_completion_params": build_chat_completion_params_from_context(
+            builder
+        ),
+        "message_extraction": _QWEN_MESSAGE_EXTRACTION,
+        "use_reasoning_as_content_fallback": True,
+    }
+
+
+qwen_adapters = {
+    "qwen2.5-vl": {
+        "chat_completion": {
+            "build_chat_completion_params": build_chat_completion_params_from_context(
+                _build_qwen25_params
+            ),
+        },
+        "image_preprocess": {"padBlockSize": 28},
+        "locate": {"element": {"result_format": QWEN25_LOCATE_FORMAT}},
+    },
+    "qwen3-vl": {
+        "chat_completion": _qwen_chat_completion(_build_qwen_params),
+        "locate": _QWEN_NORMALIZED_BBOX_LOCATE,
+    },
+    "qwen3": {
+        "json_parser": _parse_qwen_locate_json,
+        "chat_completion": _qwen_chat_completion(_build_qwen3_params),
+        "locate": _QWEN_NORMALIZED_BBOX_LOCATE,
+    },
+    "qwen3.5": {
+        "json_parser": _parse_qwen_locate_json,
+        "chat_completion": _qwen_chat_completion(_build_qwen3_params),
+        "locate": _QWEN_NORMALIZED_BBOX_LOCATE,
+    },
+    "qwen3.6": {
+        "json_parser": _parse_qwen_locate_json,
+        "chat_completion": _qwen_chat_completion(_build_qwen3_params),
+        "locate": _QWEN_NORMALIZED_BBOX_LOCATE,
+    },
+    "qwen4": {
+        "json_parser": _parse_qwen_locate_json,
+        "chat_completion": _qwen_chat_completion(_build_qwen4_params),
+        "locate": {"element": {"result_format": QWEN4_LOCATE_FORMAT}},
+    },
+}
+
+
+__all__ = [
+    "QWEN25_LOCATE_FORMAT",
+    "QWEN3_LOCATE_FORMAT",
+    "QWEN4_LOCATE_FORMAT",
+    "_build_qwen25_params",
+    "_build_qwen3_params",
+    "_build_qwen4_params",
+    "_build_qwen_params",
+    "_parse_qwen25_raw_locate_value",
+    "_parse_qwen_locate_json",
+    "qwen_adapters",
+]

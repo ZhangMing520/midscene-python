@@ -56,40 +56,32 @@ from midscene.core.ai_model.shared.multimodal_prompt import (
 # Custom planning framework (custom-planning.ts)
 # ---------------------------------------------------------------------------
 
-async def run_custom_planning(
-    user_instruction: str,
-    context: Any,
-    model_runtime: ModelRuntime,
-    action_space: List[Any],
+def _append_action_context(
+    system_prompt: str, action_context: Optional[str] = None
+) -> str:
+    return system_prompt + (f"{action_context}\n" if action_context else "")
+
+
+def build_custom_planning_messages(
+    system_prompt: str,
+    user_instruction_text: str,
     conversation_history: Any,
-    config: Dict[str, Any],
-    include_locate_in_planning: bool = False,
+    messages_config: Dict[str, Any],
+    screenshot_url: str,
     action_context: Optional[str] = None,
-) -> Dict[str, Any]:
-    """Run one custom-planner turn (system prompt + screenshot + history)."""
-    messages_config = config["messages"]
-    system_prompt = messages_config["build_system_prompt"]()
-    if action_context:
-        system_prompt = f"{system_prompt}{action_context}\n"
-    user_instruction_text = messages_config.get("build_user_instruction", lambda t: t)(
-        user_instruction
-    )
+    include_screenshot: bool = True,
+) -> List[Dict[str, Any]]:
+    """Build the chat messages for one custom planning turn.
 
-    adapter = model_runtime.adapter
-    screenshot_base64 = ensure_data_url(get_screenshot_base64(context))
-    shot_size = get_shot_size(context)
-    prepared_image = prepare_model_image(
-        image_base64=screenshot_base64,
-        width=shot_size["width"],
-        height=shot_size["height"],
-        policy=(
-            {"padBlockSize": adapter.image_pad_block_size}
-            if adapter.image_pad_block_size
-            else None
-        ),
-    )
+    Mirrors upstream ``buildCustomPlanningMessages``: the system prompt and
+    user instruction are placed according to ``system_prompt_placement`` and
+    the latest screenshot is appended to the conversation history first.
+    """
+    system_prompt = _append_action_context(system_prompt, action_context)
+    user_instruction = messages_config.get(
+        "build_user_instruction", lambda text: text
+    )(user_instruction_text)
 
-    history_image_limit = messages_config.get("history_image_limit")
     if conversation_history.pending_feedback_message:
         conversation_history.append_message(
             {
@@ -108,23 +100,65 @@ async def run_custom_planning(
         )
         conversation_history.reset_pending_feedback_message_if_exists()
 
-    conversation_history.append_message(
-        {"role": "user", "content": [{"type": "image", "url": prepared_image["image_base64"]}]}
-    )
-
-    if messages_config["system_prompt_placement"] == "system-message":
-        messages: List[Dict[str, Any]] = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": [{"type": "text", "text": user_instruction_text}]},
-        ]
-        messages.extend(
-            conversation_history.snapshot(history_image_limit)
+    if include_screenshot:
+        conversation_history.append_message(
+            {
+                "role": "user",
+                "content": [{"type": "image", "url": screenshot_url}],
+            }
         )
-    else:
-        messages = [
-            {"role": "user", "content": f"{system_prompt}{user_instruction_text}"},
+
+    history_image_limit = messages_config.get("history_image_limit")
+    if messages_config["system_prompt_placement"] == "system-message":
+        return [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": [{"type": "text", "text": user_instruction}]},
             *conversation_history.snapshot(history_image_limit),
         ]
+
+    return [
+        {"role": "user", "content": f"{system_prompt}{user_instruction}"},
+        *conversation_history.snapshot(history_image_limit),
+    ]
+
+
+async def run_custom_planning(
+    user_instruction: str,
+    context: Any,
+    model_runtime: ModelRuntime,
+    action_space: List[Any],
+    conversation_history: Any,
+    config: Dict[str, Any],
+    include_locate_in_planning: bool = False,
+    action_context: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Run one custom-planner turn (system prompt + screenshot + history)."""
+    messages_config = config["messages"]
+    system_prompt = messages_config["build_system_prompt"]()
+    user_instruction_text = user_instruction
+
+    adapter = model_runtime.adapter
+    screenshot_base64 = ensure_data_url(get_screenshot_base64(context))
+    shot_size = get_shot_size(context)
+    prepared_image = prepare_model_image(
+        image_base64=screenshot_base64,
+        width=shot_size["width"],
+        height=shot_size["height"],
+        policy=(
+            {"padBlockSize": adapter.image_pad_block_size}
+            if adapter.image_pad_block_size
+            else None
+        ),
+    )
+
+    messages = build_custom_planning_messages(
+        system_prompt=system_prompt,
+        user_instruction_text=user_instruction_text,
+        conversation_history=conversation_history,
+        messages_config=messages_config,
+        screenshot_url=prepared_image["image_base64"],
+        action_context=action_context,
+    )
 
     response = await call_ai_with_string_response(
         messages, model_runtime, {"requiresOriginalImageDetail": include_locate_in_planning}
@@ -267,6 +301,7 @@ __all__ = [
     "_normalize_custom_locate_fields",
     "_transform_hotkey_input",
     "auto_glm_locate",
+    "build_custom_planning_messages",
     "create_auto_glm_planner",
     "create_ui_tars_planner",
     "get_tap_located_pixel_result",

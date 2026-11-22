@@ -40,6 +40,78 @@ def _siwc_proxy(proxy: Optional[SiwcProxyConfig] = None) -> Optional[str]:
     return proxy.get("httpProxy") or proxy.get("socksProxy") or None
 
 
+async def fetch_siwc(
+    input: Any,
+    init: Optional[Dict[str, Any]] = None,
+    proxy: Optional[SiwcProxyConfig] = None,
+):
+    """Fetch a SIWC URL through the Midscene-configured proxy only.
+
+    Generic ``HTTP_PROXY``/``HTTPS_PROXY`` environment variables are ignored,
+    matching the upstream dispatcher selection.
+    """
+    init = dict(init or {})
+    signal = init.get("signal")
+    thrower = getattr(signal, "throw_if_aborted", None)
+    if callable(thrower):
+        thrower()
+
+    resolved_proxy = _siwc_proxy(proxy)
+    method = (init.get("method") or "GET").upper()
+    redirect = init.get("redirect")
+    follow_redirects = redirect != "error"
+    timeout = init.get("timeout", 30.0)
+
+    async with httpx.AsyncClient(
+        timeout=timeout,
+        proxy=resolved_proxy,
+        # Without an explicit Midscene proxy, do not pick up generic env proxies.
+        trust_env=resolved_proxy is None,
+    ) as client:
+        return await client.request(
+            method,
+            input if isinstance(input, str) else str(input),
+            headers=init.get("headers"),
+            content=init.get("body"),
+            json=init.get("json"),
+            follow_redirects=follow_redirects,
+        )
+
+
+def create_siwc_jwk_set(
+    issuer: str,
+    signal: Any,
+    request: Any = fetch_siwc,
+):
+    """Return an async JWKS resolver keyed by the token's ``kid``."""
+
+    async def resolve(header: Any, _token: Any):
+        response = await request(
+            f"{issuer}/.well-known/jwks.json",
+            {"signal": signal, "redirect": "error"},
+        )
+        status = getattr(response, "status_code", None)
+        if status is None:
+            status = getattr(response, "status", 0)
+        ok = getattr(response, "ok", None)
+        if ok is None:
+            ok = status < 400
+        if not ok:
+            raise SiwcError(f"Failed to fetch OpenAI JWKS: HTTP {status}")
+
+        if not _HAS_PYJWT:  # pragma: no cover - PyJWT is a project dependency
+            raise SiwcError("PyJWT is required to resolve OpenAI JWKS")
+
+        keys = pyjwt.PyJWKSet.from_dict(response.json()).keys
+        kid = header.get("kid") if isinstance(header, dict) else None
+        candidates = _select_jwk(keys, kid)
+        if not candidates:
+            raise SiwcError("No matching signing key in OpenAI JWKS.")
+        return candidates[0]
+
+    return resolve
+
+
 _JWKS_TTL_SECONDS = 3600.0
 _jwks_cache: Optional[Dict[str, Any]] = None
 

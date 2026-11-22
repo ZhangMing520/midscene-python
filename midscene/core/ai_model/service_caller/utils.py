@@ -2,8 +2,62 @@
 
 from typing import Any, Dict, List, Optional
 import inspect
+import json
+import math
 import uuid
 from midscene.core.ai_model.models.registry import is_locate_intent
+
+# Internal field name stamped onto usage info by the shared model call pipeline.
+# Used for cross-path dedup when the provider does not return a request_id.
+INTERNAL_CALL_ID_FIELD = "_midscene_call_id"
+
+
+def stringify_for_debug(value: Any) -> str:
+    try:
+        return json.dumps(value)
+    except (TypeError, ValueError):
+        return str(value)
+
+
+def _get_error_message(error: Any) -> str:
+    return str(error)
+
+
+def to_error(error: Any) -> BaseException:
+    if isinstance(error, BaseException):
+        return error
+    return Exception(str(error))
+
+
+def append_ai_request_failure_summary(
+    error: BaseException,
+    attempt_errors: List[Dict[str, Any]],
+    max_attempts: int,
+) -> BaseException:
+    """Prefix the final error with the attempt count and prior failures."""
+    failed_attempts = len(attempt_errors)
+    retries = max(0, failed_attempts - 1)
+    retry_label = "retry" if retries == 1 else "retries"
+    original_message = _get_error_message(error)
+    previous_attempt_errors = attempt_errors[:-1]
+
+    message = (
+        f"AI model request failed after {retries} {retry_label} "
+        f"({failed_attempts}/{max_attempts} attempts). "
+        f"Last error: {original_message}"
+    )
+
+    if previous_attempt_errors:
+        details = "\n".join(
+            f"Attempt {entry.get('attempt')}: {_get_error_message(entry.get('error'))}"
+            for entry in previous_attempt_errors
+        )
+        message = f"{message}\nPrevious AI call attempt errors:\n{details}"
+
+    # BaseException has no writable ``message`` attribute; args is the
+    # equivalent surface used by str()/repr().
+    error.args = (message,)
+    return error
 
 
 async def emit_stream_chunk(
@@ -35,7 +89,11 @@ def has_usable_text(content: Optional[str]) -> bool:
 
 
 def normalize_retry_count(retry_count: Any) -> int:
-    if not isinstance(retry_count, (int, float)) or retry_count != retry_count:
+    if (
+        isinstance(retry_count, bool)
+        or not isinstance(retry_count, (int, float))
+        or not math.isfinite(retry_count)
+    ):
         return 1
     return max(0, int(retry_count))
 
@@ -150,5 +208,5 @@ def build_usage_info(
         "model_family": model_config.get("modelFamily"),
         "intent": model_config.get("intent"),
         "slot": model_config.get("slot"),
-        "_midscene_call_id": internal_call_id,
+        INTERNAL_CALL_ID_FIELD: internal_call_id,
     }

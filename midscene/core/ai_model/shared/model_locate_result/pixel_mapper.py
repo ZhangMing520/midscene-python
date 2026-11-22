@@ -26,13 +26,12 @@ def normalized_coordinate_to_pixel(
     value: float,
     normalized_by: float,
     size: float,
-    rounding: CoordinateRounding,
     normalization_basis: NormalizationBasis = "image-size",
 ) -> float:
+    """Convert units without rounding, retaining intermediate precision."""
     basis = resolve_normalization_basis(normalization_basis)
     scale = size if basis == "image-size" else max_pixel_coordinate(size)
-    pixel = (value * scale) / normalized_by
-    return round_pixel_coordinate(pixel, rounding)
+    return (value * scale) / normalized_by
 
 
 def round_pixel_coordinate(pixel: float, rounding: CoordinateRounding) -> float:
@@ -115,7 +114,17 @@ def pixel_bbox_to_rect(
     }
 
 
-def _map_locate_result_to_unrounded_pixel_bbox(
+def round_pixel_bbox(
+    pixel_bbox: Sequence[float],
+    rounding: CoordinateRounding,
+) -> List[float]:
+    """Round all four bbox endpoints with the configured policy."""
+    return [
+        round_pixel_coordinate(value, rounding) for value in pixel_bbox
+    ]
+
+
+def map_locate_result_to_unrounded_pixel_bbox(
     result: Dict[str, Any], size: Dict[str, float]
 ) -> List[float]:
     meta = result["coordinatesMeta"]
@@ -130,16 +139,16 @@ def _map_locate_result_to_unrounded_pixel_bbox(
     basis = resolve_normalization_basis(meta.get("normalizationBasis"))
     return [
         normalized_coordinate_to_pixel(
-            xy_bbox[0], normalized_by, size["width"], "none", basis
+            xy_bbox[0], normalized_by, size["width"], basis
         ),
         normalized_coordinate_to_pixel(
-            xy_bbox[1], normalized_by, size["height"], "none", basis
+            xy_bbox[1], normalized_by, size["height"], basis
         ),
         normalized_coordinate_to_pixel(
-            xy_bbox[2], normalized_by, size["width"], "none", basis
+            xy_bbox[2], normalized_by, size["width"], basis
         ),
         normalized_coordinate_to_pixel(
-            xy_bbox[3], normalized_by, size["height"], "none", basis
+            xy_bbox[3], normalized_by, size["height"], basis
         ),
     ]
 
@@ -148,10 +157,34 @@ def map_locate_result_to_pixel_bbox(
     result: Dict[str, Any], size: Dict[str, float]
 ) -> List[float]:
     rounding = result["coordinatesMeta"]["rounding"]
-    return [
-        round_pixel_coordinate(value, rounding)
-        for value in _map_locate_result_to_unrounded_pixel_bbox(result, size)
-    ]
+    return round_pixel_bbox(
+        map_locate_result_to_unrounded_pixel_bbox(result, size), rounding
+    )
+
+
+def map_locate_result_to_pixel_rect(
+    result: Dict[str, Any], context: Dict[str, Dict[str, float]]
+) -> Dict[str, float]:
+    """Build the original bbox rect independently from the click center."""
+    prepared_size = context["preparedSize"]
+    content_size = context.get("contentSize") or prepared_size
+    meta = result["coordinatesMeta"]
+    rounding = meta["rounding"]
+    bounds_type = resolve_bounds_type(meta.get("boundsType"))
+    left, top, right, bottom = clamp_pixel_bbox_to_size(
+        round_pixel_bbox(
+            map_locate_result_to_unrounded_pixel_bbox(result, prepared_size),
+            rounding,
+        ),
+        content_size,
+        bounds_type,
+    )
+    return {
+        "left": left,
+        "top": top,
+        "width": pixel_interval_length(left, right, bounds_type),
+        "height": pixel_interval_length(top, bottom, bounds_type),
+    }
 
 
 def map_locate_result_to_pixel_point(
@@ -162,7 +195,7 @@ def map_locate_result_to_pixel_point(
     normalized_by = meta.get("normalizedBy")
     rounding = meta["rounding"]
     if meta["shape"] == "bbox":
-        left, top, right, bottom = _map_locate_result_to_unrounded_pixel_bbox(
+        left, top, right, bottom = map_locate_result_to_unrounded_pixel_bbox(
             result, size
         )
         bounds_type = resolve_bounds_type(meta.get("boundsType"))
@@ -176,10 +209,16 @@ def map_locate_result_to_pixel_point(
         return (x, y)
     basis = resolve_normalization_basis(meta.get("normalizationBasis"))
     return (
-        normalized_coordinate_to_pixel(
-            x, normalized_by, size["width"], rounding, basis
+        round_pixel_coordinate(
+            normalized_coordinate_to_pixel(
+                x, normalized_by, size["width"], basis
+            ),
+            rounding,
         ),
-        normalized_coordinate_to_pixel(
-            y, normalized_by, size["height"], rounding, basis
+        round_pixel_coordinate(
+            normalized_coordinate_to_pixel(
+                y, normalized_by, size["height"], basis
+            ),
+            rounding,
         ),
     )

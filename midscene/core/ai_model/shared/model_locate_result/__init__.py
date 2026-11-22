@@ -33,11 +33,14 @@ from midscene.core.ai_model.shared.model_locate_result.pixel_mapper import (
     clamp_pixel_point_to_size,
     map_locate_result_to_pixel_bbox,
     map_locate_result_to_pixel_point,
+    map_locate_result_to_pixel_rect,
+    map_locate_result_to_unrounded_pixel_bbox,
     max_pixel_coordinate,
     normalized_coordinate_to_pixel,
     pixel_bbox_to_rect,
     pixel_interval_center,
     pixel_interval_length,
+    round_pixel_bbox,
     round_pixel_coordinate,
 )
 from midscene.core.ai_model.shared.model_locate_result.prompt_spec import (
@@ -64,6 +67,8 @@ from midscene.core.ai_model.shared.model_locate_result.types import (
     NormalizationBasis,
     PixelBbox,
     RawLocateValue,
+    is_bbox_locate_result_value,
+    is_point_locate_result_value,
 )
 from midscene.core.ai_model.shared.model_locate_result.validation import (
     assert_locate_result_coordinate_range_and_order,
@@ -101,9 +106,13 @@ __all__ = [
     "locate_result_name",
     "map_locate_result_to_pixel_bbox",
     "map_locate_result_to_pixel_point",
+    "map_locate_result_to_pixel_rect",
+    "map_locate_result_to_unrounded_pixel_bbox",
     "max_pixel_coordinate",
     "model_family_required_for_locate_message",
     "normalized_coordinate_to_pixel",
+    "is_bbox_locate_result_value",
+    "is_point_locate_result_value",
     "parse_coordinate_list",
     "parse_numeric_locate_result",
     "pixel_bbox_to_rect",
@@ -114,6 +123,7 @@ __all__ = [
     "resolve_bounds_type",
     "resolve_locate_result_coordinates",
     "resolve_normalization_basis",
+    "round_pixel_bbox",
     "round_pixel_coordinate",
     "unwrap_coordinate_list_like_input",
 ]

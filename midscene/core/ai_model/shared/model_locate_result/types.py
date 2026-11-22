@@ -13,3 +13,13 @@ NormalizationBasis = str  # image-size | last-pixel
 
 RawLocateValue = Any
 LocateResultValue = Dict[str, Any]
+
+
+def is_bbox_locate_result_value(result: LocateResultValue) -> bool:
+    """True when the parsed locate result describes a bbox."""
+    return (result.get("coordinatesMeta") or {}).get("shape") == "bbox"
+
+
+def is_point_locate_result_value(result: LocateResultValue) -> bool:
+    """True when the parsed locate result describes a point."""
+    return (result.get("coordinatesMeta") or {}).get("shape") == "point"

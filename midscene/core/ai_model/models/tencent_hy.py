@@ -15,6 +15,9 @@ from midscene.core.ai_model.model_adapter.temperature_with_semantic_retry import
 from midscene.core.ai_model.model_adapter.types import (
     ModelRequestUserConfig,
 )
+from midscene.core.ai_model.models.default import (
+    build_chat_completion_params_from_context,
+)
 
 def _build_tencent_hy_params(
     midscene_defaults: Dict[str, Any],
@@ -42,3 +45,22 @@ TENCENT_HY_LOCATE_FORMAT = {
     "resultKey": "box_2d",
     "coordinates": {"shape": "bbox", "order": "xy", "normalizedBy": 1000},
 }
+
+
+tencent_hy_adapters = {
+    "tencent-hy": {
+        "chat_completion": {
+            "build_chat_completion_params": build_chat_completion_params_from_context(
+                _build_tencent_hy_params
+            ),
+        },
+        "locate": {"element": {"result_format": TENCENT_HY_LOCATE_FORMAT}},
+    },
+}
+
+
+__all__ = [
+    "TENCENT_HY_LOCATE_FORMAT",
+    "_build_tencent_hy_params",
+    "tencent_hy_adapters",
+]

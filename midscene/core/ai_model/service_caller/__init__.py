@@ -3,6 +3,7 @@
 from midscene.core.ai_model.service_caller.call_ai import (
     call_ai_with_string_response,
     call_generative_ai,
+    call_system_one_ai,
 )
 from midscene.core.ai_model.service_caller.openai.chat_completion import (
     prepare_chat_completion,
@@ -18,15 +19,18 @@ from midscene.core.ai_model.service_caller.types import (
     CodexAppServerNotSupportedError,
 )
 from midscene.core.ai_model.service_caller.utils import (
+    INTERNAL_CALL_ID_FIELD,
     build_usage_info,
 )
 
 __all__ = [
     "AIResponseParseError",
     "CodexAppServerNotSupportedError",
+    "INTERNAL_CALL_ID_FIELD",
     "build_usage_info",
     "call_ai_with_string_response",
     "call_generative_ai",
+    "call_system_one_ai",
     "prepare_chat_completion",
     "prepare_responses",
     "resolve_effective_timeout_ms",

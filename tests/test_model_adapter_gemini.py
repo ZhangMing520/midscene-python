@@ -3,7 +3,10 @@
 import pytest
 
 from midscene.core.ai_model.model_adapter.locate import resolve_locate
-from midscene.core.ai_model.models.gemini import _build_gemini_params
+from midscene.core.ai_model.models.gemini import (
+    _build_gemini_params,
+    extract_gemini_content_and_reasoning,
+)
 from midscene.core.ai_model.models.registry import get_model_adapter
 
 
@@ -149,19 +152,19 @@ def test_ignores_zero_reasoning_budget_for_gemini_when_reasoning_is_enabled():
     }
 
 
-@pytest.mark.skip(
-    reason="Python gemini.py does not implement extractGeminiContentAndReasoning "
-    "and the adapter layer has no custom message-extraction hook"
-)
 def test_extracts_inline_thought_xml_from_string_content():
     """extracts inline thought XML from string content"""
-    # No Python equivalent: inline <thought> extraction is not implemented.
+    content = (
+        "<thought>I should locate the add button.</thought>```json\n"
+        '{"bbox":[128,284,151,298]}\n'
+        "```"
+    )
+    assert extract_gemini_content_and_reasoning({"content": content}) == {
+        "content": content,
+        "reasoning_content": "I should locate the add button.",
+    }
 
 
-@pytest.mark.skip(
-    reason="Python gemini.py does not implement extractGeminiContentAndReasoning "
-    "and the adapter layer has no custom message-extraction hook"
-)
 @pytest.mark.parametrize(
     "content",
     [
@@ -171,26 +174,44 @@ def test_extracts_inline_thought_xml_from_string_content():
     ids=["same line", "next line"],
 )
 def test_does_not_extract_thought_tags_after_visible_content(content):
-    """does not extract thought tags after visible content: %s"""
-    # No Python equivalent: inline <thought> extraction is not implemented.
+    """does not extract thought tags after visible content"""
+    assert extract_gemini_content_and_reasoning(
+        {"content": content, "reasoning_content": "provider reasoning"}
+    ) == {
+        "content": content,
+        "reasoning_content": "provider reasoning",
+    }
 
 
-@pytest.mark.skip(
-    reason="Python gemini.py does not implement extractGeminiContentAndReasoning "
-    "and the adapter layer has no custom message-extraction hook"
-)
 def test_preserves_plain_content_and_provider_reasoning_content():
     """preserves plain content and provider reasoning_content"""
-    # No Python equivalent: inline <thought> extraction is not implemented.
+    assert extract_gemini_content_and_reasoning(
+        {
+            "content": '{"bbox":[124,281,157,302]}',
+            "reasoning_content": "provider reasoning",
+        }
+    ) == {
+        "content": '{"bbox":[124,281,157,302]}',
+        "reasoning_content": "provider reasoning",
+    }
 
 
-@pytest.mark.skip(
-    reason="Python gemini.py does not implement extractGeminiContentAndReasoning "
-    "and the adapter layer has no custom message-extraction hook"
-)
 def test_combines_inline_thought_xml_with_provider_reasoning_content():
     """combines inline thought XML with provider reasoning_content"""
-    # No Python equivalent: inline <thought> extraction is not implemented.
+    content = (
+        "<thought>I should locate the add button.</thought>```json\n"
+        '{"bbox":[128,284,151,298]}\n'
+        "```"
+    )
+    assert extract_gemini_content_and_reasoning(
+        {"content": content, "reasoning_content": "provider reasoning"}
+    ) == {
+        "content": content,
+        "reasoning_content": (
+            "inlineThought：I should locate the add button.; "
+            "reasoning_content：provider reasoning"
+        ),
+    }
 
 
 def test_normalizes_gemini_yxyx_bbox_coordinates():

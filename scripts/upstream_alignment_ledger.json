@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-11-22T09:50:15+00:00",
+  "generated_at": "2026-11-22T10:12:42+00:00",
   "upstream_root": "/home/zhangming/gitspace/midscene",
   "counts": {
     "modules": 425,
-    "api_missing": 158,
-    "method_missing_functions": 85,
-    "method_missing_classes": 12,
+    "api_missing": 68,
+    "method_missing_functions": 45,
+    "method_missing_classes": 7,
     "method_missing_methods": 102,
-    "signature_mismatch": 49
+    "signature_mismatch": 47
   },
   "modules": [
     {
@@ -1423,14 +1423,10 @@
       "python": "core/ai_model/model_adapter/chat_completion.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "resolveChatCompletion"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "resolveChatCompletion"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -1517,12 +1513,8 @@
       "python": "core/ai_model/model_adapter/default_planning_protocol.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "buildActionDescription",
-        "createDefaultMidscenePlanningProtocol",
-        "createMidscenePlanningActionOutputParser"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
@@ -1598,14 +1590,10 @@
       "python": "core/ai_model/model_adapter/is_openrouter.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "isOpenRouter"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "isOpenRouter"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -1664,14 +1652,10 @@
       "python": "core/ai_model/model_adapter/openrouter_reasoning.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "buildOpenRouterReasoningParams"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "buildOpenRouterReasoningParams"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -1715,15 +1699,11 @@
       "python": "core/ai_model/model_adapter/resolve.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "ResolvedModelAdapter"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
-      "method_missing_classes": [
-        "ResolvedModelAdapter"
-      ],
+      "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
@@ -1734,14 +1714,10 @@
       "python": "core/ai_model/model_adapter/responses.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "resolveResponses"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "resolveResponses"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -1753,14 +1729,10 @@
       "python": "core/ai_model/model_adapter/temperature_with_semantic_retry.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "getTemperatureWithSemanticRetry"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "getTemperatureWithSemanticRetry"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -1787,10 +1759,8 @@
       "python": "core/ai_model/models/ant_ling/adapter.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "antLingAdapters"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
@@ -1819,10 +1789,8 @@
       "python": "core/ai_model/models/auto_glm/adapter.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "autoGlmAdapters"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
@@ -1896,10 +1864,8 @@
       "python": "core/ai_model/models/deepseek/adapter.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "deepSeekAdapters"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
@@ -1913,18 +1879,10 @@
       "python": "core/ai_model/models/deepseek/locate_protocol.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "deepSeekElementLocateProtocol",
-        "deepSeekSearchAreaProtocol",
-        "parseDeepSeekLocateOutput",
-        "parseDeepSeekSearchAreaOutput"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "parseDeepSeekLocateOutput",
-        "parseDeepSeekSearchAreaOutput"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -1936,10 +1894,8 @@
       "python": "core/ai_model/models/default.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "defaultOpenAICompatibleAdapterConfig"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
@@ -1954,9 +1910,7 @@
       "package": "core",
       "batch": "P3",
       "status": "partial",
-      "api_missing": [
-        "doubaoAdapters"
-      ],
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [
         "parseDoubaoRawLocateValue"
@@ -1972,11 +1926,8 @@
       "python": "core/ai_model/models/gemini.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "extractGeminiContentAndReasoning",
-        "geminiAdapters"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
@@ -1990,10 +1941,8 @@
       "python": "core/ai_model/models/glm.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "glmAdapters"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
@@ -2007,10 +1956,8 @@
       "python": "core/ai_model/models/gpt.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "gptAdapters"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
@@ -2039,10 +1986,8 @@
       "python": "core/ai_model/models/jev/adapter.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "jevAdapters"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
@@ -2071,19 +2016,15 @@
       "python": "core/ai_model/models/jev/image.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "prepareReferences"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [
         {
           "name": "mapJevBox",
           "found_in": "midscene/core/ai_model/models/jev/locate.py"
         }
       ],
-      "method_missing_functions": [
-        "prepareReferences"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -2176,10 +2117,8 @@
       "python": "core/ai_model/models/kimi.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "kimiAdapters"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
@@ -2193,10 +2132,8 @@
       "python": "core/ai_model/models/mimo.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "mimoAdapters"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
@@ -2225,10 +2162,8 @@
       "python": "core/ai_model/models/qwen.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "qwenAdapters"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
@@ -2242,10 +2177,8 @@
       "python": "core/ai_model/models/registry.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "MODEL_ADAPTER_CONFIGS"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
@@ -2259,10 +2192,8 @@
       "python": "core/ai_model/models/stepfun.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "stepFunAdapters"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
@@ -2276,10 +2207,8 @@
       "python": "core/ai_model/models/tencent_hy.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "tencentHyAdapters"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
@@ -2308,10 +2237,8 @@
       "python": "core/ai_model/models/ui_tars/adapter.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "uiTarsAdapters"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
@@ -2359,10 +2286,8 @@
       "python": "core/ai_model/models/ui_tars/prompt.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "getSummary"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
@@ -2635,14 +2560,10 @@
       "python": "core/ai_model/service_caller/call_ai.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "callSystemOneAI"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "callSystemOneAI"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -2731,14 +2652,10 @@
       "python": "core/ai_model/service_caller/openai/call_openai.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "callOpenAI"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "callOpenAI"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -2750,14 +2667,10 @@
       "python": "core/ai_model/service_caller/openai/chat_completion/chat_completion.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "callChatCompletion"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "callChatCompletion"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -2829,14 +2742,10 @@
       "python": "core/ai_model/service_caller/openai/openai_client.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "createClient"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "createClient"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -2848,16 +2757,10 @@
       "python": "core/ai_model/service_caller/openai/openai_request_context.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "formatOpenAIAPIErrorDetails",
-        "wrapOpenAICompatibleFetch"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "formatOpenAIAPIErrorDetails",
-        "wrapOpenAICompatibleFetch"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -2884,14 +2787,10 @@
       "python": "core/ai_model/service_caller/openai/responses/responses.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "callResponses"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "callResponses"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -3011,16 +2910,10 @@
       "python": "core/ai_model/service_caller/openai/siwc/network.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "createSiwcJWKSet",
-        "fetchSiwc"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "createSiwcJWKSet",
-        "fetchSiwc"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -3096,10 +2989,8 @@
       "python": "core/ai_model/service_caller/proxy/proxy.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "createProxyAgentIfNeeded"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
@@ -3113,26 +3004,11 @@
       "python": "core/ai_model/service_caller/request_timeout.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "AIRequestTimeoutError",
-        "AI_CALL_HARD_TIMEOUT_CODE",
-        "DEFAULT_AI_CALL_TIMEOUT_MS",
-        "buildRequestAbortSignal",
-        "isHardTimeoutError",
-        "runWithAbortSignal",
-        "waitForRetry"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "buildRequestAbortSignal",
-        "isHardTimeoutError",
-        "runWithAbortSignal",
-        "waitForRetry"
-      ],
-      "method_missing_classes": [
-        "AIRequestTimeoutError"
-      ],
+      "method_missing_functions": [],
+      "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
@@ -3265,24 +3141,15 @@
       "python": "core/ai_model/service_caller/utils.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "INTERNAL_CALL_ID_FIELD",
-        "appendAIRequestFailureSummary",
-        "stringifyForDebug",
-        "toError"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [
         {
           "name": "AIResponseParseError",
           "found_in": "midscene/core/ai_model/__init__.py"
         }
       ],
-      "method_missing_functions": [
-        "appendAIRequestFailureSummary",
-        "stringifyForDebug",
-        "toError"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -3401,22 +3268,13 @@
       "python": "core/ai_model/shared/model_locate_result/pixel_mapper.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "mapLocateResultToPixelRect",
-        "roundPixelBbox"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "mapLocateResultToPixelRect",
-        "mapLocateResultToUnroundedPixelBbox",
-        "roundPixelBbox"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".normalizedCoordinateToPixel"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -3457,16 +3315,10 @@
       "python": "core/ai_model/shared/model_locate_result/types.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "isBboxLocateResultValue",
-        "isPointLocateResultValue"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "isBboxLocateResultValue",
-        "isPointLocateResultValue"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -3493,10 +3345,8 @@
       "python": "core/ai_model/shared/multimodal_prompt.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "prepareUserPrompt"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [
         {
           "name": "multimodalPromptToMessages",
@@ -3549,14 +3399,10 @@
       "python": "core/ai_model/workflows/grounding/locate.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "genericLocate"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "genericLocate"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [
@@ -3570,14 +3416,10 @@
       "python": "core/ai_model/workflows/grounding/planning_action_locate.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "resolvePlanningTapLocator"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "resolvePlanningTapLocator"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -3764,17 +3606,14 @@
       "python": "core/ai_model/workflows/planning/custom_planning.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "buildCustomPlanningMessages"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "buildCustomPlanningMessages"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [
+        ".buildCustomPlanningMessages",
         ".runCustomPlanning"
       ],
       "notes": "",
@@ -3800,14 +3639,10 @@
       "python": "core/ai_model/workflows/planning/locate_normalization.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "normalizePlanningActionFields"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "normalizePlanningActionFields"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -3898,22 +3733,10 @@
       "python": "core/ai_model/workflows/recorder_generation/common.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "createMessageContent",
-        "extractInputDescriptions",
-        "filterEventsByType",
-        "prepareRecorderGenerationContext"
-      ],
-      "api_moved": [
-        {
-          "name": "getScreenshotsForLLM",
-          "found_in": "midscene/core/ai_model/workflows/recorder_generation/metadata.py"
-        }
-      ],
-      "method_missing_functions": [
-        "prepareRecorderGenerationContext"
-      ],
+      "status": "done",
+      "api_missing": [],
+      "api_moved": [],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -3940,21 +3763,13 @@
       "python": "core/ai_model/workflows/recorder_generation/markdown.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "convertRecordLogIntoMarkdown",
-        "generateRecorderMarkdownReplay"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "convertRecordLogIntoMarkdown",
-        "generateRecorderMarkdownReplay"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".createRecorderMarkdownReplayPrompt"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -3980,27 +3795,9 @@
       "python": "core/ai_model/workflows/recorder_generation/playwright.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "createMessageContent",
-        "extractInputDescriptions",
-        "filterEventsByType",
-        "generatePlaywrightTestStream"
-      ],
-      "api_moved": [
-        {
-          "name": "createEventCounts",
-          "found_in": "midscene/core/ai_model/workflows/recorder_generation/__init__.py"
-        },
-        {
-          "name": "getScreenshotsForLLM",
-          "found_in": "midscene/core/ai_model/workflows/recorder_generation/metadata.py"
-        },
-        {
-          "name": "processEventsForLLM",
-          "found_in": "midscene/core/ai_model/workflows/recorder_generation/__init__.py"
-        }
-      ],
+      "status": "done",
+      "api_missing": [],
+      "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
@@ -4013,30 +3810,9 @@
       "python": "core/ai_model/workflows/recorder_generation/yaml.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "createMessageContent",
-        "extractInputDescriptions",
-        "filterEventsByType",
-        "generateRecorderYamlTest",
-        "generateRecorderYamlTestStream",
-        "generateYamlTestStream",
-        "prepareRecorderGenerationContext"
-      ],
-      "api_moved": [
-        {
-          "name": "createEventCounts",
-          "found_in": "midscene/core/ai_model/workflows/recorder_generation/__init__.py"
-        },
-        {
-          "name": "getScreenshotsForLLM",
-          "found_in": "midscene/core/ai_model/workflows/recorder_generation/metadata.py"
-        },
-        {
-          "name": "processEventsForLLM",
-          "found_in": "midscene/core/ai_model/workflows/recorder_generation/__init__.py"
-        }
-      ],
+      "status": "done",
+      "api_missing": [],
+      "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
@@ -4246,14 +4022,10 @@
       "python": "core/dump/report_artifact_publication.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "publishReportArtifactSync"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "publishReportArtifactSync"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -4310,14 +4082,10 @@
       "python": "core/dump/report_dump_compactor.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "compactReportDumps"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "compactReportDumps"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -4344,16 +4112,11 @@
       "python": "core/dump/report_session.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "ReportSession",
-        "currentReportSession"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
-      "method_missing_classes": [
-        "ReportSession"
-      ],
+      "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
@@ -4461,15 +4224,11 @@
       "python": "core/errors.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "ServiceError"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
-      "method_missing_classes": [
-        "ServiceError"
-      ],
+      "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
@@ -4480,10 +4239,8 @@
       "python": "core/__init__.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "Service"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
@@ -4536,10 +4293,8 @@
       "python": "core/report_html_template.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "REPORT_HTML_TEMPLATE"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
@@ -4613,15 +4368,11 @@
       "python": "core/service/__init__.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "Service"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
-      "method_missing_classes": [
-        "Service"
-      ],
+      "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
@@ -5251,10 +5002,8 @@
       "python": "core/types.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "aiActProgressScope"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
@@ -5268,14 +5017,10 @@
       "python": "core/utils.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "uploadTestInfoToServer"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "uploadTestInfoToServer"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -5485,9 +5230,7 @@
       "package": "core",
       "batch": "P3",
       "status": "partial",
-      "api_missing": [
-        "resolveYamlOutputConfig"
-      ],
+      "api_missing": [],
       "api_moved": [
         {
           "name": "parseLegacyYamlScript",
@@ -5496,14 +5239,11 @@
       ],
       "method_missing_functions": [
         "interpolateEnvVars",
-        "parseLegacyYamlScript",
-        "resolveYamlOutputConfig"
+        "parseLegacyYamlScript"
       ],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".parseYamlScript"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },

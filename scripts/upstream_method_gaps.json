@@ -1,12 +1,12 @@
 {
   "upstream_root": "/home/zhangming/gitspace/midscene",
   "counts": {
-    "modules_with_gaps": 115,
-    "missing_functions": 85,
+    "modules_with_gaps": 88,
+    "missing_functions": 45,
     "moved_functions": 21,
-    "missing_classes": 12,
+    "missing_classes": 7,
     "missing_methods": 102,
-    "signature_mismatch": 49,
+    "signature_mismatch": 47,
     "modules_scanned": 425,
     "functions_scanned": 601,
     "classes_scanned": 100
@@ -1061,46 +1061,6 @@
       "signature_mismatch": []
     },
     {
-      "package": "core",
-      "upstream": "ai-model/service-caller/request-timeout.ts",
-      "python": "core/ai_model/service_caller/request_timeout.py",
-      "missing_functions": [
-        {
-          "name": "buildRequestAbortSignal",
-          "params": [
-            "timeoutMs",
-            "userSignal?"
-          ]
-        },
-        {
-          "name": "isHardTimeoutError",
-          "params": [
-            "err"
-          ]
-        },
-        {
-          "name": "runWithAbortSignal",
-          "params": [
-            "signal",
-            "operation"
-          ]
-        },
-        {
-          "name": "waitForRetry",
-          "params": [
-            "ms",
-            "signal?"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [
-        "AIRequestTimeoutError"
-      ],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
       "package": "computer",
       "upstream": "rdp/device.ts",
       "python": "computer/rdp/device.py",
@@ -1203,87 +1163,6 @@
       "signature_mismatch": []
     },
     {
-      "package": "core",
-      "upstream": "ai-model/service-caller/utils.ts",
-      "python": "core/ai_model/service_caller/utils.py",
-      "missing_functions": [
-        {
-          "name": "appendAIRequestFailureSummary",
-          "params": [
-            "error",
-            "attemptErrors",
-            "maxAttempts"
-          ]
-        },
-        {
-          "name": "stringifyForDebug",
-          "params": [
-            "value"
-          ]
-        },
-        {
-          "name": "toError",
-          "params": [
-            "error"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/shared/model-locate-result/pixel-mapper.ts",
-      "python": "core/ai_model/shared/model_locate_result/pixel_mapper.py",
-      "missing_functions": [
-        {
-          "name": "mapLocateResultToPixelRect",
-          "params": [
-            "result",
-            "{ preparedSize, contentSize"
-          ]
-        },
-        {
-          "name": "mapLocateResultToUnroundedPixelBbox",
-          "params": [
-            "result",
-            "{ width, height }: { width: number; heig"
-          ]
-        },
-        {
-          "name": "roundPixelBbox",
-          "params": [
-            "[left, top, right, bottom]: PixelBbox",
-            "rounding"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": [
-        {
-          "kind": "function",
-          "name": "normalizedCoordinateToPixel",
-          "ts_params": [
-            "value",
-            "normalizedBy",
-            "size",
-            "normalizationBasis"
-          ],
-          "python_params": [
-            "value",
-            "normalized_by",
-            "size",
-            "rounding",
-            "normalization_basis"
-          ]
-        }
-      ]
-    },
-    {
       "package": "harmony",
       "upstream": "device.ts",
       "python": "harmony/device.py",
@@ -1367,49 +1246,6 @@
       "signature_mismatch": []
     },
     {
-      "package": "core",
-      "upstream": "yaml/utils.ts",
-      "python": "core/yaml/utils.py",
-      "missing_functions": [
-        {
-          "name": "interpolateEnvVars",
-          "params": [
-            "content"
-          ]
-        },
-        {
-          "name": "parseLegacyYamlScript",
-          "params": [
-            "content",
-            "filePath?",
-            "onConfig?"
-          ]
-        },
-        {
-          "name": "resolveYamlOutputConfig",
-          "params": [
-            "script"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": [
-        {
-          "kind": "function",
-          "name": "parseYamlScript",
-          "ts_params": [
-            "content",
-            "filePath?"
-          ],
-          "python_params": [
-            "content"
-          ]
-        }
-      ]
-    },
-    {
       "package": "computer",
       "upstream": "agent.ts",
       "python": "computer/agent.py",
@@ -1431,141 +1267,6 @@
       "missing_classes": [],
       "missing_methods": [],
       "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/models/deepseek/locate-protocol.ts",
-      "python": "core/ai_model/models/deepseek/locate_protocol.py",
-      "missing_functions": [
-        {
-          "name": "parseDeepSeekLocateOutput",
-          "params": [
-            "content"
-          ]
-        },
-        {
-          "name": "parseDeepSeekSearchAreaOutput",
-          "params": [
-            "content"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/service-caller/openai/openai-request-context.ts",
-      "python": "core/ai_model/service_caller/openai/openai_request_context.py",
-      "missing_functions": [
-        {
-          "name": "formatOpenAIAPIErrorDetails",
-          "params": [
-            "_error",
-            "context"
-          ]
-        },
-        {
-          "name": "wrapOpenAICompatibleFetch",
-          "params": [
-            "context"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/service-caller/openai/siwc/network.ts",
-      "python": "core/ai_model/service_caller/openai/siwc/network.py",
-      "missing_functions": [
-        {
-          "name": "createSiwcJWKSet",
-          "params": [
-            "issuer",
-            "signal",
-            "request"
-          ]
-        },
-        {
-          "name": "fetchSiwc",
-          "params": [
-            "input",
-            "init?",
-            "proxy?"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/shared/model-locate-result/types.ts",
-      "python": "core/ai_model/shared/model_locate_result/types.py",
-      "missing_functions": [
-        {
-          "name": "isBboxLocateResultValue",
-          "params": [
-            "result"
-          ]
-        },
-        {
-          "name": "isPointLocateResultValue",
-          "params": [
-            "result"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/workflows/recorder-generation/markdown.ts",
-      "python": "core/ai_model/workflows/recorder_generation/markdown.py",
-      "missing_functions": [
-        {
-          "name": "convertRecordLogIntoMarkdown",
-          "params": [
-            "log",
-            "modelConfig"
-          ]
-        },
-        {
-          "name": "generateRecorderMarkdownReplay",
-          "params": [
-            "input",
-            "modelConfig"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": [
-        {
-          "kind": "function",
-          "name": "createRecorderMarkdownReplayPrompt",
-          "ts_params": [
-            "input"
-          ],
-          "python_params": [
-            "input_payload",
-            "summary",
-            "screenshot_assets"
-          ]
-        }
-      ]
     },
     {
       "package": "cli",
@@ -1686,6 +1387,31 @@
       "signature_mismatch": []
     },
     {
+      "package": "core",
+      "upstream": "yaml/utils.ts",
+      "python": "core/yaml/utils.py",
+      "missing_functions": [
+        {
+          "name": "interpolateEnvVars",
+          "params": [
+            "content"
+          ]
+        },
+        {
+          "name": "parseLegacyYamlScript",
+          "params": [
+            "content",
+            "filePath?",
+            "onConfig?"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
       "package": "android",
       "upstream": "adb.ts",
       "python": "android/adb.py",
@@ -1694,92 +1420,6 @@
           "name": "createAndroidAdb",
           "params": [
             "{\n  adbExecTimeout,\n  deviceId,\n  device"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/model-adapter/chat-completion.ts",
-      "python": "core/ai_model/model_adapter/chat_completion.py",
-      "missing_functions": [
-        {
-          "name": "resolveChatCompletion",
-          "params": [
-            "chatCompletion"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/model-adapter/is-openrouter.ts",
-      "python": "core/ai_model/model_adapter/is_openrouter.py",
-      "missing_functions": [
-        {
-          "name": "isOpenRouter",
-          "params": [
-            "baseURL?"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/model-adapter/openrouter-reasoning.ts",
-      "python": "core/ai_model/model_adapter/openrouter_reasoning.py",
-      "missing_functions": [
-        {
-          "name": "buildOpenRouterReasoningParams",
-          "params": [
-            "{\n    reasoningEnabled",
-            "controlMethod"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/model-adapter/responses.ts",
-      "python": "core/ai_model/model_adapter/responses.py",
-      "missing_functions": [
-        {
-          "name": "resolveResponses",
-          "params": [
-            "responses"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/model-adapter/temperature-with-semantic-retry.ts",
-      "python": "core/ai_model/model_adapter/temperature_with_semantic_retry.py",
-      "missing_functions": [
-        {
-          "name": "getTemperatureWithSemanticRetry",
-          "params": [
-            "{\n  temperature,\n  userTemperature,\n  se"
           ]
         }
       ],
@@ -1807,51 +1447,6 @@
     },
     {
       "package": "core",
-      "upstream": "ai-model/models/jev/image.ts",
-      "python": "core/ai_model/models/jev/image.py",
-      "missing_functions": [
-        {
-          "name": "prepareReferences",
-          "params": [
-            "prompt"
-          ]
-        }
-      ],
-      "moved_functions": [
-        {
-          "name": "mapJevBox",
-          "params": [
-            "box",
-            "targetSize"
-          ],
-          "found_in": "midscene/core/ai_model/models/jev/locate.py"
-        }
-      ],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/service-caller/call-ai.ts",
-      "python": "core/ai_model/service_caller/call_ai.py",
-      "missing_functions": [
-        {
-          "name": "callSystemOneAI",
-          "params": [
-            "request",
-            "modelRuntime",
-            "options?"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
       "upstream": "ai-model/service-caller/codex/codex-app-server.ts",
       "python": "core/ai_model/service_caller/codex/codex_app_server.py",
       "missing_functions": [
@@ -1867,244 +1462,12 @@
     },
     {
       "package": "core",
-      "upstream": "ai-model/service-caller/openai/call-openai.ts",
-      "python": "core/ai_model/service_caller/openai/call_openai.py",
-      "missing_functions": [
-        {
-          "name": "callOpenAI",
-          "params": [
-            "{\n    modelRuntime,\n    options,\n    exe",
-            "prepared"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/service-caller/openai/chat-completion/chat-completion.ts",
-      "python": "core/ai_model/service_caller/openai/chat_completion/chat_completion.py",
-      "missing_functions": [
-        {
-          "name": "callChatCompletion",
-          "params": [
-            "options",
-            "stream"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/service-caller/openai/openai-client.ts",
-      "python": "core/ai_model/service_caller/openai/openai_client.py",
-      "missing_functions": [
-        {
-          "name": "createClient",
-          "params": [
-            "{\n  modelConfig,\n  proxyAgent,\n  effecti"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/service-caller/openai/responses/responses.ts",
-      "python": "core/ai_model/service_caller/openai/responses/responses.py",
-      "missing_functions": [
-        {
-          "name": "callResponses",
-          "params": [
-            "options",
-            "stream"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/workflows/grounding/locate.ts",
-      "python": "core/ai_model/workflows/grounding/locate.py",
-      "missing_functions": [
-        {
-          "name": "genericLocate",
-          "params": [
-            "locateRequest"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": [
-        {
-          "kind": "function",
-          "name": "AiLocateElement",
-          "ts_params": [
-            "options"
-          ],
-          "python_params": [
-            "target_element_description",
-            "context",
-            "model_runtime",
-            "locate_image",
-            "abort_signal",
-            "search_config"
-          ]
-        }
-      ]
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/workflows/grounding/planning-action-locate.ts",
-      "python": "core/ai_model/workflows/grounding/planning_action_locate.py",
-      "missing_functions": [
-        {
-          "name": "resolvePlanningTapLocator",
-          "params": [
-            "definition",
-            "planner"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/workflows/planning/custom-planning.ts",
-      "python": "core/ai_model/workflows/planning/custom_planning.py",
-      "missing_functions": [
-        {
-          "name": "buildCustomPlanningMessages",
-          "params": [
-            "input",
-            "config"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": [
-        {
-          "kind": "function",
-          "name": "runCustomPlanning",
-          "ts_params": [
-            "userInstruction",
-            "options",
-            "config"
-          ],
-          "python_params": [
-            "user_instruction",
-            "context",
-            "model_runtime",
-            "action_space",
-            "conversation_history",
-            "config",
-            "include_locate_in_planning",
-            "action_context"
-          ]
-        }
-      ]
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/workflows/planning/locate-normalization.ts",
-      "python": "core/ai_model/workflows/planning/locate_normalization.py",
-      "missing_functions": [
-        {
-          "name": "normalizePlanningActionFields",
-          "params": [
-            "actions",
-            "{\n    actionSpace,\n    ...options\n  }: P"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/workflows/recorder-generation/common.ts",
-      "python": "core/ai_model/workflows/recorder_generation/common.py",
-      "missing_functions": [
-        {
-          "name": "prepareRecorderGenerationContext",
-          "params": [
-            "input"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
       "upstream": "distance-schema.ts",
       "python": "core/distance_schema.py",
       "missing_functions": [
         {
           "name": "getMidsceneDistanceSchema",
           "params": []
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "dump/report-artifact-publication.ts",
-      "python": "core/dump/report_artifact_publication.py",
-      "missing_functions": [
-        {
-          "name": "publishReportArtifactSync",
-          "params": [
-            "prepared",
-            "destination",
-            "directory",
-            "overwrite"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "dump/report-dump-compactor.ts",
-      "python": "core/dump/report_dump_compactor.py",
-      "missing_functions": [
-        {
-          "name": "compactReportDumps",
-          "params": [
-            "reportPath"
-          ]
         }
       ],
       "moved_functions": [],
@@ -2242,72 +1605,6 @@
             "deviceOptions?"
           ],
           "found_in": "midscene/harmony/utils.py"
-        }
-      ],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "utils.ts",
-      "python": "core/utils.py",
-      "missing_functions": [
-        {
-          "name": "uploadTestInfoToServer",
-          "params": [
-            "{\n  testUrl,\n  serverUrl,\n}: { testUrl: "
-          ]
-        }
-      ],
-      "moved_functions": [
-        {
-          "name": "getReportTpl",
-          "params": [],
-          "found_in": "midscene/core/dump/html_utils.py"
-        },
-        {
-          "name": "insertContentBeforeClosingHtml",
-          "params": [
-            "html",
-            "content"
-          ],
-          "found_in": "midscene/core/dump/html_utils.py"
-        },
-        {
-          "name": "insertScriptBeforeClosingHtml",
-          "params": [
-            "filePath",
-            "scriptContent"
-          ],
-          "found_in": "midscene/core/dump/html_utils.py"
-        },
-        {
-          "name": "reportHTMLContent",
-          "params": [
-            "dumpData",
-            "reportPath?",
-            "appendReport?",
-            "withTpl",
-            "// whether return with report template, default"
-          ],
-          "found_in": "midscene/core/dump/html_utils.py"
-        },
-        {
-          "name": "writeDumpReport",
-          "params": [
-            "fileName",
-            "dumpData",
-            "appendReport?"
-          ],
-          "found_in": "midscene/core/dump/html_utils.py"
-        },
-        {
-          "name": "writeLogFile",
-          "params": [
-            "opts"
-          ],
-          "found_in": "midscene/core/dump/html_utils.py"
         }
       ],
       "missing_classes": [],
@@ -2549,13 +1846,20 @@
     },
     {
       "package": "core",
-      "upstream": "ai-model/model-adapter/resolve.ts",
-      "python": "core/ai_model/model_adapter/resolve.py",
+      "upstream": "ai-model/models/jev/image.ts",
+      "python": "core/ai_model/models/jev/image.py",
       "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [
-        "ResolvedModelAdapter"
+      "moved_functions": [
+        {
+          "name": "mapJevBox",
+          "params": [
+            "box",
+            "targetSize"
+          ],
+          "found_in": "midscene/core/ai_model/models/jev/locate.py"
+        }
       ],
+      "missing_classes": [],
       "missing_methods": [],
       "signature_mismatch": []
     },
@@ -2914,6 +2218,32 @@
     },
     {
       "package": "core",
+      "upstream": "ai-model/workflows/grounding/locate.ts",
+      "python": "core/ai_model/workflows/grounding/locate.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "AiLocateElement",
+          "ts_params": [
+            "options"
+          ],
+          "python_params": [
+            "target_element_description",
+            "context",
+            "model_runtime",
+            "locate_image",
+            "abort_signal",
+            "search_config"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
       "upstream": "ai-model/workflows/grounding/search-area.ts",
       "python": "core/ai_model/workflows/grounding/search_area.py",
       "missing_functions": [],
@@ -3031,6 +2361,53 @@
           "python_params": [
             "content",
             "data_output_protocol"
+          ]
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/planning/custom-planning.ts",
+      "python": "core/ai_model/workflows/planning/custom_planning.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "function",
+          "name": "buildCustomPlanningMessages",
+          "ts_params": [
+            "input",
+            "config"
+          ],
+          "python_params": [
+            "system_prompt",
+            "user_instruction_text",
+            "conversation_history",
+            "messages_config",
+            "screenshot_url",
+            "action_context",
+            "include_screenshot"
+          ]
+        },
+        {
+          "kind": "function",
+          "name": "runCustomPlanning",
+          "ts_params": [
+            "userInstruction",
+            "options",
+            "config"
+          ],
+          "python_params": [
+            "user_instruction",
+            "context",
+            "model_runtime",
+            "action_space",
+            "conversation_history",
+            "config",
+            "include_locate_in_planning",
+            "action_context"
           ]
         }
       ]
@@ -3271,18 +2648,6 @@
     },
     {
       "package": "core",
-      "upstream": "dump/report-session.ts",
-      "python": "core/dump/report_session.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [
-        "ReportSession"
-      ],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
       "upstream": "element-describer.ts",
       "python": "core/element_describer.py",
       "missing_functions": [],
@@ -3334,18 +2699,6 @@
           ]
         }
       ]
-    },
-    {
-      "package": "core",
-      "upstream": "errors.ts",
-      "python": "core/errors.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [
-        "ServiceError"
-      ],
-      "missing_methods": [],
-      "signature_mismatch": []
     },
     {
       "package": "harmony",
@@ -3523,18 +2876,6 @@
     },
     {
       "package": "core",
-      "upstream": "service/index.ts",
-      "python": "core/service/__init__.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [
-        "Service"
-      ],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
       "upstream": "test-runner/node/define-node.ts",
       "python": "core/test_runner/node/define_node.py",
       "missing_functions": [],
@@ -3580,6 +2921,65 @@
           ]
         }
       ]
+    },
+    {
+      "package": "core",
+      "upstream": "utils.ts",
+      "python": "core/utils.py",
+      "missing_functions": [],
+      "moved_functions": [
+        {
+          "name": "getReportTpl",
+          "params": [],
+          "found_in": "midscene/core/dump/html_utils.py"
+        },
+        {
+          "name": "insertContentBeforeClosingHtml",
+          "params": [
+            "html",
+            "content"
+          ],
+          "found_in": "midscene/core/dump/html_utils.py"
+        },
+        {
+          "name": "insertScriptBeforeClosingHtml",
+          "params": [
+            "filePath",
+            "scriptContent"
+          ],
+          "found_in": "midscene/core/dump/html_utils.py"
+        },
+        {
+          "name": "reportHTMLContent",
+          "params": [
+            "dumpData",
+            "reportPath?",
+            "appendReport?",
+            "withTpl",
+            "// whether return with report template, default"
+          ],
+          "found_in": "midscene/core/dump/html_utils.py"
+        },
+        {
+          "name": "writeDumpReport",
+          "params": [
+            "fileName",
+            "dumpData",
+            "appendReport?"
+          ],
+          "found_in": "midscene/core/dump/html_utils.py"
+        },
+        {
+          "name": "writeLogFile",
+          "params": [
+            "opts"
+          ],
+          "found_in": "midscene/core/dump/html_utils.py"
+        }
+      ],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
     },
     {
       "package": "web-integration",

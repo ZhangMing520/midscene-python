@@ -22,6 +22,9 @@ from midscene.core.ai_model.model_adapter.temperature_with_semantic_retry import
 from midscene.core.ai_model.model_adapter.types import (
     ModelRequestUserConfig,
 )
+from midscene.core.ai_model.models.default import (
+    build_chat_completion_params_from_context,
+)
 
 def _build_doubao_params(
     midscene_defaults: Dict[str, Any],
@@ -108,3 +111,34 @@ DOUBAO_LOCATE_FORMAT = {
     "coordinates": DOUBAO_BBOX_COORDS,
     "parseRawLocateValue": _parse_doubao_raw_locate_value,
 }
+
+
+_doubao_vision_adapter_config: Dict[str, Any] = {
+    "chat_completion": {
+        "build_chat_completion_params": build_chat_completion_params_from_context(
+            _build_doubao_params
+        ),
+        "use_reasoning_as_content_fallback": True,
+    },
+    "locate": {
+        "element": {
+            "result_format": DOUBAO_LOCATE_FORMAT,
+        },
+    },
+}
+
+
+doubao_adapters = {
+    "doubao-vision": _doubao_vision_adapter_config,
+    "doubao-seed": _doubao_vision_adapter_config,
+}
+
+
+__all__ = [
+    "DOUBAO_BBOX_COORDS",
+    "DOUBAO_LOCATE_FORMAT",
+    "DOUBAO_POINT_COORDS",
+    "_build_doubao_params",
+    "_parse_doubao_raw_locate_value",
+    "doubao_adapters",
+]

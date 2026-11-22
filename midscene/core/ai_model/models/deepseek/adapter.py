@@ -18,6 +18,15 @@ from midscene.core.ai_model.model_adapter.temperature_with_semantic_retry import
 from midscene.core.ai_model.model_adapter.types import (
     ModelRequestUserConfig,
 )
+from midscene.core.ai_model.models.default import (
+    build_chat_completion_params_from_context,
+)
+from midscene.core.ai_model.models.deepseek.locate_protocol import (
+    DEEPSEEK_ELEMENT_LOCATE_FORMAT,
+    DEEPSEEK_ELEMENT_LOCATE_PROTOCOL,
+    DEEPSEEK_SEARCH_AREA_LOCATE_FORMAT,
+    DEEPSEEK_SEARCH_AREA_LOCATE_PROTOCOL,
+)
 
 
 def _build_deepseek_params(
@@ -45,4 +54,29 @@ def _build_deepseek_params(
     return config
 
 
-__all__ = ["_build_deepseek_params"]
+deep_seek_adapters = {
+    "deepseek": {
+        "chat_completion": {
+            "build_chat_completion_params": build_chat_completion_params_from_context(
+                _build_deepseek_params
+            ),
+            "use_reasoning_as_content_fallback": True,
+            # DeepSeek only requires reasoning_content to be replayed after tool
+            # calls; Midscene planning does not use tool calls.
+            "replay_raw_assistant_message": False,
+        },
+        "locate": {
+            "element": {
+                "protocol": DEEPSEEK_ELEMENT_LOCATE_PROTOCOL,
+                "result_format": DEEPSEEK_ELEMENT_LOCATE_FORMAT,
+            },
+            "search_area": {
+                "protocol": DEEPSEEK_SEARCH_AREA_LOCATE_PROTOCOL,
+                "result_format": DEEPSEEK_SEARCH_AREA_LOCATE_FORMAT,
+            },
+        },
+    },
+}
+
+
+__all__ = ["_build_deepseek_params", "deep_seek_adapters"]

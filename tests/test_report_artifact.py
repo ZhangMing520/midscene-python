@@ -257,3 +257,46 @@ def test_rejects_unsupported_schemas_malformed_attributes_and_ambiguous_groups()
     candidate["groups"] = [candidate["groups"][0], candidate["groups"][0]]
     with pytest.raises(ReportArtifactError, match="Invalid"):
         parse_report_artifact_manifest(candidate)
+
+
+def test_publish_report_artifact_sync_moves_files_and_respects_overwrite(tmp_path):
+    from midscene.core.dump.report_artifact_publication import (
+        publish_report_artifact_sync,
+    )
+
+    prepared = tmp_path / "prepared.json"
+    prepared.write_text('{"ok": true}', encoding="utf-8")
+    destination = tmp_path / "published.json"
+
+    publish_report_artifact_sync(prepared, destination, False)
+    assert destination.read_text(encoding="utf-8") == '{"ok": true}'
+    # Non-overwrite file publication hard-links, so the prepared file remains.
+    assert prepared.exists()
+
+    prepared_again = tmp_path / "prepared-again.json"
+    prepared_again.write_text('{"ok": false}', encoding="utf-8")
+    with pytest.raises(ReportArtifactError, match="already exists"):
+        publish_report_artifact_sync(prepared_again, destination, False)
+    assert prepared_again.exists()
+
+    publish_report_artifact_sync(prepared_again, destination, False, True)
+    assert destination.read_text(encoding="utf-8") == '{"ok": false}'
+    assert not prepared_again.exists()
+
+
+def test_publish_report_artifact_sync_replaces_directories_when_overwriting(tmp_path):
+    from midscene.core.dump.report_artifact_publication import (
+        publish_report_artifact_sync,
+    )
+
+    prepared = tmp_path / "prepared-dir"
+    prepared.mkdir()
+    (prepared / "index.html").write_text("new", encoding="utf-8")
+    destination = tmp_path / "report-dir"
+    destination.mkdir()
+    (destination / "old.html").write_text("old", encoding="utf-8")
+
+    publish_report_artifact_sync(prepared, destination, True, True)
+
+    assert sorted(path.name for path in destination.iterdir()) == ["index.html"]
+    assert (destination / "index.html").read_text(encoding="utf-8") == "new"

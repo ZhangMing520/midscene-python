@@ -82,3 +82,17 @@ class TestUiTars:
         # center of (100,200)-(300,400) = (200,300) -> /1000
         assert box == pytest.approx([0.2, 0.3, 0.2, 0.3], abs=1e-6)
 
+
+
+def test_ui_tars_get_summary_strips_reflection():
+    from midscene.core.ai_model.models.ui_tars.prompt import get_summary
+
+    prediction = (
+        "Reflection: I should click the button. "
+        "Action_Summary: Click the submit button. "
+        "Action: click(start_box='[500,300,600,340]')"
+    )
+    assert get_summary(prediction) == (
+        "Action_Summary: Click the submit button. "
+        "Action: click(start_box='[500,300,600,340]')"
+    )

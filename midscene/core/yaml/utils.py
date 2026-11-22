@@ -114,6 +114,32 @@ def resolve_web_target(config: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     }
 
 
+def resolve_yaml_output_config(script: Dict[str, Any]) -> Dict[str, Any]:
+    """Legacy output settings with target-local values taking priority."""
+    resolved = resolve_web_target(script)
+    target = (
+        (resolved or {}).get("target")
+        or script.get("android")
+        or script.get("ios")
+        or script.get("harmony")
+        or script.get("computer")
+    )
+    config = script.get("config") or {}
+    target = target or {}
+    return {
+        "output": (
+            target.get("output")
+            if target.get("output") is not None
+            else config.get("output")
+        ),
+        "unstableLogContent": (
+            target.get("unstableLogContent")
+            if target.get("unstableLogContent") is not None
+            else config.get("unstableLogContent")
+        ),
+    }
+
+
 def _interpolate_env_vars(content: str) -> str:
     """Replace ${VAR} references line by line (upstream interpolateYamlScriptEnvVars).
 
@@ -147,7 +173,7 @@ def _interpolate_env_vars(content: str) -> str:
     return "\n".join(result_lines)
 
 
-def parse_yaml_script(content: str) -> Dict[str, Any]:
+def parse_yaml_script(content: str, file_path: Optional[str] = None) -> Dict[str, Any]:
     """Parse a YAML automation script (upstream parseYamlScript)."""
     interpolated = _interpolate_env_vars(content)
     try:

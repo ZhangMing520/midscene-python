@@ -12,6 +12,9 @@ from midscene.core.ai_model.model_adapter.temperature_with_semantic_retry import
 from midscene.core.ai_model.model_adapter.types import (
     ModelRequestUserConfig,
 )
+from midscene.core.ai_model.models.default import (
+    build_chat_completion_params_from_context,
+)
 
 
 def _build_ui_tars_params(
@@ -81,9 +84,36 @@ UI_TARS_LOCATE_FORMAT = {
 }
 
 
+def _create_ui_tars_adapter_config(model_version: str) -> Dict[str, Any]:
+    return {
+        "chat_completion": {
+            "build_chat_completion_params": build_chat_completion_params_from_context(
+                _build_ui_tars_params
+            ),
+        },
+        "planning": {
+            "kind": "custom",
+            "cache_enabled": False,
+            "default_replanning_cycle_limit": 40,
+            "model_version": model_version,
+        },
+        "locate": {"element": {"result_format": UI_TARS_LOCATE_FORMAT}},
+    }
+
+
+ui_tars_adapters = {
+    "vlm-ui-tars": _create_ui_tars_adapter_config("v1.0"),
+    "vlm-ui-tars-doubao": _create_ui_tars_adapter_config("doubao-1.5-20b"),
+    "vlm-ui-tars-doubao-1.5": _create_ui_tars_adapter_config("doubao-1.5-20b"),
+}
+
+
 __all__ = [
     "UI_TARS_BBOX_COORDS",
     "UI_TARS_LOCATE_FORMAT",
     "UI_TARS_POINT_COORDS",
     "_build_ui_tars_params",
+    "_create_ui_tars_adapter_config",
+    "_parse_ui_tars_raw_locate_value",
+    "ui_tars_adapters",
 ]

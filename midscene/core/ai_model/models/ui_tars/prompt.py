@@ -37,8 +37,12 @@ finished(content='xxx') # Use escape characters \\', \\", and \\n in content par
 """
 
 
-def _ui_tars_summary(prediction: str) -> str:
+def get_summary(prediction: str) -> str:
     return re.sub(r"Reflection:[\s\S]*?(?=Action_Summary:|Action:|$)", "", prediction).strip()
 
 
-__all__ = ["get_ui_tars_planning_prompt"]
+# Backward-compatible private alias used by the UI-TARS planner.
+_ui_tars_summary = get_summary
+
+
+__all__ = ["get_summary", "get_ui_tars_planning_prompt"]

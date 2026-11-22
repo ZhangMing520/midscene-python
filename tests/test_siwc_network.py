@@ -1,107 +1,146 @@
 """Synced from upstream packages/core/tests/unit-test/siwc-network.test.ts."""
 
-from typing import Any, Dict
-from unittest.mock import patch
+import json
+from typing import Any, Dict, List
 
 import pytest
 
-from tests.core_helpers import FakeResponse
+from midscene.core.ai_model.service_caller.openai.siwc.errors import SiwcError
+from midscene.core.ai_model.service_caller.openai.siwc.network import (
+    create_siwc_jwk_set,
+    fetch_siwc,
+)
 
 
-class TestSiwcNetworkProxy:
-    def test_resolve_proxy_precedence(self, monkeypatch):
-        from midscene.core.siwc import _siwc_proxy
+class FakeResponse:
+    def __init__(self, payload: Any = None, status_code: int = 200):
+        self._payload = payload or {}
+        self.status_code = status_code
+        self.ok = status_code < 400
 
-        # Explicit config wins over the environment; HTTP beats SOCKS.
-        monkeypatch.setenv("MIDSCENE_MODEL_HTTP_PROXY", "http://env:8080")
-        monkeypatch.setenv("MIDSCENE_MODEL_SOCKS_PROXY", "socks5://env:1080")
-        assert (
-            _siwc_proxy({"httpProxy": "http://explicit:1", "socksProxy": None})
-            == "http://explicit:1"
+    def json(self):
+        return self._payload
+
+
+def _install_client(monkeypatch, response: FakeResponse) -> List[Dict[str, Any]]:
+    from midscene.core.ai_model.service_caller.openai.siwc import network
+
+    captured: List[Dict[str, Any]] = []
+
+    class FakeAsyncClient:
+        def __init__(self, **kwargs):
+            captured.append(kwargs)
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return False
+
+        async def request(self, method, url, **kwargs):
+            captured.append({"method": method, "url": url, **kwargs})
+            return response
+
+    monkeypatch.setattr(network.httpx, "AsyncClient", FakeAsyncClient)
+    return captured
+
+
+class TestSiwcNetwork:
+    @pytest.mark.asyncio
+    async def test_prioritizes_the_midscene_http_proxy_over_socks(
+        self, monkeypatch
+    ):
+        captured = _install_client(monkeypatch, FakeResponse())
+        monkeypatch.setenv("MIDSCENE_MODEL_HTTP_PROXY", "http://localhost:17890")
+        monkeypatch.setenv("MIDSCENE_MODEL_SOCKS_PROXY", "socks5://localhost:1080")
+        monkeypatch.setenv("HTTPS_PROXY", "http://localhost:7890")
+
+        await fetch_siwc(
+            "https://auth.openai.com/api/accounts/oauth/token", {"method": "POST"}
         )
-        assert _siwc_proxy({"httpProxy": None, "socksProxy": "socks5://s:2"}) == (
-            "socks5://s:2"
-        )
-        # An explicit (even empty) config disables the env fallback, like upstream.
-        assert _siwc_proxy({}) is None
-        # No config at all resolves from the environment.
-        assert _siwc_proxy() == "http://env:8080"
-        monkeypatch.setenv("MIDSCENE_MODEL_HTTP_PROXY", "  ")
-        assert _siwc_proxy() == "socks5://env:1080"
+
+        # Generic environment proxies are ignored unless configured explicitly.
+        assert captured[0]["proxy"] == "http://localhost:17890"
+        assert captured[0]["trust_env"] is False
+        assert captured[1]["method"] == "POST"
 
     @pytest.mark.asyncio
-    async def test_refresh_request_uses_configured_proxy(self):
-        from midscene.core import siwc
+    async def test_uses_the_midscene_socks_proxy(self, monkeypatch):
+        captured = _install_client(monkeypatch, FakeResponse())
+        monkeypatch.setenv("MIDSCENE_MODEL_SOCKS_PROXY", "socks5://localhost:1080")
+        monkeypatch.setenv("HTTP_PROXY", "http://localhost:7891")
 
-        captured: Dict[str, Any] = {}
+        await fetch_siwc("https://auth.openai.com")
 
-        class _Client:
-            def __init__(self, **kwargs):
-                captured.update(kwargs)
-
-            async def __aenter__(self):
-                return self
-
-            async def __aexit__(self, *args):
-                return False
-
-            async def post(self, *args, **kwargs):
-                return FakeResponse(
-                    {
-                        "access_token": "new-access",
-                        "refresh_token": "new-refresh",
-                        "expires_in": 3600,
-                        "token_type": "Bearer",
-                        "scope": "chatgpt.tokens.use.direct",
-                    }
-                )
-
-        with patch.object(siwc.httpx, "AsyncClient", _Client):
-            refreshed = await siwc.refresh_siwc_credentials(
-                {
-                    "client_id": "client-1",
-                    "refresh_token": "refresh-1",
-                    "subject": "subject-1",
-                },
-                {"httpProxy": "http://proxy:8080", "socksProxy": None},
-            )
-
-        assert captured["proxy"] == "http://proxy:8080"
-        assert refreshed["access_token"] == "new-access"
+        assert captured[0]["proxy"] == "socks5://localhost:1080"
+        assert captured[0]["trust_env"] is False
 
     @pytest.mark.asyncio
-    async def test_refresh_request_falls_back_to_env_proxy(self, monkeypatch):
-        from midscene.core import siwc
+    async def test_does_not_create_a_proxy_from_generic_environment_variables(
+        self, monkeypatch
+    ):
+        captured = _install_client(monkeypatch, FakeResponse())
+        for key in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"):
+            monkeypatch.setenv(key, "http://localhost:7890")
 
-        monkeypatch.setenv("MIDSCENE_MODEL_HTTP_PROXY", "http://env:8080")
-        monkeypatch.delenv("MIDSCENE_MODEL_SOCKS_PROXY", raising=False)
-        captured: Dict[str, Any] = {}
+        await fetch_siwc("https://auth.openai.com")
 
-        class _Client:
-            def __init__(self, **kwargs):
-                captured.update(kwargs)
+        assert captured[0]["proxy"] is None
+        assert captured[0]["trust_env"] is True
 
-            async def __aenter__(self):
-                return self
+    @pytest.mark.asyncio
+    async def test_downloads_jwks_and_reports_http_failures(self):
+        signal = object()
 
-            async def __aexit__(self, *args):
-                return False
+        async def request(url, init):
+            assert url == "https://auth.openai.com/.well-known/jwks.json"
+            assert init == {"signal": signal, "redirect": "error"}
+            return FakeResponse(status_code=503)
 
-            async def post(self, *args, **kwargs):
-                return FakeResponse(
-                    {
-                        "access_token": "new-access",
-                        "refresh_token": "new-refresh",
-                        "expires_in": 3600,
-                        "token_type": "Bearer",
-                        "scope": "chatgpt.tokens.use.direct",
-                    }
-                )
+        resolve = create_siwc_jwk_set("https://auth.openai.com", signal, request)
+        with pytest.raises(SiwcError, match="HTTP 503"):
+            await resolve({"alg": "RS256"}, {"payload": "", "signature": ""})
 
-        with patch.object(siwc.httpx, "AsyncClient", _Client):
-            await siwc.refresh_siwc_credentials(
-                {"client_id": "client-1", "refresh_token": "refresh-1"}
-            )
+    @pytest.mark.asyncio
+    async def test_verifies_signatures_with_keys_fetched_through_the_injected_request(
+        self,
+    ):
+        pytest.importorskip(
+            "jwt", reason="PyJWT is not installed in this environment"
+        )
+        pytest.importorskip(
+            "cryptography",
+            reason="cryptography (PyJWT crypto extra) is not installed",
+        )
+        import jwt
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric import rsa
 
-        assert captured["proxy"] == "http://env:8080"
+        private_key = rsa.generate_private_key(
+            public_exponent=65537, key_size=2048
+        )
+        public_key = private_key.public_key()
+        public_jwk = json.loads(jwt.algorithms.RSAAlgorithm.to_jwk(public_key))
+        public_jwk["kid"] = "test"
 
+        token = jwt.encode(
+            {"sub": "user"},
+            private_key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption(),
+            ),
+            algorithm="RS256",
+            headers={"kid": "test"},
+        )
+
+        async def request(url, init):
+            return FakeResponse({"keys": [public_jwk]})
+
+        resolve = create_siwc_jwk_set(
+            "https://auth.openai.com", object(), request
+        )
+        jwk = await resolve({"alg": "RS256", "kid": "test"}, token)
+        payload = jwt.decode(token, jwk.key, algorithms=["RS256"])
+
+        assert payload["sub"] == "user"

@@ -57,3 +57,28 @@ tasks:
         )
         assert script["web"]["url"] == "https://env-example.com"
 
+
+    def test_resolve_yaml_output_config_prefers_target_values(self):
+        from midscene.core.yaml.utils import resolve_yaml_output_config
+
+        web_config = resolve_yaml_output_config(
+            {
+                "web": {"output": "./target-output", "unstableLogContent": True},
+                "config": {"output": "./config-output"},
+            }
+        )
+        assert web_config == {
+            "output": "./target-output",
+            "unstableLogContent": True,
+        }
+
+        fallback = resolve_yaml_output_config(
+            {
+                "computer": {"output": "./computer-output"},
+                "config": {"output": "./config-output", "unstableLogContent": False},
+            }
+        )
+        assert fallback == {
+            "output": "./computer-output",
+            "unstableLogContent": False,
+        }

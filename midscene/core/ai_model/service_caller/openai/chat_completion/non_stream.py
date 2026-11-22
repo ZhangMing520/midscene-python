@@ -22,9 +22,13 @@ def call_chat_completion_non_streaming(
             f"invalid response from LLM service: {json.dumps(payload)[:2000]}"
         )
     raw_message = payload["choices"][0].get("message") or {}
-    parsed_message = extract_content_and_reasoning(
-        raw_message, adapter.reasoning_content_keys
-    )
+    custom_extractor = getattr(adapter, "extract_content_and_reasoning", None)
+    if callable(custom_extractor):
+        parsed_message = custom_extractor(raw_message)
+    else:
+        parsed_message = extract_content_and_reasoning(
+            raw_message, adapter.reasoning_content_keys
+        )
     reasoning_content = parsed_message["reasoning_content"]
     content = resolve_content_with_reasoning_fallback(
         parsed_message["content"],

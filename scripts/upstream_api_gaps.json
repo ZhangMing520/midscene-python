@@ -4,10 +4,10 @@
     "runtime_exports": 1149,
     "schema_exports": 56,
     "type_exports": 983,
-    "modules_with_gaps": 94,
-    "missing": 158,
-    "moved": 24,
-    "modules_with_missing": 85
+    "modules_with_gaps": 41,
+    "missing": 68,
+    "moved": 17,
+    "modules_with_missing": 28
   },
   "by_package": {
     "android": {
@@ -26,9 +26,9 @@
       "moved": 0
     },
     "core": {
-      "modules": 64,
-      "missing": 90,
-      "moved": 19
+      "modules": 11,
+      "missing": 0,
+      "moved": 12
     },
     "harmony": {
       "modules": 1,
@@ -93,51 +93,6 @@
       "moved": []
     },
     {
-      "package": "core",
-      "upstream": "ai-model/service-caller/request-timeout.ts",
-      "python": "core/ai_model/service_caller/request_timeout.py",
-      "runtime_exports": 8,
-      "missing": [
-        "AIRequestTimeoutError",
-        "AI_CALL_HARD_TIMEOUT_CODE",
-        "DEFAULT_AI_CALL_TIMEOUT_MS",
-        "buildRequestAbortSignal",
-        "isHardTimeoutError",
-        "runWithAbortSignal",
-        "waitForRetry"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/workflows/recorder-generation/yaml.ts",
-      "python": "core/ai_model/workflows/recorder_generation/yaml.py",
-      "runtime_exports": 13,
-      "missing": [
-        "createMessageContent",
-        "extractInputDescriptions",
-        "filterEventsByType",
-        "generateRecorderYamlTest",
-        "generateRecorderYamlTestStream",
-        "generateYamlTestStream",
-        "prepareRecorderGenerationContext"
-      ],
-      "moved": [
-        {
-          "name": "createEventCounts",
-          "found_in": "midscene/core/ai_model/workflows/recorder_generation/__init__.py"
-        },
-        {
-          "name": "getScreenshotsForLLM",
-          "found_in": "midscene/core/ai_model/workflows/recorder_generation/metadata.py"
-        },
-        {
-          "name": "processEventsForLLM",
-          "found_in": "midscene/core/ai_model/workflows/recorder_generation/__init__.py"
-        }
-      ]
-    },
-    {
       "package": "computer",
       "upstream": "device.ts",
       "python": "computer/device.py",
@@ -167,81 +122,6 @@
         "MouseEvent"
       ],
       "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/models/deepseek/locate-protocol.ts",
-      "python": "core/ai_model/models/deepseek/locate_protocol.py",
-      "runtime_exports": 4,
-      "missing": [
-        "deepSeekElementLocateProtocol",
-        "deepSeekSearchAreaProtocol",
-        "parseDeepSeekLocateOutput",
-        "parseDeepSeekSearchAreaOutput"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/service-caller/utils.ts",
-      "python": "core/ai_model/service_caller/utils.py",
-      "runtime_exports": 9,
-      "missing": [
-        "INTERNAL_CALL_ID_FIELD",
-        "appendAIRequestFailureSummary",
-        "stringifyForDebug",
-        "toError"
-      ],
-      "moved": [
-        {
-          "name": "AIResponseParseError",
-          "found_in": "midscene/core/ai_model/__init__.py"
-        }
-      ]
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/workflows/recorder-generation/common.ts",
-      "python": "core/ai_model/workflows/recorder_generation/common.py",
-      "runtime_exports": 10,
-      "missing": [
-        "createMessageContent",
-        "extractInputDescriptions",
-        "filterEventsByType",
-        "prepareRecorderGenerationContext"
-      ],
-      "moved": [
-        {
-          "name": "getScreenshotsForLLM",
-          "found_in": "midscene/core/ai_model/workflows/recorder_generation/metadata.py"
-        }
-      ]
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/workflows/recorder-generation/playwright.ts",
-      "python": "core/ai_model/workflows/recorder_generation/playwright.py",
-      "runtime_exports": 10,
-      "missing": [
-        "createMessageContent",
-        "extractInputDescriptions",
-        "filterEventsByType",
-        "generatePlaywrightTestStream"
-      ],
-      "moved": [
-        {
-          "name": "createEventCounts",
-          "found_in": "midscene/core/ai_model/workflows/recorder_generation/__init__.py"
-        },
-        {
-          "name": "getScreenshotsForLLM",
-          "found_in": "midscene/core/ai_model/workflows/recorder_generation/metadata.py"
-        },
-        {
-          "name": "processEventsForLLM",
-          "found_in": "midscene/core/ai_model/workflows/recorder_generation/__init__.py"
-        }
-      ]
     },
     {
       "package": "web-integration",
@@ -294,18 +174,6 @@
       "moved": []
     },
     {
-      "package": "core",
-      "upstream": "ai-model/model-adapter/default-planning-protocol.ts",
-      "python": "core/ai_model/model_adapter/default_planning_protocol.py",
-      "runtime_exports": 5,
-      "missing": [
-        "buildActionDescription",
-        "createDefaultMidscenePlanningProtocol",
-        "createMidscenePlanningActionOutputParser"
-      ],
-      "moved": []
-    },
-    {
       "package": "web-integration",
       "upstream": "web-page.ts",
       "python": "web_integration/web_page.py",
@@ -318,72 +186,6 @@
       "moved": []
     },
     {
-      "package": "core",
-      "upstream": "ai-model/models/gemini.ts",
-      "python": "core/ai_model/models/gemini.py",
-      "runtime_exports": 2,
-      "missing": [
-        "extractGeminiContentAndReasoning",
-        "geminiAdapters"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/service-caller/openai/openai-request-context.ts",
-      "python": "core/ai_model/service_caller/openai/openai_request_context.py",
-      "runtime_exports": 2,
-      "missing": [
-        "formatOpenAIAPIErrorDetails",
-        "wrapOpenAICompatibleFetch"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/service-caller/openai/siwc/network.ts",
-      "python": "core/ai_model/service_caller/openai/siwc/network.py",
-      "runtime_exports": 2,
-      "missing": [
-        "createSiwcJWKSet",
-        "fetchSiwc"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/shared/model-locate-result/pixel-mapper.ts",
-      "python": "core/ai_model/shared/model_locate_result/pixel_mapper.py",
-      "runtime_exports": 9,
-      "missing": [
-        "mapLocateResultToPixelRect",
-        "roundPixelBbox"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/shared/model-locate-result/types.ts",
-      "python": "core/ai_model/shared/model_locate_result/types.py",
-      "runtime_exports": 2,
-      "missing": [
-        "isBboxLocateResultValue",
-        "isPointLocateResultValue"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/workflows/recorder-generation/markdown.ts",
-      "python": "core/ai_model/workflows/recorder_generation/markdown.py",
-      "runtime_exports": 3,
-      "missing": [
-        "convertRecordLogIntoMarkdown",
-        "generateRecorderMarkdownReplay"
-      ],
-      "moved": []
-    },
-    {
       "package": "cli",
       "upstream": "args.ts",
       "python": "cli/args.py",
@@ -391,17 +193,6 @@
       "missing": [
         "findOnlyItemInArgs",
         "orderMattersParse"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "dump/report-session.ts",
-      "python": "core/dump/report_session.py",
-      "runtime_exports": 2,
-      "missing": [
-        "ReportSession",
-        "currentReportSession"
       ],
       "moved": []
     },
@@ -457,360 +248,6 @@
       "moved": []
     },
     {
-      "package": "core",
-      "upstream": "ai-model/model-adapter/chat-completion.ts",
-      "python": "core/ai_model/model_adapter/chat_completion.py",
-      "runtime_exports": 1,
-      "missing": [
-        "resolveChatCompletion"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/model-adapter/is-openrouter.ts",
-      "python": "core/ai_model/model_adapter/is_openrouter.py",
-      "runtime_exports": 1,
-      "missing": [
-        "isOpenRouter"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/model-adapter/openrouter-reasoning.ts",
-      "python": "core/ai_model/model_adapter/openrouter_reasoning.py",
-      "runtime_exports": 1,
-      "missing": [
-        "buildOpenRouterReasoningParams"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/model-adapter/resolve.ts",
-      "python": "core/ai_model/model_adapter/resolve.py",
-      "runtime_exports": 1,
-      "missing": [
-        "ResolvedModelAdapter"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/model-adapter/responses.ts",
-      "python": "core/ai_model/model_adapter/responses.py",
-      "runtime_exports": 2,
-      "missing": [
-        "resolveResponses"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/model-adapter/temperature-with-semantic-retry.ts",
-      "python": "core/ai_model/model_adapter/temperature_with_semantic_retry.py",
-      "runtime_exports": 1,
-      "missing": [
-        "getTemperatureWithSemanticRetry"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/models/ant-ling/adapter.ts",
-      "python": "core/ai_model/models/ant_ling/adapter.py",
-      "runtime_exports": 1,
-      "missing": [
-        "antLingAdapters"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/models/auto-glm/adapter.ts",
-      "python": "core/ai_model/models/auto_glm/adapter.py",
-      "runtime_exports": 1,
-      "missing": [
-        "autoGlmAdapters"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/models/deepseek/adapter.ts",
-      "python": "core/ai_model/models/deepseek/adapter.py",
-      "runtime_exports": 1,
-      "missing": [
-        "deepSeekAdapters"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/models/default.ts",
-      "python": "core/ai_model/models/default.py",
-      "runtime_exports": 1,
-      "missing": [
-        "defaultOpenAICompatibleAdapterConfig"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/models/doubao.ts",
-      "python": "core/ai_model/models/doubao.py",
-      "runtime_exports": 2,
-      "missing": [
-        "doubaoAdapters"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/models/glm.ts",
-      "python": "core/ai_model/models/glm.py",
-      "runtime_exports": 1,
-      "missing": [
-        "glmAdapters"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/models/gpt.ts",
-      "python": "core/ai_model/models/gpt.py",
-      "runtime_exports": 1,
-      "missing": [
-        "gptAdapters"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/models/jev/adapter.ts",
-      "python": "core/ai_model/models/jev/adapter.py",
-      "runtime_exports": 1,
-      "missing": [
-        "jevAdapters"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/models/jev/image.ts",
-      "python": "core/ai_model/models/jev/image.py",
-      "runtime_exports": 3,
-      "missing": [
-        "prepareReferences"
-      ],
-      "moved": [
-        {
-          "name": "mapJevBox",
-          "found_in": "midscene/core/ai_model/models/jev/locate.py"
-        }
-      ]
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/models/kimi.ts",
-      "python": "core/ai_model/models/kimi.py",
-      "runtime_exports": 1,
-      "missing": [
-        "kimiAdapters"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/models/mimo.ts",
-      "python": "core/ai_model/models/mimo.py",
-      "runtime_exports": 1,
-      "missing": [
-        "mimoAdapters"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/models/qwen.ts",
-      "python": "core/ai_model/models/qwen.py",
-      "runtime_exports": 1,
-      "missing": [
-        "qwenAdapters"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/models/registry.ts",
-      "python": "core/ai_model/models/registry.py",
-      "runtime_exports": 3,
-      "missing": [
-        "MODEL_ADAPTER_CONFIGS"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/models/stepfun.ts",
-      "python": "core/ai_model/models/stepfun.py",
-      "runtime_exports": 1,
-      "missing": [
-        "stepFunAdapters"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/models/tencent-hy.ts",
-      "python": "core/ai_model/models/tencent_hy.py",
-      "runtime_exports": 1,
-      "missing": [
-        "tencentHyAdapters"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/models/ui-tars/adapter.ts",
-      "python": "core/ai_model/models/ui_tars/adapter.py",
-      "runtime_exports": 1,
-      "missing": [
-        "uiTarsAdapters"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/models/ui-tars/prompt.ts",
-      "python": "core/ai_model/models/ui_tars/prompt.py",
-      "runtime_exports": 2,
-      "missing": [
-        "getSummary"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/service-caller/call-ai.ts",
-      "python": "core/ai_model/service_caller/call_ai.py",
-      "runtime_exports": 2,
-      "missing": [
-        "callSystemOneAI"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/service-caller/openai/call-openai.ts",
-      "python": "core/ai_model/service_caller/openai/call_openai.py",
-      "runtime_exports": 1,
-      "missing": [
-        "callOpenAI"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/service-caller/openai/chat-completion/chat-completion.ts",
-      "python": "core/ai_model/service_caller/openai/chat_completion/chat_completion.py",
-      "runtime_exports": 2,
-      "missing": [
-        "callChatCompletion"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/service-caller/openai/openai-client.ts",
-      "python": "core/ai_model/service_caller/openai/openai_client.py",
-      "runtime_exports": 1,
-      "missing": [
-        "createClient"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/service-caller/openai/responses/responses.ts",
-      "python": "core/ai_model/service_caller/openai/responses/responses.py",
-      "runtime_exports": 2,
-      "missing": [
-        "callResponses"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/service-caller/proxy/proxy.ts",
-      "python": "core/ai_model/service_caller/proxy/proxy.py",
-      "runtime_exports": 1,
-      "missing": [
-        "createProxyAgentIfNeeded"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/shared/multimodal-prompt.ts",
-      "python": "core/ai_model/shared/multimodal_prompt.py",
-      "runtime_exports": 4,
-      "missing": [
-        "prepareUserPrompt"
-      ],
-      "moved": [
-        {
-          "name": "multimodalPromptToMessages",
-          "found_in": "midscene/core/ai_model/model_adapter/locate_prompt_order.py"
-        },
-        {
-          "name": "preparedReferenceImagesToMessages",
-          "found_in": "midscene/core/ai_model/model_adapter/locate_prompt_order.py"
-        }
-      ]
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/workflows/grounding/locate.ts",
-      "python": "core/ai_model/workflows/grounding/locate.py",
-      "runtime_exports": 2,
-      "missing": [
-        "genericLocate"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/workflows/grounding/planning-action-locate.ts",
-      "python": "core/ai_model/workflows/grounding/planning_action_locate.py",
-      "runtime_exports": 1,
-      "missing": [
-        "resolvePlanningTapLocator"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/workflows/planning/custom-planning.ts",
-      "python": "core/ai_model/workflows/planning/custom_planning.py",
-      "runtime_exports": 2,
-      "missing": [
-        "buildCustomPlanningMessages"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/workflows/planning/locate-normalization.ts",
-      "python": "core/ai_model/workflows/planning/locate_normalization.py",
-      "runtime_exports": 2,
-      "missing": [
-        "normalizePlanningActionFields"
-      ],
-      "moved": []
-    },
-    {
       "package": "web-integration",
       "upstream": "bridge-mode/browser.ts",
       "python": "web_integration/bridge_mode/browser.py",
@@ -851,46 +288,6 @@
       "moved": []
     },
     {
-      "package": "core",
-      "upstream": "dump/report-artifact-publication.ts",
-      "python": "core/dump/report_artifact_publication.py",
-      "runtime_exports": 2,
-      "missing": [
-        "publishReportArtifactSync"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "dump/report-dump-compactor.ts",
-      "python": "core/dump/report_dump_compactor.py",
-      "runtime_exports": 1,
-      "missing": [
-        "compactReportDumps"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "errors.ts",
-      "python": "core/errors.py",
-      "runtime_exports": 1,
-      "missing": [
-        "ServiceError"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "index.ts",
-      "python": "core/__init__.py",
-      "runtime_exports": 3,
-      "missing": [
-        "Service"
-      ],
-      "moved": []
-    },
-    {
       "package": "cli",
       "upstream": "openai/login.ts",
       "python": "cli/openai/login.py",
@@ -921,36 +318,6 @@
       "moved": []
     },
     {
-      "package": "core",
-      "upstream": "report-html-template.ts",
-      "python": "core/report_html_template.py",
-      "runtime_exports": 1,
-      "missing": [
-        "REPORT_HTML_TEMPLATE"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "service/index.ts",
-      "python": "core/service/__init__.py",
-      "runtime_exports": 1,
-      "missing": [
-        "Service"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "types.ts",
-      "python": "core/types.py",
-      "runtime_exports": 1,
-      "missing": [
-        "aiActProgressScope"
-      ],
-      "moved": []
-    },
-    {
       "package": "android",
       "upstream": "ui-tree.ts",
       "python": "android/ui_tree.py",
@@ -974,16 +341,6 @@
           "found_in": "midscene/harmony/utils.py"
         }
       ]
-    },
-    {
-      "package": "core",
-      "upstream": "utils.ts",
-      "python": "core/utils.py",
-      "runtime_exports": 16,
-      "missing": [
-        "uploadTestInfoToServer"
-      ],
-      "moved": []
     },
     {
       "package": "ios",
@@ -1027,21 +384,6 @@
     },
     {
       "package": "core",
-      "upstream": "yaml/utils.ts",
-      "python": "core/yaml/utils.py",
-      "runtime_exports": 7,
-      "missing": [
-        "resolveYamlOutputConfig"
-      ],
-      "moved": [
-        {
-          "name": "parseLegacyYamlScript",
-          "found_in": "midscene/core/yaml_runtime.py"
-        }
-      ]
-    },
-    {
-      "package": "core",
       "upstream": "agent/agent-report-manager.ts",
       "python": "core/agent/agent_report_manager.py",
       "runtime_exports": 1,
@@ -1076,6 +418,49 @@
         {
           "name": "TaskExecutionError",
           "found_in": "midscene/core/__init__.py"
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/jev/image.ts",
+      "python": "core/ai_model/models/jev/image.py",
+      "runtime_exports": 3,
+      "missing": [],
+      "moved": [
+        {
+          "name": "mapJevBox",
+          "found_in": "midscene/core/ai_model/models/jev/locate.py"
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/utils.ts",
+      "python": "core/ai_model/service_caller/utils.py",
+      "runtime_exports": 9,
+      "missing": [],
+      "moved": [
+        {
+          "name": "AIResponseParseError",
+          "found_in": "midscene/core/ai_model/__init__.py"
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/shared/multimodal-prompt.ts",
+      "python": "core/ai_model/shared/multimodal_prompt.py",
+      "runtime_exports": 4,
+      "missing": [],
+      "moved": [
+        {
+          "name": "multimodalPromptToMessages",
+          "found_in": "midscene/core/ai_model/model_adapter/locate_prompt_order.py"
+        },
+        {
+          "name": "preparedReferenceImagesToMessages",
+          "found_in": "midscene/core/ai_model/model_adapter/locate_prompt_order.py"
         }
       ]
     },
@@ -1162,6 +547,19 @@
         {
           "name": "reportFileToMarkdown",
           "found_in": "midscene/core/report_markdown.py"
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "yaml/utils.ts",
+      "python": "core/yaml/utils.py",
+      "runtime_exports": 7,
+      "missing": [],
+      "moved": [
+        {
+          "name": "parseLegacyYamlScript",
+          "found_in": "midscene/core/yaml_runtime.py"
         }
       ]
     }

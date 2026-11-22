@@ -95,6 +95,10 @@ if (!dump.executions || !dump.executions.length) {
 </html>
 """
 
+# The single-file report shell used by ``get_report_tpl``; exposed under the
+# upstream constant name so callers do not build a second divergent template.
+REPORT_HTML_TEMPLATE = _TEMPLATE
+
 
 def render_report_html(
     dump: Dict[str, Any],

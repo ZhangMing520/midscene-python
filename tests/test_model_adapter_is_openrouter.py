@@ -2,11 +2,15 @@
 
 import pytest
 
-from midscene.core.ai_model.model_adapter.is_openrouter import _is_openrouter
+from midscene.core.ai_model.model_adapter.is_openrouter import (
+    _is_openrouter,
+    is_open_router,
+)
 
 
 def test_recognizes_the_supported_endpoint():
     """recognizes the supported endpoint"""
+    assert is_open_router("https://openrouter.ai/api/v1") is True
     assert _is_openrouter("https://openrouter.ai/api/v1") is True
 
 

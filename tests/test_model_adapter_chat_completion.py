@@ -1,7 +1,8 @@
 """Synced from upstream packages/core/tests/unit-test/model-adapter/chat-completion.test.ts."""
 
-import pytest
-
+from midscene.core.ai_model.model_adapter.chat_completion import (
+    resolve_chat_completion,
+)
 from midscene.core.ai_model.models.registry import ModelRuntime, get_model_adapter
 from midscene.core.ai_model.service_caller.openai.chat_completion.chat_completion import (
     prepare_chat_completion,
@@ -81,17 +82,57 @@ def test_uses_the_first_configured_reasoning_key_with_a_string_value():
     ) == {"content": "visible response", "reasoning_content": "vllm reasoning"}
 
 
-@pytest.mark.skip(
-    reason="Python chat-completion adapters do not implement the upstream "
-    "custom message-extraction hook"
-)
 def test_uses_custom_message_extraction_when_configured():
     """uses custom message extraction when configured"""
-    # No Python equivalent: the adapter layer has no messageExtraction hook.
+    adapter = resolve_chat_completion(
+        {
+            "message_extraction": {
+                "kind": "custom",
+                "extract_content_and_reasoning": lambda _message: {
+                    "content": "custom content",
+                    "reasoning_content": "custom reasoning",
+                },
+            }
+        }
+    )
+
+    assert adapter["extract_content_and_reasoning"](None) == {
+        "content": "custom content",
+        "reasoning_content": "custom reasoning",
+    }
+
+    default_adapter = resolve_chat_completion(
+        {
+            "message_extraction": {
+                "kind": "default",
+                "reasoning_content_keys": ["reasoning"],
+            }
+        }
+    )
+    assert default_adapter["extract_content_and_reasoning"](
+        {"content": "visible response", "reasoning": "provider reasoning"}
+    ) == {
+        "content": "visible response",
+        "reasoning_content": "provider reasoning",
+    }
+
+    assert resolve_chat_completion(None)["extract_content_and_reasoning"](None) == {
+        "content": "",
+        "reasoning_content": "",
+    }
 
 
 def test_increases_the_default_temperature_on_a_semantic_retry_without_changing_user_config():
     """increases the default temperature on a semantic retry without changing user config"""
+    adapter = resolve_chat_completion({})
+
+    assert adapter["build_chat_completion_params"](
+        {"semanticRetryAttempt": 2}
+    ) == {"config": {"temperature": 0.2}}
+    assert adapter["build_chat_completion_params"](
+        {"semanticRetryAttempt": 1, "userConfig": {"temperature": 0}}
+    ) == {"config": {"temperature": 0}}
+
     runtime = ModelRuntime(
         {"modelName": "mock-model", "intent": "default", "temperature": None},
         adapter=get_model_adapter("default"),

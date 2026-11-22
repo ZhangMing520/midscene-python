@@ -1,15 +1,19 @@
 """Markdown replay generation (upstream recorder-generation/markdown.ts)."""
 
-from typing import Any, Dict, List, Optional
+import base64
+import io
 import json
 import re
-from loguru import logger
-from midscene.core.ai_model.models.registry import ModelRuntime, get_model_runtime
-from midscene.core.ai_model.service_caller.call_ai import call_ai_with_string_response
+from typing import Any, Dict, List, Optional
 
+from loguru import logger
+from PIL import Image
+
+from midscene.core.ai_model.service_caller.call_ai import call_ai_with_string_response
 from midscene.core.ai_model.workflows.recorder_generation.common import (
-    get_global_default_config,
-    prepare_event_summary,
+    get_midscene_recorder_event_description,
+    prepare_recorder_generation_context,
+    resolve_model_runtime,
     stringify_target_block,
     validate_events,
 )
@@ -18,7 +22,6 @@ from midscene.core.ai_model.workflows.recorder_generation.yaml import (
 )
 
 MARKDOWN_REPLAY_SCREENSHOT_PAYLOAD_BUDGET = 600_000
-
 
 MARKDOWN_REPLAY_SCREENSHOT_MAX_EDGE = 768
 
@@ -39,44 +42,51 @@ def limit_screenshot_assets_for_markdown_replay(screenshot_assets):
     return kept
 
 
+def _decode_data_url(data_url: str):
+    match = re.match(r"^data:(image/[a-zA-Z0-9.+-]+);base64,(.+)$", data_url)
+    if match:
+        return match.group(1), match.group(2)
+    return "image/png", data_url
+
+
+def _image_info_of_base64(data_url: str):
+    _, raw = _decode_data_url(data_url)
+    with Image.open(io.BytesIO(base64.b64decode(raw))) as image:
+        return image.size
+
+
+def _compress_screenshot_asset_for_markdown_replay(asset):
+    width, height = _image_info_of_base64(asset.get("dataUrl", ""))
+    longest_edge = max(width, height)
+    if longest_edge <= MARKDOWN_REPLAY_SCREENSHOT_MAX_EDGE:
+        return asset
+
+    _, raw = _decode_data_url(asset.get("dataUrl", ""))
+    with Image.open(io.BytesIO(base64.b64decode(raw))) as image:
+        scale = MARKDOWN_REPLAY_SCREENSHOT_MAX_EDGE / longest_edge
+        resized = image.resize(
+            (max(1, round(width * scale)), max(1, round(height * scale)))
+        )
+        buffer = io.BytesIO()
+        resized.convert("RGB").save(buffer, format="JPEG", quality=85)
+    encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
+    return {
+        **asset,
+        "dataUrl": f"data:image/jpeg;base64,{encoded}",
+        "base64Data": encoded,
+        "mimeType": "image/jpeg",
+    }
+
+
 def prepare_screenshot_assets_for_markdown_replay(screenshot_assets):
-    """Shrink assets whose longest edge exceeds 768px, then apply the budget.
-
-    An asset already inside the limit is returned untouched: re-encoding a
-    small PNG to JPEG blurs the UI text the model reads and would leave the
-    caller's base64Data/mimeType describing a different image (upstream
-    compressScreenshotAssetForMarkdownReplay returns early for those).
-    """
-    import base64 as _b64
-    import io as _io
-
-    from PIL import Image
-
+    """Shrink oversized assets, then apply the payload budget (upstream)."""
     compressed = []
     for asset in screenshot_assets:
         try:
-            data_url = asset.get("dataUrl", "")
-            raw = data_url.split(",", 1)[1] if data_url.startswith("data:") else data_url
-            image = Image.open(_io.BytesIO(_b64.b64decode(raw)))
-            width, height = image.size
-            longest_edge = max(width, height)
-            if longest_edge <= MARKDOWN_REPLAY_SCREENSHOT_MAX_EDGE:
-                compressed.append(asset)
-                continue
-            scale = MARKDOWN_REPLAY_SCREENSHOT_MAX_EDGE / longest_edge
-            image = image.resize(
-                (max(1, round(width * scale)), max(1, round(height * scale)))
+            compressed.append(
+                _compress_screenshot_asset_for_markdown_replay(asset)
             )
-            buffer = _io.BytesIO()
-            image.convert("RGB").save(buffer, format="JPEG", quality=85)
-            encoded = _b64.b64encode(buffer.getvalue()).decode("ascii")
-            resized = {**asset, "dataUrl": f"data:image/jpeg;base64,{encoded}"}
-            if "base64Data" in asset:
-                resized["base64Data"] = encoded
-            if "mimeType" in asset:
-                resized["mimeType"] = "image/jpeg"
-            compressed.append(resized)
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 - upstream keeps the original
             logger.debug(
                 "failed to compress screenshot asset; keeping original "
                 f"eventHashId={asset.get('eventHashId')} "
@@ -86,43 +96,100 @@ def prepare_screenshot_assets_for_markdown_replay(screenshot_assets):
     return limit_screenshot_assets_for_markdown_replay(compressed)
 
 
+def _summarize_screenshot_assets(screenshot_assets):
+    payload_sizes = [len(asset.get("dataUrl", "")) for asset in screenshot_assets]
+    return {
+        "count": len(screenshot_assets),
+        "totalPayloadChars": sum(payload_sizes),
+        "maxPayloadChars": max(payload_sizes) if payload_sizes else 0,
+    }
+
+
+def _get_prompt_shape(prompt):
+    text_chars = 0
+    image_count = 0
+    for message in prompt:
+        content = message.get("content")
+        if isinstance(content, str):
+            text_chars += len(content)
+            continue
+        if not isinstance(content, list):
+            continue
+        for part in content:
+            if isinstance(part, dict) and part.get("type") == "text":
+                text_chars += len(str(part.get("text", "")))
+            if isinstance(part, dict) and part.get("type") == "image":
+                image_count += 1
+    return {"textChars": text_chars, "imageCount": image_count}
+
+
+def _remove_omitted_screenshot_paths(summary, screenshot_assets):
+    included_paths = {asset.get("relativePath") for asset in screenshot_assets}
+    return {
+        **summary,
+        "events": [
+            (
+                {**event, "screenshotPath": None}
+                if event.get("screenshotPath")
+                and event.get("screenshotPath") not in included_paths
+                else event
+            )
+            for event in summary.get("events", [])
+        ],
+    }
+
+
+def _markdown_language_instruction(language: Optional[str]) -> str:
+    normalized = (language or "").strip()
+    if not normalized:
+        return ""
+    nl = chr(10)
+    return (
+        f"{nl}Language requirement:{nl}"
+        f"- Write all human-readable Markdown instructions in {normalized}.{nl}"
+        "- Keep file paths, URLs, platform ids, API names, and quoted UI text unchanged."
+    )
+
+
 def normalize_generated_markdown(content: str) -> str:
     trimmed = content.strip()
-    fenced = re.match(r"^```(?:md|markdown)?\s*([\s\S]*?)\s*```$", trimmed, re.IGNORECASE)
+    fenced = re.match(
+        r"^```(?:md|markdown)?\s*([\s\S]*?)\s*```$", trimmed, re.IGNORECASE
+    )
     return (fenced.group(1) if fenced else trimmed).strip() + "\n"
 
 
-def create_recorder_markdown_replay_prompt(
+def _create_recorder_markdown_replay_prompt_from_context(
     input_payload: Dict[str, Any],
     summary: Dict[str, Any],
     screenshot_assets: List[Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
-    """Build the Markdown replay prompt (upstream
-    createRecorderMarkdownReplayPromptFromContext)."""
     target = input_payload["target"]
     screenshot_index_by_hash = {
         asset["eventHashId"]: f"screenshot-{index + 1}"
         for index, asset in enumerate(screenshot_assets)
     }
+
     events = []
     for event in summary.get("events", []):
-        ref = screenshot_index_by_hash.get(event.get("hashId"))
-        item = {k: v for k, v in event.items() if k != "screenshotPath"}
-        if ref:
-            item["screenshotRef"] = ref
-        events.append(item)
+        screenshot_ref = screenshot_index_by_hash.get(event.get("hashId"))
+        event_without_path = {
+            key: value for key, value in event.items() if key != "screenshotPath"
+        }
+        if screenshot_ref:
+            event_without_path["screenshotRef"] = screenshot_ref
+        events.append(event_without_path)
 
-    # upstream labels each shot with the semantic-resolved description, which
-    # process_events_for_llm already put on the processed events; a stale asset
-    # index must not fail the whole generation.
-    described_events = summary.get("events") or []
-    screenshot_entries = []
+    input_events = input_payload.get("events") or []
+    screenshots = []
     for index, asset in enumerate(screenshot_assets):
         event_index = asset["eventIndex"]
         description = None
-        if isinstance(event_index, int) and 0 <= event_index < len(described_events):
-            description = described_events[event_index].get("description")
-        screenshot_entries.append(
+        if isinstance(event_index, int) and 0 <= event_index < len(input_events):
+            description = get_midscene_recorder_event_description(
+                input_events[event_index]
+            )
+        screenshots.append(
             {
                 "screenshotRef": f"screenshot-{index + 1}",
                 "eventIndex": event_index,
@@ -141,7 +208,7 @@ def create_recorder_markdown_replay_prompt(
         },
         "startUrl": summary.get("startUrl"),
         "events": events,
-        "screenshots": screenshot_entries,
+        "screenshots": screenshots,
     }
     test_name = input_payload.get("testName") or summary.get("testName")
 
@@ -215,48 +282,97 @@ Important: Return ONLY raw Markdown. Do NOT wrap the response in markdown code b
     ]
 
 
-def _markdown_language_instruction(language: Optional[str]) -> str:
-    if not language or not language.strip():
-        return ""
-    nl = chr(10)
-    return (
-        f"{nl}Language requirement:{nl}"
-        f"- Write all human-readable Markdown instructions in {language.strip()}.{nl}"
-        "- Keep file paths, URLs, platform ids, API names, and quoted UI text unchanged."
+def create_recorder_markdown_replay_prompt(
+    input_payload: Dict[str, Any],
+) -> List[Dict[str, Any]]:
+    """Build the Markdown replay prompt (upstream, synchronous variant)."""
+    validate_events(input_payload.get("events") or [])
+    context = prepare_recorder_generation_context(input_payload)
+    screenshot_assets = limit_screenshot_assets_for_markdown_replay(
+        context["screenshotAssets"]
     )
+    summary = _remove_omitted_screenshot_paths(
+        context["summary"], screenshot_assets
+    )
+    return _create_recorder_markdown_replay_prompt_from_context(
+        input_payload, summary, screenshot_assets
+    )
+
+
+async def _create_recorder_markdown_replay_prompt_for_generation(
+    input_payload: Dict[str, Any],
+) -> List[Dict[str, Any]]:
+    validate_events(input_payload.get("events") or [])
+    context = prepare_recorder_generation_context(input_payload)
+    screenshot_assets = prepare_screenshot_assets_for_markdown_replay(
+        context["screenshotAssets"]
+    )
+    summary = _remove_omitted_screenshot_paths(
+        context["summary"], screenshot_assets
+    )
+    prompt = _create_recorder_markdown_replay_prompt_from_context(
+        input_payload, summary, screenshot_assets
+    )
+    logger.debug(
+        "markdown replay prompt shape "
+        f"eventCount={len(input_payload.get('events') or [])} "
+        f"maxScreenshots={input_payload.get('maxScreenshots')} "
+        f"rawScreenshots={_summarize_screenshot_assets(context['screenshotAssets'])} "
+        f"includedScreenshots={_summarize_screenshot_assets(screenshot_assets)} "
+        f"prompt={_get_prompt_shape(prompt)}"
+    )
+    return prompt
+
+
+async def generate_recorder_markdown_replay(
+    input_payload: Dict[str, Any], model_config: Any
+) -> str:
+    try:
+        prompt = await _create_recorder_markdown_replay_prompt_for_generation(
+            input_payload
+        )
+        response = await call_ai_with_string_response(
+            prompt, resolve_model_runtime(model_config)
+        )
+        content = (response or {}).get("content")
+        if isinstance(content, str) and content:
+            return normalize_generated_markdown(content)
+        raise RuntimeError("Failed to generate recorder Markdown replay")
+    except Exception as error:
+        raise RuntimeError(
+            f"Failed to generate recorder Markdown replay: {error}"
+        ) from error
+
+
+async def convert_record_log_into_markdown(
+    log: Dict[str, Any], model_config: Any
+) -> str:
+    return await generate_recorder_markdown_replay(log, model_config)
 
 
 async def generate_markdown_replay(
     events: List[Dict[str, Any]],
     options: Optional[Dict[str, Any]] = None,
-    model_runtime: Optional[ModelRuntime] = None,
+    model_config: Any = None,
 ) -> str:
-    """Convert recorded events into a Markdown replay script consumed by
-    agent.aiAct (upstream generateRecorderMarkdownReplay)."""
-    try:
-        validate_events(events)
-        options = dict(options or {})
-        target = options.get("target") or create_default_web_target(events, options)
-        summary = prepare_event_summary(events, options)
-        assets = prepare_screenshot_assets_for_markdown_replay(
-            options.get("screenshotAssets") or []
-        )
-        input_payload = {
-            "testName": options.get("testName"),
-            "target": target,
-            "events": events,
-            "language": options.get("language"),
-        }
-        prompt = create_recorder_markdown_replay_prompt(
-            input_payload, summary, assets
-        )
-        runtime = model_runtime or get_model_runtime(get_global_default_config())
-        response = await call_ai_with_string_response(prompt, runtime)
-        content = response.get("content")
-        if not isinstance(content, str) or not content.strip():
-            raise RuntimeError("Failed to generate recorder Markdown replay")
-        return normalize_generated_markdown(content)
-    except Exception as error:
-        raise RuntimeError(
-            f"Failed to generate recorder Markdown replay: {error}"
-        ) from error
+    """Backward-compatible wrapper around ``generate_recorder_markdown_replay``."""
+    options = dict(options or {})
+    target = options.pop("target", None) or create_default_web_target(
+        events, options
+    )
+    return await generate_recorder_markdown_replay(
+        {**options, "target": target, "events": events}, model_config
+    )
+
+
+__all__ = [
+    "MARKDOWN_REPLAY_SCREENSHOT_MAX_EDGE",
+    "MARKDOWN_REPLAY_SCREENSHOT_PAYLOAD_BUDGET",
+    "convert_record_log_into_markdown",
+    "create_recorder_markdown_replay_prompt",
+    "generate_markdown_replay",
+    "generate_recorder_markdown_replay",
+    "limit_screenshot_assets_for_markdown_replay",
+    "normalize_generated_markdown",
+    "prepare_screenshot_assets_for_markdown_replay",
+]

@@ -6,10 +6,35 @@ from midscene.core.ai_model.model_adapter.temperature_with_semantic_retry import
     _apply_semantic_retry_temperature,
 )
 from midscene.core.ai_model.models.registry import ModelRuntime
+from midscene.core.ai_model.service_caller.openai.chat_completion.non_stream import (
+    call_chat_completion_non_streaming,
+)
+from midscene.core.ai_model.service_caller.openai.chat_completion.stream import (
+    call_chat_completion_stream,
+)
 from midscene.core.ai_model.service_caller.openai.chat_completion.utils import (
     to_chat_messages,
 )
 from midscene.core.ai_model.service_caller.utils import resolve_image_detail
+
+
+async def call_chat_completion(
+    options: Dict[str, Any], stream: bool
+) -> Dict[str, Any]:
+    """Dispatch to the stream/non-stream parser (upstream callChatCompletion).
+
+    Python's transport consumes the request before parsing, so ``options``
+    carries either the decoded ``payload`` or the SSE ``lines`` plus ``adapter``.
+    """
+    if stream:
+        return await call_chat_completion_stream(
+            options["lines"],
+            options["adapter"],
+            options.get("onChunk") or options.get("on_chunk"),
+        )
+    return call_chat_completion_non_streaming(
+        options["payload"], options["adapter"]
+    )
 
 
 def _adapter_user_config(model_config: Dict[str, Any]) -> Dict[str, Any]:

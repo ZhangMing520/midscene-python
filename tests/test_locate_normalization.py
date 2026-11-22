@@ -50,3 +50,71 @@ class TestPlanningLocateNormalization:
                 True,
             )
 
+
+
+class TestNormalizePlanningActionFields:
+    def _codec(self):
+        from midscene.core.ai_model.models.registry import GPT_LOCATE_FORMAT
+        from midscene.core.ai_model.shared.model_locate_result import (
+            create_locate_result_codec,
+        )
+
+        return create_locate_result_codec(GPT_LOCATE_FORMAT)
+
+    def test_normalizes_declared_locate_fields_in_place(self):
+        from midscene.core.ai_model.workflows.planning.locate_normalization import (
+            normalize_planning_action_fields,
+        )
+
+        codec = self._codec()
+        actions = [
+            {
+                "type": "Tap",
+                "param": {"locate": {"prompt": "submit", "bbox": [100, 200, 300, 400]}},
+            },
+            {
+                "type": "Unknown",
+                "param": {"locate": {"prompt": "ignored", "bbox": [1, 2, 3, 4]}},
+            },
+        ]
+        action_space = [{"name": "Tap", "locate_fields": ["locate"]}]
+
+        normalize_planning_action_fields(
+            actions,
+            action_space,
+            include_locate_in_planning=True,
+            locate_result_codec=codec,
+            locate_result_context={
+                "preparedSize": {"width": 1000, "height": 1000},
+                "contentSize": {"width": 1000, "height": 1000},
+            },
+        )
+
+        assert actions[0]["param"]["locate"] == {
+            "prompt": "submit",
+            "locatedPixelResult": {
+                "center": (200, 300),
+                "rect": {"left": 100, "top": 200, "width": 200, "height": 200},
+            },
+        }
+        assert actions[1]["param"]["locate"] == {
+            "prompt": "ignored",
+            "bbox": [1, 2, 3, 4],
+        }
+
+    def test_keeps_only_prompt_when_locate_is_not_in_planning(self):
+        from midscene.core.ai_model.workflows.planning.locate_normalization import (
+            normalize_planning_action_fields,
+        )
+
+        actions = [{"type": "Tap", "param": {"locate": {"prompt": "submit", "bbox": [1, 2, 3, 4]}}}]
+        normalize_planning_action_fields(
+            actions,
+            [{"name": "Tap", "locate_fields": ["locate"]}],
+            include_locate_in_planning=False,
+            locate_result_codec=self._codec(),
+            locate_result_context={
+                "preparedSize": {"width": 1000, "height": 1000},
+            },
+        )
+        assert actions[0]["param"]["locate"] == {"prompt": "submit"}

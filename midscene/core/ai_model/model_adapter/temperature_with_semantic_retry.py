@@ -1,10 +1,33 @@
 """Temperature overrides and semantic-retry nudge (upstream temperature-with-semantic-retry.ts)."""
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional, TypeVar
 
 from midscene.core.ai_model.model_adapter.types import (
     ModelRequestUserConfig,
 )
+
+_T = TypeVar("_T")
+
+
+def get_temperature_with_semantic_retry(
+    temperature: _T,
+    user_temperature: Optional[float] = None,
+    semantic_retry_attempt: int = 0,
+) -> Any:
+    """Return the effective temperature for one model call.
+
+    Only perturb the default deterministic request after a semantic parse
+    failure: preserve an explicit user temperature, and avoid adding a
+    temperature to adapters whose normal parameters do not include one.
+    """
+    if (
+        semantic_retry_attempt > 0
+        and user_temperature is None
+        and temperature == 0
+    ):
+        return 0.2
+    return temperature
+
 
 def _apply_temperature(
     config: Dict[str, Any],
@@ -36,3 +59,10 @@ def _apply_semantic_retry_temperature(
         and request_body.get("temperature") == 0
     ):
         request_body["temperature"] = 0.2
+
+
+__all__ = [
+    "_apply_semantic_retry_temperature",
+    "_apply_temperature",
+    "get_temperature_with_semantic_retry",
+]

@@ -1,7 +1,12 @@
 """Resolved model adapter (upstream ai-model/model-adapter/resolve.ts)."""
 
+from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
+from midscene.core.ai_model.model_adapter.chat_completion import (
+    resolve_chat_completion,
+)
+from midscene.core.ai_model.model_adapter.responses import resolve_responses
 from midscene.core.ai_model.model_adapter.types import (
     ModelRequestUserConfig,
 )
@@ -12,6 +17,56 @@ from midscene.core.ai_model.models.default import (
 from midscene.core.ai_model.shared.model_locate_result import (
     create_locate_result_codec,
 )
+
+
+@dataclass
+class ResolvedModelAdapter:
+    """Runtime view of a resolved adapter definition.
+
+    Field names mirror upstream ``ResolvedModelAdapter`` (lower snake_case).
+    The Python runtime keeps its richer :class:`ModelAdapter`; this dataclass
+    exists so callers can construct the upstream-shaped adapter view from an
+    adapter definition dict.
+    """
+
+    model_type: str = "generative"
+    allowed_task_types: Optional[List[str]] = None
+    supported_protocols: List[str] = field(
+        default_factory=lambda: ["openai-chat"]
+    )
+    json_parser: Optional[Callable[..., Any]] = None
+    chat_completion: Dict[str, Any] = field(default_factory=dict)
+    resolve_image_detail: Optional[Callable[..., Any]] = None
+    responses: Dict[str, Any] = field(default_factory=dict)
+    build_codex_app_server_params: Optional[Callable[..., Any]] = None
+    image_preprocess: Dict[str, Any] = field(default_factory=dict)
+    insight: Dict[str, Any] = field(default_factory=dict)
+    planning: Dict[str, Any] = field(default_factory=dict)
+    locate: Dict[str, Any] = field(default_factory=dict)
+
+    @classmethod
+    def from_config(
+        cls, config: Optional[Dict[str, Any]] = None, model_family: str = "default"
+    ) -> "ResolvedModelAdapter":
+        config = config or {}
+        return cls(
+            model_type=config.get("model_type", "generative"),
+            allowed_task_types=config.get("allowed_task_types"),
+            supported_protocols=(
+                config["supported_protocols"]
+                if "supported_protocols" in config
+                else ["openai-chat"]
+            ),
+            json_parser=config.get("json_parser"),
+            chat_completion=resolve_chat_completion(config.get("chat_completion")),
+            resolve_image_detail=config.get("resolve_image_detail"),
+            responses=resolve_responses(config.get("responses")),
+            build_codex_app_server_params=config.get("build_codex_app_server_params"),
+            image_preprocess=config.get("image_preprocess") or {},
+            insight=config.get("insight") or {},
+            planning=config.get("planning") or {},
+            locate=config.get("locate") or {},
+        )
 
 
 class ModelAdapter:
@@ -44,6 +99,7 @@ class ModelAdapter:
         supports_action_deep_locate: Optional[bool] = None,
         insight_boolean_fn: Optional[Callable] = None,
         json_parser: Optional[Callable] = None,
+        extract_content_and_reasoning: Optional[Callable] = None,
     ):
         self.family = family
         self._build_params = build_chat_completion_params or _build_default_params
@@ -77,6 +133,7 @@ class ModelAdapter:
         )
         self.insight_boolean_fn = insight_boolean_fn
         self.json_parser = json_parser
+        self.extract_content_and_reasoning = extract_content_and_reasoning
         self._locate_codec: Optional[Any] = None
         self._locate_protocol: Optional[Any] = None
         self._planning_protocol: Optional[Any] = None
@@ -153,4 +210,4 @@ class ModelAdapter:
         return create_locate_result_codec(self._search_area_locate_format)
 
 
-__all__ = ["ModelAdapter"]
+__all__ = ["ModelAdapter", "ResolvedModelAdapter"]

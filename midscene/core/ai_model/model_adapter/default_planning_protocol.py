@@ -100,10 +100,14 @@ def _serialize_action_param(
     return serialized
 
 
-def create_planning_action_output_parser():
+def create_planning_action_output_parser(json_parser=None):
     """Parse <action-type>/<action-param-json> content into an action dict."""
 
-    def parse_action_output(content: str, action_space: List[Any]) -> Optional[Dict[str, Any]]:
+    parser = json_parser or parse_model_response_json
+
+    def parse_action_output(
+        content: str, action_space: List[Any] = None
+    ) -> Optional[Dict[str, Any]]:
         action_type = extract_xml_tag(content, "action-type")
         action_param_str = extract_xml_tag(content, "action-param-json")
 
@@ -116,7 +120,7 @@ def create_planning_action_output_parser():
 
         if action_param_str:
             try:
-                param = parse_model_response_json(
+                param = parser(
                     action_param_str,
                     source="planning-action-param",
                     preserve_string_value_keys=(
@@ -135,6 +139,11 @@ def create_planning_action_output_parser():
     return parse_action_output
 
 
+def create_midscene_planning_action_output_parser(json_parser=None):
+    """Upstream-named factory for the default action-output parser."""
+    return create_planning_action_output_parser(json_parser)
+
+
 def build_locate_field_description(
     locate_prompt_spec: Optional[Dict[str, Any]] = None,
 ) -> str:
@@ -147,7 +156,7 @@ def build_locate_field_description(
     return "{ prompt: string /* description of the target element */ }"
 
 
-def _default_build_action_description(build_input: Dict[str, Any]) -> Dict[str, Any]:
+def build_action_description(build_input: Dict[str, Any]) -> Dict[str, Any]:
     """Build one YAML action description from a DeviceAction prompt dict."""
     action = build_input["action"]
     action_dict = action if isinstance(action, dict) else action.to_prompt_dict()
@@ -186,8 +195,14 @@ def _default_build_action_description(build_input: Dict[str, Any]) -> Dict[str, 
     return description
 
 
-def create_default_planning_protocol() -> StandardPlanningProtocol:
-    """The default Midscene XML planning protocol (StandardPlanningProtocol)."""
+def create_default_midscene_planning_protocol(
+    json_parser=None,
+) -> StandardPlanningProtocol:
+    """The default Midscene XML planning protocol (StandardPlanningProtocol).
+
+    Mirrors upstream ``createDefaultMidscenePlanningProtocol``: it accepts an
+    optional JSON parser used for action parameters.
+    """
     return {
         "response_prefix": None,
         "action_space_protocol": {
@@ -195,16 +210,37 @@ def create_default_planning_protocol() -> StandardPlanningProtocol:
             "format": "yaml",
             "include_action_output_example": True,
             "build_locate_field_description": build_locate_field_description,
-            "build_action_description": _default_build_action_description,
+            "build_action_description": build_action_description,
         },
         "action_output_protocol": {
             "action_output_tag_names": PLANNING_ACTION_OUTPUT_TAG_NAMES,
             "action_output_rules": PLANNING_ACTION_OUTPUT_RULES,
             "action_output_placeholder": PLANNING_ACTION_OUTPUT_PLACEHOLDER,
             "build_action_output": build_planning_action_output,
-            "parse_action_output": create_planning_action_output_parser(),
+            "parse_action_output": create_midscene_planning_action_output_parser(
+                json_parser
+            ),
             # Planning locate parameters pass through unchanged; normalization
             # happens in the planning workflow (parsePlanningActions).
             "parse_raw_locate_parameter": lambda value: value,
         },
     }
+
+
+def create_default_planning_protocol() -> StandardPlanningProtocol:
+    """Backward-compatible alias for the default Midscene planning protocol."""
+    return create_default_midscene_planning_protocol()
+
+
+__all__ = [
+    "PLANNING_ACTION_OUTPUT_PLACEHOLDER",
+    "PLANNING_ACTION_OUTPUT_RULES",
+    "PLANNING_ACTION_OUTPUT_TAG_NAMES",
+    "build_action_description",
+    "build_locate_field_description",
+    "build_planning_action_output",
+    "create_default_midscene_planning_protocol",
+    "create_default_planning_protocol",
+    "create_midscene_planning_action_output_parser",
+    "create_planning_action_output_parser",
+]

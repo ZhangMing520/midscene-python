@@ -36,7 +36,11 @@ from midscene.shared.types import (
     supports_interface_extension,
 )
 
+# The generic agent progress bus uses this scope for aiAct events.
+AI_ACT_PROGRESS_SCOPE = "aiAct"
+
 __all__ = [
+    "AI_ACT_PROGRESS_SCOPE",
     "AbortError",
     "AbortSignal",
     "AbstractInterface",
