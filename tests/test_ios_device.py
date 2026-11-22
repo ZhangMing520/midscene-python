@@ -8,6 +8,7 @@ Only the cases covered by the former aggregate ``tests/test_ios.py`` are kept.
 
 import re
 from typing import Any, Dict, List, Optional
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -341,6 +342,115 @@ async def test_does_not_send_text_when_focus_fails(monkeypatch):
 
     assert transport.calls_for("/clear") == []
     assert transport.calls_for("/wda/keys") == []
+
+
+def test_describe_returns_device_id_when_no_description_is_set():
+    """returns Device ID when no description is available."""
+    device = IOSDevice()
+
+    assert device.describe() == "Device ID: pending-connection"
+
+
+@pytest.mark.asyncio
+async def test_get_connected_device_info_returns_wda_device_metadata():
+    """returns the WDA device info."""
+    device, _ = _device(
+        {
+            "GET /status": {
+                "device": {
+                    "udid": "real-udid",
+                    "name": "iPhone",
+                    "model": "iPhone15,2",
+                }
+            }
+        }
+    )
+
+    info = await device.get_connected_device_info()
+
+    assert info == {
+        "udid": "real-udid",
+        "name": "iPhone",
+        "model": "iPhone15,2",
+    }
+
+
+@pytest.mark.asyncio
+async def test_get_screen_size_includes_the_device_pixel_ratio():
+    """returns width/height plus the WDA screen scale."""
+    device, _ = _device({"GET /session/X/wda/screen": {"value": {"scale": 2}}})
+
+    assert await device.get_screen_size() == {
+        "width": 375,
+        "height": 812,
+        "scale": 2,
+    }
+
+
+@pytest.mark.asyncio
+async def test_get_elements_info_and_node_tree_are_empty():
+    """returns the upstream empty element representations."""
+    device, _ = _device()
+
+    assert await device.get_elements_info() == []
+    assert await device.get_elements_node_tree() == {"node": None, "children": []}
+    assert await device.url() == ""
+
+
+@pytest.mark.asyncio
+async def test_should_terminate_app_by_bundle_id():
+    """should terminate an app by bundle ID."""
+    device, transport = _device()
+    await device.terminate("com.apple.Preferences")
+
+    call = transport.calls_for("/wda/apps/terminate")[0]
+    assert call[2] == {"bundleId": "com.apple.Preferences"}
+
+
+@pytest.mark.asyncio
+async def test_should_open_url_through_launch(monkeypatch):
+    """launches URLs through the WDA url endpoint."""
+    device, transport = _device()
+    monkeypatch.setattr("midscene.ios.device.asyncio.sleep", AsyncMock())
+    await device.launch("https://www.apple.com")
+
+    call = transport.calls_for("/url")[0]
+    assert call[2] == {"url": "https://www.apple.com"}
+
+
+@pytest.mark.asyncio
+async def test_hide_keyboard_delegates_to_wda(monkeypatch):
+    """hideKeyboard delegates to the WDA keyboard dismissal helper."""
+    device, _ = _device()
+    dismiss = AsyncMock(return_value=True)
+    monkeypatch.setattr(device.wda, "dismiss_keyboard", dismiss)
+
+    assert await device.hide_keyboard(["Done"]) is True
+    dismiss.assert_awaited_once_with(["Done"])
+
+
+@pytest.mark.asyncio
+async def test_scroll_helpers_delegate_with_direction_distance_and_origin(monkeypatch):
+    """scrollUp/Down/Left/Right forward their arguments."""
+    device, _ = _device()
+    scroll = AsyncMock()
+    monkeypatch.setattr(device, "_scroll_in_direction", scroll)
+
+    await device.scroll_down(200, {"left": 10, "top": 20})
+
+    scroll.assert_awaited_once_with("down", 200, [10.0, 20.0])
+
+
+@pytest.mark.asyncio
+async def test_scroll_until_helpers_delegate_with_origin(monkeypatch):
+    """scrollUntil* forward the boundary direction and origin."""
+    device, _ = _device()
+    scroll = AsyncMock()
+    monkeypatch.setattr(device, "_scroll_until_boundary", scroll)
+
+    await device.scroll_until_right({"left": 30, "top": 40})
+
+    scroll.assert_awaited_once_with("right", [30.0, 40.0])
 
 
 @pytest.mark.asyncio

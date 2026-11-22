@@ -1,6 +1,44 @@
 """CLI argument helpers (upstream packages/cli/src/args.ts)."""
 
+from typing import Any, Dict, List
+
 from midscene.cli.config_options import YAML_TARGET_KEYS as _TARGET_KEYS
+
+
+def find_only_item_in_args(args: Dict[str, Any], name: str) -> Any:
+    """Return a single option value (upstream findOnlyItemInArgs).
+
+    A missing option yields ``False`` (upstream returns ``false``); more than
+    one value raises because the caller cannot pick one unambiguously.
+    """
+    found = args.get(name)
+    if found is None:
+        return False
+    if isinstance(found, list):
+        if len(found) > 1:
+            raise ValueError(f"Multiple values found for {name}")
+        return found[0] if found else False
+    return found
+
+
+def order_matters_parse(args: List[str]) -> List[Dict[str, Any]]:
+    """Parse ``--key value`` tokens while preserving their order."""
+    ordered: List[Dict[str, Any]] = []
+    for index, arg in enumerate(args):
+        if not arg.startswith("--"):
+            continue
+        key = arg[2:]
+        value: Any = True
+        if index + 1 < len(args) and not args[index + 1].startswith("--"):
+            value = args[index + 1]
+        if (
+            isinstance(value, str)
+            and value.isascii()
+            and value.isdigit()
+        ):
+            value = int(value, 10)
+        ordered.append({"name": key, "value": value})
+    return ordered
 
 
 def _kebab_to_camel(value: str) -> str:

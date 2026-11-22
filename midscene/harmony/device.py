@@ -11,7 +11,7 @@ import math
 import re
 import tempfile
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
 from loguru import logger
 
@@ -73,9 +73,19 @@ class HarmonyDevice(AbstractInterface):
     def __init__(
         self,
         device_id: str = "",
+        options: Optional[Any] = None,
         hdc_path: Optional[str] = None,
         hdc_timeout: float = 60.0,
     ):
+        if isinstance(options, str):
+            hdc_path = options
+        elif isinstance(options, dict):
+            hdc_path = options.get("hdcPath", options.get("hdc_path", hdc_path))
+            timeout_value = options.get(
+                "hdcTimeout", options.get("hdc_timeout")
+            )
+            if timeout_value is not None:
+                hdc_timeout = float(timeout_value)
         self.device_id = device_id or ""
         self._hdc_path = hdc_path
         self._hdc_timeout = hdc_timeout

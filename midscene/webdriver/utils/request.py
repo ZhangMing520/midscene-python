@@ -101,6 +101,17 @@ async def make_webdriver_request(
     return response_data
 
 
+async def make_web_driver_request(
+    base_url: str,
+    method: str,
+    path: str,
+    body: Optional[Any] = None,
+    timeout_ms: Optional[int] = None,
+) -> Any:
+    """Upstream-named alias for :func:`make_webdriver_request`."""
+    return await make_webdriver_request(base_url, method, path, body, timeout_ms)
+
+
 def protocol_error_code(body: Any) -> Optional[str]:
     if not isinstance(body, dict):
         return None

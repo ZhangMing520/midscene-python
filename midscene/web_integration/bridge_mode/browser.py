@@ -1,5 +1,8 @@
 """Browser-side bridge page re-export (upstream bridge-mode/browser.ts)."""
 
-from midscene.web_integration.bridge_mode.page_browser_side import BridgeWebPage
+from midscene.web_integration.bridge_mode.page_browser_side import (
+    BridgeWebPage,
+    ExtensionBridgePageBrowserSide,
+)
 
-__all__ = ["BridgeWebPage"]
+__all__ = ["BridgeWebPage", "ExtensionBridgePageBrowserSide"]

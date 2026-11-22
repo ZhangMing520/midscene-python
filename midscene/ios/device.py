@@ -42,18 +42,28 @@ SCROLL_UNCHANGED_TOLERANCE_PERCENT = 10
 # upstream waitForInputFocus deadline: the keyboard needs a moment after a tap
 INPUT_FOCUS_TIMEOUT_MS = 3000
 
+# HTTP methods supported by the WebDriverAgent API (upstream WDA_HTTP_METHODS).
+WDA_HTTP_METHODS = ("GET", "POST", "DELETE", "PUT")
+
 
 class IOSDevice(AbstractInterface):
     """iOS device driven through a running WebDriverAgent server."""
 
     def __init__(
         self,
-        host: str = "localhost",
+        host: Any = "localhost",
         port: int = 8100,
         base_url: Optional[str] = None,
         session_id: Optional[str] = None,
         timeout: float = 30.0,
     ):
+        if isinstance(host, dict):
+            options = host
+            host = options.get("wdaHost", "localhost")
+            port = int(options.get("wdaPort", 8100))
+            base_url = options.get("wdaBaseUrl", base_url)
+            session_id = options.get("sessionId", session_id)
+            timeout = float(options.get("timeout", timeout))
         self.wda = WebDriverAgentBackend(
             host=host, port=port, base_url=base_url,
             session_id=session_id, timeout=timeout,
@@ -61,21 +71,67 @@ class IOSDevice(AbstractInterface):
         self._connected = False
         self._screen_scale: Optional[float] = None
         self._app_name_mapping: Dict[str, str] = {}
+        # Upstream detects the real UDID during connect().
+        self.device_id = "pending-connection"
+        self._description: Optional[str] = None
+        self._uri: Optional[str] = None
 
     @property
     def interface_type(self) -> InterfaceType:
         return InterfaceType.IOS
 
-    async def connect(self, capabilities: Optional[Dict[str, Any]] = None) -> None:
+    async def connect(self) -> None:
         """Create (or attach to) a WDA session and apply iOS settings."""
         if self.wda.session_id:
             await self.wda.setup_existing_session()
         else:
-            await self.wda.create_session(capabilities)
+            await self.wda.create_session()
         self._connected = True
         info = await self.wda.get_device_info()
         if info:
             logger.info(f"iOS device connected: {info}")
+            if info.get("udid"):
+                self.device_id = info["udid"]
+        size = await self.get_screen_size()
+        detail = f"\nUDID: {self.device_id}"
+        if info:
+            detail += f"\nName: {info.get('name', '')}\nModel: {info.get('model', '')}"
+        detail += (
+            "\nType: WebDriverAgent"
+            f"\nScreenSize: {size['width']}x{size['height']} "
+            f"(DPR: {size['scale']})\n"
+        )
+        self._description = detail
+
+    def describe(self) -> str:
+        """Human-readable device description (upstream describe)."""
+        return self._description or f"Device ID: {self.device_id}"
+
+    async def get_connected_device_info(self) -> Optional[Dict[str, str]]:
+        """Device info reported by WebDriverAgent (upstream)."""
+        return await self.wda.get_device_info()
+
+    async def get_screen_size(self) -> Dict[str, float]:
+        """Logical window size plus the physical/logical scale (upstream)."""
+        await self._ensure_connected()
+        width, height = await self.wda.get_window_size()
+        return {
+            "width": width,
+            "height": height,
+            "scale": await self._device_pixel_ratio(),
+        }
+
+    async def get_elements_info(self) -> List[Any]:
+        """Element list is not extracted on iOS (upstream returns [])."""
+        return []
+
+    async def get_elements_node_tree(self) -> Dict[str, Any]:
+        """Simplified empty node tree (upstream)."""
+        return {"node": None, "children": []}
+
+    async def url(self) -> str:
+        """Current page URL is unavailable on iOS (upstream returns '')."""
+        return ""
 
     async def _ensure_connected(self) -> None:
         if not self._connected:
@@ -150,7 +206,7 @@ class IOSDevice(AbstractInterface):
         await self._ensure_connected()
         await self.wda.type_text(text)
 
-    async def clear_input(self) -> None:
+    async def clear_input(self, element: Optional[Any] = None) -> None:
         """Clear the focused field with the W3C element API (upstream clearInputAt)."""
         await self._ensure_connected()
         await self.wda.wait_for_input_focus(INPUT_FOCUS_TIMEOUT_MS)
@@ -188,6 +244,32 @@ class IOSDevice(AbstractInterface):
         await self.wda.swipe(from_x, from_y, to_x, to_y, duration)
 
     async def swipe(
+        self,
+        from_x: Any,
+        from_y: Optional[float] = None,
+        to_x: Optional[float] = None,
+        to_y: Optional[float] = None,
+        duration: float = 500,
+        **kwargs: Any,
+    ) -> None:
+        """Swipe by coordinates (upstream) or by direction (core action space).
+
+        Upstream exposes ``swipe(fromX, fromY, toX, toY, duration)``. The
+        shared Python action space calls ``swipe(direction, distance=...)``;
+        both shapes are accepted here.
+        """
+        if isinstance(from_x, str):
+            distance = kwargs.get("distance")
+            if distance is None:
+                distance = from_y
+            await self._swipe_direction(from_x, distance)
+            return
+        await self._swipe_coordinates(
+            float(from_x), float(from_y or 0), float(to_x or 0), float(to_y or 0),
+            duration,
+        )
+
+    async def _swipe_direction(
         self, direction: str, distance: Optional[int] = None
     ) -> None:
         """Finger-movement convention swipe (content follows the finger)."""
@@ -382,6 +464,132 @@ class IOSDevice(AbstractInterface):
         )
 
     # -- apps ---------------------------------------------------------------------------
+
+    @staticmethod
+    def _point_to_list(point: Optional[Any]) -> Optional[List[float]]:
+        if point is None:
+            return None
+        if isinstance(point, dict):
+            if "x" in point:
+                return [float(point["x"]), float(point["y"])]
+            return [float(point["left"]), float(point["top"])]
+        return [float(point[0]), float(point[1])]
+
+    async def launch(self, uri: str) -> "IOSDevice":
+        """Launch an app or URL and return this device (upstream launch)."""
+        self._uri = uri
+        try:
+            if "://" in uri:
+                await self.open_url(uri)
+            else:
+                await self.wda.launch_app(self._resolve_bundle_id(uri) or uri)
+        except Exception as error:  # noqa: BLE001 - mirror upstream wrapping
+            raise RuntimeError(f"Failed to launch {uri}: {error}") from error
+        return self
+
+    async def terminate(self, bundle_id: str) -> None:
+        """Terminate an app by bundle ID (upstream terminate)."""
+        resolved = self._resolve_bundle_id(bundle_id) or bundle_id
+        try:
+            await self.wda.terminate_app(resolved)
+        except Exception as error:  # noqa: BLE001 - mirror upstream wrapping
+            raise RuntimeError(
+                f"Failed to terminate {resolved}: {error}"
+            ) from error
+
+    async def hide_keyboard(
+        self, key_names: Optional[List[str]] = None
+    ) -> bool:
+        """Dismiss the software keyboard through WDA (upstream)."""
+        try:
+            return await self.wda.dismiss_keyboard(key_names)
+        except Exception as error:  # noqa: BLE001 - mirror upstream wrapping
+            raise RuntimeError(
+                f"Failed to hide the iOS keyboard through WDA: {error}"
+            ) from error
+
+    async def open_url(
+        self,
+        url: str,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Open a URL through WDA, optionally falling back to Safari."""
+        opts = {"useSafariAsBackup": True, "waitTime": 2000, **(options or {})}
+        try:
+            await self.wda.open_url(url)
+            await asyncio.sleep(float(opts["waitTime"]) / 1000.0)
+        except Exception as error:  # noqa: BLE001 - mirror upstream handling
+            if opts["useSafariAsBackup"]:
+                await self.open_url_via_safari(url)
+            else:
+                raise RuntimeError(f"Failed to open URL: {error}") from error
+
+    async def open_url_via_safari(self, url: str) -> None:
+        """Best-effort Safari fallback for opening a URL (upstream)."""
+        try:
+            await self.wda.terminate_app("com.apple.mobilesafari")
+            await self.wda.launch_app("com.apple.mobilesafari")
+            await asyncio.sleep(2)
+            await self.input_text(url)
+            await asyncio.sleep(0.5)
+            await self.keyboard_press("Return")
+            await asyncio.sleep(1)
+        except Exception as error:  # noqa: BLE001 - mirror upstream wrapping
+            raise RuntimeError(
+                f"Failed to open URL via Safari: {error}"
+            ) from error
+
+    async def scroll_up(
+        self, distance: Optional[int] = None, start_point: Optional[Any] = None
+    ) -> None:
+        await self._scroll_in_direction(
+            "up", distance, self._point_to_list(start_point)
+        )
+
+    async def scroll_down(
+        self, distance: Optional[int] = None, start_point: Optional[Any] = None
+    ) -> None:
+        await self._scroll_in_direction(
+            "down", distance, self._point_to_list(start_point)
+        )
+
+    async def scroll_left(
+        self, distance: Optional[int] = None, start_point: Optional[Any] = None
+    ) -> None:
+        await self._scroll_in_direction(
+            "left", distance, self._point_to_list(start_point)
+        )
+
+    async def scroll_right(
+        self, distance: Optional[int] = None, start_point: Optional[Any] = None
+    ) -> None:
+        await self._scroll_in_direction(
+            "right", distance, self._point_to_list(start_point)
+        )
+
+    async def scroll_until_top(self, start_point: Optional[Any] = None) -> None:
+        await self._scroll_until_boundary(
+            "up", self._point_to_list(start_point)
+        )
+
+    async def scroll_until_bottom(
+        self, start_point: Optional[Any] = None
+    ) -> None:
+        await self._scroll_until_boundary(
+            "down", self._point_to_list(start_point)
+        )
+
+    async def scroll_until_left(self, start_point: Optional[Any] = None) -> None:
+        await self._scroll_until_boundary(
+            "left", self._point_to_list(start_point)
+        )
+
+    async def scroll_until_right(
+        self, start_point: Optional[Any] = None
+    ) -> None:
+        await self._scroll_until_boundary(
+            "right", self._point_to_list(start_point)
+        )
 
     def set_app_name_mapping(self, mapping: Dict[str, str]) -> None:
         """Set the friendly app name -> bundle id mapping (upstream

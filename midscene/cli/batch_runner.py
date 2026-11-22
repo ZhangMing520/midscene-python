@@ -37,7 +37,8 @@ class BatchRunner:
         try:
             self.results = list(
                 await run_yaml_batch(
-                    self._raw_config, self._player_factory, state
+                    self._raw_config,
+                    {"player_factory": self._player_factory, "state": state},
                 )
             )
             return self.results

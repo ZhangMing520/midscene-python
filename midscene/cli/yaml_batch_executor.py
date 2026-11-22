@@ -153,19 +153,30 @@ def merge_web_overrides(
 
 async def run_yaml_batch(
     config: Dict[str, Any],
-    player_factory: Callable[[str, str], Any],
-    state: Optional[Dict[str, Any]] = None,
+    options: Optional[Any] = None,
 ) -> List[Dict[str, Any]]:
     """Execute every file of a batch config and return the result list.
 
+    ``options`` is either the upstream-style options mapping (which may carry
+    a ``player_factory`` and ``state``) or a player factory callable directly.
     `player_factory(yaml_content, file_path)` returns a ScriptPlayer-like
     object with run()/status/failed_tasks/output_path/result. Unexpected
     failures are raised as YamlBatchExecutionError; per-file player errors are
-    recorded as failed results instead. When `state` is provided it receives
+    recorded as failed results instead. A provided ``state`` mapping receives
     the lifecycle hook error (if any) under the "hook_error" key.
     """
-    if state is None:
-        state = {}
+    if callable(options):
+        player_factory = options
+        options = {}
+    else:
+        options = options or {}
+        player_factory = options.get("player_factory")
+    if player_factory is None:
+        raise ValueError(
+            "run_yaml_batch requires a player_factory in options or as the "
+            "second argument"
+        )
+    state = options.get("state") or {}
     cfg = parse_batch_config(config)
     results: List[Dict[str, Any]] = []
     hook_error: Optional[str] = None
@@ -248,6 +259,39 @@ async def run_yaml_batch(
             {"caseId": result.get("file"), "result": result} for result in results
         ]
         raise YamlBatchExecutionError(error, occurrences) from error
+
+
+async def run_yaml_batch_with_case_ids(
+    config: Dict[str, Any],
+    case_ids: List[str],
+    options: Optional[Dict[str, Any]] = None,
+) -> List[Dict[str, Any]]:
+    """Run a batch and return results paired with caller-provided case IDs.
+
+    The occurrence count covers the setup file (when configured) plus every
+    main file; IDs must be unique and in execution order.
+    """
+    occurrence_count = len(config.get("files") or []) + (
+        1 if config.get("setup") else 0
+    )
+    if len(case_ids) != occurrence_count:
+        raise ValueError(
+            "Batch occurrence identity mismatch: expected "
+            f"{occurrence_count} case ID(s), received {len(case_ids)}"
+        )
+    if len(set(case_ids)) != len(case_ids):
+        raise ValueError("Batch occurrence case IDs must be unique")
+    reuse_page = bool(config.get("reusePage"))
+    if reuse_page and not config.get("shareBrowserContext"):
+        raise ValueError("reusePage requires shareBrowserContext: true")
+    if reuse_page and int(config.get("concurrent") or 1) != 1:
+        raise ValueError("reusePage requires concurrent: 1")
+
+    results = await run_yaml_batch(config, options or {})
+    return [
+        {"caseId": case_id, "result": result}
+        for case_id, result in zip(case_ids, results)
+    ]
 
 
 async def _run_file(

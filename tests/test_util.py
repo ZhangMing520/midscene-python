@@ -9,60 +9,57 @@ core/yaml.ts; the Python counterparts live in
 
 import sys
 
-import pytest
-
 from midscene.core.yaml.utils import (
     build_detailed_locate_param,
     build_detailed_locate_param_and_rest_params,
 )
-from midscene.web_integration.web_page import build_key_commands
-
-
-@pytest.mark.skip(
-    reason="Python build_key_commands() returns the raw lowercase letter "
-    "instead of upstream transformHotkeyInput's uppercased 'A'; the shared "
-    "us-keyboard-layout module is not ported"
+from midscene.web_integration.web_page import (
+    build_key_commands,
+    get_key_commands,
 )
+
+
 def test_should_return_a_single_key_without_command_when_no_meta_or_control_key_is_provided():
     """should return a single key without command when no meta or control key is provided"""
-    pass
+    result = get_key_commands("a")
+    assert result == [{"key": "A"}]
 
 
-@pytest.mark.skip(
-    reason="Python build_key_commands()/keyboard_press() accept a single key "
-    "name string; there is no list-input equivalent to upstream "
-    "getKeyCommands(string | string[])"
-)
 def test_should_work_with_array_input_without_meta_key():
     """should work with array input without meta key"""
-    pass
+    result = get_key_commands(["b", "d"])
+    assert result == [{"key": "B"}, {"key": "D"}]
 
 
-@pytest.mark.skip(
-    reason="Python build_key_commands() accepts a single key name string; "
-    "there is no list-input equivalent to upstream getKeyCommands(string[])"
-)
 def test_should_attach_select_all_command_when_meta_is_present_with_key_a():
     '''should attach "SelectAll" command when "Meta" is present with key "a"'''
-    pass
+    result = get_key_commands(["Meta", "a", "b"])
+    assert result == [
+        {"key": "Meta"},
+        {"key": "A", "command": "SelectAll"},
+        {"key": "B"},
+    ]
 
 
-@pytest.mark.skip(
-    reason="Python build_key_commands() accepts a single key name string; "
-    "there is no list-input equivalent to upstream getKeyCommands(string[])"
-)
 def test_should_attach_copy_command_when_control_is_present_with_key_c():
     '''should attach "Copy" command when "Control" is present with key "c"'''
-    pass
+    result = get_key_commands(["Control", "c", "x"])
+    assert result == [
+        {"key": "Control"},
+        {"key": "C", "command": "Copy"},
+        {"key": "X"},
+    ]
 
 
-@pytest.mark.skip(
-    reason="Python build_key_commands() accepts a single key name string; "
-    "there is no list-input equivalent to upstream getKeyCommands(string[])"
-)
 def test_should_attach_proper_commands_for_uppercase_letters_when_meta_is_present():
     '''should attach proper commands for uppercase letters when "Meta" is present'''
-    pass
+    result = get_key_commands(["Meta", "A", "C", "V"])
+    assert result == [
+        {"key": "Meta"},
+        {"key": "A", "command": "SelectAll"},
+        {"key": "C", "command": "Copy"},
+        {"key": "V", "command": "Paste"},
+    ]
 
 
 def test_should_support_ctrl_a_combination_string():

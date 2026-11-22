@@ -1,9 +1,154 @@
 """UIAutomator XML -> UI node helpers (upstream ui-tree.ts)."""
 
+import re
 import xml.etree.ElementTree as ET
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from midscene.core.types import NodeType, Rect
+
+
+@dataclass
+class UiNode:
+    """Upstream core ``UiNode`` shape (type/attrs/bounds/children)."""
+
+    type: str
+    attrs: Dict[str, str] = field(default_factory=dict)
+    bounds: Rect = field(default_factory=lambda: Rect(0, 0, 0, 0))
+    children: List["UiNode"] = field(default_factory=list)
+
+
+_TAG_RE = re.compile(r"<(\/?)([A-Za-z_][A-Za-z0-9_.\-:]*)([^>]*?)(\/?)>")
+_ATTR_RE = re.compile(
+    r"([A-Za-z_][A-Za-z0-9_.\-:]*)\s*=\s*(\"([^\"]*)\"|'([^']*)')"
+)
+_BOUNDS_RE = re.compile(r"^\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]$")
+_ENTITY_TABLE = {
+    "amp": "&",
+    "lt": "<",
+    "gt": ">",
+    "quot": '"',
+    "apos": "'",
+}
+
+
+def _decode_entities(value: str) -> str:
+    if "&" not in value:
+        return value
+
+    def replace(match: "re.Match[str]") -> str:
+        body = match.group(1)
+        try:
+            if body[:2] in ("#x", "#X"):
+                return chr(int(body[2:], 16))
+            if body.startswith("#"):
+                return chr(int(body[1:], 10))
+        except (ValueError, OverflowError):
+            return match.group(0)
+        return _ENTITY_TABLE.get(body, match.group(0))
+
+    return re.sub(r"&(#x?[0-9a-fA-F]+|[a-zA-Z]+);", replace, value)
+
+
+def _parse_attrs(raw: str) -> Dict[str, str]:
+    attrs: Dict[str, str] = {}
+    for match in _ATTR_RE.finditer(raw):
+        attrs[match.group(1)] = _decode_entities(
+            match.group(3) if match.group(3) is not None else (match.group(4) or "")
+        )
+    return attrs
+
+
+@dataclass
+class _XmlElement:
+    name: str
+    attrs: Dict[str, str]
+    children: List["_XmlElement"] = field(default_factory=list)
+
+
+def _parse_xml(input_text: str) -> _XmlElement:
+    if input_text.strip() == "":
+        raise ValueError("parseAndroidUITreeXml: input is empty")
+
+    cleaned = re.sub(r"<\?xml[\s\S]*?\?>", "", input_text)
+    cleaned = re.sub(r"<!DOCTYPE[\s\S]*?>", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"<!--[\s\S]*?-->", "", cleaned)
+
+    stack: List[_XmlElement] = []
+    root: Optional[_XmlElement] = None
+
+    for match in _TAG_RE.finditer(cleaned):
+        is_close = match.group(1) == "/"
+        name = match.group(2)
+        if is_close:
+            current = stack.pop() if stack else None
+            if current is None or current.name != name:
+                raise ValueError(
+                    f"parseAndroidUITreeXml: unbalanced close tag </{name}>"
+                )
+            continue
+
+        element = _XmlElement(name=name, attrs=_parse_attrs(match.group(3) or ""))
+        if stack:
+            stack[-1].children.append(element)
+        elif root is not None:
+            raise ValueError(
+                "parseAndroidUITreeXml: more than one top-level element"
+            )
+        else:
+            root = element
+
+        if match.group(4) != "/":
+            stack.append(element)
+
+    if stack:
+        raise ValueError("parseAndroidUITreeXml: unclosed element")
+    if root is None:
+        raise ValueError("parseAndroidUITreeXml: no root element")
+    return root
+
+
+def _parse_ui_bounds(raw: Optional[str], device_pixel_ratio: float) -> Rect:
+    match = _BOUNDS_RE.match(raw) if raw else None
+    if not match:
+        return Rect(left=0, top=0, width=0, height=0)
+    left = int(match.group(1))
+    top = int(match.group(2))
+    right = int(match.group(3))
+    bottom = int(match.group(4))
+    ratio = device_pixel_ratio if device_pixel_ratio > 0 else 1
+    return Rect(
+        left=left / ratio,
+        top=top / ratio,
+        width=max(0, right - left) / ratio,
+        height=max(0, bottom - top) / ratio,
+    )
+
+
+def _to_ui_node(element: _XmlElement, device_pixel_ratio: float) -> UiNode:
+    attrs = {
+        name: value
+        for name, value in element.attrs.items()
+        if name != "bounds"
+    }
+    return UiNode(
+        type=element.attrs.get("class") or element.name,
+        attrs=attrs,
+        bounds=_parse_ui_bounds(element.attrs.get("bounds"), device_pixel_ratio),
+        children=[
+            _to_ui_node(child, device_pixel_ratio)
+            for child in element.children
+        ],
+    )
+
+
+def uiautomator_xml_to_ui_node(xml: str, device_pixel_ratio: float) -> UiNode:
+    """Parse a UIAutomator dump into the upstream UiNode hierarchy."""
+    root = _parse_xml(xml)
+    if root.name == "hierarchy" and len(root.children) == 1:
+        return _to_ui_node(root.children[0], device_pixel_ratio)
+    return _to_ui_node(root, device_pixel_ratio)
+
 
 
 def parse_bounds(bounds: str) -> Optional[Rect]:
@@ -82,7 +227,9 @@ def parse_ui_automator_xml(xml_content: str) -> List[Dict[str, Any]]:
 
 
 __all__ = [
+    "UiNode",
     "parse_bounds",
     "get_android_node_type",
     "parse_ui_automator_xml",
+    "uiautomator_xml_to_ui_node",
 ]

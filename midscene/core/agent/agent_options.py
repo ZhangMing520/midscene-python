@@ -212,8 +212,58 @@ def normalize_agent_options(options: Any, warn: Callable[[str], None]) -> None:
         )
 
 
+_AGENT_OPTION_ALIASES = {
+    "testId": "test_id",
+    "cacheId": "cache_id",
+    "groupName": "group_name",
+    "groupDescription": "group_description",
+    "generateReport": "generate_report",
+    "autoPrintReportMsg": "auto_print_report_msg",
+    "aiActionContext": "ai_action_context",
+    "reportFileName": "report_file_name",
+    "modelConfig": "model_config",
+    "onTaskStartTip": "on_task_start_tip",
+    "replanningCycleLimit": "replanning_cycle_limit",
+    "screenshotShrinkFactor": "screenshot_shrink_factor",
+    "waitAfterAction": "wait_after_action_ms",
+    "waitForActionReady": "wait_for_action_ready",
+    "aiContexts": "ai_contexts",
+    "onLLMUsage": "on_llm_usage",
+    "reportAttributes": "report_attributes",
+    "reportArtifactDir": "report_artifact_dir",
+    "outputFormat": "output_format",
+    "createOpenAIClient": "create_openai_client",
+    "aiActContext": "ai_act_context",
+    "persistExecutionDump": "persist_execution_dump",
+    "useDeviceTime": "use_device_time",
+}
+
+
+def coerce_agent_options(options: Any = None) -> AgentOptions:
+    """Convert a dict/AgentOptions pair into AgentOptions.
+
+    Platform factories receive one merged object containing both agent and
+    device options (upstream ``AgentOpt & DeviceOpt``); unknown keys such as
+    ``androidAdbPath`` or ``wdaHost`` are ignored here.
+    """
+    if options is None:
+        return AgentOptions()
+    if isinstance(options, AgentOptions):
+        return options
+    if isinstance(options, dict):
+        fields = AgentOptions.__dataclass_fields__
+        kwargs = {}
+        for key, value in options.items():
+            target = _AGENT_OPTION_ALIASES.get(key, key)
+            if target in fields:
+                kwargs[target] = value
+        return AgentOptions(**kwargs)
+    return options
+
+
 __all__ = [
     "AgentOptions",
+    "coerce_agent_options",
     "normalize_agent_options",
     "with_agent_defaults",
 ]

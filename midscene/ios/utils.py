@@ -5,18 +5,27 @@ import platform
 from typing import Dict
 
 
-def check_macos_platform() -> Dict[str, object]:
+def check_mac_os_platform() -> Dict[str, object]:
     """Report whether the host is macOS (upstream checkMacOSPlatform)."""
     current_platform = platform.system().lower()
+    # Node's os.platform() reports "win32"; normalize Python's "windows" so
+    # downstream messages keep the upstream value.
+    if current_platform == "windows":
+        current_platform = "win32"
     return {
         "isMacOS": current_platform == "darwin",
         "platform": current_platform,
     }
 
 
+def check_macos_platform() -> Dict[str, object]:
+    """Backward-compatible alias of :func:`check_mac_os_platform`."""
+    return check_mac_os_platform()
+
+
 async def check_ios_environment() -> Dict[str, object]:
     """Check xcode command-line tooling availability (upstream)."""
-    platform_check = check_macos_platform()
+    platform_check = check_mac_os_platform()
     if not platform_check["isMacOS"]:
         return {
             "available": False,
@@ -87,7 +96,8 @@ def screenshots_similar(
 
 
 __all__ = [
-    "check_macos_platform",
     "check_ios_environment",
+    "check_mac_os_platform",
+    "check_macos_platform",
     "screenshots_similar",
 ]

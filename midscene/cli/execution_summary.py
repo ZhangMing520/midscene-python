@@ -20,6 +20,8 @@ _DUMP_SCRIPT_PATTERN = re.compile(
     r'<script[^>]*type="midscene_web_dump"[^>]*>(.*?)</script>', re.DOTALL
 )
 
+not_executed_error = "Not executed (previous task failed)"
+
 
 def create_not_executed_yaml_result(file_path: str) -> Dict[str, Any]:
     """Result for a file skipped because an earlier task failed."""
@@ -27,8 +29,157 @@ def create_not_executed_yaml_result(file_path: str) -> Dict[str, Any]:
         "file": file_path,
         "success": False,
         "executed": False,
+        "output": None,
+        "report": None,
+        "duration": 0,
         "resultType": "notExecuted",
+        "error": not_executed_error,
     }
+
+
+def _field(value: Any, *names: str, default: Any = None) -> Any:
+    for name in names:
+        if isinstance(value, dict) and name in value:
+            return value[name]
+        if hasattr(value, name):
+            return getattr(value, name)
+    return default
+
+
+def _player_task_status_list(player: Any) -> List[Dict[str, Any]]:
+    statuses = _field(player, "taskStatusList", "task_status_list")
+    if isinstance(statuses, list):
+        return statuses
+    failed_tasks = _field(player, "failedTasks", "failed_tasks", default=[])
+    return [
+        {"status": "error", "error": task}
+        for task in failed_tasks or []
+    ]
+
+
+def _is_player_successful(player: Any) -> bool:
+    """True when the player and all of its tasks finished without error."""
+    if _field(player, "status", default="done") == "error":
+        return False
+    statuses = _player_task_status_list(player)
+    return not any(
+        _field(task, "status", default="done") == "error" for task in statuses
+    )
+
+
+def is_yaml_player_successful(player: Any) -> bool:
+    """Whether a YAML player (and every task) succeeded."""
+    return _is_player_successful(player)
+
+
+def _task_error_messages(player: Any) -> List[str]:
+    messages: List[str] = []
+    for task in _player_task_status_list(player):
+        error = _field(task, "error")
+        message = _field(error, "message", default=error)
+        if message:
+            messages.append(str(message))
+    return messages
+
+
+def create_executed_yaml_result(options: Dict[str, Any]) -> Dict[str, Any]:
+    """Build the result for a directly executed YAML file."""
+    file_path = options["file"]
+    player = options["player"]
+    duration = options.get("duration", 0)
+    has_player_error = _field(player, "status", default="done") == "error"
+    has_failed_tasks = not _is_player_successful(player) and not has_player_error
+
+    if has_player_error:
+        success = False
+        result_type = "failed"
+    elif has_failed_tasks:
+        success = False
+        result_type = "partialFailed"
+    else:
+        success = True
+        result_type = "success"
+
+    output_path = _field(player, "output", "output_path")
+    if output_path and not Path(output_path).exists():
+        output_path = None
+
+    error_message: Optional[str] = None
+    setup_error = _field(player, "errorInSetup", "error_in_setup")
+    if _field(setup_error, "message"):
+        error_message = _field(setup_error, "message")
+    elif has_player_error or has_failed_tasks:
+        task_errors = _task_error_messages(player)
+        if task_errors:
+            error_message = "; ".join(task_errors)
+        elif has_player_error:
+            error_message = "Execution failed"
+        else:
+            error_message = "Some tasks failed"
+
+    return {
+        "file": file_path,
+        "success": success,
+        "executed": True,
+        "output": output_path,
+        "report": _field(player, "reportFile", "report_file") or None,
+        "duration": duration,
+        "resultType": result_type,
+        "error": error_message,
+    }
+
+
+def create_unexpected_yaml_result(options: Dict[str, Any]) -> Dict[str, Any]:
+    """Build the result for a file whose execution raised unexpectedly."""
+    file_path = options["file"]
+    error = options["error"]
+    duration = options.get("duration", 0)
+    player = options.get("player")
+    output = _field(player, "output", "output_path") if player else None
+    return {
+        "file": file_path,
+        "success": False,
+        "executed": True,
+        "output": output if output and Path(output).exists() else None,
+        "report": (_field(player, "reportFile", "report_file") if player else None)
+        or None,
+        "duration": duration,
+        "resultType": "failed",
+        "error": _field(error, "message", default=str(error)),
+    }
+
+
+def resolve_yaml_max_attempts(retry: Optional[float] = None) -> int:
+    """Total attempts for one file: retries + the initial run."""
+    if (
+        not isinstance(retry, (int, float))
+        or isinstance(retry, bool)
+        or retry != retry
+        or retry in (float("inf"), float("-inf"))
+        or retry < 1
+    ):
+        return 1
+    return int(retry) + 1
+
+
+def create_yaml_attempt(
+    result: Dict[str, Any], attempt: int
+) -> Dict[str, Any]:
+    """Project one player result onto the per-attempt record."""
+    return {
+        "attempt": attempt,
+        "success": result.get("success"),
+        "output": result.get("output"),
+        "report": result.get("report"),
+        "error": result.get("error"),
+        "duration": result.get("duration"),
+        "resultType": result.get("resultType"),
+    }
+
+
+def get_yaml_attempts_duration(attempts: List[Dict[str, Any]]) -> int:
+    """Aggregate duration across all attempts of one file."""
+    return sum((attempt.get("duration") or 0) for attempt in attempts)
 
 
 def get_result_files_by_type(
@@ -45,10 +196,16 @@ def is_batch_successful(
     return hook_error is None and all(r["success"] for r in results)
 
 
-def _get_results_by_type(
+def get_results_by_type(
     results: List[Dict[str, Any]], result_type: str
 ) -> List[Dict[str, Any]]:
     return [r for r in results if r.get("resultType") == result_type]
+
+
+def _get_results_by_type(
+    results: List[Dict[str, Any]], result_type: str
+) -> List[Dict[str, Any]]:
+    return get_results_by_type(results, result_type)
 
 
 def get_execution_summary(results: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -300,6 +457,11 @@ def print_execution_plan(config: Dict[str, Any]) -> None:
     print(f"   Share browser context: {config.get('shareBrowserContext', False)}")
     print(f"   Reuse browser page: {config.get('reusePage', False)}")
     print(f"   Summary output: {config.get('summary')}")
+
+
+def print_execution_finished() -> None:
+    """Print the closing marker of a batch run (upstream)."""
+    print("Execution finished:")
 
 
 def print_execution_summary(

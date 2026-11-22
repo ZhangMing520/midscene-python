@@ -32,8 +32,8 @@ from midscene.web_integration.common.cache_helper import judge_order_sensitive
 from midscene.web_integration.web_element import PlaywrightElement
 
 
-class PlaywrightWebPage(BrowserPageActionsMixin, AbstractInterface):
-    """Playwright page interface"""
+class WebPage(BrowserPageActionsMixin, AbstractInterface):
+    """Playwright page interface (upstream playwright/page.ts WebPage)."""
 
     def __init__(
         self,
@@ -104,7 +104,7 @@ class PlaywrightWebPage(BrowserPageActionsMixin, AbstractInterface):
         auto_follow_new_page: bool = False,
         force_chrome_select_rendering: bool = True,
         **browser_options
-    ) -> 'PlaywrightWebPage':
+    ) -> 'WebPage':
         """Create new Playwright page instance
 
         Args:
@@ -531,3 +531,9 @@ class PlaywrightWebPage(BrowserPageActionsMixin, AbstractInterface):
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.close()
+
+
+# Historical Python name for the upstream Playwright ``WebPage`` class.
+PlaywrightWebPage = WebPage
+
+__all__ = ["PlaywrightWebPage", "WebPage"]

@@ -8,9 +8,18 @@ import pytest
 
 from midscene.cli import execution_summary as summary_module
 from midscene.cli.execution_summary import (
+    create_executed_yaml_result,
+    create_unexpected_yaml_result,
+    create_yaml_attempt,
+    get_results_by_type,
+    get_yaml_attempts_duration,
+    is_yaml_player_successful,
+    not_executed_error,
     preserve_yaml_attempt_report,
+    print_execution_finished,
     print_execution_plan,
     print_execution_summary,
+    resolve_yaml_max_attempts,
     write_execution_summary_file,
 )
 
@@ -347,3 +356,148 @@ async def test_keeps_writing_summary_when_retry_report_merging_fails(
     assert "Failed to merge retry attempt report" in err
     assert merge_calls
     assert (run_dir / "log" / "execution-summary.log").exists()
+
+
+def test_executed_result_reports_success_with_existing_output(tmp_path):
+    output = tmp_path / "out.json"
+    report = tmp_path / "report.html"
+    output.write_text("{}", encoding="utf-8")
+    report.write_text("<html></html>", encoding="utf-8")
+
+    result = create_executed_yaml_result(
+        {
+            "file": "/tmp/case.yaml",
+            "duration": 42,
+            "player": {
+                "status": "done",
+                "taskStatusList": [{"status": "done"}],
+                "output": str(output),
+                "reportFile": str(report),
+            },
+        }
+    )
+
+    assert result == {
+        "file": "/tmp/case.yaml",
+        "success": True,
+        "executed": True,
+        "output": str(output),
+        "report": str(report),
+        "duration": 42,
+        "resultType": "success",
+        "error": None,
+    }
+
+
+def test_executed_result_reports_partial_failure_from_task_errors():
+    result = create_executed_yaml_result(
+        {
+            "file": "/tmp/case.yaml",
+            "duration": 10,
+            "player": {
+                "status": "done",
+                "taskStatusList": [
+                    {"status": "error", "error": {"message": "assertion failed"}},
+                ],
+            },
+        }
+    )
+
+    assert result["success"] is False
+    assert result["resultType"] == "partialFailed"
+    assert result["error"] == "assertion failed"
+    assert is_yaml_player_successful(
+        {"status": "done", "taskStatusList": [{"status": "done"}]}
+    )
+
+
+def test_executed_result_reports_player_failure():
+    result = create_executed_yaml_result(
+        {
+            "file": "/tmp/case.yaml",
+            "duration": 0,
+            "player": {
+                "status": "error",
+                "errorInSetup": {"message": "browser crashed"},
+            },
+        }
+    )
+
+    assert result["success"] is False
+    assert result["resultType"] == "failed"
+    assert result["error"] == "browser crashed"
+
+
+def test_executed_result_drops_a_missing_output_file(tmp_path):
+    result = create_executed_yaml_result(
+        {
+            "file": "/tmp/case.yaml",
+            "duration": 0,
+            "player": {
+                "status": "done",
+                "output": str(tmp_path / "missing.json"),
+            },
+        }
+    )
+
+    assert result["output"] is None
+
+
+def test_unexpected_result_reports_the_error_message():
+    result = create_unexpected_yaml_result(
+        {
+            "file": "/tmp/case.yaml",
+            "error": RuntimeError("boom"),
+            "duration": 7,
+        }
+    )
+
+    assert result["success"] is False
+    assert result["executed"] is True
+    assert result["error"] == "boom"
+    assert result["resultType"] == "failed"
+    assert result["duration"] == 7
+
+
+def test_attempt_helpers_and_result_type_filtering():
+    first = create_yaml_attempt(
+        {
+            "success": False,
+            "output": "/tmp/a.json",
+            "report": "/tmp/a.html",
+            "error": "nope",
+            "duration": 5,
+            "resultType": "failed",
+        },
+        1,
+    )
+    second = create_yaml_attempt(
+        {"success": True, "duration": 8, "resultType": "success"}, 2
+    )
+
+    assert first["attempt"] == 1
+    assert first["error"] == "nope"
+    assert second["attempt"] == 2
+    assert get_yaml_attempts_duration([first, second]) == 13
+    assert get_yaml_attempts_duration([]) == 0
+    assert get_results_by_type([first, second], "failed") == [first]
+
+
+def test_resolve_yaml_max_attempts_falls_back_to_one():
+    assert resolve_yaml_max_attempts() == 1
+    assert resolve_yaml_max_attempts(0) == 1
+    assert resolve_yaml_max_attempts(float("nan")) == 1
+    assert resolve_yaml_max_attempts(float("inf")) == 1
+    assert resolve_yaml_max_attempts(2) == 3
+    assert resolve_yaml_max_attempts(2.9) == 3
+
+
+def test_not_executed_error_and_finished_marker(capsys):
+    from midscene.cli.execution_summary import create_not_executed_yaml_result
+
+    result = create_not_executed_yaml_result("/tmp/case.yaml")
+    assert result["error"] == not_executed_error
+    assert result["resultType"] == "notExecuted"
+
+    print_execution_finished()
+    assert "Execution finished:" in capsys.readouterr().out

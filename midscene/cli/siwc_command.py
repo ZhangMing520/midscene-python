@@ -13,6 +13,7 @@ from rich.console import Console
 
 from midscene.cli.dotenv_loader import _load_dotenv
 from midscene.cli.openai.credentials import (
+    _save_credentials,
     default_credentials_path,
     lock_credentials,
     read_registration,
@@ -193,7 +194,35 @@ def run_siwc_login(
 ) -> bool:
     """Sign in with your ChatGPT plan (SIWC) and store credentials."""
     _load_dotenv()
-    return login_with_openai(console, port=port, client_id=client_id)
+    try:
+        credentials = asyncio.run(
+            login_with_openai(console=console, port=port, client_id=client_id)
+        )
+    except Exception as error:
+        console.print(f"[red]{describe_siwc_error(error)}[/red]")
+        return False
+
+    _save_credentials(
+        {
+            "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "credentials": credentials,
+        }
+    )
+    masked = (
+        credentials["access_token"][:8]
+        + "..."
+        + credentials["access_token"][-4:]
+    )
+    console.print(
+        f"[green]Signed in "
+        f"({credentials.get('email', credentials.get('subject'))})[/green]"
+    )
+    console.print(f"Access token: {masked}")
+    console.print(
+        "Credentials stored in ~/.midscene/siwc.json. "
+        "Use MIDSCENE_MODEL_AUTH_MODE=siwc to use your ChatGPT plan."
+    )
+    return True
 
 
 def run_siwc_refresh(console: Console) -> bool:

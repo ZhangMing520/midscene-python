@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-11-22T10:12:42+00:00",
+  "generated_at": "2026-11-22T11:08:13+00:00",
   "upstream_root": "/home/zhangming/gitspace/midscene",
   "counts": {
     "modules": 425,
-    "api_missing": 68,
-    "method_missing_functions": 45,
-    "method_missing_classes": 7,
-    "method_missing_methods": 102,
-    "signature_mismatch": 47
+    "api_missing": 0,
+    "method_missing_functions": 5,
+    "method_missing_classes": 2,
+    "method_missing_methods": 66,
+    "signature_mismatch": 43
   },
   "modules": [
     {
@@ -15,18 +15,10 @@
       "python": "android/adb_shell.py",
       "package": "android",
       "batch": "P4",
-      "status": "partial",
-      "api_missing": [
-        "buildRunAdbShellPlanningFeedback",
-        "getAdbShellStdoutOrThrow",
-        "runAdbShellStdoutOrThrow"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "buildRunAdbShellPlanningFeedback",
-        "getAdbShellStdoutOrThrow",
-        "runAdbShellStdoutOrThrow"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -38,14 +30,10 @@
       "python": "android/adb.py",
       "package": "android",
       "batch": "P4",
-      "status": "partial",
-      "api_missing": [
-        "createAndroidAdb"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "createAndroidAdb"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -57,21 +45,12 @@
       "python": "android/agent.py",
       "package": "android",
       "batch": "P4",
-      "status": "partial",
-      "api_missing": [
-        "agentFromAdbDevice"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "agentFromAdbDevice"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
-      "method_missing_methods": [
-        "AndroidAgent.getTestRunnerNodeDefinitions",
-        "AndroidAgent.launch",
-        "AndroidAgent.runAdbShell",
-        "AndroidAgent.terminate"
-      ],
+      "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
       "owner": ""
@@ -219,14 +198,10 @@
       "python": "android/ui_tree.py",
       "package": "android",
       "batch": "P4",
-      "status": "partial",
-      "api_missing": [
-        "uiautomatorXmlToUiNode"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "uiautomatorXmlToUiNode"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -238,19 +213,10 @@
       "python": "android/utils.py",
       "package": "android",
       "batch": "P4",
-      "status": "partial",
-      "api_missing": [
-        "getConnectedDevicesWithDetails"
-      ],
-      "api_moved": [
-        {
-          "name": "getConnectedDevices",
-          "found_in": "midscene/harmony/utils.py"
-        }
-      ],
-      "method_missing_functions": [
-        "getConnectedDevicesWithDetails"
-      ],
+      "status": "done",
+      "api_missing": [],
+      "api_moved": [],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -277,16 +243,10 @@
       "python": "cli/args.py",
       "package": "cli",
       "batch": "P4",
-      "status": "partial",
-      "api_missing": [
-        "findOnlyItemInArgs",
-        "orderMattersParse"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "findOnlyItemInArgs",
-        "orderMattersParse"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -313,10 +273,8 @@
       "python": "cli/cli_utils.py",
       "package": "cli",
       "batch": "P4",
-      "status": "partial",
-      "api_missing": [
-        "parseProcessArgs"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
@@ -390,28 +348,10 @@
       "python": "cli/execution_summary.py",
       "package": "cli",
       "batch": "P4",
-      "status": "partial",
-      "api_missing": [
-        "createExecutedYamlResult",
-        "createUnexpectedYamlResult",
-        "createYamlAttempt",
-        "getYamlAttemptsDuration",
-        "isYamlPlayerSuccessful",
-        "notExecutedError",
-        "printExecutionFinished",
-        "resolveYamlMaxAttempts"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "createExecutedYamlResult",
-        "createUnexpectedYamlResult",
-        "createYamlAttempt",
-        "getResultsByType",
-        "getYamlAttemptsDuration",
-        "isYamlPlayerSuccessful",
-        "printExecutionFinished",
-        "resolveYamlMaxAttempts"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -483,14 +423,10 @@
       "python": "cli/openai/login.py",
       "package": "cli",
       "batch": "P4",
-      "status": "partial",
-      "api_missing": [
-        "loginWithOpenAI"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "loginWithOpenAI"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -502,18 +438,8 @@
       "python": "cli/printer.py",
       "package": "cli",
       "batch": "P4",
-      "status": "partial",
-      "api_missing": [
-        "contextInfo",
-        "contextTaskListSummary",
-        "currentSpinningFrame",
-        "formatYamlProgressSnapshot",
-        "indent",
-        "isTTY",
-        "singleTaskInfo",
-        "spinnerFrames",
-        "spinnerInterval"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
@@ -572,19 +498,13 @@
       "python": "cli/yaml_batch_executor.py",
       "package": "cli",
       "batch": "P4",
-      "status": "partial",
-      "api_missing": [
-        "runYamlBatchWithCaseIds"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "runYamlBatchWithCaseIds"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".runYamlBatch"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -638,17 +558,10 @@
       "python": "computer/agent.py",
       "package": "computer",
       "batch": "P4",
-      "status": "partial",
-      "api_missing": [
-        "agentForComputer",
-        "agentForRDPComputer",
-        "agentFromComputer"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "agentForComputer",
-        "agentForRDPComputer"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -660,34 +573,12 @@
       "python": "computer/device.py",
       "package": "computer",
       "batch": "P4",
-      "status": "partial",
-      "api_missing": [
-        "LIBNUT_FALLBACK_EDGE_DETENTS",
-        "getDisplayInfoBinary",
-        "getPhasedScrollBinary",
-        "mapDisplayLocalPointToGlobal",
-        "readDarwinDisplayGeometries",
-        "resolveDarwinDisplayGeometryFromList",
-        "runPhasedScroll"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "getDisplayInfoBinary",
-        "getPhasedScrollBinary",
-        "mapDisplayLocalPointToGlobal",
-        "readDarwinDisplayGeometries",
-        "resolveDarwinDisplayGeometryFromList",
-        "runPhasedScroll"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
-      "method_missing_methods": [
-        "ComputerDevice.connect",
-        "ComputerDevice.describe",
-        "ComputerDevice.destroy",
-        "ComputerDevice.listDisplays",
-        "ComputerDevice.screenshotBase64",
-        "ComputerDevice.url"
-      ],
+      "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
       "owner": ""
@@ -793,15 +684,11 @@
       "python": "computer/rdp/backend_client.py",
       "package": "computer",
       "batch": "P4",
-      "status": "partial",
-      "api_missing": [
-        "HelperProcessRDPBackendClient"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
-      "method_missing_classes": [
-        "HelperProcessRDPBackendClient"
-      ],
+      "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
@@ -864,20 +751,10 @@
       "python": "computer/utils.py",
       "package": "computer",
       "batch": "P4",
-      "status": "partial",
-      "api_missing": [
-        "checkAccessibilityPermission",
-        "checkComputerEnvironment",
-        "checkScreenRecordingPermission",
-        "getConnectedDisplays"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "checkAccessibilityPermission",
-        "checkComputerEnvironment",
-        "checkScreenRecordingPermission",
-        "getConnectedDisplays"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -5252,21 +5129,12 @@
       "python": "harmony/agent.py",
       "package": "harmony",
       "batch": "P4",
-      "status": "partial",
-      "api_missing": [
-        "agentFromHdcDevice"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "agentFromHdcDevice"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
-      "method_missing_methods": [
-        "HarmonyAgent.getTestRunnerNodeDefinitions",
-        "HarmonyAgent.launch",
-        "HarmonyAgent.runHdcShell",
-        "HarmonyAgent.terminate"
-      ],
+      "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
       "owner": ""
@@ -5402,20 +5270,12 @@
       "python": "ios/agent.py",
       "package": "ios",
       "batch": "P4",
-      "status": "partial",
-      "api_missing": [
-        "agentFromWebDriverAgent"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "agentFromWebDriverAgent"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
-      "method_missing_methods": [
-        "IOSAgent.getTestRunnerNodeDefinitions",
-        "IOSAgent.launch",
-        "IOSAgent.terminate"
-      ],
+      "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
       "owner": ""
@@ -5440,39 +5300,13 @@
       "python": "ios/device.py",
       "package": "ios",
       "batch": "P4",
-      "status": "partial",
-      "api_missing": [
-        "WDA_HTTP_METHODS"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
-      "method_missing_methods": [
-        "IOSDevice.describe",
-        "IOSDevice.getConnectedDeviceInfo",
-        "IOSDevice.getElementsInfo",
-        "IOSDevice.getElementsNodeTree",
-        "IOSDevice.getScreenSize",
-        "IOSDevice.hideKeyboard",
-        "IOSDevice.launch",
-        "IOSDevice.openUrl",
-        "IOSDevice.openUrlViaSafari",
-        "IOSDevice.scrollDown",
-        "IOSDevice.scrollLeft",
-        "IOSDevice.scrollRight",
-        "IOSDevice.scrollUntilBottom",
-        "IOSDevice.scrollUntilLeft",
-        "IOSDevice.scrollUntilRight",
-        "IOSDevice.scrollUntilTop",
-        "IOSDevice.scrollUp",
-        "IOSDevice.terminate",
-        "IOSDevice.url"
-      ],
-      "signature_mismatch": [
-        "IOSDevice.clearInput",
-        "IOSDevice.connect",
-        "IOSDevice.swipe"
-      ],
+      "method_missing_methods": [],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -5560,14 +5394,10 @@
       "python": "ios/utils.py",
       "package": "ios",
       "batch": "P4",
-      "status": "partial",
-      "api_missing": [
-        "checkMacOSPlatform"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "checkMacOSPlatform"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -6461,10 +6291,8 @@
       "python": "web_integration/bridge_mode/browser.py",
       "package": "web-integration",
       "batch": "P4",
-      "status": "partial",
-      "api_missing": [
-        "ExtensionBridgePageBrowserSide"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
@@ -6478,15 +6306,8 @@
       "python": "web_integration/bridge_mode/common.py",
       "package": "web-integration",
       "batch": "P4",
-      "status": "partial",
-      "api_missing": [
-        "BridgeErrorCodeNoClientConnected",
-        "BridgeEvent",
-        "BridgePageType",
-        "DefaultLocalEndpoint",
-        "KeyboardEvent",
-        "MouseEvent"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
@@ -6532,15 +6353,11 @@
       "python": "web_integration/bridge_mode/page_browser_side.py",
       "package": "web-integration",
       "batch": "P4",
-      "status": "partial",
-      "api_missing": [
-        "ExtensionBridgePageBrowserSide"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
-      "method_missing_classes": [
-        "ExtensionBridgePageBrowserSide"
-      ],
+      "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
@@ -6628,18 +6445,10 @@
       "python": "web_integration/common/viewport.py",
       "package": "web-integration",
       "batch": "P4",
-      "status": "partial",
-      "api_missing": [
-        "defaultPuppeteerWindowViewportSize",
-        "defaultStaticPageViewportSize",
-        "resolveViewportSize",
-        "resolveWebViewportSize"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "resolveViewportSize",
-        "resolveWebViewportSize"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -6681,15 +6490,11 @@
       "python": "web_integration/playwright/page.py",
       "package": "web-integration",
       "batch": "P4",
-      "status": "partial",
-      "api_missing": [
-        "WebPage"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
-      "method_missing_classes": [
-        "WebPage"
-      ],
+      "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
@@ -6700,16 +6505,11 @@
       "python": "web_integration/web_element.py",
       "package": "web-integration",
       "batch": "P4",
-      "status": "partial",
-      "api_missing": [
-        "WebElementInfoImpl",
-        "limitOpenNewTabScript"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
-      "method_missing_classes": [
-        "WebElementInfoImpl"
-      ],
+      "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
@@ -6720,20 +6520,11 @@
       "python": "web_integration/web_page.py",
       "package": "web-integration",
       "batch": "P4",
-      "status": "partial",
-      "api_missing": [
-        "commonWebActionsForWebPage",
-        "createWebInputPrimitives",
-        "getKeyCommands"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "createWebInputPrimitives",
-        "getKeyCommands"
-      ],
-      "method_missing_classes": [
-        "AbstractWebPage"
-      ],
+      "method_missing_functions": [],
+      "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
@@ -6819,14 +6610,10 @@
       "python": "webdriver/utils/base_url.py",
       "package": "webdriver",
       "batch": "P4",
-      "status": "partial",
-      "api_missing": [
-        "normalizeWebDriverBaseUrl"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "normalizeWebDriverBaseUrl"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -6838,14 +6625,10 @@
       "python": "webdriver/utils/request.py",
       "package": "webdriver",
       "batch": "P4",
-      "status": "partial",
-      "api_missing": [
-        "makeWebDriverRequest"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "makeWebDriverRequest"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],

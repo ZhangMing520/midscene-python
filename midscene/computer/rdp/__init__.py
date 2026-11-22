@@ -7,6 +7,7 @@ from midscene.computer.rdp.address import (
     normalize_rdp_host,
 )
 from midscene.computer.rdp.backend_client import (
+    HelperProcessRDPBackendClient,
     UnsupportedRDPBackendClient,
     create_default_rdp_backend_client,
 )
@@ -43,6 +44,7 @@ __all__ = [
     "RDPScrollDirection",
     "RDPSecurityProtocol",
     "UnsupportedRDPBackendClient",
+    "HelperProcessRDPBackendClient",
     "create_default_rdp_backend_client",
     "format_rdp_host",
     "format_rdp_server_address",

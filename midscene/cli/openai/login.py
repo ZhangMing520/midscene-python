@@ -1,120 +1,260 @@
 """Interactive SIWC login flow (upstream packages/cli/src/openai/login.ts)."""
 
-from typing import Any, Callable, Optional
 import asyncio
-import threading
-import time
+import inspect
 import uuid
 import webbrowser
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from typing import Any, Dict, Optional
+from urllib.parse import urlsplit
 
 from rich.console import Console
 
-from midscene.cli.openai.credentials import _save_credentials
+from midscene.cli.openai.errors import SiwcError, with_siwc_stage
 
 
-def login_with_openai(
-    console: Optional[Console] = None,
-    port: Optional[int] = None,
-    client_id: Optional[str] = None,
-    host_id: Optional[str] = None,
-    on_authorization: Optional[Callable[[str], None]] = None,
-    no_open: bool = False,
-    signal: Any = None,
-) -> bool:
-    """Sign in with your ChatGPT plan (SIWC) and store credentials."""
+def _normalize_options(
+    options: Optional[Dict[str, Any]], legacy: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Merge the upstream-style option mapping with legacy keyword options."""
+    merged: Dict[str, Any] = dict(options or {})
+    merged.update({key: value for key, value in legacy.items() if value is not None})
+    return merged
+
+
+async def _maybe_await(value: Any) -> Any:
+    if inspect.isawaitable(value):
+        return await value
+    return value
+
+
+def _aborted(signal: Any) -> bool:
+    if signal is None:
+        return False
+    if getattr(signal, "aborted", False):
+        return True
+    is_set = getattr(signal, "is_set", None)
+    if callable(is_set):
+        return bool(is_set())
+    return False
+
+
+_AUTHORIZATION_HTML = """<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Authorization received · Midscene</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #f6f7f9; color: #202124; font-family: system-ui, sans-serif; }
+    main { width: 100%; max-width: 480px; padding: 40px 28px; text-align: center; background: white; border: 1px solid #e5e7eb; border-radius: 20px; box-shadow: 0 8px 32px #00000008; }
+    h1 { margin: 0 0 20px; font-size: 24px; line-height: 1.4; }
+    h1 span { color: #16834a; }
+    p { margin: 8px 0 0; color: #596273; font-size: 15px; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1><span aria-hidden="true">✓</span> Authorization received</h1>
+    <p>You can close this tab.</p>
+    <p>Check your terminal for the sign-in result and access token.</p>
+  </main>
+</body>
+</html>"""
+
+
+def _write_response(
+    writer: asyncio.StreamWriter,
+    status: int,
+    body: str,
+    content_type: str = "text/plain; charset=utf-8",
+) -> None:
+    payload = body.encode("utf-8")
+    writer.write(
+        (
+            f"HTTP/1.1 {status} { _reason(status) }\r\n"
+            f"Content-Type: {content_type}\r\n"
+            "Cache-Control: no-store\r\n"
+            "Referrer-Policy: no-referrer\r\n"
+            f"Content-Length: {len(payload)}\r\n"
+            "Connection: close\r\n\r\n"
+        ).encode("utf-8")
+        + payload
+    )
+
+
+def _reason(status: int) -> str:
+    return {
+        200: "OK",
+        400: "Bad Request",
+        404: "Not Found",
+        409: "Conflict",
+    }.get(status, "OK")
+
+
+async def _wait_with_signal(future: asyncio.Future, signal: Any) -> Any:
+    """Await the callback while honouring an AbortSignal-like object."""
+    if signal is None:
+        return await future
+    while True:
+        if _aborted(signal):
+            raise SiwcError("OpenAI login cancelled or timed out.")
+        done, _ = await asyncio.wait({future}, timeout=0.05)
+        if done:
+            return future.result()
+
+
+async def login_with_openai(
+    options: Optional[Dict[str, Any]] = None,
+    dependencies: Any = None,
+    **legacy_options: Any,
+) -> Dict[str, Any]:
+    """Run the loopback OpenAI (SIWC) login and return verified credentials.
+
+    ``options`` mirrors the upstream ``LoginOptions`` mapping: ``hostId``,
+    ``clientId``, ``port``, ``signal`` and ``onAuthorization``. Legacy keyword
+    arguments (``console``, ``no_open`` ...) are still accepted for the CLI.
+    """
     from midscene.core.ai_model.service_caller.openai.siwc.authorization import (
         create_siwc_authorization,
         exchange_siwc_code,
         parse_siwc_callback,
     )
 
-    console = console or Console()
-    host_id = host_id or f"urn:uuid:{uuid.uuid4()}"
-    captured: dict = {}
+    opts = _normalize_options(options, legacy_options)
+    console: Optional[Console] = opts.get("console")
+    streamlit_console = console or Console()
 
-    class CallbackHandler(BaseHTTPRequestHandler):
-        def do_GET(self):  # noqa: N802
+    host_id = opts.get("host_id") or opts.get("hostId")
+    if not host_id:
+        host_id = f"urn:uuid:{uuid.uuid4()}"
+    client_id = opts.get("client_id") or opts.get("clientId")
+    port = opts.get("port") or 0
+    signal = opts.get("signal")
+
+    if _aborted(signal):
+        raise SiwcError("OpenAI login cancelled or timed out.")
+
+    on_authorization = opts.get("on_authorization") or opts.get("onAuthorization")
+    no_open = bool(opts.get("no_open") or opts.get("noOpen"))
+
+    if on_authorization is None and console is not None:
+
+        def _default_authorization(url: str) -> None:
+            streamlit_console.print("[blue]Opening the authorization URL...[/blue]")
+            streamlit_console.print(url)
+            if not no_open:
+                webbrowser.open(url)
+
+        on_authorization = _default_authorization
+
+    state: Dict[str, Any] = {"attempt": None}
+    consumed = {"value": False}
+    callback_future: asyncio.Future = asyncio.get_running_loop().create_future()
+
+    async def handle_client(
+        reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
+        try:
+            request_line = await reader.readline()
+            while True:
+                header = await reader.readline()
+                if not header or header in (b"\r\n", b"\n"):
+                    break
+            if not request_line:
+                _write_response(writer, 404, "Not found")
+                return
+            parts = request_line.decode("utf-8", errors="replace").split(" ")
+            method = parts[0] if parts else ""
+            target = parts[1] if len(parts) > 1 else "/"
+            url = urlsplit(target)
+            if method != "GET" or url.path != "/auth/callback":
+                _write_response(writer, 404, "Not found")
+                return
+            attempt = state["attempt"]
+            if attempt is None:
+                _write_response(writer, 400, "Authorization has not started.")
+                return
+            if consumed["value"]:
+                _write_response(writer, 409, "Authorization already received.")
+                return
+
             try:
                 parsed = parse_siwc_callback(
-                    f"http://127.0.0.1{self.path}", captured.get("attempt", {})
+                    f"{attempt['redirect_uri'].split('/auth/callback')[0]}{target}",
+                    attempt,
                 )
-            except Exception as e:
-                self.send_response(400)
-                self.end_headers()
-                self.wfile.write(str(e).encode())
-                captured["error"] = e
+            except Exception as error:
+                _write_response(writer, 400, "Invalid authorization callback.")
+                if "error=" in target:
+                    consumed["value"] = True
+                    if not callback_future.done():
+                        callback_future.set_exception(error)
                 return
             if not parsed:
-                self.send_response(400)
-                self.end_headers()
-                self.wfile.write(b"Invalid login state.")
+                _write_response(
+                    writer,
+                    400,
+                    "Invalid login state. Use the original authorization link.",
+                )
                 return
-            captured["callback"] = parsed
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
-            self.end_headers()
-            self.wfile.write(
-                b"<!doctype html><title>Authorization received</title>"
-                b"<h1>&#10003; Authorization received</h1>"
-                b"<p>You can close this tab. Check your terminal.</p>"
+
+            consumed["value"] = True
+            _write_response(
+                writer,
+                200,
+                _AUTHORIZATION_HTML,
+                "text/html; charset=utf-8",
             )
+            if not callback_future.done():
+                callback_future.set_result(parsed)
+        finally:
+            writer.close()
+            try:
+                await writer.wait_closed()
+            except (ConnectionError, OSError):
+                pass
 
-        def log_message(self, *args):  # silence
-            pass
+    server = await asyncio.start_server(handle_client, "127.0.0.1", port)
+    try:
+        actual_port = server.sockets[0].getsockname()[1]
+        redirect_uri = f"http://127.0.0.1:{actual_port}/auth/callback"
+        if _aborted(signal):
+            raise SiwcError("OpenAI login cancelled or timed out.")
 
-    server = HTTPServer(("127.0.0.1", port or 0), CallbackHandler)
-    actual_port = server.server_address[1]
-    redirect_uri = f"http://127.0.0.1:{actual_port}/auth/callback"
-
-    auth = create_siwc_authorization(host_id, redirect_uri, client_id)
-    captured["attempt"] = auth["attempt"]
-
-    console.print("[blue]Opening the authorization URL...[/blue]")
-    console.print(auth["url"])
-    if on_authorization is not None:
-        on_authorization(auth["url"])
-    if not no_open:
-        webbrowser.open(auth["url"])
-
-    server_thread = threading.Thread(target=server.serve_forever, daemon=True)
-    server_thread.start()
-
-    timeout = 5 * 60
-    start = time.time()
-    while "callback" not in captured and "error" not in captured:
-        if time.time() - start > timeout:
-            console.print("[red]Authorization timed out.[/red]")
-            return False
-        time.sleep(0.2)
-    server.shutdown()
-
-    if "error" in captured:
-        console.print(f"[red]{captured['error']}[/red]")
-        return False
-
-    async def _exchange():
-        return await exchange_siwc_code(
-            captured["attempt"], captured["callback"]
+        authorization = create_siwc_authorization(
+            host_id,
+            redirect_uri,
+            client_id,
+            "Midscene",
         )
+        state["attempt"] = authorization["attempt"]
+        if on_authorization is not None:
+            await _maybe_await(on_authorization(authorization["url"]))
+        if _aborted(signal):
+            raise SiwcError("OpenAI login cancelled or timed out.")
 
-    credentials = asyncio.run(_exchange())
-    _save_credentials(
-        {
-            "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            "credentials": credentials,
-        }
-    )
-    masked = credentials["access_token"][:8] + "..." + credentials["access_token"][-4:]
-    console.print(
-        f"[green]Signed in ({credentials.get('email', credentials['subject'])})[/green]"
-    )
-    console.print(f"Access token: {masked}")
-    console.print(
-        "Credentials stored in ~/.midscene/siwc.json. "
-        "Use MIDSCENE_MODEL_AUTH_MODE=siwc to use your ChatGPT plan."
-    )
-    return True
+        async def await_callback() -> Dict[str, str]:
+            return await _wait_with_signal(callback_future, signal)
+
+        callback = await with_siwc_stage(
+            "Authorization callback", await_callback
+        )
+        return await exchange_siwc_code(
+            authorization["attempt"], callback
+        )
+    finally:
+        server.close()
+        await server.wait_closed()
 
 
-__all__ = ["login_with_openai"]
+async def login_with_open_ai(
+    options: Optional[Dict[str, Any]] = None,
+    dependencies: Any = None,
+    **legacy_options: Any,
+) -> Dict[str, Any]:
+    """Upstream-named alias (loginWithOpenAI -> login_with_open_ai)."""
+    return await login_with_openai(options, dependencies, **legacy_options)
+
+
+__all__ = ["login_with_open_ai", "login_with_openai"]

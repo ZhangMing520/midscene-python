@@ -210,17 +210,49 @@ class AndroidDeviceConfig(BaseModel):
     scrcpy_config: Optional[Dict[str, Any]] = None
 
 
+def _config_from_options(
+    device_id: str, options: Dict[str, Any]
+) -> AndroidDeviceConfig:
+    """Map upstream AndroidDeviceOpt camelCase keys onto the config."""
+    return AndroidDeviceConfig(
+        device_id=device_id,
+        adb_path=(
+            options.get("androidAdbPath")
+            or options.get("adbPath")
+            or options.get("adb_path")
+            or "adb"
+        ),
+        auto_dismiss_keyboard=options.get(
+            "autoDismissKeyboard",
+            options.get("auto_dismiss_keyboard", True),
+        ),
+        use_ime=options.get("useIme", options.get("use_ime", True)),
+        display_id=options.get("displayId", options.get("display_id", 0)),
+        timeout=options.get("timeout", 30),
+        scrcpy_config=options.get(
+            "scrcpyConfig", options.get("scrcpy_config")
+        ),
+    )
+
+
 class AndroidDevice(AbstractInterface):
     """Android device interface using ADB"""
     
-    def __init__(self, device_id: str, config: Optional[AndroidDeviceConfig] = None):
+    def __init__(
+        self,
+        device_id: str,
+        config: Optional[Any] = None,
+    ):
         """Initialize Android device
         
         Args:
             device_id: Android device ID
-            config: Device configuration
+            config: Device configuration (AndroidDeviceConfig or an upstream
+                AndroidDeviceOpt-style dict)
         """
         self.device_id = device_id
+        if isinstance(config, dict):
+            config = _config_from_options(device_id, config)
         self.config = config or AndroidDeviceConfig(device_id=device_id)
         self._connected = False
         self._screen_size: Optional[Size] = None

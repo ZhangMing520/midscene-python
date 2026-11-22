@@ -36,8 +36,13 @@ from midscene.web_integration.bridge_mode.io_server import BridgeServer
 from midscene.web_integration.web_page import build_key_commands
 
 
-class BridgeWebPage(AbstractInterface):
-    """Page interface driven through the official Chrome extension bridge."""
+class ExtensionBridgePageBrowserSide(AbstractInterface):
+    """Page interface driven through the official Chrome extension bridge.
+
+    Python hosts the bridge server, so this class mirrors upstream
+    ``ExtensionBridgePageBrowserSide`` from the agent side: the same
+    connect/tab-lifecycle surface, executed through ``BridgeServer``.
+    """
 
     def __init__(
         self,
@@ -127,6 +132,10 @@ class BridgeWebPage(AbstractInterface):
             await self._server.close()
             self._server = None
             self._connected = False
+
+    async def destroy(self) -> None:
+        """Tear down the bridge and the page (upstream destroy())."""
+        await self.close()
 
     # -- AbstractInterface ---------------------------------------------------
 
@@ -332,3 +341,10 @@ class BridgeWebPage(AbstractInterface):
 
     # ClearInput goes through the keyboard channel (Control+A + Delete), so it
     # does not need the extension's locate-aware clearInput(element) API.
+
+
+# Upstream browser.ts/page-browser-side.ts expose the browser-side class under
+# this name; keep the historical Python name working as an alias.
+BridgeWebPage = ExtensionBridgePageBrowserSide
+
+__all__ = ["BridgeWebPage", "ExtensionBridgePageBrowserSide"]
