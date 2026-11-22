@@ -1,0 +1,3212 @@
+{
+  "generated_at": "2026-11-22T02:15:26.398844+00:00",
+  "upstream_root": "/home/zhangming/gitspace/midscene",
+  "python_root": "/home/zhangming/gitspace/midscene-python/midscene",
+  "counts": {
+    "aligned": 400,
+    "exempt": 83,
+    "pending": 28,
+    "merged": 19
+  },
+  "files": [
+    {
+      "package": "android",
+      "upstream": "adb-shell.ts",
+      "status": "aligned",
+      "python": "android/adb_shell.py"
+    },
+    {
+      "package": "android",
+      "upstream": "adb.ts",
+      "status": "aligned",
+      "python": "android/adb.py"
+    },
+    {
+      "package": "android",
+      "upstream": "agent-tools.ts",
+      "status": "exempt",
+      "reason": "Node CLI / test-runner bindings"
+    },
+    {
+      "package": "android",
+      "upstream": "agent.ts",
+      "status": "aligned",
+      "python": "android/agent.py"
+    },
+    {
+      "package": "android",
+      "upstream": "appNameMapping.ts",
+      "status": "aligned",
+      "python": "android/app_name_mapping.py"
+    },
+    {
+      "package": "android",
+      "upstream": "cli.ts",
+      "status": "exempt",
+      "reason": "Node CLI / test-runner bindings"
+    },
+    {
+      "package": "android",
+      "upstream": "device.ts",
+      "status": "aligned",
+      "python": "android/device.py"
+    },
+    {
+      "package": "android",
+      "upstream": "index.ts",
+      "status": "aligned",
+      "python": "android/__init__.py"
+    },
+    {
+      "package": "android",
+      "upstream": "resource-path.ts",
+      "status": "aligned",
+      "python": "android/resource_path.py"
+    },
+    {
+      "package": "android",
+      "upstream": "scrcpy-device-adapter.ts",
+      "status": "pending",
+      "reason": "needs scrcpy streaming support"
+    },
+    {
+      "package": "android",
+      "upstream": "scrcpy-manager.ts",
+      "status": "pending",
+      "reason": "needs the scrcpy server binary"
+    },
+    {
+      "package": "android",
+      "upstream": "test-runner-nodes.ts",
+      "status": "exempt",
+      "reason": "Node CLI / test-runner bindings"
+    },
+    {
+      "package": "android",
+      "upstream": "ui-tree-capture.ts",
+      "status": "aligned",
+      "python": "android/ui_tree_capture.py"
+    },
+    {
+      "package": "android",
+      "upstream": "ui-tree.ts",
+      "status": "aligned",
+      "python": "android/ui_tree.py"
+    },
+    {
+      "package": "android",
+      "upstream": "utils.ts",
+      "status": "aligned",
+      "python": "android/utils.py"
+    },
+    {
+      "package": "android",
+      "upstream": "visual-action-registry.ts",
+      "status": "aligned",
+      "python": "android/visual_action_registry.py"
+    },
+    {
+      "package": "core",
+      "upstream": "common.ts",
+      "status": "aligned",
+      "python": "core/common.py"
+    },
+    {
+      "package": "core",
+      "upstream": "constants.ts",
+      "status": "aligned",
+      "python": "core/constants.py"
+    },
+    {
+      "package": "core",
+      "upstream": "distance-schema.ts",
+      "status": "aligned",
+      "python": "core/distance_schema.py"
+    },
+    {
+      "package": "core",
+      "upstream": "element-describer.ts",
+      "status": "aligned",
+      "python": "core/element_describer.py"
+    },
+    {
+      "package": "core",
+      "upstream": "errors.ts",
+      "status": "aligned",
+      "python": "core/errors.py"
+    },
+    {
+      "package": "core",
+      "upstream": "index.ts",
+      "status": "aligned",
+      "python": "core/__init__.py"
+    },
+    {
+      "package": "core",
+      "upstream": "report-cli.ts",
+      "status": "aligned",
+      "python": "core/report_cli.py"
+    },
+    {
+      "package": "core",
+      "upstream": "report-generator.ts",
+      "status": "aligned",
+      "python": "core/report_generator.py"
+    },
+    {
+      "package": "core",
+      "upstream": "report-html-template.ts",
+      "status": "aligned",
+      "python": "core/report_html_template.py"
+    },
+    {
+      "package": "core",
+      "upstream": "report-markdown.ts",
+      "status": "aligned",
+      "python": "core/report_markdown.py"
+    },
+    {
+      "package": "core",
+      "upstream": "report-stats.ts",
+      "status": "aligned",
+      "python": "core/report_stats.py"
+    },
+    {
+      "package": "core",
+      "upstream": "report.ts",
+      "status": "aligned",
+      "python": "core/report.py"
+    },
+    {
+      "package": "core",
+      "upstream": "screenshot-item.ts",
+      "status": "aligned",
+      "python": "core/screenshot_item.py"
+    },
+    {
+      "package": "core",
+      "upstream": "siwc.ts",
+      "status": "aligned",
+      "python": "core/siwc.py"
+    },
+    {
+      "package": "core",
+      "upstream": "task-runner.ts",
+      "status": "aligned",
+      "python": "core/task_runner.py"
+    },
+    {
+      "package": "core",
+      "upstream": "task-timing.ts",
+      "status": "aligned",
+      "python": "core/task_timing.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-run-health.ts",
+      "status": "aligned",
+      "python": "core/test_run_health.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-run-report.ts",
+      "status": "aligned",
+      "python": "core/test_run_report.py"
+    },
+    {
+      "package": "core",
+      "upstream": "tree.ts",
+      "status": "aligned",
+      "python": "core/tree.py"
+    },
+    {
+      "package": "core",
+      "upstream": "types.ts",
+      "status": "aligned",
+      "python": "core/types.py"
+    },
+    {
+      "package": "core",
+      "upstream": "utils.ts",
+      "status": "aligned",
+      "python": "core/utils.py"
+    },
+    {
+      "package": "core",
+      "upstream": "yaml-runtime.ts",
+      "status": "aligned",
+      "python": "core/yaml_runtime.py"
+    },
+    {
+      "package": "core",
+      "upstream": "yaml.ts",
+      "status": "merged",
+      "python": "core/yaml/__init__.py",
+      "reason": "Python cannot have both yaml.py and the yaml/ package"
+    },
+    {
+      "package": "core",
+      "upstream": "dump/execution-recorder.ts",
+      "status": "aligned",
+      "python": "core/dump/execution_recorder.py"
+    },
+    {
+      "package": "core",
+      "upstream": "dump/html-utils.ts",
+      "status": "aligned",
+      "python": "core/dump/html_utils.py"
+    },
+    {
+      "package": "core",
+      "upstream": "dump/image-reference.ts",
+      "status": "aligned",
+      "python": "core/dump/image_reference.py"
+    },
+    {
+      "package": "core",
+      "upstream": "dump/index.ts",
+      "status": "aligned",
+      "python": "core/dump/__init__.py"
+    },
+    {
+      "package": "core",
+      "upstream": "dump/report-action-dump.ts",
+      "status": "aligned",
+      "python": "core/dump/report_action_dump.py"
+    },
+    {
+      "package": "core",
+      "upstream": "dump/report-artifact-publication.ts",
+      "status": "aligned",
+      "python": "core/dump/report_artifact_publication.py"
+    },
+    {
+      "package": "core",
+      "upstream": "dump/report-artifact-reader.ts",
+      "status": "aligned",
+      "python": "core/dump/report_artifact_reader.py"
+    },
+    {
+      "package": "core",
+      "upstream": "dump/report-artifact-store.ts",
+      "status": "aligned",
+      "python": "core/dump/report_artifact_store.py"
+    },
+    {
+      "package": "core",
+      "upstream": "dump/report-artifact-writer.ts",
+      "status": "aligned",
+      "python": "core/dump/report_artifact_writer.py"
+    },
+    {
+      "package": "core",
+      "upstream": "dump/report-dump-compactor.ts",
+      "status": "aligned",
+      "python": "core/dump/report_dump_compactor.py"
+    },
+    {
+      "package": "core",
+      "upstream": "dump/report-image-export.ts",
+      "status": "aligned",
+      "python": "core/dump/report_image_export.py"
+    },
+    {
+      "package": "core",
+      "upstream": "dump/report-session.ts",
+      "status": "aligned",
+      "python": "core/dump/report_session.py"
+    },
+    {
+      "package": "core",
+      "upstream": "dump/screenshot-restoration.ts",
+      "status": "aligned",
+      "python": "core/dump/screenshot_restoration.py"
+    },
+    {
+      "package": "core",
+      "upstream": "dump/screenshot-store.ts",
+      "status": "aligned",
+      "python": "core/dump/screenshot_store.py"
+    },
+    {
+      "package": "core",
+      "upstream": "dump/task-service-dump.ts",
+      "status": "aligned",
+      "python": "core/dump/task_service_dump.py"
+    },
+    {
+      "package": "core",
+      "upstream": "dump/task-status.ts",
+      "status": "aligned",
+      "python": "core/dump/task_status.py"
+    },
+    {
+      "package": "core",
+      "upstream": "dump/test-report-images.ts",
+      "status": "aligned",
+      "python": "core/dump/test_report_images.py"
+    },
+    {
+      "package": "core",
+      "upstream": "agent/action-readiness.ts",
+      "status": "aligned",
+      "python": "core/agent/action_readiness.py"
+    },
+    {
+      "package": "core",
+      "upstream": "agent/agent-options.ts",
+      "status": "aligned",
+      "python": "core/agent/agent_options.py"
+    },
+    {
+      "package": "core",
+      "upstream": "agent/agent-report-manager.ts",
+      "status": "aligned",
+      "python": "core/agent/agent_report_manager.py"
+    },
+    {
+      "package": "core",
+      "upstream": "agent/agent.ts",
+      "status": "aligned",
+      "python": "core/agent/agent.py"
+    },
+    {
+      "package": "core",
+      "upstream": "agent/cache-config.ts",
+      "status": "aligned",
+      "python": "core/agent/cache_config.py"
+    },
+    {
+      "package": "core",
+      "upstream": "agent/common.ts",
+      "status": "aligned",
+      "python": "core/agent/common.py"
+    },
+    {
+      "package": "core",
+      "upstream": "agent/execution-session.ts",
+      "status": "merged",
+      "python": "core/agent/agent.py",
+      "reason": "execution session lifecycle lives in the agent"
+    },
+    {
+      "package": "core",
+      "upstream": "agent/file-chooser.ts",
+      "status": "aligned",
+      "python": "core/agent/file_chooser.py"
+    },
+    {
+      "package": "core",
+      "upstream": "agent/index.ts",
+      "status": "aligned",
+      "python": "core/agent/__init__.py"
+    },
+    {
+      "package": "core",
+      "upstream": "agent/insight.ts",
+      "status": "aligned",
+      "python": "core/agent/insight.py"
+    },
+    {
+      "package": "core",
+      "upstream": "agent/metrics.ts",
+      "status": "aligned",
+      "python": "core/agent/metrics.py"
+    },
+    {
+      "package": "core",
+      "upstream": "agent/observe-node.ts",
+      "status": "aligned",
+      "python": "core/agent/observe_node.py"
+    },
+    {
+      "package": "core",
+      "upstream": "agent/prompt-context.ts",
+      "status": "aligned",
+      "python": "core/agent/prompt_context.py"
+    },
+    {
+      "package": "core",
+      "upstream": "agent/record-to-report.ts",
+      "status": "aligned",
+      "python": "core/agent/record_to_report.py"
+    },
+    {
+      "package": "core",
+      "upstream": "agent/report-file-name.ts",
+      "status": "aligned",
+      "python": "core/agent/report_file_name.py"
+    },
+    {
+      "package": "core",
+      "upstream": "agent/run-gherkin-scenario.ts",
+      "status": "aligned",
+      "python": "core/agent/run_gherkin_scenario.py"
+    },
+    {
+      "package": "core",
+      "upstream": "agent/run-markdown.ts",
+      "status": "aligned",
+      "python": "core/agent/run_markdown.py"
+    },
+    {
+      "package": "core",
+      "upstream": "agent/screenshot-preparation.ts",
+      "status": "aligned",
+      "python": "core/agent/screenshot_preparation.py"
+    },
+    {
+      "package": "core",
+      "upstream": "agent/task-builder.ts",
+      "status": "aligned",
+      "python": "core/agent/task_builder.py"
+    },
+    {
+      "package": "core",
+      "upstream": "agent/task-cache.ts",
+      "status": "aligned",
+      "python": "core/agent/task_cache.py"
+    },
+    {
+      "package": "core",
+      "upstream": "agent/tasks.ts",
+      "status": "aligned",
+      "python": "core/agent/tasks.py"
+    },
+    {
+      "package": "core",
+      "upstream": "agent/test-runner-nodes.ts",
+      "status": "aligned",
+      "python": "core/agent/test_runner_nodes.py"
+    },
+    {
+      "package": "core",
+      "upstream": "agent/ui-observer.ts",
+      "status": "aligned",
+      "python": "core/agent/ui_observer.py"
+    },
+    {
+      "package": "core",
+      "upstream": "agent/ui-utils.ts",
+      "status": "aligned",
+      "python": "core/agent/ui_utils.py"
+    },
+    {
+      "package": "core",
+      "upstream": "agent/usage-intent.ts",
+      "status": "aligned",
+      "python": "core/agent/usage_intent.py"
+    },
+    {
+      "package": "core",
+      "upstream": "agent/utils.ts",
+      "status": "aligned",
+      "python": "core/agent/utils.py"
+    },
+    {
+      "package": "core",
+      "upstream": "agent/progress/ai-act-progress.ts",
+      "status": "aligned",
+      "python": "core/agent/progress/ai_act_progress.py"
+    },
+    {
+      "package": "core",
+      "upstream": "agent/progress/index.ts",
+      "status": "aligned",
+      "python": "core/agent/progress/__init__.py"
+    },
+    {
+      "package": "core",
+      "upstream": "agent/progress/progress-bus.ts",
+      "status": "aligned",
+      "python": "core/agent/progress/progress_bus.py"
+    },
+    {
+      "package": "core",
+      "upstream": "skill/index.ts",
+      "status": "aligned",
+      "python": "core/skill/__init__.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/errors.ts",
+      "status": "aligned",
+      "python": "core/test_runner/errors.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/execution-record.ts",
+      "status": "aligned",
+      "python": "core/test_runner/execution_record.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/index.ts",
+      "status": "aligned",
+      "python": "core/test_runner/__init__.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/project.ts",
+      "status": "aligned",
+      "python": "core/test_runner/project.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/reporting/agent-report.ts",
+      "status": "aligned",
+      "python": "core/test_runner/reporting/agent_report.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/reporting/execution-record.ts",
+      "status": "aligned",
+      "python": "core/test_runner/reporting/execution_record.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/reporting/merge-report.ts",
+      "status": "aligned",
+      "python": "core/test_runner/reporting/merge_report.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/reporting/metrics.ts",
+      "status": "aligned",
+      "python": "core/test_runner/reporting/metrics.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/reporting/sanitize.ts",
+      "status": "aligned",
+      "python": "core/test_runner/reporting/sanitize.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/reporting/test-plan.ts",
+      "status": "aligned",
+      "python": "core/test_runner/reporting/test_plan.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/reporting/test-run-report.ts",
+      "status": "aligned",
+      "python": "core/test_runner/reporting/test_run_report.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/reporting/types.ts",
+      "status": "aligned",
+      "python": "core/test_runner/reporting/types.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/parser/document-format.ts",
+      "status": "aligned",
+      "python": "core/test_runner/parser/document_format.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/parser/normalize.ts",
+      "status": "aligned",
+      "python": "core/test_runner/parser/normalize.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/parser/types.ts",
+      "status": "aligned",
+      "python": "core/test_runner/parser/types.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/node/define-node.ts",
+      "status": "aligned",
+      "python": "core/test_runner/node/define_node.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/node/index.ts",
+      "status": "aligned",
+      "python": "core/test_runner/node/__init__.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/node/types.ts",
+      "status": "aligned",
+      "python": "core/test_runner/node/types.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/engine/case-runner.ts",
+      "status": "aligned",
+      "python": "core/test_runner/engine/case_runner.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/engine/document-runtime.ts",
+      "status": "aligned",
+      "python": "core/test_runner/engine/document_runtime.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/engine/execute-step.ts",
+      "status": "aligned",
+      "python": "core/test_runner/engine/execute_step.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/engine/execution-failure.ts",
+      "status": "aligned",
+      "python": "core/test_runner/engine/execution_failure.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/engine/index.ts",
+      "status": "aligned",
+      "python": "core/test_runner/engine/__init__.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/engine/project-runtime.ts",
+      "status": "aligned",
+      "python": "core/test_runner/engine/project_runtime.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/engine/registry.ts",
+      "status": "aligned",
+      "python": "core/test_runner/engine/registry.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/engine/resource-operations.ts",
+      "status": "aligned",
+      "python": "core/test_runner/engine/resource_operations.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/engine/result-metadata.ts",
+      "status": "aligned",
+      "python": "core/test_runner/engine/result_metadata.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/engine/run-collected-case.ts",
+      "status": "aligned",
+      "python": "core/test_runner/engine/run_collected_case.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/engine/run-workflow-document.ts",
+      "status": "aligned",
+      "python": "core/test_runner/engine/run_workflow_document.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/engine/scheduler.ts",
+      "status": "aligned",
+      "python": "core/test_runner/engine/scheduler.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/engine/scope-teardown.ts",
+      "status": "aligned",
+      "python": "core/test_runner/engine/scope_teardown.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/engine/setup-timeout.ts",
+      "status": "aligned",
+      "python": "core/test_runner/engine/setup_timeout.py"
+    },
+    {
+      "package": "core",
+      "upstream": "test-runner/engine/types.ts",
+      "status": "aligned",
+      "python": "core/test_runner/engine/types.py"
+    },
+    {
+      "package": "core",
+      "upstream": "device/device-options.ts",
+      "status": "aligned",
+      "python": "core/device/device_options.py"
+    },
+    {
+      "package": "core",
+      "upstream": "device/index.ts",
+      "status": "aligned",
+      "python": "core/device/__init__.py"
+    },
+    {
+      "package": "core",
+      "upstream": "device/input-strategy.ts",
+      "status": "aligned",
+      "python": "core/device/input_strategy.py"
+    },
+    {
+      "package": "core",
+      "upstream": "device/mobile-scroll.ts",
+      "status": "aligned",
+      "python": "core/device/mobile_scroll.py"
+    },
+    {
+      "package": "core",
+      "upstream": "service/index.ts",
+      "status": "aligned",
+      "python": "core/service/__init__.py"
+    },
+    {
+      "package": "core",
+      "upstream": "service/utils.ts",
+      "status": "aligned",
+      "python": "core/service/utils.py"
+    },
+    {
+      "package": "core",
+      "upstream": "yaml/builder.ts",
+      "status": "aligned",
+      "python": "core/yaml/builder.py"
+    },
+    {
+      "package": "core",
+      "upstream": "yaml/cleanup.ts",
+      "status": "aligned",
+      "python": "core/yaml/cleanup.py"
+    },
+    {
+      "package": "core",
+      "upstream": "yaml/execution-context.node.ts",
+      "status": "exempt",
+      "reason": "Node/browser build variants; Python has yaml/execution_context.py"
+    },
+    {
+      "package": "core",
+      "upstream": "yaml/execution-context.stub.ts",
+      "status": "exempt",
+      "reason": "Node/browser build variants; Python has yaml/execution_context.py"
+    },
+    {
+      "package": "core",
+      "upstream": "yaml/execution-session.ts",
+      "status": "aligned",
+      "python": "core/yaml/execution_session.py"
+    },
+    {
+      "package": "core",
+      "upstream": "yaml/index.ts",
+      "status": "aligned",
+      "python": "core/yaml/__init__.py"
+    },
+    {
+      "package": "core",
+      "upstream": "yaml/legacy-yaml-execution-record.ts",
+      "status": "aligned",
+      "python": "core/yaml/legacy_yaml_execution_record.py"
+    },
+    {
+      "package": "core",
+      "upstream": "yaml/legacy-yaml-report.ts",
+      "status": "aligned",
+      "python": "core/yaml/legacy_yaml_report.py"
+    },
+    {
+      "package": "core",
+      "upstream": "yaml/legacy-yaml-runtime.ts",
+      "status": "aligned",
+      "python": "core/yaml/legacy_yaml_runtime.py"
+    },
+    {
+      "package": "core",
+      "upstream": "yaml/player-state.ts",
+      "status": "aligned",
+      "python": "core/yaml/player_state.py"
+    },
+    {
+      "package": "core",
+      "upstream": "yaml/player.ts",
+      "status": "aligned",
+      "python": "core/yaml/player.py"
+    },
+    {
+      "package": "core",
+      "upstream": "yaml/report-policy.ts",
+      "status": "aligned",
+      "python": "core/yaml/report_policy.py"
+    },
+    {
+      "package": "core",
+      "upstream": "yaml/test-runner-compat.ts",
+      "status": "aligned",
+      "python": "core/yaml/test_runner_compat.py"
+    },
+    {
+      "package": "core",
+      "upstream": "yaml/test-runner-nodes.ts",
+      "status": "aligned",
+      "python": "core/yaml/test_runner_nodes.py"
+    },
+    {
+      "package": "core",
+      "upstream": "yaml/utils.ts",
+      "status": "aligned",
+      "python": "core/yaml/utils.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/index.ts",
+      "status": "aligned",
+      "python": "core/ai_model/__init__.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/call-ai.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/call_ai.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/index.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/__init__.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/model-call-recorder.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/model_call_recorder.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/model-call.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/model_call.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/request-timeout.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/request_timeout.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/semantic-retry.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/semantic_retry.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/types.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/types.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/utils.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/utils.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/call-openai.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/openai/call_openai.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/openai-client.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/openai/openai_client.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/openai-request-context.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/openai/openai_request_context.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/chat-completion/chat-completion.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/openai/chat_completion/chat_completion.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/chat-completion/non-stream.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/openai/chat_completion/non_stream.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/chat-completion/stream.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/openai/chat_completion/stream.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/chat-completion/types.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/openai/chat_completion/types.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/chat-completion/utils.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/openai/chat_completion/utils.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/responses/non-stream.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/openai/responses/non_stream.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/responses/responses.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/openai/responses/responses.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/responses/stream.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/openai/responses/stream.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/responses/types.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/openai/responses/types.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/responses/utils.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/openai/responses/utils.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/siwc/authorization.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/openai/siwc/authorization.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/siwc/credential-storage.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/openai/siwc/credential_storage.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/siwc/errors.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/openai/siwc/errors.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/siwc/index.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/openai/siwc/__init__.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/siwc/network.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/openai/siwc/network.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/siwc/prepare-call.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/openai/siwc/prepare_call.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/siwc/refresh.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/openai/siwc/refresh.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/openai/siwc/token-manager.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/openai/siwc/token_manager.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/codex/call-codex.ts",
+      "status": "pending",
+      "reason": "Codex binary + stdio JSON-RPC"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/codex/codex-app-server.ts",
+      "status": "pending",
+      "reason": "Codex binary + stdio JSON-RPC"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/system-one/call-system-one.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/system_one/call_system_one.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/system-one/index.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/system_one/__init__.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/system-one/prepare-system-one.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/system_one/prepare_system_one.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/system-one/resolve-endpoint.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/system_one/resolve_endpoint.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/system-one/schema.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/system_one/schema.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/system-one/utils.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/system_one/utils.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/proxy/index.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/proxy/__init__.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/proxy/proxy-deps.node.ts",
+      "status": "exempt",
+      "reason": "undici dynamic import; httpx handles proxies directly"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/proxy/proxy-deps.stub.ts",
+      "status": "exempt",
+      "reason": "undici dynamic import; httpx handles proxies directly"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/service-caller/proxy/proxy.ts",
+      "status": "aligned",
+      "python": "core/ai_model/service_caller/proxy/proxy.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/prompt/describe.ts",
+      "status": "aligned",
+      "python": "core/ai_model/prompt/describe.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/prompt/order-sensitive-judge.ts",
+      "status": "aligned",
+      "python": "core/ai_model/prompt/order_sensitive_judge.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/prompt/insight/index.ts",
+      "status": "aligned",
+      "python": "core/ai_model/prompt/insight/__init__.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/prompt/insight/system-prompt.ts",
+      "status": "aligned",
+      "python": "core/ai_model/prompt/insight/system_prompt.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/prompt/insight/user-prompt.ts",
+      "status": "aligned",
+      "python": "core/ai_model/prompt/insight/user_prompt.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/prompt/locate/element-system-prompt.ts",
+      "status": "aligned",
+      "python": "core/ai_model/prompt/locate/element_system_prompt.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/prompt/locate/grounding-rules.ts",
+      "status": "aligned",
+      "python": "core/ai_model/prompt/locate/grounding_rules.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/prompt/locate/index.ts",
+      "status": "aligned",
+      "python": "core/ai_model/prompt/locate/__init__.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/prompt/locate/search-area-system-prompt.ts",
+      "status": "aligned",
+      "python": "core/ai_model/prompt/locate/search_area_system_prompt.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/prompt/planning/action-output-example.ts",
+      "status": "aligned",
+      "python": "core/ai_model/prompt/planning/action_output_example.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/prompt/planning/action-space-description.ts",
+      "status": "aligned",
+      "python": "core/ai_model/prompt/planning/action_space_description.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/prompt/planning/index.ts",
+      "status": "aligned",
+      "python": "core/ai_model/prompt/planning/__init__.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/prompt/planning/multi-turn-example.ts",
+      "status": "aligned",
+      "python": "core/ai_model/prompt/planning/multi_turn_example.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/prompt/planning/planning-response-example.ts",
+      "status": "aligned",
+      "python": "core/ai_model/prompt/planning/planning_response_example.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/prompt/planning/sub-goals-text.ts",
+      "status": "aligned",
+      "python": "core/ai_model/prompt/planning/sub_goals_text.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/prompt/planning/system-prompt.ts",
+      "status": "aligned",
+      "python": "core/ai_model/prompt/planning/system_prompt.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/default.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/default.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/doubao.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/doubao.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/gemini.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/gemini.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/glm.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/glm.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/gpt.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/gpt.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/index.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/__init__.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/kimi.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/kimi.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/mimo.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/mimo.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/model-fallback.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/model_fallback.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/qwen.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/qwen.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/registry.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/registry.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/stepfun.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/stepfun.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/tencent-hy.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/tencent_hy.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/auto-glm/actions.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/auto_glm/actions.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/auto-glm/adapter.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/auto_glm/adapter.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/auto-glm/locate.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/auto_glm/locate.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/auto-glm/parser.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/auto_glm/parser.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/auto-glm/planning.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/auto_glm/planning.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/auto-glm/prompt.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/auto_glm/prompt.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/ui-tars/actions.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/ui_tars/actions.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/ui-tars/adapter.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/ui_tars/adapter.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/ui-tars/parser.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/ui_tars/parser.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/ui-tars/planning.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/ui_tars/planning.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/ui-tars/prompt.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/ui_tars/prompt.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/deepseek/adapter.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/deepseek/adapter.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/deepseek/locate-protocol.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/deepseek/locate_protocol.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/ant-ling/adapter.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/ant_ling/adapter.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/jev/adapter.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/jev/adapter.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/jev/boolean.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/jev/boolean.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/jev/image.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/jev/image.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/jev/locate.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/jev/locate.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/jev/planning-action.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/jev/planning_action.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/jev/planning-context.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/jev/planning_context.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/jev/planning-decision.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/jev/planning_decision.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/jev/planning.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/jev/planning.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/models/utils/intent.ts",
+      "status": "aligned",
+      "python": "core/ai_model/models/utils/intent.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/shared/action-schema.ts",
+      "status": "exempt",
+      "reason": "ZodDefault introspection; Python action schemas have no such concept"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/shared/json.ts",
+      "status": "aligned",
+      "python": "core/ai_model/shared/json.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/shared/multimodal-prompt.ts",
+      "status": "aligned",
+      "python": "core/ai_model/shared/multimodal_prompt.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/shared/xml.ts",
+      "status": "aligned",
+      "python": "core/ai_model/shared/xml.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/shared/model-locate-result/coordinate-distance.ts",
+      "status": "aligned",
+      "python": "core/ai_model/shared/model_locate_result/coordinate_distance.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/shared/model-locate-result/coordinates.ts",
+      "status": "aligned",
+      "python": "core/ai_model/shared/model_locate_result/coordinates.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/shared/model-locate-result/errors.ts",
+      "status": "merged",
+      "python": "core/ai_model/shared/model_locate_result/__init__.py",
+      "reason": "locate result errors are defined in the package entry"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/shared/model-locate-result/factory.ts",
+      "status": "aligned",
+      "python": "core/ai_model/shared/model_locate_result/factory.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/shared/model-locate-result/index.ts",
+      "status": "aligned",
+      "python": "core/ai_model/shared/model_locate_result/__init__.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/shared/model-locate-result/parse.ts",
+      "status": "aligned",
+      "python": "core/ai_model/shared/model_locate_result/parse.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/shared/model-locate-result/pixel-mapper.ts",
+      "status": "aligned",
+      "python": "core/ai_model/shared/model_locate_result/pixel_mapper.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/shared/model-locate-result/prompt-spec.ts",
+      "status": "aligned",
+      "python": "core/ai_model/shared/model_locate_result/prompt_spec.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/shared/model-locate-result/result-field.ts",
+      "status": "aligned",
+      "python": "core/ai_model/shared/model_locate_result/result_field.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/shared/model-locate-result/types.ts",
+      "status": "aligned",
+      "python": "core/ai_model/shared/model_locate_result/types.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/shared/model-locate-result/validation.ts",
+      "status": "aligned",
+      "python": "core/ai_model/shared/model_locate_result/validation.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/connectivity/fixture.ts",
+      "status": "aligned",
+      "python": "core/ai_model/connectivity/fixture.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/connectivity/index.ts",
+      "status": "aligned",
+      "python": "core/ai_model/connectivity/__init__.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/connectivity/run-connectivity-test.ts",
+      "status": "aligned",
+      "python": "core/ai_model/connectivity/run_connectivity_test.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/recorder-generation/common.ts",
+      "status": "aligned",
+      "python": "core/ai_model/workflows/recorder_generation/common.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/recorder-generation/index.ts",
+      "status": "aligned",
+      "python": "core/ai_model/workflows/recorder_generation/__init__.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/recorder-generation/markdown.ts",
+      "status": "aligned",
+      "python": "core/ai_model/workflows/recorder_generation/markdown.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/recorder-generation/metadata.ts",
+      "status": "aligned",
+      "python": "core/ai_model/workflows/recorder_generation/metadata.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/recorder-generation/playwright.ts",
+      "status": "aligned",
+      "python": "core/ai_model/workflows/recorder_generation/playwright.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/recorder-generation/yaml.ts",
+      "status": "aligned",
+      "python": "core/ai_model/workflows/recorder_generation/yaml.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/insight/boolean.ts",
+      "status": "merged",
+      "python": "core/ai_model/workflows/insight/extraction.py",
+      "reason": "boolean insight shares the extraction workflow"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/insight/extraction.ts",
+      "status": "aligned",
+      "python": "core/ai_model/workflows/insight/extraction.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/insight/index.ts",
+      "status": "aligned",
+      "python": "core/ai_model/workflows/insight/__init__.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/insight/insight-response-parser.ts",
+      "status": "aligned",
+      "python": "core/ai_model/workflows/insight/insight_response_parser.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/insight/order-sensitive.ts",
+      "status": "aligned",
+      "python": "core/ai_model/workflows/insight/order_sensitive.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/grounding/index.ts",
+      "status": "aligned",
+      "python": "core/ai_model/workflows/grounding/__init__.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/grounding/locate.ts",
+      "status": "aligned",
+      "python": "core/ai_model/workflows/grounding/locate.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/grounding/planning-action-locate.ts",
+      "status": "aligned",
+      "python": "core/ai_model/workflows/grounding/planning_action_locate.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/grounding/search-area-mapping.ts",
+      "status": "aligned",
+      "python": "core/ai_model/workflows/grounding/search_area_mapping.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/grounding/search-area.ts",
+      "status": "aligned",
+      "python": "core/ai_model/workflows/grounding/search_area.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/grounding/section-locate.ts",
+      "status": "aligned",
+      "python": "core/ai_model/workflows/grounding/section_locate.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/grounding/types.ts",
+      "status": "merged",
+      "python": "core/ai_model/workflows/grounding/locate.py",
+      "reason": "locate option types are inline dicts"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/grounding/utils.ts",
+      "status": "merged",
+      "python": "core/ai_model/workflows/grounding/locate.py",
+      "reason": "grounding helpers are folded into locate.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/planning/conversation-history.ts",
+      "status": "aligned",
+      "python": "core/ai_model/workflows/planning/conversation_history.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/planning/custom-planning.ts",
+      "status": "aligned",
+      "python": "core/ai_model/workflows/planning/custom_planning.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/planning/index.ts",
+      "status": "aligned",
+      "python": "core/ai_model/workflows/planning/__init__.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/planning/locate-normalization.ts",
+      "status": "aligned",
+      "python": "core/ai_model/workflows/planning/locate_normalization.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/planning/parse-planning-actions.ts",
+      "status": "aligned",
+      "python": "core/ai_model/workflows/planning/parse_planning_actions.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/planning/planning-action-log.ts",
+      "status": "aligned",
+      "python": "core/ai_model/workflows/planning/planning_action_log.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/planning/standard-planning-parser.ts",
+      "status": "aligned",
+      "python": "core/ai_model/workflows/planning/standard_planning_parser.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/planning/standard-planning.ts",
+      "status": "aligned",
+      "python": "core/ai_model/workflows/planning/standard_planning.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/workflows/planning/types.ts",
+      "status": "merged",
+      "python": "core/ai_model/workflows/planning/standard_planning.py",
+      "reason": "planning types are inline dicts"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/chat-completion.ts",
+      "status": "aligned",
+      "python": "core/ai_model/model_adapter/chat_completion.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/codex-app-server.ts",
+      "status": "pending",
+      "reason": "Codex binary + stdio JSON-RPC"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/custom-planning-action.ts",
+      "status": "aligned",
+      "python": "core/ai_model/model_adapter/custom_planning_action.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/custom-planning-types.ts",
+      "status": "aligned",
+      "python": "core/ai_model/model_adapter/custom_planning_types.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/default-insight-protocol.ts",
+      "status": "aligned",
+      "python": "core/ai_model/model_adapter/default_insight_protocol.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/default-locate-protocol.ts",
+      "status": "aligned",
+      "python": "core/ai_model/model_adapter/default_locate_protocol.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/default-planning-protocol.ts",
+      "status": "aligned",
+      "python": "core/ai_model/model_adapter/default_planning_protocol.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/image-preprocess.ts",
+      "status": "aligned",
+      "python": "core/ai_model/model_adapter/image_preprocess.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/index.ts",
+      "status": "aligned",
+      "python": "core/ai_model/model_adapter/__init__.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/insight-protocol.ts",
+      "status": "aligned",
+      "python": "core/ai_model/model_adapter/insight_protocol.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/insight.ts",
+      "status": "merged",
+      "python": "core/ai_model/workflows/insight/extraction.py",
+      "reason": "resolveInsight is implemented by the insight workflow"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/is-openrouter.ts",
+      "status": "aligned",
+      "python": "core/ai_model/model_adapter/is_openrouter.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/locate-prompt-order.ts",
+      "status": "aligned",
+      "python": "core/ai_model/model_adapter/locate_prompt_order.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/locate-protocol.ts",
+      "status": "merged",
+      "python": "core/ai_model/model_adapter/default_locate_protocol.py",
+      "reason": "locate protocol types and default factory live together"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/locate.ts",
+      "status": "merged",
+      "python": "core/ai_model/workflows/grounding/locate.py",
+      "reason": "resolveLocate dispatch is implemented by the locate workflow"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/openrouter-reasoning.ts",
+      "status": "aligned",
+      "python": "core/ai_model/model_adapter/openrouter_reasoning.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/planning-protocol.ts",
+      "status": "aligned",
+      "python": "core/ai_model/model_adapter/planning_protocol.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/planning.ts",
+      "status": "merged",
+      "python": "core/ai_model/workflows/planning/standard_planning.py",
+      "reason": "resolvePlanning dispatch is implemented by the planning workflow"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/resolve.ts",
+      "status": "aligned",
+      "python": "core/ai_model/model_adapter/resolve.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/responses.ts",
+      "status": "pending",
+      "reason": "default responses-params builder (small port)"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/temperature-with-semantic-retry.ts",
+      "status": "aligned",
+      "python": "core/ai_model/model_adapter/temperature_with_semantic_retry.py"
+    },
+    {
+      "package": "core",
+      "upstream": "ai-model/model-adapter/types.ts",
+      "status": "aligned",
+      "python": "core/ai_model/model_adapter/types.py"
+    },
+    {
+      "package": "computer",
+      "upstream": "agent-tools.ts",
+      "status": "exempt",
+      "reason": "platform/Node bindings; pyautogui is used cross-platform"
+    },
+    {
+      "package": "computer",
+      "upstream": "agent.ts",
+      "status": "aligned",
+      "python": "computer/agent.py"
+    },
+    {
+      "package": "computer",
+      "upstream": "apple-script-keyboard.ts",
+      "status": "exempt",
+      "reason": "platform/Node bindings; pyautogui is used cross-platform"
+    },
+    {
+      "package": "computer",
+      "upstream": "cli.ts",
+      "status": "exempt",
+      "reason": "platform/Node bindings; pyautogui is used cross-platform"
+    },
+    {
+      "package": "computer",
+      "upstream": "device.ts",
+      "status": "aligned",
+      "python": "computer/device.py"
+    },
+    {
+      "package": "computer",
+      "upstream": "index.ts",
+      "status": "aligned",
+      "python": "computer/__init__.py"
+    },
+    {
+      "package": "computer",
+      "upstream": "input-driver.ts",
+      "status": "aligned",
+      "python": "computer/input_driver.py"
+    },
+    {
+      "package": "computer",
+      "upstream": "keyboard-layout.ts",
+      "status": "aligned",
+      "python": "computer/keyboard_layout.py"
+    },
+    {
+      "package": "computer",
+      "upstream": "pointer.ts",
+      "status": "aligned",
+      "python": "computer/pointer.py"
+    },
+    {
+      "package": "computer",
+      "upstream": "utils.ts",
+      "status": "aligned",
+      "python": "computer/utils.py"
+    },
+    {
+      "package": "computer",
+      "upstream": "windows-display.ts",
+      "status": "exempt",
+      "reason": "platform/Node bindings; pyautogui is used cross-platform"
+    },
+    {
+      "package": "computer",
+      "upstream": "windows-dpi.ts",
+      "status": "exempt",
+      "reason": "platform/Node bindings; pyautogui is used cross-platform"
+    },
+    {
+      "package": "computer",
+      "upstream": "windows-pointer.ts",
+      "status": "exempt",
+      "reason": "platform/Node bindings; pyautogui is used cross-platform"
+    },
+    {
+      "package": "computer",
+      "upstream": "xvfb.ts",
+      "status": "pending",
+      "reason": "start/stop Xvfb for headless Linux desktop automation"
+    },
+    {
+      "package": "computer",
+      "upstream": "rdp/address.ts",
+      "status": "aligned",
+      "python": "computer/rdp/address.py"
+    },
+    {
+      "package": "computer",
+      "upstream": "rdp/backend-client.ts",
+      "status": "aligned",
+      "python": "computer/rdp/backend_client.py"
+    },
+    {
+      "package": "computer",
+      "upstream": "rdp/device.ts",
+      "status": "aligned",
+      "python": "computer/rdp/device.py"
+    },
+    {
+      "package": "computer",
+      "upstream": "rdp/helper-binary.ts",
+      "status": "aligned",
+      "python": "computer/rdp/helper_binary.py"
+    },
+    {
+      "package": "computer",
+      "upstream": "rdp/protocol.ts",
+      "status": "aligned",
+      "python": "computer/rdp/protocol.py"
+    },
+    {
+      "package": "computer-linux",
+      "upstream": "index.ts",
+      "status": "aligned",
+      "python": "computer_linux/__init__.py"
+    },
+    {
+      "package": "computer-mac",
+      "upstream": "index.ts",
+      "status": "aligned",
+      "python": "computer_mac/__init__.py"
+    },
+    {
+      "package": "computer-win",
+      "upstream": "index.ts",
+      "status": "aligned",
+      "python": "computer_win/__init__.py"
+    },
+    {
+      "package": "harmony",
+      "upstream": "agent-tools.ts",
+      "status": "exempt",
+      "reason": "Node CLI / platform bindings"
+    },
+    {
+      "package": "harmony",
+      "upstream": "agent.ts",
+      "status": "aligned",
+      "python": "harmony/agent.py"
+    },
+    {
+      "package": "harmony",
+      "upstream": "appNameMapping.ts",
+      "status": "aligned",
+      "python": "harmony/app_name_mapping.py"
+    },
+    {
+      "package": "harmony",
+      "upstream": "bin.ts",
+      "status": "exempt",
+      "reason": "Node CLI / platform bindings"
+    },
+    {
+      "package": "harmony",
+      "upstream": "cli.ts",
+      "status": "exempt",
+      "reason": "Node CLI / platform bindings"
+    },
+    {
+      "package": "harmony",
+      "upstream": "device.ts",
+      "status": "aligned",
+      "python": "harmony/device.py"
+    },
+    {
+      "package": "harmony",
+      "upstream": "hdc-constraints.ts",
+      "status": "aligned",
+      "python": "harmony/hdc_constraints.py"
+    },
+    {
+      "package": "harmony",
+      "upstream": "hdc.ts",
+      "status": "aligned",
+      "python": "harmony/hdc.py"
+    },
+    {
+      "package": "harmony",
+      "upstream": "index.ts",
+      "status": "aligned",
+      "python": "harmony/__init__.py"
+    },
+    {
+      "package": "harmony",
+      "upstream": "keycode.ts",
+      "status": "aligned",
+      "python": "harmony/keycode.py"
+    },
+    {
+      "package": "harmony",
+      "upstream": "platform.ts",
+      "status": "exempt",
+      "reason": "Node CLI / platform bindings"
+    },
+    {
+      "package": "harmony",
+      "upstream": "swipe.ts",
+      "status": "aligned",
+      "python": "harmony/swipe.py"
+    },
+    {
+      "package": "harmony",
+      "upstream": "test-runner-nodes.ts",
+      "status": "exempt",
+      "reason": "Node CLI / platform bindings"
+    },
+    {
+      "package": "harmony",
+      "upstream": "utils.ts",
+      "status": "aligned",
+      "python": "harmony/utils.py"
+    },
+    {
+      "package": "ios",
+      "upstream": "agent-tools.ts",
+      "status": "exempt",
+      "reason": "Node CLI / platform bindings"
+    },
+    {
+      "package": "ios",
+      "upstream": "agent.ts",
+      "status": "aligned",
+      "python": "ios/agent.py"
+    },
+    {
+      "package": "ios",
+      "upstream": "appNameMapping.ts",
+      "status": "aligned",
+      "python": "ios/app_name_mapping.py"
+    },
+    {
+      "package": "ios",
+      "upstream": "bin.ts",
+      "status": "exempt",
+      "reason": "Node CLI / platform bindings"
+    },
+    {
+      "package": "ios",
+      "upstream": "cli.ts",
+      "status": "exempt",
+      "reason": "Node CLI / platform bindings"
+    },
+    {
+      "package": "ios",
+      "upstream": "device.ts",
+      "status": "aligned",
+      "python": "ios/device.py"
+    },
+    {
+      "package": "ios",
+      "upstream": "index.ts",
+      "status": "aligned",
+      "python": "ios/__init__.py"
+    },
+    {
+      "package": "ios",
+      "upstream": "input-focus.ts",
+      "status": "aligned",
+      "python": "ios/input_focus.py"
+    },
+    {
+      "package": "ios",
+      "upstream": "ios-webdriver-client.ts",
+      "status": "aligned",
+      "python": "ios/ios_webdriver_client.py"
+    },
+    {
+      "package": "ios",
+      "upstream": "keyboard-dismiss.ts",
+      "status": "aligned",
+      "python": "ios/keyboard_dismiss.py"
+    },
+    {
+      "package": "ios",
+      "upstream": "mjpeg-frame-source.ts",
+      "status": "aligned",
+      "python": "ios/mjpeg_frame_source.py"
+    },
+    {
+      "package": "ios",
+      "upstream": "platform.ts",
+      "status": "exempt",
+      "reason": "Node CLI / platform bindings"
+    },
+    {
+      "package": "ios",
+      "upstream": "test-runner-nodes.ts",
+      "status": "exempt",
+      "reason": "Node CLI / platform bindings"
+    },
+    {
+      "package": "ios",
+      "upstream": "utils.ts",
+      "status": "aligned",
+      "python": "ios/utils.py"
+    },
+    {
+      "package": "ios",
+      "upstream": "wda-options.ts",
+      "status": "aligned",
+      "python": "ios/wda_options.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "baseDB.ts",
+      "status": "exempt",
+      "reason": "browser IndexedDB API"
+    },
+    {
+      "package": "shared",
+      "upstream": "common.ts",
+      "status": "aligned",
+      "python": "shared/common.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "console-context.node.ts",
+      "status": "exempt",
+      "reason": "Node build variants; Python has shared/console_context.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "console-context.stub.ts",
+      "status": "exempt",
+      "reason": "Node build variants; Python has shared/console_context.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "index.ts",
+      "status": "aligned",
+      "python": "shared/__init__.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "key-alias-utils.ts",
+      "status": "aligned",
+      "python": "shared/key_alias_utils.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "logger.ts",
+      "status": "aligned",
+      "python": "shared/logger.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "recorder.ts",
+      "status": "exempt",
+      "reason": "browser recorder runtime"
+    },
+    {
+      "package": "shared",
+      "upstream": "report-artifact.ts",
+      "status": "aligned",
+      "python": "shared/report_artifact.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "us-keyboard-layout.ts",
+      "status": "pending",
+      "reason": "Puppeteer key table; portable but no Python consumer yet"
+    },
+    {
+      "package": "shared",
+      "upstream": "utils.ts",
+      "status": "aligned",
+      "python": "shared/utils.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "zod-schema-utils.ts",
+      "status": "exempt",
+      "reason": "Zod-specific helpers"
+    },
+    {
+      "package": "shared",
+      "upstream": "types/index.ts",
+      "status": "merged",
+      "python": "core/types.py",
+      "reason": "shared type definitions live in midscene/core/types.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "env/basic.ts",
+      "status": "aligned",
+      "python": "shared/env/basic.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "env/constants.ts",
+      "status": "aligned",
+      "python": "shared/env/constants.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "env/global-config-manager.ts",
+      "status": "aligned",
+      "python": "shared/env/global_config_manager.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "env/helper.ts",
+      "status": "aligned",
+      "python": "shared/env/helper.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "env/index.ts",
+      "status": "aligned",
+      "python": "shared/env/__init__.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "env/init-debug.ts",
+      "status": "aligned",
+      "python": "shared/env/init_debug.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "env/model-config-manager.ts",
+      "status": "aligned",
+      "python": "shared/env/model_config_manager.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "env/parse-model-config.ts",
+      "status": "aligned",
+      "python": "shared/env/parse_model_config.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "env/types.ts",
+      "status": "aligned",
+      "python": "shared/env/types.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "env/utils.ts",
+      "status": "aligned",
+      "python": "shared/env/utils.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "node/fs.ts",
+      "status": "exempt",
+      "reason": "Node filesystem binding"
+    },
+    {
+      "package": "shared",
+      "upstream": "node/index.ts",
+      "status": "aligned",
+      "python": "shared/node/__init__.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "node/port.ts",
+      "status": "aligned",
+      "python": "shared/node/port.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "polyfills/async-hooks.ts",
+      "status": "exempt",
+      "reason": "Node async_hooks polyfill"
+    },
+    {
+      "package": "shared",
+      "upstream": "polyfills/index.ts",
+      "status": "exempt",
+      "reason": "Node async_hooks polyfill"
+    },
+    {
+      "package": "shared",
+      "upstream": "cli/cli-args.ts",
+      "status": "aligned",
+      "python": "shared/cli/cli_args.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "cli/cli-error.ts",
+      "status": "aligned",
+      "python": "shared/cli/cli_error.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "cli/cli-runner.ts",
+      "status": "aligned",
+      "python": "shared/cli/cli_runner.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "cli/cli-value.ts",
+      "status": "aligned",
+      "python": "shared/cli/cli_value.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "cli/index.ts",
+      "status": "aligned",
+      "python": "shared/cli/__init__.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "cli/interrupt.ts",
+      "status": "aligned",
+      "python": "shared/cli/interrupt.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "cli/record-command.ts",
+      "status": "aligned",
+      "python": "shared/cli/record_command.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "cli/screenshot-file.ts",
+      "status": "aligned",
+      "python": "shared/cli/screenshot_file.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "cli/verbose-ai-act.ts",
+      "status": "aligned",
+      "python": "shared/cli/verbose_ai_act.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "cli/verbose-screenshot.ts",
+      "status": "aligned",
+      "python": "shared/cli/verbose_screenshot.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "cli/verbose.ts",
+      "status": "aligned",
+      "python": "shared/cli/verbose.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "agent-tools/agent-behavior-init-args.ts",
+      "status": "aligned",
+      "python": "shared/agent_tools/agent_behavior_init_args.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "agent-tools/agent-context.ts",
+      "status": "aligned",
+      "python": "shared/agent_tools/agent_context.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "agent-tools/base-tools.ts",
+      "status": "aligned",
+      "python": "shared/agent_tools/base_tools.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "agent-tools/chrome-path.ts",
+      "status": "aligned",
+      "python": "shared/agent_tools/chrome_path.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "agent-tools/cli-report-session.ts",
+      "status": "aligned",
+      "python": "shared/agent_tools/cli_report_session.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "agent-tools/error-formatter.ts",
+      "status": "aligned",
+      "python": "shared/agent_tools/error_formatter.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "agent-tools/index.ts",
+      "status": "aligned",
+      "python": "shared/agent_tools/__init__.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "agent-tools/init-arg-utils.ts",
+      "status": "aligned",
+      "python": "shared/agent_tools/init_arg_utils.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "agent-tools/observation-artifact.ts",
+      "status": "aligned",
+      "python": "shared/agent_tools/observation_artifact.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "agent-tools/observation-record.ts",
+      "status": "aligned",
+      "python": "shared/agent_tools/observation_record.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "agent-tools/tool-defaults.ts",
+      "status": "aligned",
+      "python": "shared/agent_tools/tool_defaults.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "agent-tools/tool-generator.ts",
+      "status": "aligned",
+      "python": "shared/agent_tools/tool_generator.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "agent-tools/types.ts",
+      "status": "aligned",
+      "python": "shared/agent_tools/types.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "agent-tools/user-prompt.ts",
+      "status": "aligned",
+      "python": "shared/agent_tools/user_prompt.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "constants/example-code.ts",
+      "status": "aligned",
+      "python": "shared/constants/example_code.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "constants/index.ts",
+      "status": "aligned",
+      "python": "shared/constants/__init__.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "extractor/constants.ts",
+      "status": "aligned",
+      "python": "shared/extractor/constants.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "extractor/debug.ts",
+      "status": "pending",
+      "reason": "DOM extractor debug helpers"
+    },
+    {
+      "package": "shared",
+      "upstream": "extractor/dom-util.ts",
+      "status": "pending",
+      "reason": "DOM element classification"
+    },
+    {
+      "package": "shared",
+      "upstream": "extractor/index.ts",
+      "status": "aligned",
+      "python": "shared/extractor/__init__.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "extractor/locator.ts",
+      "status": "pending",
+      "reason": "DOM xpath locator"
+    },
+    {
+      "package": "shared",
+      "upstream": "extractor/tree.ts",
+      "status": "aligned",
+      "python": "shared/extractor/tree.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "extractor/util.ts",
+      "status": "aligned",
+      "python": "shared/extractor/util.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "extractor/web-extractor.ts",
+      "status": "pending",
+      "reason": "DOM tree extraction"
+    },
+    {
+      "package": "shared",
+      "upstream": "img/box-select.ts",
+      "status": "aligned",
+      "python": "shared/img/box_select.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "img/get-photon.ts",
+      "status": "exempt",
+      "reason": "Node image backends; Pillow covers the Python SDK"
+    },
+    {
+      "package": "shared",
+      "upstream": "img/get-sharp.ts",
+      "status": "exempt",
+      "reason": "Node image backends; Pillow covers the Python SDK"
+    },
+    {
+      "package": "shared",
+      "upstream": "img/index.ts",
+      "status": "aligned",
+      "python": "shared/img/__init__.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "img/info.ts",
+      "status": "aligned",
+      "python": "shared/img/info.py"
+    },
+    {
+      "package": "shared",
+      "upstream": "img/photon-loader.ts",
+      "status": "exempt",
+      "reason": "Node image backends; Pillow covers the Python SDK"
+    },
+    {
+      "package": "shared",
+      "upstream": "img/transform.ts",
+      "status": "aligned",
+      "python": "shared/img/transform.py"
+    },
+    {
+      "package": "webdriver",
+      "upstream": "index.ts",
+      "status": "aligned",
+      "python": "webdriver/__init__.py"
+    },
+    {
+      "package": "webdriver",
+      "upstream": "managers/ServiceManager.ts",
+      "status": "aligned",
+      "python": "webdriver/managers/service_manager.py"
+    },
+    {
+      "package": "webdriver",
+      "upstream": "managers/WDAManager.ts",
+      "status": "aligned",
+      "python": "webdriver/managers/wda_manager.py"
+    },
+    {
+      "package": "webdriver",
+      "upstream": "utils/base-url.ts",
+      "status": "aligned",
+      "python": "webdriver/utils/base_url.py"
+    },
+    {
+      "package": "webdriver",
+      "upstream": "utils/request.ts",
+      "status": "aligned",
+      "python": "webdriver/utils/request.py"
+    },
+    {
+      "package": "webdriver",
+      "upstream": "clients/WebDriverClient.ts",
+      "status": "aligned",
+      "python": "webdriver/clients/webdriver_client.py"
+    },
+    {
+      "package": "webdriver",
+      "upstream": "clients/types.ts",
+      "status": "aligned",
+      "python": "webdriver/clients/types.py"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "agent-init-args.ts",
+      "status": "merged",
+      "python": "core/agent/agent_options.py",
+      "reason": "agent init arguments are represented by AgentOptions"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "agent-tools-cdp.ts",
+      "status": "exempt",
+      "reason": "Node CLI / agent tooling"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "agent-tools-puppeteer.ts",
+      "status": "exempt",
+      "reason": "Node CLI / agent tooling"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "agent-tools-tabs.ts",
+      "status": "exempt",
+      "reason": "Node CLI / agent tooling"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "agent-tools.ts",
+      "status": "exempt",
+      "reason": "Node CLI / agent tooling"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "bin.ts",
+      "status": "exempt",
+      "reason": "Node CLI / agent tooling"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "cdp-proxy-constants.ts",
+      "status": "exempt",
+      "reason": "CDP proxy is not implemented in the Python SDK"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "cdp-proxy-manager.ts",
+      "status": "exempt",
+      "reason": "CDP proxy is not implemented in the Python SDK"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "cdp-proxy.ts",
+      "status": "exempt",
+      "reason": "CDP proxy is not implemented in the Python SDK"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "cdp-target-store.ts",
+      "status": "exempt",
+      "reason": "CDP proxy is not implemented in the Python SDK"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "cli-options.ts",
+      "status": "exempt",
+      "reason": "Node CLI / agent tooling"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "cli.ts",
+      "status": "exempt",
+      "reason": "Node CLI / agent tooling"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "index.ts",
+      "status": "aligned",
+      "python": "web_integration/__init__.py"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "platform.ts",
+      "status": "exempt",
+      "reason": "Node CLI / agent tooling"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "utils.ts",
+      "status": "exempt",
+      "reason": "Node CLI / agent tooling"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "web-element.ts",
+      "status": "aligned",
+      "python": "web_integration/web_element.py"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "web-page.ts",
+      "status": "aligned",
+      "python": "web_integration/web_page.py"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "playwright/agent.ts",
+      "status": "pending",
+      "reason": "Playwright test-runner integration (new capability)"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "playwright/ai-fixture.ts",
+      "status": "pending",
+      "reason": "Playwright test fixtures (new capability)"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "playwright/browser-agent.ts",
+      "status": "pending",
+      "reason": "Playwright test-runner integration (new capability)"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "playwright/index.ts",
+      "status": "aligned",
+      "python": "web_integration/playwright/__init__.py"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "playwright/page-agent.ts",
+      "status": "pending",
+      "reason": "Playwright test-runner integration (new capability)"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "playwright/page.ts",
+      "status": "aligned",
+      "python": "web_integration/playwright/page.py"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "playwright/report-filename.ts",
+      "status": "pending",
+      "reason": "Playwright reporter file naming (new capability)"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "playwright/test-runner/agent-nodes.ts",
+      "status": "pending",
+      "reason": "Playwright test-runner nodes (new capability)"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "playwright/test-runner/driver.ts",
+      "status": "pending",
+      "reason": "Playwright test-runner driver (new capability)"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "playwright/test-runner/index.ts",
+      "status": "pending",
+      "reason": "Playwright test-runner (new capability)"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "playwright/test-runner/types.ts",
+      "status": "pending",
+      "reason": "Playwright test-runner types (new capability)"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "playwright/test-runner/utils.ts",
+      "status": "pending",
+      "reason": "Playwright test-runner utils (new capability)"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "playwright/reporter/index.ts",
+      "status": "pending",
+      "reason": "Playwright reporter (new capability)"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "puppeteer/agent-launcher.ts",
+      "status": "exempt",
+      "reason": "Puppeteer driver is not implemented in the Python SDK"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "puppeteer/agent.ts",
+      "status": "exempt",
+      "reason": "Puppeteer driver is not implemented in the Python SDK"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "puppeteer/base-page.ts",
+      "status": "exempt",
+      "reason": "Puppeteer driver is not implemented in the Python SDK"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "puppeteer/browser-agent.ts",
+      "status": "exempt",
+      "reason": "Puppeteer driver is not implemented in the Python SDK"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "puppeteer/browser-page-manager.ts",
+      "status": "exempt",
+      "reason": "Puppeteer driver is not implemented in the Python SDK"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "puppeteer/index.ts",
+      "status": "exempt",
+      "reason": "Puppeteer driver is not implemented in the Python SDK"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "puppeteer/page-agent.ts",
+      "status": "exempt",
+      "reason": "Puppeteer driver is not implemented in the Python SDK"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "puppeteer/page-ownership.ts",
+      "status": "exempt",
+      "reason": "Puppeteer driver is not implemented in the Python SDK"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "puppeteer/page.ts",
+      "status": "exempt",
+      "reason": "Puppeteer driver is not implemented in the Python SDK"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "puppeteer/scoped-browser-agent.ts",
+      "status": "exempt",
+      "reason": "Puppeteer driver is not implemented in the Python SDK"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "puppeteer/screenshot.ts",
+      "status": "exempt",
+      "reason": "Puppeteer driver is not implemented in the Python SDK"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "puppeteer/test-runner/agent-nodes.ts",
+      "status": "exempt",
+      "reason": "Puppeteer driver is not implemented in the Python SDK"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "puppeteer/test-runner/driver.ts",
+      "status": "exempt",
+      "reason": "Puppeteer driver is not implemented in the Python SDK"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "puppeteer/test-runner/index.ts",
+      "status": "exempt",
+      "reason": "Puppeteer driver is not implemented in the Python SDK"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "puppeteer/test-runner/types.ts",
+      "status": "exempt",
+      "reason": "Puppeteer driver is not implemented in the Python SDK"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "puppeteer/test-runner/utils.ts",
+      "status": "exempt",
+      "reason": "Puppeteer driver is not implemented in the Python SDK"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "static/index.ts",
+      "status": "exempt",
+      "reason": "Playground static page runtime"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "static/static-agent.ts",
+      "status": "exempt",
+      "reason": "Playground static page runtime"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "static/static-page.ts",
+      "status": "exempt",
+      "reason": "Playground static page runtime"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "chrome-extension/agent.ts",
+      "status": "exempt",
+      "reason": "browser extension runtime"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "chrome-extension/cdpInput.ts",
+      "status": "exempt",
+      "reason": "browser extension runtime"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "chrome-extension/dynamic-scripts.ts",
+      "status": "exempt",
+      "reason": "browser extension runtime"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "chrome-extension/index.ts",
+      "status": "exempt",
+      "reason": "browser extension runtime"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "chrome-extension/page.ts",
+      "status": "exempt",
+      "reason": "browser extension runtime"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "common/browser-agent-utils.ts",
+      "status": "merged",
+      "python": "web_integration/playwright/page.py",
+      "reason": "browser agent helpers are folded into the page"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "common/browser-agent.ts",
+      "status": "merged",
+      "python": "core/agent/agent.py",
+      "reason": "the unified core Agent serves every web driver"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "common/browser-page-actions.ts",
+      "status": "merged",
+      "python": "web_integration/playwright/page.py",
+      "reason": "generic page actions are implemented inside the Playwright page"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "common/cache-helper.ts",
+      "status": "aligned",
+      "python": "web_integration/common/cache_helper.py"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "common/input-scripts.ts",
+      "status": "aligned",
+      "python": "web_integration/common/input_scripts.py"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "common/viewport.ts",
+      "status": "aligned",
+      "python": "web_integration/common/viewport.py"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "common/test-runner/cookies.ts",
+      "status": "pending",
+      "reason": "Node test-runner cookies helper"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "common/test-runner/driver.ts",
+      "status": "pending",
+      "reason": "Node test-runner driver"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "common/test-runner/nodes.ts",
+      "status": "pending",
+      "reason": "Node test-runner nodes"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "common/test-runner/utils.ts",
+      "status": "pending",
+      "reason": "Node test-runner utils"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "bridge-mode/agent-cli-side.ts",
+      "status": "merged",
+      "python": "web_integration/bridge_mode/__init__.py",
+      "reason": "bridge mode is driven by core.Agent plus BridgeWebPage"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "bridge-mode/browser.ts",
+      "status": "aligned",
+      "python": "web_integration/bridge_mode/browser.py"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "bridge-mode/common.ts",
+      "status": "aligned",
+      "python": "web_integration/bridge_mode/common.py"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "bridge-mode/index.ts",
+      "status": "aligned",
+      "python": "web_integration/bridge_mode/__init__.py"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "bridge-mode/io-client.ts",
+      "status": "exempt",
+      "reason": "the Chrome extension is the bridge client; Python only hosts the server"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "bridge-mode/io-server.ts",
+      "status": "aligned",
+      "python": "web_integration/bridge_mode/io_server.py"
+    },
+    {
+      "package": "web-integration",
+      "upstream": "bridge-mode/page-browser-side.ts",
+      "status": "aligned",
+      "python": "web_integration/bridge_mode/page_browser_side.py"
+    },
+    {
+      "package": "cli",
+      "upstream": "args.ts",
+      "status": "aligned",
+      "python": "cli/args.py"
+    },
+    {
+      "package": "cli",
+      "upstream": "batch-runner.ts",
+      "status": "aligned",
+      "python": "cli/batch_runner.py"
+    },
+    {
+      "package": "cli",
+      "upstream": "cli-utils.ts",
+      "status": "aligned",
+      "python": "cli/cli_utils.py"
+    },
+    {
+      "package": "cli",
+      "upstream": "config-factory.ts",
+      "status": "aligned",
+      "python": "cli/config_factory.py"
+    },
+    {
+      "package": "cli",
+      "upstream": "config-options.ts",
+      "status": "aligned",
+      "python": "cli/config_options.py"
+    },
+    {
+      "package": "cli",
+      "upstream": "create-yaml-player.ts",
+      "status": "aligned",
+      "python": "cli/create_yaml_player.py"
+    },
+    {
+      "package": "cli",
+      "upstream": "dotenv-loader.ts",
+      "status": "aligned",
+      "python": "cli/dotenv_loader.py"
+    },
+    {
+      "package": "cli",
+      "upstream": "execution-summary.ts",
+      "status": "aligned",
+      "python": "cli/execution_summary.py"
+    },
+    {
+      "package": "cli",
+      "upstream": "index.ts",
+      "status": "merged",
+      "python": "cli/main.py",
+      "reason": "Python CLI entry point is main.py"
+    },
+    {
+      "package": "cli",
+      "upstream": "model-command.ts",
+      "status": "aligned",
+      "python": "cli/model_command.py"
+    },
+    {
+      "package": "cli",
+      "upstream": "printer.ts",
+      "status": "aligned",
+      "python": "cli/printer.py"
+    },
+    {
+      "package": "cli",
+      "upstream": "siwc-command.ts",
+      "status": "aligned",
+      "python": "cli/siwc_command.py"
+    },
+    {
+      "package": "cli",
+      "upstream": "tty-renderer.ts",
+      "status": "pending",
+      "reason": "Rich-based live renderer (low priority: runner exposes no progress events)"
+    },
+    {
+      "package": "cli",
+      "upstream": "workflow-format.ts",
+      "status": "merged",
+      "python": "cli/cli_utils.py",
+      "reason": "legacy workflow extension validation lives in cli_utils"
+    },
+    {
+      "package": "cli",
+      "upstream": "yaml-batch-error.ts",
+      "status": "aligned",
+      "python": "cli/yaml_batch_error.py"
+    },
+    {
+      "package": "cli",
+      "upstream": "yaml-batch-executor.ts",
+      "status": "aligned",
+      "python": "cli/yaml_batch_executor.py"
+    },
+    {
+      "package": "cli",
+      "upstream": "openai/credentials.ts",
+      "status": "aligned",
+      "python": "cli/openai/credentials.py"
+    },
+    {
+      "package": "cli",
+      "upstream": "openai/errors.ts",
+      "status": "aligned",
+      "python": "cli/openai/errors.py"
+    },
+    {
+      "package": "cli",
+      "upstream": "openai/login.ts",
+      "status": "aligned",
+      "python": "cli/openai/login.py"
+    },
+    {
+      "package": "cli",
+      "upstream": "framework/command.ts",
+      "status": "exempt",
+      "reason": "rstest (Node) test framework"
+    },
+    {
+      "package": "cli",
+      "upstream": "framework/index.ts",
+      "status": "exempt",
+      "reason": "rstest (Node) test framework"
+    },
+    {
+      "package": "cli",
+      "upstream": "framework/progress-reporter.ts",
+      "status": "exempt",
+      "reason": "rstest (Node) test framework"
+    },
+    {
+      "package": "cli",
+      "upstream": "framework/rstest-contract.ts",
+      "status": "exempt",
+      "reason": "rstest (Node) test framework"
+    },
+    {
+      "package": "cli",
+      "upstream": "framework/rstest-dependencies.ts",
+      "status": "exempt",
+      "reason": "rstest (Node) test framework"
+    },
+    {
+      "package": "cli",
+      "upstream": "framework/rstest-entry.ts",
+      "status": "exempt",
+      "reason": "rstest (Node) test framework"
+    },
+    {
+      "package": "cli",
+      "upstream": "framework/rstest-project.ts",
+      "status": "exempt",
+      "reason": "rstest (Node) test framework"
+    },
+    {
+      "package": "cli",
+      "upstream": "framework/rstest-runner.ts",
+      "status": "exempt",
+      "reason": "rstest (Node) test framework"
+    },
+    {
+      "package": "cli",
+      "upstream": "framework/yaml-batch.ts",
+      "status": "exempt",
+      "reason": "rstest (Node) test framework"
+    },
+    {
+      "package": "cli",
+      "upstream": "framework/yaml-case.ts",
+      "status": "exempt",
+      "reason": "rstest (Node) test framework"
+    }
+  ]
+}
