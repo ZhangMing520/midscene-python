@@ -1,12 +1,12 @@
 {
   "upstream_root": "/home/zhangming/gitspace/midscene",
   "counts": {
-    "modules_with_gaps": 139,
-    "missing_functions": 173,
+    "modules_with_gaps": 135,
+    "missing_functions": 167,
     "moved_functions": 21,
-    "missing_classes": 22,
+    "missing_classes": 19,
     "missing_methods": 104,
-    "signature_mismatch": 51,
+    "signature_mismatch": 50,
     "modules_scanned": 425,
     "functions_scanned": 601,
     "classes_scanned": 100
@@ -1904,37 +1904,6 @@
     },
     {
       "package": "core",
-      "upstream": "dump/screenshot-restoration.ts",
-      "python": "core/dump/screenshot_restoration.py",
-      "missing_functions": [
-        {
-          "name": "createInlineImageResolver",
-          "params": [
-            "images"
-          ]
-        },
-        {
-          "name": "restoreImageReferences",
-          "params": [
-            "data",
-            "resolveImage"
-          ]
-        },
-        {
-          "name": "restoreReportImageReferences",
-          "params": [
-            "data",
-            "reportUrl"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
       "upstream": "report-generator.ts",
       "python": "core/report_generator.py",
       "missing_functions": [],
@@ -2880,23 +2849,6 @@
     },
     {
       "package": "core",
-      "upstream": "dump/report-artifact-reader.ts",
-      "python": "core/dump/report_artifact_reader.py",
-      "missing_functions": [
-        {
-          "name": "readReportArtifactManifestAsync",
-          "params": [
-            "reportPath"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
       "upstream": "dump/report-dump-compactor.ts",
       "python": "core/dump/report_dump_compactor.py",
       "missing_functions": [
@@ -2911,38 +2863,6 @@
       "missing_classes": [],
       "missing_methods": [],
       "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "dump/screenshot-store.ts",
-      "python": "core/dump/screenshot_store.py",
-      "missing_functions": [
-        {
-          "name": "resolveScreenshotSource",
-          "params": [
-            "refInput",
-            "options"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [
-        "ReportImageStore"
-      ],
-      "missing_methods": [],
-      "signature_mismatch": [
-        {
-          "kind": "function",
-          "name": "resolveImageSource",
-          "ts_params": [
-            "refInput",
-            "options"
-          ],
-          "python_params": [
-            "ref_input"
-          ]
-        }
-      ]
     },
     {
       "package": "shared",
@@ -3014,43 +2934,6 @@
         }
       ],
       "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "report-cli.ts",
-      "python": "core/report_cli.py",
-      "missing_functions": [
-        {
-          "name": "createReportCliCommands",
-          "params": []
-        }
-      ],
-      "moved_functions": [
-        {
-          "name": "mergeReportFiles",
-          "params": [
-            "options"
-          ],
-          "found_in": "midscene/core/dump/report_dump_compactor.py"
-        },
-        {
-          "name": "reportFileToMarkdown",
-          "params": [
-            "options"
-          ],
-          "found_in": "midscene/core/report_markdown.py"
-        },
-        {
-          "name": "splitReportFile",
-          "params": [
-            "options"
-          ],
-          "found_in": "midscene/core/dump/test_report_images.py"
-        }
-      ],
       "missing_classes": [],
       "missing_methods": [],
       "signature_mismatch": []
@@ -4181,19 +4064,6 @@
     },
     {
       "package": "core",
-      "upstream": "dump/report-action-dump.ts",
-      "python": "core/dump/report_action_dump.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [
-        "ExecutionDump",
-        "ReportActionDump"
-      ],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
       "upstream": "dump/report-session.ts",
       "python": "core/dump/report_session.py",
       "missing_functions": [],
@@ -4388,6 +4258,38 @@
             "value"
           ],
           "found_in": "midscene/core/dump/report_artifact_store.py"
+        }
+      ],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "report-cli.ts",
+      "python": "core/report_cli.py",
+      "missing_functions": [],
+      "moved_functions": [
+        {
+          "name": "mergeReportFiles",
+          "params": [
+            "options"
+          ],
+          "found_in": "midscene/core/dump/report_dump_compactor.py"
+        },
+        {
+          "name": "reportFileToMarkdown",
+          "params": [
+            "options"
+          ],
+          "found_in": "midscene/core/report_markdown.py"
+        },
+        {
+          "name": "splitReportFile",
+          "params": [
+            "options"
+          ],
+          "found_in": "midscene/core/dump/test_report_images.py"
         }
       ],
       "missing_classes": [],

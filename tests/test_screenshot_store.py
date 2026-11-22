@@ -1,21 +1,15 @@
-"""Synced from upstream packages/core/tests/unit-test/screenshot-store.test.ts.
+"""Synced from upstream packages/core/tests/unit-test/screenshot-store.test.ts."""
 
-The Python port splits the upstream ``ScreenshotStore`` into
-``screenshot_store`` (validation/helpers), ``screenshot_item`` (lazy memory)
-and ``report_image_export.ReportImageExporter`` (file writing). Cases that
-exercise that composition are ported against those pieces; cases that require
-the missing facade (inline dedupe by content, tracking collections, deprecated
-aliases, dump companion files) are skipped with the specific reason.
-"""
-
-import base64
+import json
 import re
 
 import pytest
 
-from midscene.core.dump.image_reference import normalize_image_url_ref
-from midscene.core.dump.report_image_export import ReportImageExporter
-from midscene.core.dump.screenshot_store import parse_base64_image_data_url
+from midscene.core.dump.report_action_dump import ExecutionDump, ReportActionDump
+from midscene.core.dump.screenshot_store import (
+    ReportImageStore,
+    normalize_image_url_ref,
+)
 from midscene.core.screenshot_item import ScreenshotItem
 
 PNG_BASE64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUA"
@@ -29,18 +23,14 @@ async def test_releases_memory_after_persist_and_supports_recovery_in_directory_
     report_path = tmp_path / "index.html"
     screenshots_dir = tmp_path / "screenshots"
     item = ScreenshotItem.create(PNG_BASE64, 100)
-    exporter = ReportImageExporter(str(report_path), str(screenshots_dir))
+    store = ReportImageStore("directory", report_path, screenshots_dir)
 
-    relative_path = f"./screenshots/{exporter.write(item.to_serializable(), PNG_BASE64)}"
-    absolute_path = tmp_path / relative_path
-    assert absolute_path.exists() is True
-
-    item.mark_persisted_to_path(relative_path, str(absolute_path))
+    ref = store.persist(item)
 
     assert item.has_base64() is False
-    ref = item.to_serializable()
     assert ref["storage"] == "file"
-    assert "data:image/png;base64," in item.base64
+    assert (tmp_path / store.get_file_path(item.id)).exists() is True
+    assert "data:image/png;base64," in store.load_base64(ref)
 
 
 @pytest.mark.asyncio
@@ -48,111 +38,184 @@ async def test_shares_bytes_across_observations_and_reference_images_while_keepi
     tmp_path,
 ):
     """shares bytes across observations and reference images while keeping observation identity"""
-    exporter = ReportImageExporter(
-        str(tmp_path / "index.html"), str(tmp_path / "screenshots")
+    store = ReportImageStore(
+        "directory",
+        tmp_path / "index.html",
+        tmp_path / "screenshots",
     )
     first = ScreenshotItem.create(PNG_BASE64, 100)
     second = ScreenshotItem.create(PNG_BASE64, 200)
-    reference = {
-        "type": "midscene_image_url_ref",
-        "id": "reference-image",
-        "mimeType": "image/png",
-        "storage": "inline",
-    }
 
-    first_path = exporter.write(first.to_serializable(), PNG_BASE64)
-    second_path = exporter.write(second.to_serializable(), PNG_BASE64)
-    reference_path = exporter.write(reference, PNG_BASE64)
+    first_ref = store.persist(first)
+    second_ref = store.persist(second)
+    reference = store.persist_reference_image(PNG_BASE64)
 
-    assert first.id != second.id
-    assert [first.captured_at, second.captured_at] == [100, 200]
-    assert first_path == second_path
-    assert first_path == reference_path
-    assert re.match(r"^[a-f0-9]{64}\.png$", first_path)
+    assert first_ref["id"] != second_ref["id"]
+    assert [first_ref["capturedAt"], second_ref["capturedAt"]] == [100, 200]
+    assert first_ref["path"] == second_ref["path"]
+    assert first_ref["path"] == reference["path"]
+    assert re.match(r"^\./screenshots/[a-f0-9]{64}\.png$", first_ref["path"])
     assert len(list((tmp_path / "screenshots").iterdir())) == 1
     assert first.base64 == PNG_BASE64
     assert second.base64 == PNG_BASE64
 
 
-@pytest.mark.skip(
-    reason="Python has no ReportActionDump.serializeToFiles/fromFilesAsInlineJson "
-    "companion-file round trip"
-)
-def test_round_trips_screenshots_through_dump_companion_files():
+@pytest.mark.asyncio
+async def test_round_trips_screenshots_through_dump_companion_files(tmp_path):
     """round-trips screenshots through dump companion files"""
-    pass
+    dump_path = tmp_path / "execution.json"
+    screenshot = ScreenshotItem.create(PNG_BASE64, 100)
+    execution = ExecutionDump(
+        {
+            "id": "execution-with-file-screenshot",
+            "logTime": 100,
+            "name": "execution-with-file-screenshot",
+            "tasks": [
+                {
+                    "taskId": "task-with-file-screenshot",
+                    "type": "Insight",
+                    "subType": "Locate",
+                    "param": {},
+                    "uiContext": {
+                        "screenshot": screenshot,
+                        "shotSize": {"width": 5, "height": 5},
+                        "shrunkShotToLogicalRatio": 1,
+                    },
+                    "recorder": [],
+                    "status": "finished",
+                }
+            ],
+        }
+    )
+    dump = ReportActionDump(
+        {
+            "sdkVersion": "1.0.0-test",
+            "groupName": "companion-file-round-trip",
+            "modelBriefs": [],
+            "executions": [execution],
+        }
+    )
+
+    dump.serialize_to_files(str(dump_path))
+    restored = json.loads(
+        ReportActionDump.from_files_as_inline_json(str(dump_path))
+    )
+
+    assert (
+        restored["executions"][0]["tasks"][0]["uiContext"]["screenshot"]["base64"]
+        == PNG_BASE64
+    )
 
 
 @pytest.mark.asyncio
 async def test_deduplicates_same_screenshot_persistence_by_id(tmp_path):
     """deduplicates same screenshot persistence by id"""
-    exporter = ReportImageExporter(
-        str(tmp_path / "index.html"), str(tmp_path / "screenshots")
+    store = ReportImageStore(
+        "directory",
+        tmp_path / "index.html",
+        tmp_path / "screenshots",
     )
     item = ScreenshotItem.create(PNG_BASE64, 100)
-    ref = item.to_serializable()
 
-    first = exporter.write(ref, PNG_BASE64)
-    (tmp_path / "screenshots" / first).write_text("marker", encoding="utf-8")
-    second = exporter.write(ref, PNG_BASE64)
-
-    assert first == second
-    assert (tmp_path / "screenshots" / first).read_text(encoding="utf-8") == "marker"
-
-
-@pytest.mark.skip(
-    reason="Python has no ScreenshotStore.persistReferenceImage content-keyed "
-    "dedupe that returns the first reference id"
-)
-@pytest.mark.asyncio
-async def test_deduplicates_inline_reference_images_by_content():
-    """deduplicates inline reference images by content"""
-    pass
-
-
-@pytest.mark.skip(
-    reason="Python has no ScreenshotStore tracking collections to inspect for "
-    "full data URLs"
-)
-@pytest.mark.asyncio
-async def test_does_not_retain_full_reference_image_data_urls_in_tracking_collections():
-    """does not retain full reference-image data URLs in tracking collections"""
-    pass
-
-
-@pytest.mark.asyncio
-async def test_persists_non_png_reference_images_with_their_own_extension(tmp_path):
-    """persists non-PNG reference images with their own extension"""
-    exporter = ReportImageExporter(
-        str(tmp_path / "index.html"), str(tmp_path / "screenshots")
+    first = store.persist(item)
+    (tmp_path / store.get_file_path(item.id)).write_text(
+        "marker", encoding="utf-8"
     )
-    ref = {
-        "type": "midscene_image_url_ref",
-        "id": "svg-reference",
-        "mimeType": "image/svg+xml",
-        "storage": "inline",
-    }
+    second = store.persist(item)
 
-    name = exporter.write(ref, "data:image/svg+xml;base64,PHN2Zy8+")
-
-    assert re.match(r"^[a-f0-9]{64}\.svg$", name)
-    path = tmp_path / "screenshots" / name
-    assert path.exists() is True
-    assert path.read_bytes() == b"<svg/>"
+    assert first["id"] == second["id"]
     assert (
-        "data:image/svg+xml;base64,"
-        + base64.b64encode(path.read_bytes()).decode("ascii")
-        == "data:image/svg+xml;base64,PHN2Zy8+"
+        (tmp_path / store.get_file_path(item.id)).read_text(encoding="utf-8")
+        == "marker"
     )
 
 
 @pytest.mark.asyncio
-async def test_rejects_malformed_reference_image_data_urls():
+async def test_deduplicates_inline_reference_images_by_content(tmp_path):
+    """deduplicates inline reference images by content"""
+    report_path = tmp_path / "reference-inline.html"
+    appended = []
+    store = ReportImageStore(
+        "inline",
+        report_path,
+        write_inline_image=lambda image_id, image: appended.append(
+            (image_id, image)
+        ),
+    )
+    reference_image = "data:image/webp;base64,QUJDRA=="
+
+    first = store.persist_reference_image(reference_image)
+    repeated = store.persist_reference_image(reference_image)
+    second = store.persist_reference_image(
+        "data:image/webp;name=reference;base64,QUJD RA=="
+    )
+
+    assert first["type"] == "midscene_image_url_ref"
+    assert first["mimeType"] == "image/webp"
+    assert first["storage"] == "inline"
+    assert repeated == first
+    assert second["id"] == first["id"]
+    assert len(appended) == 1
+    assert appended[0] == (first["id"], reference_image)
+
+
+@pytest.mark.asyncio
+async def test_does_not_retain_full_reference_image_data_urls_in_tracking_collections(
+    tmp_path,
+):
+    """does not retain full reference-image data URLs in tracking collections"""
+    store = ReportImageStore(
+        "inline",
+        tmp_path / "bounded-reference-tracking.html",
+        write_inline_image=lambda _image_id, _image: None,
+    )
+
+    for marker in ["QUJDRA==", "RUZHSA==", "SUpLTA=="]:
+        store.persist_reference_image(f"data:image/webp;base64,{marker}")
+
+    tracked_values = []
+    for value in store.__dict__.values():
+        if isinstance(value, dict):
+            tracked_values.extend(value.keys())
+            tracked_values.extend(value.values())
+        elif isinstance(value, (set, list, tuple)):
+            tracked_values.extend(value)
+
+    assert not any(
+        isinstance(value, str) and value.startswith("data:image/")
+        for value in tracked_values
+    )
+
+
+@pytest.mark.asyncio
+async def test_persists_non_png_reference_images_with_their_own_extension(
+    tmp_path,
+):
+    """persists non-PNG reference images with their own extension"""
+    report_path = tmp_path / "index.html"
+    screenshots_dir = tmp_path / "screenshots"
+    store = ReportImageStore("directory", report_path, screenshots_dir)
+
+    ref = store.persist_reference_image("data:image/svg+xml;base64,PHN2Zy8+")
+
+    assert re.match(r"^\./screenshots/[a-f0-9]{64}\.svg$", ref["path"])
+    assert (tmp_path / ref["path"]).exists() is True
+    assert store.load_data_uri(ref) == "data:image/svg+xml;base64,PHN2Zy8+"
+
+
+@pytest.mark.asyncio
+async def test_rejects_malformed_reference_image_data_urls(tmp_path):
     """rejects malformed reference image data URLs"""
+    store = ReportImageStore(
+        "inline",
+        tmp_path / "invalid-reference.html",
+        write_inline_image=lambda _image_id, _image: None,
+    )
+
     with pytest.raises(
         ValueError, match="reference image must be a valid base64 image data URL"
     ):
-        parse_base64_image_data_url("data:image/png,not-base64")
+        store.persist_reference_image("data:image/png,not-base64")
 
 
 def test_rejects_unsafe_serialized_reference_image_file_names():
@@ -179,40 +242,99 @@ async def test_supports_inline_mode_persistence_lazy_restore(tmp_path):
     def append_inline(image_id, image_base64):
         appended.append((image_id, image_base64))
         report_path.write_text(
-            f'<script type="midscene-image" data-id="{image_id}">{image_base64}</script>',
+            f'<script type="midscene-image" data-id="{image_id}">'
+            f"{image_base64}</script>",
             encoding="utf-8",
         )
 
+    store = ReportImageStore(
+        "inline", report_path, write_inline_image=append_inline
+    )
     item = ScreenshotItem.create(PNG_BASE64, 100)
-    append_inline(item.id, PNG_BASE64)
-    item.mark_persisted_inline(str(report_path))
+
+    ref = store.persist(item)
 
     assert item.has_base64() is False
     assert len(appended) == 1
-    assert item.base64 == PNG_BASE64
+    assert store.load_base64(ref) == PNG_BASE64
 
 
-@pytest.mark.skip(
-    reason="Python ScreenshotItem cannot represent inline storage plus a shared "
-    "file copy; ensureFileCopy/alsoWriteFileCopy is not ported"
-)
 @pytest.mark.asyncio
-async def test_can_ensure_shared_file_copy_while_preserving_inline_mode_semantics():
+async def test_can_ensure_shared_file_copy_while_preserving_inline_mode_semantics(
+    tmp_path,
+):
     """can ensure shared file copy while preserving inline mode semantics"""
-    pass
+    report_path = tmp_path / "inline-with-file-copy.html"
+    screenshots_dir = tmp_path / "screenshots"
+    appended = []
+
+    def append_inline(image_id, image_base64):
+        appended.append((image_id, image_base64))
+        report_path.write_text(
+            f'<script type="midscene-image" data-id="{image_id}">'
+            f"{image_base64}</script>",
+            encoding="utf-8",
+        )
+
+    store = ReportImageStore(
+        "inline",
+        report_path,
+        screenshots_dir,
+        write_inline_image=append_inline,
+        also_write_file_copy=True,
+    )
+    item = ScreenshotItem.create(PNG_BASE64, 100)
+
+    ref = store.persist(item)
+
+    assert ref["storage"] == "inline"
+    assert item.to_serializable()["storage"] == "inline"
+    assert len(appended) == 1
+    assert (tmp_path / store.get_file_path(item.id)).exists() is True
+    (tmp_path / store.get_file_path(item.id)).unlink()
+    assert item.base64 == PNG_BASE64
+    assert store.load_base64(ref) == PNG_BASE64
 
 
-@pytest.mark.skip(reason="Python has no deprecated ensureFileCopy alias")
 @pytest.mark.asyncio
-async def test_keeps_supporting_ensurefilecopy_as_a_deprecated_alias():
+async def test_keeps_supporting_ensurefilecopy_as_a_deprecated_alias(tmp_path):
     """keeps supporting ensureFileCopy as a deprecated alias"""
-    pass
+    report_path = tmp_path / "inline-with-deprecated-file-copy.html"
+    screenshots_dir = tmp_path / "screenshots"
+
+    def append_inline(image_id, image_base64):
+        report_path.write_text(
+            f'<script type="midscene-image" data-id="{image_id}">'
+            f"{image_base64}</script>",
+            encoding="utf-8",
+        )
+
+    store = ReportImageStore(
+        "inline",
+        report_path,
+        screenshots_dir,
+        write_inline_image=append_inline,
+        ensure_file_copy=True,
+    )
+    item = ScreenshotItem.create(PNG_BASE64, 100)
+
+    ref = store.persist(item)
+
+    assert ref["storage"] == "inline"
+    assert (tmp_path / store.get_file_path(item.id)).exists() is True
 
 
-@pytest.mark.skip(
-    reason="Python normalizes invalid screenshot references to None instead of "
-    "raising 'invalid screenshot reference' from a store loader"
-)
-def test_throws_on_non_screenshotref_inputs():
+def test_throws_on_non_screenshotref_inputs(tmp_path):
     """throws on non-ScreenshotRef inputs"""
-    pass
+    store = ReportImageStore(
+        "inline",
+        tmp_path / "invalid-ref.html",
+        write_inline_image=lambda _image_id, _image: None,
+    )
+
+    with pytest.raises(ValueError, match="invalid screenshot reference"):
+        store.load_base64({"$screenshot": "legacy-id", "capturedAt": 1})
+    with pytest.raises(ValueError, match="invalid screenshot reference"):
+        store.load_base64(
+            {"base64": "./screenshots/legacy.png", "capturedAt": 1}
+        )

@@ -5,8 +5,11 @@ Synced from upstream packages/core/src/types.ts:
   AIUsageInfo field names, and the midscene_run directory layout.
 """
 
+import base64
+import contextlib
 import json
 import os
+import shutil
 import time
 import uuid
 from pathlib import Path
@@ -14,6 +17,13 @@ from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
+from midscene.core.dump.report_artifact_store import write_report_artifact_file
+from midscene.core.dump.screenshot_restoration import restore_image_references
+from midscene.core.dump.screenshot_store import (
+    ReportImageStore,
+    is_base64_image_data_url,
+)
+from midscene.core.screenshot_item import ScreenshotItem
 from midscene.shared.env import get_midscene_run_dir
 
 
@@ -152,8 +162,324 @@ def build_execution_task(
     return task
 
 
+def _get_page_or_browser_object_name(value: Any) -> Optional[str]:
+    """Return ``Page``/``Browser`` for opaque runtime objects, else ``None``."""
+    name = type(value).__name__
+    return name if name in ("Page", "Browser") else None
+
+
+def _is_custom_serializable_object(value: Any) -> bool:
+    return callable(getattr(value, "to_serializable", None))
+
+
+def _prepare_for_serialization(value: Any) -> Any:
+    """Replacer equivalent for JSON serialization (upstream replacer)."""
+    if _get_page_or_browser_object_name(value):
+        return f"[{_get_page_or_browser_object_name(value)} object]"
+    if ScreenshotItem.is_screenshot_item(value):
+        return value.to_serializable()
+    if _is_custom_serializable_object(value):
+        return value.to_serializable()
+    if isinstance(value, dict):
+        # screenshotSequence is a transient model input whose frames are not
+        # persisted; serializing it would emit dangling screenshot refs.
+        return {
+            key: _prepare_for_serialization(item)
+            for key, item in value.items()
+            if key != "screenshotSequence"
+        }
+    if isinstance(value, list):
+        return [_prepare_for_serialization(item) for item in value]
+    return value
+
+
+def _stringify_dump(data: Any, indents: Optional[int] = None) -> str:
+    return json.dumps(
+        _prepare_for_serialization(data),
+        ensure_ascii=False,
+        indent=indents,
+    )
+
+
+def _json_default(value: Any) -> Any:
+    """Serialize lazily restored screenshots the way JSON.stringify does."""
+    if ScreenshotItem.is_screenshot_item(value):
+        return value.to_serializable()
+    to_dict = getattr(value, "to_dict", None)
+    if callable(to_dict):
+        return to_dict()
+    raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")
+
+
+def _is_reference_image_descriptor(value: Any) -> bool:
+    return (
+        isinstance(value, dict)
+        and isinstance(value.get("name"), str)
+        and isinstance(value.get("url"), str)
+    )
+
+
+def _replace_reference_image_urls(
+    value: Any,
+    reference_image_refs_by_url: Dict[str, Any],
+    ancestors: Optional[set] = None,
+) -> Any:
+    """Clone plain data, replacing descriptor URLs found inside ``images``."""
+    if ancestors is None:
+        ancestors = set()
+    if not isinstance(value, (dict, list)):
+        return value
+    if _get_page_or_browser_object_name(value) or _is_custom_serializable_object(
+        value
+    ):
+        return value
+    if id(value) in ancestors:
+        return value
+
+    ancestors.add(id(value))
+    try:
+        if isinstance(value, list):
+            return [
+                _replace_reference_image_urls(
+                    item, reference_image_refs_by_url, ancestors
+                )
+                for item in value
+            ]
+
+        result: Dict[str, Any] = {}
+        for key, nested_value in value.items():
+            if key == "images" and isinstance(nested_value, list):
+                images: List[Any] = []
+                for image in nested_value:
+                    transformed = _replace_reference_image_urls(
+                        image, reference_image_refs_by_url, ancestors
+                    )
+                    if not _is_reference_image_descriptor(image):
+                        images.append(transformed)
+                        continue
+                    reference_image_ref = reference_image_refs_by_url.get(
+                        image["url"]
+                    )
+                    if not reference_image_ref or not isinstance(
+                        transformed, dict
+                    ):
+                        images.append(transformed)
+                        continue
+                    images.append(
+                        {**transformed, "url": reference_image_ref}
+                    )
+                result[key] = images
+                continue
+            result[key] = _replace_reference_image_urls(
+                nested_value, reference_image_refs_by_url, ancestors
+            )
+        return result
+    finally:
+        ancestors.discard(id(value))
+
+
+class ExecutionDump:
+    """Serialize and deserialize one execution dump (upstream ExecutionDump)."""
+
+    def __init__(
+        self,
+        data: Dict[str, Any],
+        options: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        options = options or {}
+        self.id = data.get("id")
+        self.log_time = data.get("logTime")
+        self.name = data.get("name")
+        self.description = data.get("description")
+        self.tasks = data.get("tasks") or []
+        self.ai_act_context = data.get("aiActContext")
+        registered = options.get("referenceImageUrls") or options.get(
+            "reference_image_urls"
+        ) or []
+        self.reference_image_urls = list(
+            dict.fromkeys(
+                url for url in registered if is_base64_image_data_url(url)
+            )
+        )
+
+    def serialize(self, indents: Optional[int] = None) -> str:
+        return _stringify_dump(self.to_json(), indents)
+
+    def to_json(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "logTime": self.log_time,
+            "name": self.name,
+            "description": self.description,
+            "tasks": [
+                {**task, "recorder": task.get("recorder") or []}
+                for task in self.tasks
+            ],
+            "aiActContext": self.ai_act_context,
+        }
+
+    @classmethod
+    def from_serialized_string(cls, serialized: str) -> "ExecutionDump":
+        return cls.from_json(json.loads(serialized))
+
+    @classmethod
+    def from_json(cls, data: Dict[str, Any]) -> "ExecutionDump":
+        return cls(data)
+
+    def collect_screenshots(self) -> List[ScreenshotItem]:
+        screenshots: List[ScreenshotItem] = []
+        for task in self.tasks:
+            if not isinstance(task, dict):
+                continue
+            ui_context = task.get("uiContext")
+            if isinstance(ui_context, dict) and ScreenshotItem.is_screenshot_item(
+                ui_context.get("screenshot")
+            ):
+                screenshots.append(ui_context["screenshot"])
+            for record in task.get("recorder") or []:
+                if isinstance(record, dict) and ScreenshotItem.is_screenshot_item(
+                    record.get("screenshot")
+                ):
+                    screenshots.append(record["screenshot"])
+        return screenshots
+
+    def get_reference_image_urls(self) -> List[str]:
+        return list(self.reference_image_urls)
+
+
+class ReportActionDump:
+    """Serialize and deserialize report action dumps (upstream ReportActionDump)."""
+
+    def __init__(self, data: Dict[str, Any]) -> None:
+        self.sdk_version = data.get("sdkVersion")
+        self.group_name = data.get("groupName")
+        self.group_description = data.get("groupDescription")
+        self.model_briefs = data.get("modelBriefs")
+        executions = data.get("executions") or []
+        self.executions = [
+            execution
+            if isinstance(execution, ExecutionDump)
+            else ExecutionDump.from_json(execution)
+            for execution in executions
+        ]
+        self.device_type = data.get("deviceType")
+
+    def serialize(self, indents: Optional[int] = None) -> str:
+        return _stringify_dump(self.to_json(), indents)
+
+    def serialize_with_reference_images(
+        self,
+        reference_image_refs_by_url: Dict[str, Any],
+        indents: Optional[int] = None,
+    ) -> str:
+        return _stringify_dump(
+            _replace_reference_image_urls(
+                self.to_json(), reference_image_refs_by_url
+            ),
+            indents,
+        )
+
+    def serialize_with_inline_screenshots(
+        self, indents: Optional[int] = None
+    ) -> str:
+        def process_value(obj: Any) -> Any:
+            if ScreenshotItem.is_screenshot_item(obj):
+                return {"base64": obj.base64, "capturedAt": obj.captured_at}
+            if isinstance(obj, list):
+                return [process_value(item) for item in obj]
+            if isinstance(obj, dict):
+                return {
+                    key: process_value(item)
+                    for key, item in obj.items()
+                    if key != "screenshotSequence"
+                }
+            return obj
+
+        return json.dumps(
+            process_value(self.to_json()),
+            ensure_ascii=False,
+            indent=indents,
+        )
+
+    def to_json(self) -> Dict[str, Any]:
+        return {
+            "sdkVersion": self.sdk_version,
+            "groupName": self.group_name,
+            "groupDescription": self.group_description,
+            "modelBriefs": self.model_briefs,
+            "executions": [execution.to_json() for execution in self.executions],
+            "deviceType": self.device_type,
+        }
+
+    @classmethod
+    def from_serialized_string(cls, serialized: str) -> "ReportActionDump":
+        return cls.from_json(json.loads(serialized))
+
+    @classmethod
+    def from_json(cls, data: Dict[str, Any]) -> "ReportActionDump":
+        return cls(data)
+
+    def collect_all_screenshots(self) -> List[ScreenshotItem]:
+        screenshots: List[ScreenshotItem] = []
+        for execution in self.executions:
+            screenshots.extend(execution.collect_screenshots())
+        return screenshots
+
+    def serialize_to_files(self, base_path: str) -> None:
+        """Write the dump plus separate screenshot files next to it."""
+        screenshots_dir = f"{base_path}.screenshots"
+        Path(screenshots_dir).mkdir(parents=True, exist_ok=True)
+
+        for screenshot in self.collect_all_screenshots():
+            image_path = Path(screenshots_dir) / (
+                f"{screenshot.id}.{screenshot.extension}"
+            )
+            if image_path.exists():
+                continue
+            write_report_artifact_file(
+                image_path, base64.b64decode(screenshot.raw_base64)
+            )
+
+        Path(base_path).write_text(self.serialize(), encoding="utf-8")
+
+    @staticmethod
+    def from_files_as_inline_json(base_path: str) -> str:
+        """Read a dump plus its companion screenshots and inline the base64."""
+        dump_data = json.loads(Path(base_path).read_text(encoding="utf-8"))
+        image_store = ReportImageStore(
+            mode="directory",
+            report_path=base_path,
+            screenshots_dir=f"{base_path}.screenshots",
+        )
+        processed = restore_image_references(
+            dump_data, image_store.load_data_uri
+        )
+        return json.dumps(processed, ensure_ascii=False, default=_json_default)
+
+    @staticmethod
+    def cleanup_files(base_path: str) -> None:
+        for file_path in (base_path, f"{base_path}.screenshots"):
+            with contextlib.suppress(Exception):
+                path = Path(file_path)
+                if path.is_dir():
+                    shutil.rmtree(path, ignore_errors=True)
+                else:
+                    path.unlink(missing_ok=True)
+
+    @staticmethod
+    def get_file_paths(base_path: str) -> List[str]:
+        return [base_path, f"{base_path}.screenshots"]
+
+
+# Backward-compatible alias for existing external consumers.
+GroupedActionDump = ReportActionDump
+
+
 __all__ = [
+    "ExecutionDump",
     "ExecutionDumpBuilder",
+    "GroupedActionDump",
+    "ReportActionDump",
     "build_execution_task",
     "build_service_dump",
     "get_report_file_name",

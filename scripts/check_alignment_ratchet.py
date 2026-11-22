@@ -44,17 +44,31 @@ from check_upstream_method_alignment import scan as scan_methods  # noqa: E402
 
 _PHASE_MODULE = re.compile(r"`(core/[^`]+?\.ts)`")
 
+# Phase 1 modules stay labelled P1 even after the plan section is reduced to a
+# completion note.
+P1_MODULES = {
+    "core/report.ts",
+    "core/report-markdown.ts",
+    "core/dump/report-artifact-reader.ts",
+    "core/dump/report-action-dump.ts",
+    "core/dump/screenshot-store.ts",
+    "core/dump/screenshot-restoration.ts",
+    "core/report-cli.ts",
+}
+
 
 def _phase_map(plan_path: str) -> Dict[str, str]:
     """Read Phase 1 module names from the plan; everything else follows §7.5."""
+    result = {module: "P1" for module in P1_MODULES}
     if not os.path.exists(plan_path):
-        return {}
+        return result
     text = open(plan_path, encoding="utf-8").read()
     match = re.search(r"^### Phase 1.*?(?=^### Phase 2)", text, re.M | re.S)
     if not match:
-        return {}
-    return {f"core/{name.split('core/', 1)[-1]}": "P1"
-            for name in _PHASE_MODULE.findall(match.group(0))}
+        return result
+    for name in _PHASE_MODULE.findall(match.group(0)):
+        result[f"core/{name.split('core/', 1)[-1]}"] = "P1"
+    return result
 
 
 def _batch_of(key: str, phase_map: Dict[str, str]) -> str:

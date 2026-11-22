@@ -302,9 +302,6 @@ def check_counts(
     checker.check("plan has Phase 1..4 sections",
                   {1, 2, 3, 4}.issubset(sections), str(sorted(sections)))
     p1 = set(MODULE_PATH.findall(sections.get(1, "")))
-    if not p1:
-        checker.check("Phase 1 lists modules", False)
-        return
 
     counts = Counter()
     symbols = Counter()
@@ -340,6 +337,13 @@ def check_counts(
                       f"doc={expected} repo={actual}")
 
     for phase in (1, 2, 3, 4):
+        if phase == 1 and not p1:
+            checker.check(
+                "Phase 1 completed (0 remaining)",
+                counts[1] == 0 and symbols[1] == 0,
+                f"{counts[1]} modules / {symbols[1]} symbols",
+            )
+            continue
         total = re.search(
             r"\*\*合计\*\*\s*\|\s*\*\*(\d+) 个模块 / (\d+) 个符号\*\*",
             sections.get(phase, ""),

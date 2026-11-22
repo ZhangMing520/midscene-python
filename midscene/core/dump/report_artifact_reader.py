@@ -85,6 +85,15 @@ def read_report_artifact(root: Union[str, Path]) -> Dict[str, Any]:
     return {"manifest": manifest, "executions": executions, "runner": runner}
 
 
+async def read_report_artifact_manifest_async(
+    report_path: Union[str, Path],
+) -> Optional[Dict[str, Any]]:
+    """Async counterpart for servers; inline HTML has no manifest."""
+    # Python's filesystem helpers are synchronous, so the async entry point
+    # shares the exact validation logic instead of duplicating it.
+    return read_report_artifact_manifest(report_path)
+
+
 def read_report_artifact_manifest(
     report_path: Union[str, Path],
 ) -> Optional[Dict[str, Any]]:
@@ -244,6 +253,7 @@ __all__ = [
     "read_report_action_dump",
     "read_report_artifact",
     "read_report_artifact_manifest",
+    "read_report_artifact_manifest_async",
     "read_report_dump_scripts",
     "read_report_runner_dump",
     "stream_report_dump_scripts",

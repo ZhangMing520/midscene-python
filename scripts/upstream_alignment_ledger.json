@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-11-22T08:42:32+00:00",
+  "generated_at": "2026-11-22T08:55:43+00:00",
   "upstream_root": "/home/zhangming/gitspace/midscene",
   "counts": {
     "modules": 425,
-    "api_missing": 293,
-    "method_missing_functions": 173,
-    "method_missing_classes": 22,
+    "api_missing": 281,
+    "method_missing_functions": 167,
+    "method_missing_classes": 19,
     "method_missing_methods": 104,
-    "signature_mismatch": 51
+    "signature_mismatch": 50
   },
   "modules": [
     {
@@ -4361,7 +4361,6 @@
       "batch": "P3",
       "status": "partial",
       "api_missing": [
-        "collectImageScriptIds",
         "escapeContent",
         "extractReportArtifactPathAsync",
         "extractTestRunReportDumpSync",
@@ -4374,6 +4373,10 @@
         "unescapeContent"
       ],
       "api_moved": [
+        {
+          "name": "collectImageScriptIds",
+          "found_in": "midscene/core/dump/screenshot_store.py"
+        },
         {
           "name": "extractImageByIdSync",
           "found_in": "midscene/core/screenshot_item.py"
@@ -4436,18 +4439,11 @@
       "python": "core/dump/report_action_dump.py",
       "package": "core",
       "batch": "P1",
-      "status": "partial",
-      "api_missing": [
-        "ExecutionDump",
-        "GroupedActionDump",
-        "ReportActionDump"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
-      "method_missing_classes": [
-        "ExecutionDump",
-        "ReportActionDump"
-      ],
+      "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
@@ -4477,14 +4473,10 @@
       "python": "core/dump/report_artifact_reader.py",
       "package": "core",
       "batch": "P1",
-      "status": "partial",
-      "api_missing": [
-        "readReportArtifactManifestAsync"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "readReportArtifactManifestAsync"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -4580,18 +4572,10 @@
       "python": "core/dump/screenshot_restoration.py",
       "package": "core",
       "batch": "P1",
-      "status": "partial",
-      "api_missing": [
-        "createInlineImageResolver",
-        "restoreImageReferences",
-        "restoreReportImageReferences"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "createInlineImageResolver",
-        "restoreImageReferences",
-        "restoreReportImageReferences"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -4603,23 +4587,13 @@
       "python": "core/dump/screenshot_store.py",
       "package": "core",
       "batch": "P1",
-      "status": "partial",
-      "api_missing": [
-        "ReportImageStore",
-        "ScreenshotStore",
-        "resolveScreenshotSource"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "resolveScreenshotSource"
-      ],
-      "method_missing_classes": [
-        "ReportImageStore"
-      ],
+      "method_missing_functions": [],
+      "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".resolveImageSource"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -4732,19 +4706,15 @@
       "python": "core/report_cli.py",
       "package": "core",
       "batch": "P1",
-      "status": "partial",
-      "api_missing": [
-        "createReportCliCommands"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [
         {
           "name": "reportFileToMarkdown",
           "found_in": "midscene/core/report_markdown.py"
         }
       ],
-      "method_missing_functions": [
-        "createReportCliCommands"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],

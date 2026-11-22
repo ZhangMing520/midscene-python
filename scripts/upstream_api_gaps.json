@@ -4,10 +4,10 @@
     "runtime_exports": 1151,
     "schema_exports": 56,
     "type_exports": 983,
-    "modules_with_gaps": 121,
-    "missing": 293,
-    "moved": 161,
-    "modules_with_missing": 116
+    "modules_with_gaps": 117,
+    "missing": 281,
+    "moved": 162,
+    "modules_with_missing": 111
   },
   "by_package": {
     "android": {
@@ -26,9 +26,9 @@
       "moved": 0
     },
     "core": {
-      "modules": 83,
-      "missing": 167,
-      "moved": 30
+      "modules": 79,
+      "missing": 155,
+      "moved": 31
     },
     "harmony": {
       "modules": 1,
@@ -181,7 +181,6 @@
       "python": "core/dump/html_utils.py",
       "runtime_exports": 26,
       "missing": [
-        "collectImageScriptIds",
         "escapeContent",
         "extractReportArtifactPathAsync",
         "extractTestRunReportDumpSync",
@@ -194,6 +193,10 @@
         "unescapeContent"
       ],
       "moved": [
+        {
+          "name": "collectImageScriptIds",
+          "found_in": "midscene/core/dump/screenshot_store.py"
+        },
         {
           "name": "extractImageByIdSync",
           "found_in": "midscene/core/screenshot_item.py"
@@ -1030,42 +1033,6 @@
       ]
     },
     {
-      "package": "core",
-      "upstream": "dump/report-action-dump.ts",
-      "python": "core/dump/report_action_dump.py",
-      "runtime_exports": 3,
-      "missing": [
-        "ExecutionDump",
-        "GroupedActionDump",
-        "ReportActionDump"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "dump/screenshot-restoration.ts",
-      "python": "core/dump/screenshot_restoration.py",
-      "runtime_exports": 3,
-      "missing": [
-        "createInlineImageResolver",
-        "restoreImageReferences",
-        "restoreReportImageReferences"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "dump/screenshot-store.ts",
-      "python": "core/dump/screenshot_store.py",
-      "runtime_exports": 7,
-      "missing": [
-        "ReportImageStore",
-        "ScreenshotStore",
-        "resolveScreenshotSource"
-      ],
-      "moved": []
-    },
-    {
       "package": "web-integration",
       "upstream": "web-page.ts",
       "python": "web_integration/web_page.py",
@@ -1792,16 +1759,6 @@
     },
     {
       "package": "core",
-      "upstream": "dump/report-artifact-reader.ts",
-      "python": "core/dump/report_artifact_reader.py",
-      "runtime_exports": 6,
-      "missing": [
-        "readReportArtifactManifestAsync"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
       "upstream": "dump/report-dump-compactor.ts",
       "python": "core/dump/report_dump_compactor.py",
       "runtime_exports": 1,
@@ -1892,21 +1849,6 @@
         {
           "name": "REPORT_ARTIFACT_SCRIPT_TYPE",
           "found_in": "midscene/core/dump/html_utils.py"
-        }
-      ]
-    },
-    {
-      "package": "core",
-      "upstream": "report-cli.ts",
-      "python": "core/report_cli.py",
-      "runtime_exports": 4,
-      "missing": [
-        "createReportCliCommands"
-      ],
-      "moved": [
-        {
-          "name": "reportFileToMarkdown",
-          "found_in": "midscene/core/report_markdown.py"
         }
       ]
     },
@@ -2100,6 +2042,19 @@
         {
           "name": "overrideAIConfig",
           "found_in": "midscene/core/ai_model/__init__.py"
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "report-cli.ts",
+      "python": "core/report_cli.py",
+      "runtime_exports": 4,
+      "missing": [],
+      "moved": [
+        {
+          "name": "reportFileToMarkdown",
+          "found_in": "midscene/core/report_markdown.py"
         }
       ]
     }
