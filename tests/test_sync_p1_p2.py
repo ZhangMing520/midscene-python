@@ -13,7 +13,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from tests.test_core import MockInterface, make_png_base64
+from tests.core_helpers import MockInterface, make_png_base64
 
 
 @pytest.fixture
@@ -1209,7 +1209,7 @@ class TestTextInputStrategy:
         assert web.page is new_page
 
 
-from tests.test_core import patch_model_call  # noqa: E402
+from tests.core_helpers import patch_model_call  # noqa: E402
 
 
 async def _stream_lines(lines):

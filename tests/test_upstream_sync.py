@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from tests.test_core import (
+from tests.core_helpers import (
     FakeResponse,
     MockInterface,
     make_png_base64,
@@ -1963,7 +1963,7 @@ class TestPromptParity:
     @pytest.mark.asyncio
     async def test_scroll_executor_passes_distance_unchanged(self):
         from midscene.core.device import _execute_scroll
-        from tests.test_core import MockInterface
+        from tests.core_helpers import MockInterface
 
         interface = MockInterface()
         await _execute_scroll({"direction": "down", "distance": 123}, interface, None)

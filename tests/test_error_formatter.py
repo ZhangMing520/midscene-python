@@ -218,6 +218,9 @@ class TestSerializeError:
         }
         assert get_error_message("") == "Empty string thrown"
 
+    def test_provides_a_readable_fallback_for_non_error_primitive_strings(self):
+        assert serialize_error("boom") == {"name": "NonError", "message": "boom"}
+
     def test_caps_every_serialized_string_field(self):
         long_text = "x" * 10_000
         error = Error(long_text)

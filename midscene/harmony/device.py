@@ -234,6 +234,16 @@ class HarmonyDevice(AbstractInterface):
 
         scroll_type = kwargs.get("scroll_type") or "singleAction"
         point = kwargs.get("point")
+        if point is not None and (
+            len(point) < 2
+            or not all(
+                isinstance(value, (int, float)) and math.isfinite(value)
+                for value in point[:2]
+            )
+        ):
+            raise ValueError(
+                "Scroll origin must be a finite point inside the viewport"
+            )
         if scroll_type.startswith("scrollTo"):
             boundary = {
                 "scrollToTop": "up",
@@ -389,8 +399,8 @@ class HarmonyDevice(AbstractInterface):
 
     async def recent_apps(self) -> None:
         hdc = await self._get_hdc()
-        # upstream recentApps gesture-free path
-        await hdc.key_event("Power")
+        # upstream recentApps gesture-free path: API 18+ Recent keycode
+        await hdc.key_event("10011")
 
     def set_app_name_mapping(self, mapping: Dict[str, str]) -> None:
         """Set the friendly app name -> bundle/ability mapping (upstream

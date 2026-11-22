@@ -253,7 +253,7 @@ class TestReportViewer:
 
     @pytest.mark.asyncio
     async def test_ai_act_writes_html_report(self, mock_interface, tmp_path, monkeypatch):
-        from tests.test_core import patch_model_call
+        from tests.core_helpers import patch_model_call
 
         monkeypatch.setenv("MIDSCENE_RUN_DIR", str(tmp_path))
         agent = _simple_agent()
@@ -276,7 +276,7 @@ class TestReportViewer:
 
 @pytest.fixture
 def mock_interface():
-    from tests.test_core import MockInterface
+    from tests.core_helpers import MockInterface
 
     return MockInterface()
 
@@ -284,7 +284,7 @@ def mock_interface():
 def _simple_agent():
     from midscene.core.agent.agent import Agent
     from midscene.core.agent.agent_options import AgentOptions
-    from tests.test_core import MockInterface
+    from tests.core_helpers import MockInterface
 
     return Agent(
         MockInterface(),

@@ -26,6 +26,7 @@ NAMED_HARMONY_KEY_CODES = {
 }
 
 _KEY_NAME_ALIASES = {
+    "enter": "Enter",
     "return": "Enter",
     "esc": "Escape",
     "up": "ArrowUp",

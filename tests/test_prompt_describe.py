@@ -21,6 +21,8 @@ def test_should_return_the_correct_instruction():
 def test_uses_description_only_schema():
     instruction = element_describer_instruction()
 
+    assert "ring with a crosshair" in instruction
+    assert '"description"' in instruction
     assert '"description": "unique element identifier"' in instruction
     assert '"target": "the smallest indicated UI part itself' not in instruction
     assert '"primitive": "text | icon | arrow' not in instruction

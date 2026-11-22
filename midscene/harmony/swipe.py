@@ -14,7 +14,11 @@ def resolve_swipe_speed(
 ) -> int:
     """Convert a duration into the uitest px/s speed, clamped to the supported
     range (upstream resolveSwipeSpeed)."""
-    if not isinstance(duration_ms, (int, float)) or duration_ms <= 0:
+    if (
+        not isinstance(duration_ms, (int, float))
+        or not math.isfinite(duration_ms)
+        or duration_ms <= 0
+    ):
         raise RuntimeError("Harmony swipe duration must be a positive finite number")
 
     distance = math.hypot(end["x"] - start["x"], end["y"] - start["y"])
