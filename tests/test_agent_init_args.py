@@ -1,12 +1,11 @@
 """Port of upstream packages/web-integration/tests/unit-test/agent-init-args.test.ts.
 
-The upstream suite drives the Node-only web agent tools
-(``WebMidsceneTools``/``WebCdpMidsceneTools``/``WebPuppeteerMidsceneTools``).
-Those modules are exempt from the Python port, so tests that require them are
-kept with the upstream case name and skipped; the remaining cases exercise the
-ported init-arg shapes/adapters, config factory and bridge agent.
+The bridge and CDP tool suites are ported with fake agents/browsers; the
+Puppeteer driver itself is not implemented in the Python SDK, so the
+Puppeteer-only cases keep the upstream case name and are skipped.
 """
 
+import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -24,15 +23,19 @@ from midscene.web_integration.agent_init_args import (
     adapt_web_cdp_agent_init_args,
     get_agent_init_args,
 )
+from midscene.web_integration.agent_tools import WebMidsceneTools
+from midscene.web_integration.agent_tools_cdp import WebCdpMidsceneTools
 from midscene.web_integration.bridge_mode.agent_cli_side import (
     AgentOverChromeBridge,
 )
 
 _PUPPETEER_REASON = "Puppeteer driver is not implemented in the Python SDK"
-_WEB_AGENT_TOOLS_REASON = (
-    "The web agent tools layer is not implemented in the Python SDK"
+_VALID_PNG_BASE64 = (
+    "data:image/png;base64,"
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk"
+    "+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
 )
-_CDP_TOOLS_REASON = "CDP agent tools are not implemented in the Python SDK"
+
 
 
 class _FakeBridgePage:
@@ -81,32 +84,248 @@ class _CdpTools(BaseMidsceneTools):
         return None
 
 
-@pytest.mark.skip(reason=_CDP_TOOLS_REASON)
-def test_lists_and_switches_cdp_tabs_using_the_shared_browser_agent_and_target_store():
-    pass
+class _FakeBridgeAgentPage:
+    def __init__(self, active_tab_id=42):
+        self.active_tab_id = active_tab_id
+        self.screenshot_calls = 0
+
+    async def get_active_tab_id(self):
+        if isinstance(self.active_tab_id, BaseException):
+            raise self.active_tab_id
+        return self.active_tab_id
+
+    async def screenshot_base64(self):
+        self.screenshot_calls += 1
+        return _VALID_PNG_BASE64
+
+
+class _FakeBridgeAgent:
+    def __init__(
+        self,
+        active_tab_id=42,
+        tabs=None,
+        fail_connect=False,
+        destroy_error=None,
+    ):
+        self.page = _FakeBridgeAgentPage(active_tab_id)
+        self.tabs = tabs or [
+            {"id": "42", "title": "Example", "url": "https://example.com/"}
+        ]
+        self.connect_current_calls = []
+        self.connect_new_tab_calls = []
+        self.destroy_calls = 0
+        self.fail_connect = fail_connect
+        self.destroy_error = destroy_error
+
+    async def get_browser_tab_list(self):
+        return self.tabs
+
+    async def connect_current_tab(self, options=None):
+        self.connect_current_calls.append(options)
+        if self.fail_connect:
+            raise RuntimeError("bridge failure")
+
+    async def connect_new_tab_with_url(self, url, options=None):
+        self.connect_new_tab_calls.append((url, options))
+
+    async def destroy(self):
+        self.destroy_calls += 1
+        if self.destroy_error is not None:
+            error, self.destroy_error = self.destroy_error, None
+            raise error
+
+
+class _FakeCdpPage:
+    interface_type = InterfaceType.WEB
+
+    def __init__(self, url="https://example.com/", target_id="target-1"):
+        self.url = url
+        self.target_id = target_id
+        self.goto_calls = []
+        self.bring_to_front_calls = 0
+        self.header_calls = []
+        self.closed = False
+
+    async def title(self):
+        return "Example"
+
+    def is_closed(self):
+        return self.closed
+
+    async def bring_to_front(self):
+        self.bring_to_front_calls += 1
+
+    async def goto(self, url, **kwargs):
+        self.goto_calls.append((url, kwargs))
+
+    async def set_extra_http_headers(self, headers):
+        self.header_calls.append(headers)
+
+    def target(self):
+        return {"_targetId": self.target_id}
+
+    async def screenshot_base64(self):
+        return _VALID_PNG_BASE64
+
+
+class _FakeCdpBrowser:
+    def __init__(self, pages):
+        self._pages = pages
+        self.new_page_calls = 0
+        self.disconnect_calls = 0
+
+    async def pages(self):
+        return list(self._pages)
+
+    async def new_page(self):
+        self.new_page_calls += 1
+        return self._pages[0]
+
+    async def disconnect(self):
+        self.disconnect_calls += 1
+
+
+def _find_tool(tools, name):
+    return next(tool for tool in tools.get_tool_definitions() if tool.name == name)
+
+
+@pytest.mark.asyncio
+async def test_lists_and_switches_cdp_tabs_using_the_shared_browser_agent_and_target_store():
+    page = _FakeCdpPage()
+    browser = _FakeCdpBrowser([page])
+    tools = WebCdpMidsceneTools("ws://127.0.0.1:9222/devtools/1")
+    await tools.init_tools()
+
+    with patch(
+        "midscene.web_integration.agent_tools_cdp._connect_browser",
+        AsyncMock(return_value=browser),
+    ), patch(
+        "midscene.web_integration.agent_tools_cdp.read_saved_target_id",
+        return_value=None,
+    ), patch(
+        "midscene.web_integration.agent_tools_cdp.save_target_id"
+    ) as save_target:
+        result = await _find_tool(tools, "web_tabs").handler({})
+        assert json.loads(result.content[0]["text"]) == [
+            {
+                "id": "target-1",
+                "title": "Example",
+                "url": "https://example.com/",
+                "active": True,
+            }
+        ]
+
+        await _find_tool(tools, "web_switch-tab").handler({"id": "target-1"})
+        save_target.assert_called_with("target-1")
+        assert tools.agent.set_active_page_calls == [page]
+
+        with pytest.raises(ValueError, match="does not exist or has closed"):
+            await _find_tool(tools, "web_switch-tab").handler({"id": "missing"})
+
+        await tools.destroy()
 
 
 @pytest.mark.parametrize("failure_point", ["connect", "readback", "mismatch"])
-@pytest.mark.skip(reason=_WEB_AGENT_TOOLS_REASON)
-def test_cleans_up_a_new_bridge_agent_when_tab_reconnection_fails_at(
+@pytest.mark.asyncio
+async def test_cleans_up_a_new_bridge_agent_when_tab_reconnection_fails_at(
     failure_point,
 ):
-    pass
+    replacement = _FakeBridgeAgent(active_tab_id=99)
+    if failure_point == "connect":
+        replacement.fail_connect = True
+    elif failure_point == "readback":
+        replacement.page.active_tab_id = RuntimeError("bridge failure")
+
+    tools = WebMidsceneTools()
+    await tools.init_tools()
+    first = _FakeBridgeAgent()
+
+    with patch(
+        "midscene.web_integration.agent_tools.AgentOverChromeBridge",
+        side_effect=[first, replacement],
+    ):
+        await _find_tool(tools, "web_tabs").handler({})
+        expected = (
+            "did not switch tabs"
+            if failure_point == "mismatch"
+            else "bridge failure"
+        )
+        with pytest.raises(RuntimeError, match=expected):
+            await _find_tool(tools, "web_switch-tab").handler({"id": "42"})
+        assert replacement.destroy_calls == 1
+        await tools.destroy()
 
 
-@pytest.mark.skip(reason=_WEB_AGENT_TOOLS_REASON)
-def test_reuses_the_selected_bridge_agent_with_unchanged_behavior_options():
-    pass
+@pytest.mark.asyncio
+async def test_reuses_the_selected_bridge_agent_with_unchanged_behavior_options():
+    tools = WebMidsceneTools()
+    await tools.init_tools()
+    first = _FakeBridgeAgent()
+    second = _FakeBridgeAgent()
+
+    with patch(
+        "midscene.web_integration.agent_tools.AgentOverChromeBridge",
+        side_effect=[first, second],
+    ) as factory:
+        args = {"web": {"waitAfterAction": 650}}
+        try:
+            await _find_tool(tools, "take_screenshot").handler(args)
+            await _find_tool(tools, "web_switch-tab").handler({"id": "42"})
+            await _find_tool(tools, "take_screenshot").handler(args)
+            assert factory.call_count == 2
+            assert factory.call_args.args[0].wait_after_action_ms == 650
+        finally:
+            await tools.destroy()
 
 
-@pytest.mark.skip(reason=_WEB_AGENT_TOOLS_REASON)
-def test_reports_bridge_cleanup_failure_and_does_not_reuse_the_disposed_agent():
-    pass
+@pytest.mark.asyncio
+async def test_reports_bridge_cleanup_failure_and_does_not_reuse_the_disposed_agent():
+    tools = WebMidsceneTools()
+    await tools.init_tools()
+    first = _FakeBridgeAgent(destroy_error=RuntimeError("cleanup failed"))
+    second = _FakeBridgeAgent()
+
+    with patch(
+        "midscene.web_integration.agent_tools.AgentOverChromeBridge",
+        side_effect=[first, second],
+    ) as factory:
+        await _find_tool(tools, "web_tabs").handler({})
+        with pytest.raises(RuntimeError, match="cleanup failed"):
+            await _find_tool(tools, "web_disconnect").handler({})
+
+        await _find_tool(tools, "web_tabs").handler({})
+        assert factory.call_count == 2
+        assert first.destroy_calls == 1
+
+        await tools.destroy()
+        await tools.destroy()
+        assert second.destroy_calls == 1
 
 
-@pytest.mark.skip(reason=_WEB_AGENT_TOOLS_REASON)
-def test_switches_bridge_tabs_by_reconnecting_to_an_existing_id_without_navigating():
-    pass
+@pytest.mark.asyncio
+async def test_switches_bridge_tabs_by_reconnecting_to_an_existing_id_without_navigating():
+    tools = WebMidsceneTools()
+    await tools.init_tools()
+    first = _FakeBridgeAgent()
+    second = _FakeBridgeAgent()
+
+    with patch(
+        "midscene.web_integration.agent_tools.AgentOverChromeBridge",
+        side_effect=[first, second],
+    ):
+        with pytest.raises(ValueError, match="Invalid Bridge tab ID"):
+            await _find_tool(tools, "web_switch-tab").handler({"id": "42oops"})
+        with pytest.raises(ValueError, match="does not exist or has closed"):
+            await _find_tool(tools, "web_switch-tab").handler({"id": "99"})
+
+        await _find_tool(tools, "web_switch-tab").handler({"id": "42"})
+        assert first.destroy_calls == 1
+        assert second.connect_current_calls == [
+            {"tabId": 42, "forceSameTabNavigation": False}
+        ]
+        assert second.connect_new_tab_calls == []
+        await tools.destroy()
+
 
 
 @pytest.mark.parametrize(
@@ -232,24 +451,56 @@ def test_rebuilds_the_puppeteer_agent_without_behavior_args_when_they_are_omitte
 @pytest.mark.parametrize(
     "mode",
     [
-        pytest.param(
-            "bridge",
-            marks=pytest.mark.skip(reason=_WEB_AGENT_TOOLS_REASON),
-        ),
+        "bridge",
         pytest.param(
             "puppeteer",
             marks=pytest.mark.skip(reason=_PUPPETEER_REASON),
         ),
-        pytest.param(
-            "cdp",
-            marks=pytest.mark.skip(reason=_CDP_TOOLS_REASON),
-        ),
+        "cdp",
     ],
 )
-def test_reopens_or_renavigates_when_the_same_web_url_is_passed_twice_in_mode(
+@pytest.mark.asyncio
+async def test_reopens_or_renavigates_when_the_same_web_url_is_passed_twice_in_mode(
     mode,
 ):
-    pass
+    args = {"web": {"url": "https://example.com"}}
+
+    if mode == "bridge":
+        tools = WebMidsceneTools()
+        await tools.init_tools()
+        first = _FakeBridgeAgent()
+        second = _FakeBridgeAgent()
+        with patch(
+            "midscene.web_integration.agent_tools.AgentOverChromeBridge",
+            side_effect=[first, second],
+        ) as factory:
+            await _find_tool(tools, "take_screenshot").handler(args)
+            await _find_tool(tools, "take_screenshot").handler(args)
+            assert factory.call_count == 2
+            assert (
+                len(first.connect_new_tab_calls)
+                + len(second.connect_new_tab_calls)
+                == 2
+            )
+        await tools.destroy()
+        return
+
+    page = _FakeCdpPage()
+    browser = _FakeCdpBrowser([page])
+    tools = WebCdpMidsceneTools("ws://127.0.0.1:9222/devtools/1")
+    await tools.init_tools()
+    with patch(
+        "midscene.web_integration.agent_tools_cdp._connect_browser",
+        AsyncMock(return_value=browser),
+    ), patch(
+        "midscene.web_integration.agent_tools_cdp.read_saved_target_id",
+        return_value=None,
+    ), patch("midscene.web_integration.agent_tools_cdp.save_target_id"):
+        await _find_tool(tools, "take_screenshot").handler(args)
+        await _find_tool(tools, "take_screenshot").handler(args)
+        assert len(page.goto_calls) == 2
+    await tools.destroy()
+
 
 
 def test_passes_common_behavior_args_to_cdp_agent_creation():

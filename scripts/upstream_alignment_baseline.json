@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-11-22T03:01:33.267062+00:00",
+  "generated_at": "2026-11-22T12:39:34.319357+00:00",
   "upstream_root": "/home/zhangming/gitspace/midscene",
   "python_root": "/home/zhangming/gitspace/midscene-python/midscene",
   "counts": {
-    "aligned": 425,
-    "exempt": 105
+    "aligned": 429,
+    "exempt": 101
   },
   "files": [
     {
@@ -2596,8 +2596,8 @@
     {
       "package": "web-integration",
       "upstream": "agent-tools-cdp.ts",
-      "status": "exempt",
-      "reason": "Node CLI / agent tooling"
+      "status": "aligned",
+      "python": "web_integration/agent_tools_cdp.py"
     },
     {
       "package": "web-integration",
@@ -2608,14 +2608,14 @@
     {
       "package": "web-integration",
       "upstream": "agent-tools-tabs.ts",
-      "status": "exempt",
-      "reason": "Node CLI / agent tooling"
+      "status": "aligned",
+      "python": "web_integration/agent_tools_tabs.py"
     },
     {
       "package": "web-integration",
       "upstream": "agent-tools.ts",
-      "status": "exempt",
-      "reason": "Node CLI / agent tooling"
+      "status": "aligned",
+      "python": "web_integration/agent_tools.py"
     },
     {
       "package": "web-integration",
@@ -2644,8 +2644,8 @@
     {
       "package": "web-integration",
       "upstream": "cdp-target-store.ts",
-      "status": "exempt",
-      "reason": "CDP proxy is not implemented in the Python SDK"
+      "status": "aligned",
+      "python": "web_integration/cdp_target_store.py"
     },
     {
       "package": "web-integration",

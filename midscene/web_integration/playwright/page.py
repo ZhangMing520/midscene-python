@@ -359,6 +359,10 @@ class WebPage(BrowserPageActionsMixin, AbstractInterface):
             logger.error(f"Failed to take screenshot: {e}")
             raise
 
+    async def screenshot_base64(self) -> str:
+        """Capture the current page as base64 (interface contract)."""
+        return await self._take_screenshot()
+
     async def _get_page_size(self) -> Size:
         """Get page viewport size"""
         try:

@@ -305,6 +305,14 @@ class ExtensionBridgePageBrowserSide(AbstractInterface):
             BRIDGE_EVENT_GET_BROWSER_TAB_LIST, []
         )
 
+    async def get_active_tab_id(self) -> Any:
+        """Tab id the extension is currently driving."""
+        return await self._require_server().call("getActiveTabId", [])
+
+    async def screenshot_base64(self) -> str:
+        """Screenshot of the tab that the extension is driving."""
+        return await self._require_server().call("screenshotBase64", [])
+
     async def set_active_tab_id(self, tab_id: str) -> None:
         await self._require_server().call(
             BRIDGE_EVENT_SET_ACTIVE_TAB_ID, [tab_id]

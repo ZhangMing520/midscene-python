@@ -43,8 +43,6 @@
 
 | 能力 | 影响 | 说明 |
 |---|---|---|
-| web agent tools 层 | 5 个 skip | Python SDK 未实现该层 |
-| CDP agent tools | 2 个 skip | Chrome DevTools Protocol 工具未实现 |
 | `TaskBuilder` planning feedback / handler registry | 2 个 skip | Python 的动作执行器不接收 `taskContext`，也没有 plan-to-task handler registry，无法在运行中的任务上挂 `planningFeedback` |
 | zod 原生描述符 | 约 6 个 skip | `nativeEnum` / `intersection` / `tuple-rest` / 构造器身份、refinement、default/transform 在 Python dict schema 中没有等价物 |
 
@@ -102,7 +100,13 @@
 - `ui_observer` 不做帧内容去重：上游 `dedupeRefs` 去重的是持久化 frame ref，不是像素；Python 每帧独立截图，与视觉输入一致。
 - `run_gherkin_scenario` 的 `Then` 分支断言的是 `build_step_prompt` 构造出的 `Verify that ...` prompt，与上游一致。
 - `shared/agent_tools` 与上游 `agent-tools` 目录一一对应（含 `AgentTools`、`base-tools`、`tool-generator`、`web_tabs`）；`core/skill` 也已移植。
+- `web_integration/agent_tools.py`、`agent_tools_tabs.py`、`agent_tools_cdp.py` 与上游同名模块一致；桥接与 CDP 的 tab 工具复用 `create_tab_tools`，CDP 目标 id 通过 `cdp_target_store.py` 跨命令持久化。
 - `core/test-runner/**` 全部为 `aligned`，不再有“测试运行器钩子未移植”的偏差。
+
+### Web / CDP
+
+- CDP 工具通过 Playwright `connect_over_cdp` 连接，不使用上游的 Node `cdp-proxy` 子进程；后者只用于规避 puppeteer 直连时的 Chrome 权限弹窗，Playwright 直连没有该问题。页面级 `/devtools/page/<id>` 端点仍通过 `/json/version` 解析为浏览器级端点。
+- CDP tab 的稳定 id 来自 `Target.getTargetInfo` 的 `targetId`，与 puppeteer 的 `page.target()._targetId` 语义一致。
 
 ### Bridge
 
