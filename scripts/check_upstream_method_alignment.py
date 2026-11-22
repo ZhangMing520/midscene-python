@@ -81,6 +81,16 @@ def to_snake(name: str) -> str:
     return step.strip("_").lower()
 
 
+# Python keywords cannot be identifiers; upstream names that would become a
+# keyword are exposed with a trailing underscore (see shared/utils.py).
+KEYWORD_ALIASES = {"assert": "assert_"}
+
+
+def python_symbol_name(upstream_name: str) -> str:
+    snake = to_snake(upstream_name)
+    return KEYWORD_ALIASES.get(snake, snake)
+
+
 def _strip_private(name: str) -> bool:
     return name.startswith("#") or name.startswith("_")
 
@@ -374,7 +384,7 @@ def scan(upstream_root: str, only_module: Optional[str] = None) -> Dict[str, obj
         signature_mismatch: List[Dict[str, object]] = []
 
         for name, info in sorted(ts_functions.items()):
-            snake = to_snake(name)
+            snake = python_symbol_name(name)
             local = py_functions.get(snake)
             if local is None:
                 owner = function_index.get(snake)
@@ -411,7 +421,7 @@ def scan(upstream_root: str, only_module: Optional[str] = None) -> Dict[str, obj
                     continue
                 python_owner, python_methods = owner
             for method_name, info in sorted(methods.items()):
-                snake = to_snake(method_name)
+                snake = python_symbol_name(method_name)
                 local = python_methods.get(snake)
                 if local is None:
                     missing_methods.append(

@@ -11,16 +11,16 @@
 | 口径 | 工具 | 结果 | 含义 |
 |---|---|---|---|
 | 文件级 | `scripts/check_upstream_alignment.py` | 425 aligned / 0 merged / 0 pending / 105 exempt | 每个上游 `.ts` 有对应 Python 文件（或已登记豁免） |
-| 导出级 | `scripts/check_upstream_api_alignment.py` | 112 个模块有差异 / 240 个运行时导出缺失 / 163 个已迁移 | 映射文件里没有这些顶层运行时导出 |
-| 方法级 | `scripts/check_upstream_method_alignment.py` | 132 个模块 / 143 个函数 / 19 个类 / 104 个方法缺失 | 类与函数的方法、参数骨架缺口 |
-| 测试级 | `tests/`（205 个 Python 文件，其中 202 个 `test_*.py`） | 1897 passed / 240 skipped | 上游同名测试已同步，skip 表示已知能力缺口 |
+| 导出级 | `scripts/check_upstream_api_alignment.py` | 109 个模块有差异 / 213 个运行时导出缺失 / 35 个已迁移 | 映射文件里没有这些顶层运行时导出 |
+| 方法级 | `scripts/check_upstream_method_alignment.py` | 130 个模块 / 120 个函数 / 19 个类 / 104 个方法缺失 | 类与函数的方法、参数骨架缺口 |
+| 测试级 | `tests/`（206 个 Python 文件，其中 203 个 `test_*.py`） | 1949 passed / 240 skipped | 上游同名测试已同步，skip 表示已知能力缺口 |
 
 **关键结论**：文件级对齐 ≠ 功能完整。`core/report.ts` → `core/report.py` 文件存在，但 `report.py` 只有 `write_report_html`，所以文件级通过、导出级仍有 7 个缺口、测试级有 17 个 skip。
 
 后续所有进度以**导出级 + 测试级**为准，文件级只作为守门条件。
 
-其中 104 个模块存在真正缺失，另外 8 个模块只有迁移差异。分阶段路线图对
-**全部 104 个模块 / 240 个缺失符号**做了无遗漏分派（见 §7.5）。
+其中 101 个模块存在真正缺失，另外 8 个模块只有迁移差异。分阶段路线图对
+**全部 101 个模块 / 213 个缺失符号**做了无遗漏分派（见 §7.5）。
 
 ### 计数口径
 
@@ -274,17 +274,12 @@ ledger 由脚本生成初稿，人工只维护 `status`、`skip_reasons`、`note
 `restoreImageReferences` / `restoreReportImageReferences`、
 `createReportCliCommands`。
 
-### Phase 2：共享基础设施（剩余 3 个模块）
+### Phase 2：共享基础设施（已完成）
 
 `html-utils`、`img/transform`、`img/box-select`、`report-artifact`、
-`env/constants`、`env/parse-model-config`、`logger` 已完成。
-
-| 上游文件 | 缺失 | 备注 |
-|---|---|---|
-| `shared/extractor/util.ts` | 15 | rect/id/属性/伪元素 |
-| `shared/utils.ts` | 9 | assert/isPlainObject/脚本转义 |
-| `shared/env/types.ts` | 3 + 121 moved | 决策：是否在 `types.py` re-export |
-| **合计** | **3 个模块 / 27 个符号** | |
+`env/constants`、`env/parse-model-config`、`env/types`、`logger`、
+`extractor/util`、`shared/utils` 已全部对齐，剩余 0 个模块 / 0 个符号。
+`env/types.py` 已重导出原 `moved` 的共享类型符号。
 
 ### Phase 3：core 主体
 
@@ -347,8 +342,8 @@ ledger 由脚本生成初稿，人工只维护 `status`、`skip_reasons`、`note
 四个阶段的模块数与符号数必须满足：
 
 ```
-模块：0 (P1) + 3 (P2) + 73 (P3) + 28 (P4) = 104
-符号：0 (P1) + 27 (P2) + 145 (P3) + 68 (P4) = 240
+模块：0 (P1) + 0 (P2) + 73 (P3) + 28 (P4) = 101
+符号：0 (P1) + 0 (P2) + 145 (P3) + 68 (P4) = 213
 ```
 
 分派规则（无重叠、无遗漏）：
@@ -356,12 +351,12 @@ ledger 由脚本生成初稿，人工只维护 `status`、`skip_reasons`、`note
 | 阶段 | 范围 |
 |---|---|
 | P1 | 已完成的 7 个报表模块，当前剩余 0 |
-| P2 | 所有 `shared` 包缺失模块（`html-utils` 已完成，仅剩 moved） |
+| P2 | 已完成的共享基础设施，当前剩余 0 |
 | P3 | 其余所有 `core` 包缺失模块 |
 | P4 | 其余所有包（android / cli / computer / harmony / ios / web-integration / webdriver） |
 
 ledger 必须做到**一行一个上游模块**，且每行有且只有一个 `batch`；ratchet 校验
-`104 / 240` 两个总数不变。新增上游模块时，先补 ledger 再动代码。
+`101 / 213` 两个总数不变。新增上游模块时，先补 ledger 再动代码。
 
 另有 8 个模块**只有迁移差异、没有 missing**，不计入 240，但必须按 DoD #3 处理
 re-export：

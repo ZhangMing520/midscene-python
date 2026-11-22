@@ -337,12 +337,8 @@ def check_counts(
                       f"doc={expected} repo={actual}")
 
     for phase in (1, 2, 3, 4):
-        if phase == 1 and not p1:
-            checker.check(
-                "Phase 1 completed (0 remaining)",
-                counts[1] == 0 and symbols[1] == 0,
-                f"{counts[1]} modules / {symbols[1]} symbols",
-            )
+        if counts[phase] == 0 and symbols[phase] == 0:
+            checker.check(f"Phase {phase} completed (0 remaining)", True)
             continue
         total = re.search(
             r"\*\*合计\*\*\s*\|\s*\*\*(\d+) 个模块 / (\d+) 个符号\*\*",

@@ -1,12 +1,12 @@
 {
   "upstream_root": "/home/zhangming/gitspace/midscene",
   "counts": {
-    "modules_with_gaps": 132,
-    "missing_functions": 143,
+    "modules_with_gaps": 130,
+    "missing_functions": 120,
     "moved_functions": 21,
     "missing_classes": 19,
     "missing_methods": 104,
-    "signature_mismatch": 50,
+    "signature_mismatch": 49,
     "modules_scanned": 425,
     "functions_scanned": 601,
     "classes_scanned": 100
@@ -692,117 +692,6 @@
       ]
     },
     {
-      "package": "shared",
-      "upstream": "extractor/util.ts",
-      "python": "shared/extractor/util.py",
-      "missing_functions": [
-        {
-          "name": "elementRect",
-          "params": [
-            "el",
-            "currentWindow",
-            "currentDocument",
-            "baseZoom"
-          ]
-        },
-        {
-          "name": "generateId",
-          "params": [
-            "numberId"
-          ]
-        },
-        {
-          "name": "getNodeAttributes",
-          "params": [
-            "node",
-            "currentWindow"
-          ]
-        },
-        {
-          "name": "getNodeFromCacheList",
-          "params": [
-            "id"
-          ]
-        },
-        {
-          "name": "getPseudoElementContent",
-          "params": [
-            "element",
-            "currentWindow"
-          ]
-        },
-        {
-          "name": "getRect",
-          "params": [
-            "el",
-            "baseZoom",
-            "// base zoom\n  currentWindow"
-          ]
-        },
-        {
-          "name": "getTopDocument",
-          "params": []
-        },
-        {
-          "name": "hasOverflowY",
-          "params": [
-            "element",
-            "currentWindow"
-          ]
-        },
-        {
-          "name": "midsceneGenerateHash",
-          "params": [
-            "node",
-            "content",
-            "rect"
-          ]
-        },
-        {
-          "name": "setExtractTextWithPositionOnWindow",
-          "params": []
-        },
-        {
-          "name": "setGenerateHashOnWindow",
-          "params": []
-        },
-        {
-          "name": "setMidsceneVisibleRectOnWindow",
-          "params": []
-        },
-        {
-          "name": "setNodeHashCacheListOnWindow",
-          "params": []
-        },
-        {
-          "name": "setNodeToCacheList",
-          "params": [
-            "node",
-            "id"
-          ]
-        },
-        {
-          "name": "validTextNodeContent",
-          "params": [
-            "node"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": [
-        {
-          "kind": "function",
-          "name": "logger",
-          "ts_params": [
-            "_msg"
-          ],
-          "python_params": []
-        }
-      ]
-    },
-    {
       "package": "computer",
       "upstream": "device.ts",
       "python": "computer/device.py",
@@ -942,66 +831,6 @@
           "params": [
             "retry?"
           ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "shared",
-      "upstream": "utils.ts",
-      "python": "shared/utils.py",
-      "missing_functions": [
-        {
-          "name": "assert",
-          "params": [
-            "condition",
-            "message?"
-          ]
-        },
-        {
-          "name": "generateHashId",
-          "params": [
-            "rect",
-            "content"
-          ]
-        },
-        {
-          "name": "isPlainObject",
-          "params": [
-            "value"
-          ]
-        },
-        {
-          "name": "logMsg",
-          "params": [
-            "message"
-          ]
-        },
-        {
-          "name": "repeat",
-          "params": [
-            "times",
-            "fn"
-          ]
-        },
-        {
-          "name": "replaceIllegalPathCharsAndSpace",
-          "params": [
-            "str"
-          ]
-        },
-        {
-          "name": "sha256Hex",
-          "params": [
-            "value"
-          ]
-        },
-        {
-          "name": "uuid",
-          "params": []
         }
       ],
       "moved_functions": [],
