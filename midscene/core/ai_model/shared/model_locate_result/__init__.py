@@ -4,8 +4,9 @@ Synced from upstream web-infra-dev/midscene v1.18.2:
   packages/core/src/ai-model/shared/model-locate-result/*
 """
 
-from midscene.shared.env import (
-    planning_model_family_required_for_locate_message,  # noqa: F401 (re-export)
+from midscene.core.ai_model.shared.model_locate_result.errors import (
+    model_family_required_for_locate_message,
+    planning_model_family_required_for_locate_message,
 )
 from midscene.core.ai_model.shared.model_locate_result.coordinate_distance import (
     create_coordinate_distance_to_pixels,
@@ -101,12 +102,14 @@ __all__ = [
     "map_locate_result_to_pixel_bbox",
     "map_locate_result_to_pixel_point",
     "max_pixel_coordinate",
+    "model_family_required_for_locate_message",
     "normalized_coordinate_to_pixel",
     "parse_coordinate_list",
     "parse_numeric_locate_result",
     "pixel_bbox_to_rect",
     "pixel_interval_center",
     "pixel_interval_length",
+    "planning_model_family_required_for_locate_message",
     "read_locate_result_field",
     "resolve_bounds_type",
     "resolve_locate_result_coordinates",

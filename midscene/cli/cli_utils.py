@@ -5,6 +5,8 @@ from typing import Optional
 
 from rich.console import Console
 
+from midscene.cli.workflow_format import is_legacy_yaml_path
+
 _SERVE_SERVERS: dict = {}
 
 
@@ -20,7 +22,7 @@ def _read_batch_config(path: str) -> dict:
 
 def _is_batch_config(path: Path) -> bool:
     """True when the YAML file declares a "files" key (batch config)."""
-    if path.suffix.lower() not in (".yml", ".yaml"):
+    if not is_legacy_yaml_path(str(path)):
         return False
     try:
         import yaml as _yaml

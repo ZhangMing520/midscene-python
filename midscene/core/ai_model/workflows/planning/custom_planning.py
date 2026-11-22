@@ -35,6 +35,9 @@ from midscene.core.ai_model.model_adapter.custom_planning_action import (
     get_tap_located_pixel_result,
     normalize_custom_locate_fields,
 )
+from midscene.core.ai_model.model_adapter.planning import (
+    resolve_custom_planning_definition,
+)
 from midscene.core.ai_model.service_caller.call_ai import (
     call_ai_with_string_response,
 )
@@ -207,7 +210,9 @@ def _make_auto_glm_plan_fn(is_multilingual: bool) -> Callable:
             model_runtime,
             action_space,
             conversation_history,
-            create_auto_glm_planner(is_multilingual),
+            resolve_custom_planning_definition(
+                create_auto_glm_planner(is_multilingual)
+            ),
             include_locate_in_planning,
             action_context,
         )
@@ -234,7 +239,7 @@ def _make_ui_tars_plan_fn() -> Callable:
             model_runtime,
             action_space,
             conversation_history,
-            create_ui_tars_planner(),
+            resolve_custom_planning_definition(create_ui_tars_planner()),
             include_locate_in_planning,
             action_context,
         )

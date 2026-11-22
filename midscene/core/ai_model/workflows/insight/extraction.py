@@ -4,7 +4,6 @@ Synced from upstream packages/core/src/ai-model/workflows/insight/
 (extraction.ts, boolean.ts, insight-response-parser.ts).
 """
 
-import json
 from typing import Any, Dict, List, Optional, Union
 
 from loguru import logger
@@ -12,9 +11,13 @@ from loguru import logger
 from midscene.core.ai_model.service_caller.types import AIResponseParseError
 from midscene.core.ai_model.service_caller.call_ai import call_generative_ai
 from midscene.core.ai_model.prompt.insight import build_insight_system_prompt, extract_data_query_prompt
-from midscene.core.ai_model.model_adapter.default_insight_protocol import create_default_insight_protocol
+from midscene.core.ai_model.model_adapter.insight import (
+    get_default_insight_protocol,  # noqa: F401 (re-export)
+    resolve_insight,
+)
 from midscene.core.ai_model.service_caller.semantic_retry import call_ai_and_parse_with_retry, with_semantic_retry_feedback
 from midscene.core.ai_model.models.registry import ModelRuntime
+from midscene.core.ai_model.workflows.insight.boolean import extract_boolean
 from midscene.core.ai_model.workflows.insight.insight_response_parser import (
     parse_insight_response,
 )
@@ -22,15 +25,6 @@ from midscene.core.ai_model.shared.multimodal_prompt import (
     ensure_data_url,
     get_screenshot_base64,
 )
-
-_default_insight_protocol = None
-
-
-def get_default_insight_protocol() -> Dict[str, Any]:
-    global _default_insight_protocol
-    if _default_insight_protocol is None:
-        _default_insight_protocol = create_default_insight_protocol()
-    return _default_insight_protocol
 
 
 async def ai_extract_element_info(
@@ -48,32 +42,20 @@ async def ai_extract_element_info(
     task_type: 'boolean' | 'extract'.
     Returns {parse_result: {thought?, data, errors?}, raw_response, usage, ...}.
     """
-    insight_protocol = get_default_insight_protocol()
+    insight_adapter = resolve_insight(model_runtime.adapter)
+    insight_protocol = insight_adapter["protocol"]
     data_output = insight_protocol["data_output"]
 
-    boolean_fn = getattr(model_runtime.adapter, "insight_boolean_fn", None)
+    boolean_fn = insight_adapter["boolean_fn"]
     if task_type == "boolean" and boolean_fn is not None:
-        if not isinstance(data_query, dict) or len(data_query) != 1:
-            raise ValueError("Boolean insight tasks require exactly one result field.")
-        result_key, demand = next(iter(data_query.items()))
-        statement = (
-            demand if isinstance(demand, str) else json.dumps(demand, ensure_ascii=False)
-        )
-        boolean_result = await boolean_fn(
-            statement,
+        return await extract_boolean(
+            boolean_fn,
+            data_query,
             context,
             model_runtime,
             page_description=page_description or "",
             context_text=context_text,
         )
-        return {
-            "parse_result": {
-                "data": {result_key: bool(boolean_result.get("value"))}
-            },
-            "raw_response": boolean_result.get("raw_response", ""),
-            "usage": boolean_result.get("usage"),
-            "reasoning_content": None,
-        }
 
     system_prompt = build_insight_system_prompt(
         insight_protocol=insight_protocol,

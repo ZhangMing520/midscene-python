@@ -14,6 +14,8 @@ from midscene.core.ai_model.service_caller.call_ai import call_generative_ai
 from midscene.core.ai_model.prompt.planning import build_standard_planning_system_prompt
 from midscene.core.ai_model.service_caller.semantic_retry import call_ai_and_parse_with_retry, with_semantic_retry_feedback
 from midscene.core.ai_model.models.registry import ModelRuntime
+from midscene.core.ai_model.model_adapter.planning import resolve_planning
+from midscene.core.ai_model.workflows.planning.types import PlanningAIResponse
 from midscene.shared.env import planning_model_family_required_for_locate_message
 from midscene.core.ai_model.model_adapter.image_preprocess import (
     prepare_model_image,
@@ -60,10 +62,10 @@ async def standard_plan(
     planning_advice: Optional[str] = None,
     reference_images: Optional[List[str]] = None,
     images_include_count: int = 2,
-) -> Dict[str, Any]:
+) -> PlanningAIResponse:
     """Run one standard planning turn and return the parsed planning response."""
     adapter = model_runtime.adapter
-    planning_protocol = adapter.planning_protocol
+    planning_protocol = resolve_planning(adapter)["protocol"]
 
     if include_locate_in_planning and not model_runtime.config.get("modelFamily"):
         raise ValueError(

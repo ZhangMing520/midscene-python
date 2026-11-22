@@ -9,27 +9,32 @@ from loguru import logger
 
 from midscene.core.ai_model.service_caller.types import AIResponseParseError
 from midscene.core.ai_model.service_caller.call_ai import call_generative_ai
-from midscene.core.ai_model.model_adapter.locate_prompt_order import build_locate_messages, multimodal_prompt_to_messages
+from midscene.core.ai_model.model_adapter.locate import resolve_locate
 from midscene.core.ai_model.prompt.locate import build_element_locate_system_prompt
 from midscene.core.ai_model.service_caller.semantic_retry import call_ai_and_parse_with_retry, with_semantic_retry_feedback
 from midscene.core.ai_model.models.registry import ModelRuntime
-from midscene.core.ai_model.model_adapter.image_preprocess import (
-    prepare_model_image,
-)
 from midscene.core.ai_model.shared.multimodal_prompt import (
     ensure_data_url,
     user_prompt_to_string,
 )
-from midscene.core.agent.prompt_context import format_locate_model_context
+from midscene.core.ai_model.workflows.grounding.types import (
+    LocateImage,
+    LocateModelResponse,
+    LocateResult,
+)
+from midscene.core.ai_model.workflows.grounding.utils import (
+    format_locate_model_context,
+    prepare_locate_model_input,
+)
 
 
 async def ai_locate_element(
     target_element_description: Any,
     context: Any,
     model_runtime: ModelRuntime,
-    locate_image: Optional[Dict[str, Any]] = None,
+    locate_image: Optional[LocateImage] = None,
     abort_signal: Optional[Any] = None,
-) -> Dict[str, Any]:
+) -> LocateResult:
     """Locate an element by description; returns a LocateResult-like dict:
 
     {parse_result: {element: {center, rect, description}|None, errors: [...]},
@@ -47,12 +52,10 @@ async def ai_locate_element(
         }
 
     adapter = model_runtime.adapter
-    if adapter.locate_kind == "custom":
-        if adapter.locate_fn is None:
-            raise ValueError(
-                f"Custom locate adapter {adapter.family} has no locate_fn bound"
-            )
-        response = await adapter.locate_fn(
+    locate_adapter = resolve_locate(adapter)
+    if locate_adapter["kind"] == "custom":
+        locate_fn = locate_adapter["locate_fn"]
+        response: LocateModelResponse = await locate_fn(
             target_element_description=target_element_description,
             locate_image=locate_image,
             model_runtime=model_runtime,
@@ -76,8 +79,9 @@ async def ai_locate_element(
             or response.get("reasoning_content"),
         }
 
-    protocol = adapter.locate_protocol["element"]
-    result_codec = adapter.locate_result_codec
+    element_adapter = locate_adapter["element"]
+    protocol = element_adapter["protocol"]
+    result_codec = element_adapter["result_codec"]
 
     system_prompt = build_element_locate_system_prompt(
         system_prompt_introduction=protocol["system_prompt_introduction"],
@@ -87,26 +91,20 @@ async def ai_locate_element(
     )
     user_instruction_prompt = protocol["build_user_prompt"](description_text)
 
-    prepared_image = prepare_model_image(
-        image_base64=locate_image["imageBase64"],
-        width=locate_image["width"],
-        height=locate_image["height"],
-        policy=(
+    prepared = prepare_locate_model_input(
+        locate_image=locate_image,
+        target_description=target_element_description,
+        system_prompt=system_prompt,
+        user_prompt=user_instruction_prompt,
+        image_preprocess=(
             {"padBlockSize": adapter.image_pad_block_size}
             if adapter.image_pad_block_size
             else None
         ),
+        prompt_order=adapter.locate_prompt_order,
     )
-
-    messages = build_locate_messages(
-        adapter.locate_prompt_order,
-        {
-            "instructions": system_prompt,
-            "screenshot": prepared_image["image_base64"],
-            "task": user_instruction_prompt,
-            "references": multimodal_prompt_to_messages(target_element_description),
-        },
-    )
+    messages = prepared["messages"]
+    prepared_image = prepared["prepared_image"]
 
     def build_base(
         raw_response: str,

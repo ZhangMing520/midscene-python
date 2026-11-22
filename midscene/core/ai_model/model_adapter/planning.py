@@ -1,0 +1,95 @@
+"""Planning adapter resolution (upstream model-adapter/planning.ts)."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, TypedDict
+
+from midscene.core.ai_model.shared.model_locate_result import (
+    LocateResultCodec,
+    create_locate_result_codec,
+    resolve_locate_result_coordinates,
+)
+from midscene.core.ai_model.model_adapter.planning_protocol import (
+    StandardPlanningProtocol,
+)
+
+if TYPE_CHECKING:
+    from midscene.core.ai_model.workflows.planning.types import PlanFn
+
+DEFAULT_REPLANNING_CYCLE_LIMIT = 20
+
+
+class ResolvedCustomPlanningDefinition(TypedDict, total=False):
+    messages: Dict[str, Any]
+    coordinates: Dict[str, Any]
+    coordinate_system: Dict[str, Any]
+    coordinate_normalizer: LocateResultCodec
+    parse_response: Callable[..., Dict[str, Any]]
+    transform_actions: Callable[..., Any]
+    should_continue_planning: Callable[..., bool]
+    build_response_log: Callable[..., Any]
+
+
+class PlanningAdapter(TypedDict, total=False):
+    kind: str
+    cache_enabled: bool
+    default_replanning_cycle_limit: int
+    supports_action_deep_locate: bool
+    plan_fn: Optional[PlanFn]
+    protocol: StandardPlanningProtocol
+    locate_result_codec: Optional[LocateResultCodec]
+
+
+def resolve_custom_planning_definition(
+    config: Dict[str, Any],
+) -> ResolvedCustomPlanningDefinition:
+    """Attach the resolved coordinate system and normalizer to a config."""
+    coordinates = config.get("coordinates") or {}
+    return {
+        **config,
+        "coordinate_system": resolve_locate_result_coordinates(coordinates),
+        "coordinate_normalizer": create_locate_result_codec(
+            {"coordinates": coordinates}
+        ),
+    }
+
+
+def resolve_planning(
+    adapter: Any,
+    protocol_context: Optional[Dict[str, Any]] = None,
+) -> PlanningAdapter:
+    """Resolve the custom or standard planning adapter for a model adapter."""
+    cycle_limit = (
+        adapter.replanning_cycle_limit
+        if adapter.replanning_cycle_limit is not None
+        else DEFAULT_REPLANNING_CYCLE_LIMIT
+    )
+    if adapter.planning_kind == "custom":
+        return {
+            "kind": "custom",
+            "cache_enabled": adapter.cache_enabled,
+            "default_replanning_cycle_limit": cycle_limit,
+            "supports_action_deep_locate": adapter.supports_action_deep_locate,
+            "plan_fn": adapter.planning_plan_fn,
+        }
+
+    protocol = adapter.planning_protocol
+    if callable(protocol):
+        protocol = protocol(protocol_context or {})
+    return {
+        "kind": "standard",
+        "cache_enabled": adapter.cache_enabled,
+        "default_replanning_cycle_limit": cycle_limit,
+        "supports_action_deep_locate": adapter.supports_action_deep_locate,
+        "protocol": protocol,
+        "locate_result_codec": adapter.locate_result_codec,
+    }
+
+
+__all__ = [
+    "DEFAULT_REPLANNING_CYCLE_LIMIT",
+    "PlanningAdapter",
+    "ResolvedCustomPlanningDefinition",
+    "resolve_custom_planning_definition",
+    "resolve_planning",
+]

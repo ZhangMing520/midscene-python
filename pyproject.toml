@@ -73,7 +73,7 @@ Documentation = "https://github.com/ZhangMing520/midscene-python/blob/master/doc
 "Bug Tracker" = "https://github.com/ZhangMing520/midscene-python/issues"
 
 [project.scripts]
-midscene = "midscene.cli:main"
+midscene = "midscene.cli.index:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["midscene"]

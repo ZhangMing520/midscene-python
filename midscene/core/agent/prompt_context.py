@@ -1,7 +1,6 @@
 """AI context rendering (upstream agent/prompt-context.ts)."""
 
 from typing import Any, Optional
-from midscene.core.ai_model.models.registry import ModelRuntime
 
 
 def _render_context_block(context: Optional[str]) -> Optional[str]:
@@ -27,12 +26,13 @@ def build_locate_prompt_with_context(prompt: Any, context: Optional[str]) -> Any
     return {**prompt, "prompt": prompt_with_context}
 
 
-def format_locate_model_context(model_runtime: ModelRuntime) -> str:
-    config = model_runtime.config
-    return (
-        f"modelName={config.get('modelName') or 'unset'} "
-        f"modelFamily={config.get('modelFamily') or 'unset'}"
+def format_locate_model_context(model_runtime: Any) -> str:
+    """Deprecated re-export of the grounding workflow helper."""
+    from midscene.core.ai_model.workflows.grounding.utils import (
+        format_locate_model_context as _format,
     )
+
+    return _format(model_runtime)
 
 
 def render_ai_context(context: Any) -> Optional[str]:

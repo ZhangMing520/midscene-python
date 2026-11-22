@@ -1,11 +1,10 @@
 {
-  "generated_at": "2026-11-22T02:41:32.627118+00:00",
+  "generated_at": "2026-11-22T03:01:33.267062+00:00",
   "upstream_root": "/home/zhangming/gitspace/midscene",
   "python_root": "/home/zhangming/gitspace/midscene-python/midscene",
   "counts": {
-    "aligned": 407,
-    "exempt": 104,
-    "merged": 19
+    "aligned": 425,
+    "exempt": 105
   },
   "files": [
     {
@@ -239,8 +238,7 @@
     {
       "package": "core",
       "upstream": "yaml.ts",
-      "status": "merged",
-      "python": "core/yaml/__init__.py",
+      "status": "exempt",
       "reason": "Python cannot have both yaml.py and the yaml/ package"
     },
     {
@@ -384,9 +382,8 @@
     {
       "package": "core",
       "upstream": "agent/execution-session.ts",
-      "status": "merged",
-      "python": "core/agent/agent.py",
-      "reason": "execution session lifecycle lives in the agent"
+      "status": "aligned",
+      "python": "core/agent/execution_session.py"
     },
     {
       "package": "core",
@@ -1453,9 +1450,8 @@
     {
       "package": "core",
       "upstream": "ai-model/shared/model-locate-result/errors.ts",
-      "status": "merged",
-      "python": "core/ai_model/shared/model_locate_result/__init__.py",
-      "reason": "locate result errors are defined in the package entry"
+      "status": "aligned",
+      "python": "core/ai_model/shared/model_locate_result/errors.py"
     },
     {
       "package": "core",
@@ -1562,9 +1558,8 @@
     {
       "package": "core",
       "upstream": "ai-model/workflows/insight/boolean.ts",
-      "status": "merged",
-      "python": "core/ai_model/workflows/insight/extraction.py",
-      "reason": "boolean insight shares the extraction workflow"
+      "status": "aligned",
+      "python": "core/ai_model/workflows/insight/boolean.py"
     },
     {
       "package": "core",
@@ -1629,16 +1624,14 @@
     {
       "package": "core",
       "upstream": "ai-model/workflows/grounding/types.ts",
-      "status": "merged",
-      "python": "core/ai_model/workflows/grounding/locate.py",
-      "reason": "locate option types are inline dicts"
+      "status": "aligned",
+      "python": "core/ai_model/workflows/grounding/types.py"
     },
     {
       "package": "core",
       "upstream": "ai-model/workflows/grounding/utils.ts",
-      "status": "merged",
-      "python": "core/ai_model/workflows/grounding/locate.py",
-      "reason": "grounding helpers are folded into locate.py"
+      "status": "aligned",
+      "python": "core/ai_model/workflows/grounding/utils.py"
     },
     {
       "package": "core",
@@ -1691,9 +1684,8 @@
     {
       "package": "core",
       "upstream": "ai-model/workflows/planning/types.ts",
-      "status": "merged",
-      "python": "core/ai_model/workflows/planning/standard_planning.py",
-      "reason": "planning types are inline dicts"
+      "status": "aligned",
+      "python": "core/ai_model/workflows/planning/types.py"
     },
     {
       "package": "core",
@@ -1758,9 +1750,8 @@
     {
       "package": "core",
       "upstream": "ai-model/model-adapter/insight.ts",
-      "status": "merged",
-      "python": "core/ai_model/workflows/insight/extraction.py",
-      "reason": "resolveInsight is implemented by the insight workflow"
+      "status": "aligned",
+      "python": "core/ai_model/model_adapter/insight.py"
     },
     {
       "package": "core",
@@ -1777,16 +1768,14 @@
     {
       "package": "core",
       "upstream": "ai-model/model-adapter/locate-protocol.ts",
-      "status": "merged",
-      "python": "core/ai_model/model_adapter/default_locate_protocol.py",
-      "reason": "locate protocol types and default factory live together"
+      "status": "aligned",
+      "python": "core/ai_model/model_adapter/locate_protocol.py"
     },
     {
       "package": "core",
       "upstream": "ai-model/model-adapter/locate.ts",
-      "status": "merged",
-      "python": "core/ai_model/workflows/grounding/locate.py",
-      "reason": "resolveLocate dispatch is implemented by the locate workflow"
+      "status": "aligned",
+      "python": "core/ai_model/model_adapter/locate.py"
     },
     {
       "package": "core",
@@ -1803,9 +1792,8 @@
     {
       "package": "core",
       "upstream": "ai-model/model-adapter/planning.ts",
-      "status": "merged",
-      "python": "core/ai_model/workflows/planning/standard_planning.py",
-      "reason": "resolvePlanning dispatch is implemented by the planning workflow"
+      "status": "aligned",
+      "python": "core/ai_model/model_adapter/planning.py"
     },
     {
       "package": "core",
@@ -2212,9 +2200,8 @@
     {
       "package": "shared",
       "upstream": "types/index.ts",
-      "status": "merged",
-      "python": "core/types.py",
-      "reason": "shared type definitions live in midscene/core/types.py"
+      "status": "aligned",
+      "python": "shared/types/__init__.py"
     },
     {
       "package": "shared",
@@ -2603,9 +2590,8 @@
     {
       "package": "web-integration",
       "upstream": "agent-init-args.ts",
-      "status": "merged",
-      "python": "core/agent/agent_options.py",
-      "reason": "agent init arguments are represented by AgentOptions"
+      "status": "aligned",
+      "python": "web_integration/agent_init_args.py"
     },
     {
       "package": "web-integration",
@@ -2928,23 +2914,20 @@
     {
       "package": "web-integration",
       "upstream": "common/browser-agent-utils.ts",
-      "status": "merged",
-      "python": "web_integration/playwright/page.py",
-      "reason": "browser agent helpers are folded into the page"
+      "status": "aligned",
+      "python": "web_integration/common/browser_agent_utils.py"
     },
     {
       "package": "web-integration",
       "upstream": "common/browser-agent.ts",
-      "status": "merged",
-      "python": "core/agent/agent.py",
-      "reason": "the unified core Agent serves every web driver"
+      "status": "aligned",
+      "python": "web_integration/common/browser_agent.py"
     },
     {
       "package": "web-integration",
       "upstream": "common/browser-page-actions.ts",
-      "status": "merged",
-      "python": "web_integration/playwright/page.py",
-      "reason": "generic page actions are implemented inside the Playwright page"
+      "status": "aligned",
+      "python": "web_integration/common/browser_page_actions.py"
     },
     {
       "package": "web-integration",
@@ -2991,9 +2974,8 @@
     {
       "package": "web-integration",
       "upstream": "bridge-mode/agent-cli-side.ts",
-      "status": "merged",
-      "python": "web_integration/bridge_mode/__init__.py",
-      "reason": "bridge mode is driven by core.Agent plus BridgeWebPage"
+      "status": "aligned",
+      "python": "web_integration/bridge_mode/agent_cli_side.py"
     },
     {
       "package": "web-integration",
@@ -3082,9 +3064,8 @@
     {
       "package": "cli",
       "upstream": "index.ts",
-      "status": "merged",
-      "python": "cli/main.py",
-      "reason": "Python CLI entry point is main.py"
+      "status": "aligned",
+      "python": "cli/__init__.py"
     },
     {
       "package": "cli",
@@ -3113,9 +3094,8 @@
     {
       "package": "cli",
       "upstream": "workflow-format.ts",
-      "status": "merged",
-      "python": "cli/cli_utils.py",
-      "reason": "legacy workflow extension validation lives in cli_utils"
+      "status": "aligned",
+      "python": "cli/workflow_format.py"
     },
     {
       "package": "cli",

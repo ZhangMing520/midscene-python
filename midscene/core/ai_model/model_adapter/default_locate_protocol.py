@@ -4,6 +4,10 @@ from midscene.core.ai_model.shared.json import assert_json_object
 from midscene.core.ai_model.shared.json import parse_model_response_json
 from midscene.core.ai_model.shared.model_locate_result import format_locate_example_value
 from midscene.core.ai_model.shared.model_locate_result import read_locate_result_field
+from midscene.core.ai_model.model_adapter.locate_protocol import (
+    ParsedLocateResponse,
+    StandardLocateProtocol,
+)
 from typing import Any, Dict
 
 DEFAULT_LOCATE_SYSTEM_PROMPT_INTRODUCTION = """## Role:
@@ -120,7 +124,7 @@ def _create_parse_raw_response(
 ):
     def parse_raw_response(
         content: str, prompt_spec: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    ) -> ParsedLocateResponse:
         parser = json_parser or (
             lambda raw, source: parse_model_response_json(raw, source=source)
         )
@@ -169,7 +173,7 @@ def _create_parse_raw_response(
     return parse_raw_response
 
 
-def create_default_element_protocol(json_parser=None) -> Dict[str, Any]:
+def create_default_element_protocol(json_parser=None) -> StandardLocateProtocol:
     return {
         "system_prompt_introduction": DEFAULT_LOCATE_SYSTEM_PROMPT_INTRODUCTION,
         "build_response_instructions": _build_locate_response_instructions,
@@ -181,7 +185,7 @@ def create_default_element_protocol(json_parser=None) -> Dict[str, Any]:
     }
 
 
-def create_default_search_area_protocol(json_parser=None) -> Dict[str, Any]:
+def create_default_search_area_protocol(json_parser=None) -> StandardLocateProtocol:
     return {
         "system_prompt_introduction": DEFAULT_SEARCH_AREA_SYSTEM_PROMPT_INTRODUCTION,
         "build_response_instructions": _build_search_area_response_instructions,

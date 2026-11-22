@@ -89,7 +89,7 @@ def test_run_exit_code_reflects_failed_tasks(
     import midscene.core.yaml as yaml_module
     from typer.testing import CliRunner
 
-    cli_main = importlib.import_module("midscene.cli.main")
+    cli_main = importlib.import_module("midscene.cli.index")
 
     script_path = tmp_path / "flow.yaml"
     script_path.write_text(

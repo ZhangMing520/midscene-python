@@ -26,6 +26,7 @@ from midscene.web_integration.bridge_mode.common import (
     BRIDGE_EVENT_CONNECT_NEW_TAB_WITH_URL,
     BRIDGE_EVENT_GET_BROWSER_TAB_LIST,
     BRIDGE_EVENT_SET_ACTIVE_TAB_ID,
+    BRIDGE_EVENT_SET_DESTROY_OPTIONS,
     BRIDGE_EVENT_UPDATE_AGENT_STATUS,
     DefaultBridgeServerHost,
     DefaultBridgeServerPort,
@@ -46,6 +47,8 @@ class BridgeWebPage(AbstractInterface):
         listening_timeout: Optional[float] = 30.0,
         allow_remote_access: bool = False,
         close_conflict_server: bool = True,
+        input_strategy: Optional[str] = None,
+        keyboard_type_delay: Optional[float] = None,
     ):
         self.host = get_bridge_server_host(host, allow_remote_access)
         self.port = port
@@ -56,6 +59,8 @@ class BridgeWebPage(AbstractInterface):
         }
         self.listening_timeout = listening_timeout
         self.close_conflict_server = close_conflict_server
+        self.input_strategy = input_strategy
+        self.keyboard_type_delay = keyboard_type_delay
         self._server: Optional[BridgeServer] = None
         self._connected = False
 
@@ -63,8 +68,10 @@ class BridgeWebPage(AbstractInterface):
     def interface_type(self) -> InterfaceType:
         return InterfaceType.WEB
 
-    async def connect(self) -> None:
-        """Start the bridge server and connect to the current active tab."""
+    async def listen(self) -> None:
+        """Start the bridge server and wait for the extension to connect."""
+        if self._server is not None:
+            return
         server = BridgeServer(
             host=self.host,
             port=self.port,
@@ -73,8 +80,31 @@ class BridgeWebPage(AbstractInterface):
         )
         await server.listen(timeout=self.listening_timeout)
         self._server = server
-        await server.call(
-            BRIDGE_EVENT_CONNECT_CURRENT_TAB, [self.connect_options]
+
+    async def connect(self) -> None:
+        """Start the bridge server and connect to the current active tab."""
+        await self.listen()
+        await self.connect_current_tab()
+
+    async def connect_current_tab(
+        self, options: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Attach the bridge to the current (or selected) browser tab."""
+        await self.listen()
+        await self._server.call(
+            BRIDGE_EVENT_CONNECT_CURRENT_TAB,
+            [{**self.connect_options, **(options or {})}],
+        )
+        self._connected = True
+
+    async def connect_new_tab_with_url(
+        self, url: str, options: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Open a new tab and attach the bridge to it."""
+        await self.listen()
+        await self._server.call(
+            BRIDGE_EVENT_CONNECT_NEW_TAB_WITH_URL,
+            [url, {**self.connect_options, **(options or {})}],
         )
         self._connected = True
 
@@ -279,15 +309,26 @@ class BridgeWebPage(AbstractInterface):
         """Focus the tab with the given id for later calls."""
         await self.set_active_tab_id(tab_id)
 
-    async def connect_new_tab_with_url(self, url: str) -> None:
+    async def set_destroy_options(self, options: Dict[str, Any]) -> None:
+        """Configure what the extension tears down when the bridge closes."""
         await self._require_server().call(
-            BRIDGE_EVENT_CONNECT_NEW_TAB_WITH_URL, [url, self.connect_options]
+            BRIDGE_EVENT_SET_DESTROY_OPTIONS, [options]
+        )
+
+    async def set_water_flow_animation_enabled(self, enabled: bool) -> None:
+        """Toggle the extension's water-flow border (upstream page method)."""
+        await self._require_server().call(
+            "setWaterFlowAnimationEnabled", [bool(enabled)]
         )
 
     async def update_agent_status(self, message: str) -> None:
         await self._require_server().call(
             BRIDGE_EVENT_UPDATE_AGENT_STATUS, [message]
         )
+
+    async def show_status_message(self, message: str) -> None:
+        """Show a status tip in the extension (upstream showStatusMessage)."""
+        await self.update_agent_status(message)
 
     # ClearInput goes through the keyboard channel (Control+A + Delete), so it
     # does not need the extension's locate-aware clearInput(element) API.

@@ -58,87 +58,15 @@ NAME_ALIASES = {
 }
 
 # (package, upstream relative path) -> (python path relative to midscene/, note)
-MERGED: Dict[Tuple[str, str], Tuple[str, str]] = {
-    ("core", "yaml.ts"): (
-        "core/yaml/__init__.py",
-        "Python cannot have both yaml.py and the yaml/ package",
-    ),
-    ("core", "agent/execution-session.ts"): (
-        "core/agent/agent.py",
-        "execution session lifecycle lives in the agent",
-    ),
-    ("core", "ai-model/shared/model-locate-result/errors.ts"): (
-        "core/ai_model/shared/model_locate_result/__init__.py",
-        "locate result errors are defined in the package entry",
-    ),
-    ("core", "ai-model/workflows/insight/boolean.ts"): (
-        "core/ai_model/workflows/insight/extraction.py",
-        "boolean insight shares the extraction workflow",
-    ),
-    ("core", "ai-model/workflows/grounding/types.ts"): (
-        "core/ai_model/workflows/grounding/locate.py",
-        "locate option types are inline dicts",
-    ),
-    ("core", "ai-model/workflows/grounding/utils.ts"): (
-        "core/ai_model/workflows/grounding/locate.py",
-        "grounding helpers are folded into locate.py",
-    ),
-    ("core", "ai-model/workflows/planning/types.ts"): (
-        "core/ai_model/workflows/planning/standard_planning.py",
-        "planning types are inline dicts",
-    ),
-    ("core", "ai-model/model-adapter/insight.ts"): (
-        "core/ai_model/workflows/insight/extraction.py",
-        "resolveInsight is implemented by the insight workflow",
-    ),
-    ("core", "ai-model/model-adapter/locate.ts"): (
-        "core/ai_model/workflows/grounding/locate.py",
-        "resolveLocate dispatch is implemented by the locate workflow",
-    ),
-    ("core", "ai-model/model-adapter/planning.ts"): (
-        "core/ai_model/workflows/planning/standard_planning.py",
-        "resolvePlanning dispatch is implemented by the planning workflow",
-    ),
-    ("core", "ai-model/model-adapter/locate-protocol.ts"): (
-        "core/ai_model/model_adapter/default_locate_protocol.py",
-        "locate protocol types and default factory live together",
-    ),
-    ("shared", "types/index.ts"): (
-        "core/types.py",
-        "shared type definitions live in midscene/core/types.py",
-    ),
-    ("web-integration", "common/browser-page-actions.ts"): (
-        "web_integration/playwright/page.py",
-        "generic page actions are implemented inside the Playwright page",
-    ),
-    ("web-integration", "common/browser-agent.ts"): (
-        "core/agent/agent.py",
-        "the unified core Agent serves every web driver",
-    ),
-    ("web-integration", "common/browser-agent-utils.ts"): (
-        "web_integration/playwright/page.py",
-        "browser agent helpers are folded into the page",
-    ),
-    ("web-integration", "agent-init-args.ts"): (
-        "core/agent/agent_options.py",
-        "agent init arguments are represented by AgentOptions",
-    ),
-    ("web-integration", "bridge-mode/agent-cli-side.ts"): (
-        "web_integration/bridge_mode/__init__.py",
-        "bridge mode is driven by core.Agent plus BridgeWebPage",
-    ),
-    ("cli", "index.ts"): (
-        "cli/main.py",
-        "Python CLI entry point is main.py",
-    ),
-    ("cli", "workflow-format.ts"): (
-        "cli/cli_utils.py",
-        "legacy workflow extension validation lives in cli_utils",
-    ),
-}
+MERGED: Dict[Tuple[str, str], Tuple[str, str]] = {}
 
 # (package regex, path regex, reason) - checked after MERGED and aligned.
 EXEMPT: List[Tuple[str, str, str]] = [
+    (
+        "core",
+        r"^yaml\.ts$",
+        "Python cannot have both yaml.py and the yaml/ package",
+    ),
     (
         "core",
         r"^ai-model/service-caller/proxy/proxy-deps\.(node|stub)\.ts$",

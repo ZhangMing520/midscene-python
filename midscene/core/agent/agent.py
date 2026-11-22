@@ -38,6 +38,7 @@ from midscene.core.ai_model.workflows import (
 )
 from midscene.core.ai_model.shared.multimodal_prompt import user_prompt_to_string
 from midscene.core.ai_model.models.jev.planning import jev_plan
+from midscene.core.ai_model.model_adapter.planning import resolve_planning
 from midscene.core.agent import (
     cache_config,
     observe_node,
@@ -59,6 +60,7 @@ from midscene.core.agent.common import (
 )
 from midscene.core.agent.agent_options import AgentOptions
 from midscene.core.agent.action_readiness import wait_for_action_ready
+from midscene.core.agent.execution_session import ExecutionSession
 from midscene.core.agent.metrics import record_usage_metrics
 from midscene.core.agent.tasks import (
     action_progress_summary,
@@ -326,6 +328,18 @@ class Agent:
             result = callback(tip)
             if asyncio.iscoroutine(result):
                 asyncio.ensure_future(result)
+
+    def create_execution_session(
+        self,
+        name: str,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> ExecutionSession:
+        """Create a TaskRunner-backed session for one linear execution run."""
+
+        async def ui_context_builder(_signal: Optional[Any] = None) -> Any:
+            return await self.get_ui_context("locate")
+
+        return ExecutionSession(name, ui_context_builder, options)
 
     # ------------------------------------------------------------------
     # Progress bus (upstream addProgressListener / AgentProgressEvent)
@@ -737,8 +751,12 @@ class Agent:
         reference_images: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         adapter = planning_runtime.adapter
-        if adapter.planning_kind == "custom" and adapter.planning_plan_fn is not None:
-            return await adapter.planning_plan_fn(
+        planning_adapter = resolve_planning(adapter)
+        if (
+            planning_adapter["kind"] == "custom"
+            and planning_adapter.get("plan_fn") is not None
+        ):
+            return await planning_adapter["plan_fn"](
                 instruction=prompt_str,
                 context=context,
                 model_runtime=planning_runtime,

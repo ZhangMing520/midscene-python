@@ -104,16 +104,12 @@ class ModelAdapter:
     def locate_protocol(self):
         """Standard locate protocols: element + search-area (lazy import)."""
         if self._locate_protocol is None:
-            from midscene.core.ai_model.model_adapter.default_locate_protocol import (
-                create_default_element_protocol,
-                create_default_search_area_protocol,
-            )
+            from midscene.core.ai_model.model_adapter.locate import resolve_locate
 
+            locate_adapter = resolve_locate(self)
             self._locate_protocol = {
-                "element": self._element_protocol
-                or create_default_element_protocol(self.json_parser),
-                "search_area": self._search_area_protocol
-                or create_default_search_area_protocol(self.json_parser),
+                "element": locate_adapter["element"]["protocol"],
+                "search_area": locate_adapter["search_area"]["protocol"],
             }
         return self._locate_protocol
 

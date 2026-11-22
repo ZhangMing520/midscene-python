@@ -24,6 +24,7 @@ from midscene.core.task_runner import (
     serialize_error,
     truncate_serialized_error_string,
 )
+from midscene.core.agent.execution_session import ExecutionSession
 from midscene.core.utils import (
     anti_escape_script_tag,
     escape_script_tag,
@@ -208,6 +209,24 @@ async def test_task_runner_append_error_plan_records_failure():
         await runner.append_error_plan("plan failed")
     assert runner.tasks[0]["subType"] == "Error"
     assert runner.tasks[0]["errorMessage"] == "plan failed"
+
+
+@pytest.mark.asyncio
+async def test_execution_session_wraps_task_runner():
+    async def build_context(signal=None):
+        return {"screenshot_base64": "data:image/png;base64,AAA"}
+
+    async def executor(ctx):
+        return {"thought": "ok", "output": 7}
+
+    session = ExecutionSession("session", build_context)
+    result = await session.append_and_run(
+        {"type": "Insight", "subType": "Query", "executor": executor}
+    )
+    assert result == {"thought": "ok", "output": 7}
+    assert session.get_runner().status == "completed"
+    assert session.is_in_error_state() is False
+    assert session.latest_error_task() is None
 
 
 @pytest.mark.asyncio
