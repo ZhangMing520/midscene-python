@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-11-22T09:18:46+00:00",
+  "generated_at": "2026-11-22T09:50:15+00:00",
   "upstream_root": "/home/zhangming/gitspace/midscene",
   "counts": {
     "modules": 425,
-    "api_missing": 213,
-    "method_missing_functions": 120,
-    "method_missing_classes": 19,
-    "method_missing_methods": 104,
+    "api_missing": 158,
+    "method_missing_functions": 85,
+    "method_missing_classes": 12,
+    "method_missing_methods": 102,
     "signature_mismatch": 49
   },
   "modules": [
@@ -904,15 +904,11 @@
       "python": "core/agent/action_readiness.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "ActionReadiness"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
-      "method_missing_classes": [
-        "ActionReadiness"
-      ],
+      "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
@@ -923,16 +919,10 @@
       "python": "core/agent/agent_options.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "normalizeAgentOptions",
-        "withAgentDefaults"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "normalizeAgentOptions",
-        "withAgentDefaults"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -966,10 +956,8 @@
       "python": "core/agent/agent.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "createAgent"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
@@ -983,16 +971,10 @@
       "python": "core/agent/cache_config.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "normalizeAgentCacheConfig",
-        "validateAgentCacheInput"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "normalizeAgentCacheConfig",
-        "validateAgentCacheInput"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -1034,19 +1016,11 @@
       "python": "core/agent/file_chooser.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "normalizeFileChooserAccept"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "normalizeFileChooserAccept",
-        "normalizeFileChooserAcceptInAllowedDir",
-        "withFileChooser"
-      ],
-      "method_missing_classes": [
-        "FileChooserAccepter"
-      ],
+      "method_missing_functions": [],
+      "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
@@ -1094,15 +1068,11 @@
       "python": "core/agent/metrics.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "MetricsCollector"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
-      "method_missing_classes": [
-        "MetricsCollector"
-      ],
+      "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
@@ -1188,14 +1158,10 @@
       "python": "core/agent/record_to_report.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "normalizeRecordToReportScreenshot"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "normalizeRecordToReportScreenshot"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -1252,16 +1218,10 @@
       "python": "core/agent/screenshot_preparation.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "prepareRawScreenshot",
-        "prepareScreenshotForPersistence"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "prepareRawScreenshot",
-        "prepareScreenshotForPersistence"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -1273,22 +1233,11 @@
       "python": "core/agent/task_builder.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "locatePlanForLocate"
-      ],
-      "api_moved": [
-        {
-          "name": "TaskBuilder",
-          "found_in": "midscene/core/agent/agent.py"
-        }
-      ],
-      "method_missing_functions": [
-        "locatePlanForLocate"
-      ],
-      "method_missing_classes": [
-        "TaskBuilder"
-      ],
+      "status": "done",
+      "api_missing": [],
+      "api_moved": [],
+      "method_missing_functions": [],
+      "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
@@ -1319,23 +1268,16 @@
       "python": "core/agent/tasks.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "TaskExecutor",
-        "recordAndReleaseScreenshotSequence"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [
         {
           "name": "TaskExecutionError",
           "found_in": "midscene/core/__init__.py"
         }
       ],
-      "method_missing_functions": [
-        "recordAndReleaseScreenshotSequence"
-      ],
-      "method_missing_classes": [
-        "TaskExecutor"
-      ],
+      "method_missing_functions": [],
+      "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
@@ -1361,20 +1303,11 @@
       "python": "core/agent/ui_observer.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "UIObservationImpl",
-        "UIObserverImpl",
-        "uiContextFromObservationRecord"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "uiContextFromObservationRecord"
-      ],
-      "method_missing_classes": [
-        "UIObservationImpl",
-        "UIObserverImpl"
-      ],
+      "method_missing_functions": [],
+      "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
@@ -1385,45 +1318,10 @@
       "python": "core/agent/ui_utils.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "taskTitleStr"
-      ],
-      "api_moved": [
-        {
-          "name": "extractInsightParam",
-          "found_in": "midscene/core/report_markdown.py"
-        },
-        {
-          "name": "locateParamStr",
-          "found_in": "midscene/core/report_markdown.py"
-        },
-        {
-          "name": "paramStr",
-          "found_in": "midscene/core/report_markdown.py"
-        },
-        {
-          "name": "pullParamStr",
-          "found_in": "midscene/core/report_markdown.py"
-        },
-        {
-          "name": "scrollParamStr",
-          "found_in": "midscene/core/report_markdown.py"
-        },
-        {
-          "name": "typeStr",
-          "found_in": "midscene/core/report_markdown.py"
-        }
-      ],
-      "method_missing_functions": [
-        "extractInsightParam",
-        "locateParamStr",
-        "paramStr",
-        "pullParamStr",
-        "scrollParamStr",
-        "taskTitleStr",
-        "typeStr"
-      ],
+      "status": "done",
+      "api_missing": [],
+      "api_moved": [],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -1435,14 +1333,10 @@
       "python": "core/agent/usage_intent.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "withUsageIntent"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "withUsageIntent"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -1454,35 +1348,10 @@
       "python": "core/agent/utils.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "commonContextParser",
-        "createScreenshotBoundUIContext",
-        "getMidsceneVersion",
-        "ifLocateParamHasLocatedPixelResult",
-        "matchElementFromCache",
-        "matchElementFromPlan",
-        "normalizeScrollType",
-        "parsePrompt",
-        "printReportMsg",
-        "transformLogicalElementToScreenshot",
-        "transformLogicalRectToScreenshotRect"
-      ],
-      "api_moved": [
-        {
-          "name": "normalizeFilePaths",
-          "found_in": "midscene/core/agent/file_chooser.py"
-        }
-      ],
-      "method_missing_functions": [
-        "commonContextParser",
-        "createScreenshotBoundUIContext",
-        "ifLocateParamHasLocatedPixelResult",
-        "matchElementFromCache",
-        "matchElementFromPlan",
-        "normalizeFilePaths",
-        "printReportMsg"
-      ],
+      "status": "done",
+      "api_missing": [],
+      "api_moved": [],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -4225,46 +4094,12 @@
       "python": "core/device/__init__.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "createDefaultMobileActions",
-        "defineActionClearInput",
-        "defineActionCursorMove",
-        "defineActionDoubleClick",
-        "defineActionDragAndDrop",
-        "defineActionHover",
-        "defineActionInput",
-        "defineActionKeyboardPress",
-        "defineActionLongPress",
-        "defineActionMiddleClick",
-        "defineActionPinch",
-        "defineActionRegisterFileChooserAccept",
-        "defineActionRightClick",
-        "defineActionScroll",
-        "defineActionSleep",
-        "defineActionSwipe",
-        "defineActionTap",
-        "defineActionsFromInputPrimitives",
-        "normalizeMobileSwipeParam",
-        "resolveSwipeInputPrimitive",
-        "z"
-      ],
-      "api_moved": [
-        {
-          "name": "defineAction",
-          "found_in": "midscene/core/agent/test_runner_nodes.py"
-        }
-      ],
-      "method_missing_functions": [
-        "createDefaultMobileActions",
-        "defineActionsFromInputPrimitives",
-        "resolveSwipeInputPrimitive"
-      ],
+      "status": "done",
+      "api_missing": [],
+      "api_moved": [],
+      "method_missing_functions": [],
       "method_missing_classes": [],
-      "method_missing_methods": [
-        "AbstractInterface.screenshotBase64",
-        "AbstractInterface.size"
-      ],
+      "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
       "owner": ""
@@ -4274,28 +4109,10 @@
       "python": "core/device/input_strategy.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "resolveInputStrategy",
-        "sendTextSequentially",
-        "shouldInputSequentially"
-      ],
-      "api_moved": [
-        {
-          "name": "inputStrategies",
-          "found_in": "midscene/web_integration/playwright/page.py"
-        },
-        {
-          "name": "resolveTextInputOptions",
-          "found_in": "midscene/web_integration/playwright/page.py"
-        }
-      ],
-      "method_missing_functions": [
-        "resolveInputStrategy",
-        "resolveTextInputOptions",
-        "sendTextSequentially",
-        "shouldInputSequentially"
-      ],
+      "status": "done",
+      "api_missing": [],
+      "api_moved": [],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -4665,8 +4482,7 @@
       "batch": "P3",
       "status": "partial",
       "api_missing": [
-        "Service",
-        "z"
+        "Service"
       ],
       "api_moved": [],
       "method_missing_functions": [],

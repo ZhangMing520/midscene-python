@@ -1,10 +1,108 @@
 """UI context capture and screenshot shrink (upstream agent/screenshot-preparation.ts)."""
 
 import asyncio
+import math
+from typing import Any, Dict, Optional
+
 from loguru import logger
 
 from midscene.core.agent.common import CONTEXT_RETRY_DELAY_MS, CONTEXT_RETRY_MAX
 from midscene.core.types import UIContext
+from midscene.shared.img import image_info_of_base64
+from midscene.shared.img.transform import (
+    convert_base64_image_to_jpeg,
+    resize_base64_image_to_jpeg,
+)
+
+SCREENSHOT_JPEG_QUALITY = 90
+
+
+def _assert_valid_size(size: Dict[str, float], label: str) -> None:
+    width = size.get("width")
+    height = size.get("height")
+    if (
+        width is None
+        or height is None
+        or not math.isfinite(width)
+        or not math.isfinite(height)
+    ):
+        raise ValueError(
+            f"Invalid {label}: width and height must be finite numbers. "
+            f"Received width: {width}, height: {height}"
+        )
+    if width <= 0 or height <= 0:
+        raise ValueError(
+            f"Invalid {label}: width and height must be positive numbers. "
+            f"Received width: {width}, height: {height}"
+        )
+
+
+async def prepare_raw_screenshot(
+    screenshot_base64: str,
+    options: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Prepare one raw screenshot for model context or persistence.
+
+    Each raw screenshot passes through this pipeline at most once.
+    """
+    options = options or {}
+    shrink_factor = options.get("shrinkFactor", options.get("shrink_factor", 1))
+    if (
+        shrink_factor is None
+        or not isinstance(shrink_factor, (int, float))
+        or isinstance(shrink_factor, bool)
+        or not math.isfinite(shrink_factor)
+        or shrink_factor < 1
+    ):
+        raise ValueError(
+            "Invalid screenshotShrinkFactor: must be a finite number >= 1. "
+            f"Received: {shrink_factor}"
+        )
+
+    original_size = image_info_of_base64(screenshot_base64)
+    _assert_valid_size(original_size, "screenshot dimensions")
+
+    if shrink_factor > 1:
+        shot_size = {
+            "width": int(
+                math.floor(original_size["width"] / shrink_factor + 0.5)
+            ),
+            "height": int(
+                math.floor(original_size["height"] / shrink_factor + 0.5)
+            ),
+        }
+    else:
+        shot_size = dict(original_size)
+    _assert_valid_size(shot_size, "prepared screenshot dimensions")
+
+    base64 = resize_base64_image_to_jpeg(
+        screenshot_base64,
+        {
+            "sourceSize": original_size,
+            "targetSize": shot_size,
+            "jpegQuality": SCREENSHOT_JPEG_QUALITY,
+        },
+    )
+    return {
+        "base64": base64,
+        "originalSize": original_size,
+        "shotSize": shot_size,
+    }
+
+
+async def prepare_screenshot_for_persistence(
+    screenshot_base64: str,
+    options: Optional[Dict[str, Any]] = None,
+) -> str:
+    """Prepare a screenshot for persistence when only JPEG output is needed."""
+    options = options or {}
+    shrink_factor = options.get("shrinkFactor", options.get("shrink_factor", 1))
+    if shrink_factor == 1:
+        return convert_base64_image_to_jpeg(
+            screenshot_base64, SCREENSHOT_JPEG_QUALITY
+        )
+    prepared = await prepare_raw_screenshot(screenshot_base64, options)
+    return prepared["base64"]
 
 async def get_ui_context(agent, action: str = "locate") -> UIContext:
     if agent._frozen and agent.frozen_context is not None:

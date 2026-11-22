@@ -1588,3 +1588,11 @@ class Agent:
         )
 
         return COMMON_AGENT_TEST_RUNNER_NODE_DEFINITIONS
+
+
+def create_agent(interface_instance: Any, opts: Any = None) -> Agent:
+    """Create an Agent bound to an interface (upstream createAgent)."""
+    return Agent(interface_instance, opts)
+
+
+__all__ = ["Agent", "create_agent"]

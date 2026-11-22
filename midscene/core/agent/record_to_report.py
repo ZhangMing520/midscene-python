@@ -5,6 +5,30 @@ from typing import Any, Dict, Optional
 
 from loguru import logger
 
+from midscene.shared.img.transform import normalize_screenshot_base64
+
+
+def normalize_record_to_report_screenshot(
+    screenshot: Any,
+    index: int,
+) -> Dict[str, Any]:
+    """Validate and normalize one recordToReport screenshot entry."""
+    if not screenshot or not isinstance(screenshot.get("base64"), str):
+        raise ValueError(
+            f"recordToReport: screenshot #{index + 1} must include a base64 string"
+        )
+    description = screenshot.get("description")
+    if description is not None and not isinstance(description, str):
+        raise ValueError(
+            f"recordToReport: screenshot #{index + 1} description must be a string"
+        )
+    return {
+        "base64": normalize_screenshot_base64(
+            screenshot["base64"],
+            {"label": f"recordToReport: screenshot #{index + 1} base64"},
+        ),
+        "description": description,
+    }
 
 
 def record_to_report(

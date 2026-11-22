@@ -120,14 +120,118 @@ def test_normalizes_the_deprecated_locate_deepthink_alias_before_task_reporting(
     assert "deepThink" not in param
 
 
-@pytest.mark.skip(
-    reason="Python resolves locate prompts inside Agent._run_locate; it has no "
-    "TaskBuilder multimodalPrompt inheritance that copies planner reference "
-    "images into the locate param"
+def test_locates_plan_for_locate_normalizes_strings_and_deep_think():
+    plan = task_builder.locate_plan_for_locate(
+        {"prompt": "cart icon", "deepThink": True}
+    )
+    assert plan == {
+        "type": "Locate",
+        "thought": "",
+        "param": {"prompt": "cart icon", "deepLocate": True},
+    }
+    assert task_builder.locate_plan_for_locate("target") == {
+        "type": "Locate",
+        "thought": "",
+        "param": {"prompt": "target"},
+    }
+
+
+@pytest.mark.parametrize(
+    "prompt, inherit_images",
+    [
+        ("target icon", True),
+        ({"prompt": "target icon"}, True),
+        (
+            {
+                "prompt": "target icon",
+                "images": [
+                    {"name": "local", "url": "https://example.com/local.png"}
+                ],
+                "convertHttpImage2Base64": False,
+            },
+            False,
+        ),
+    ],
 )
 @pytest.mark.asyncio
-async def test_preserves_locator_prompts_while_inheriting_reference_images():
-    pass
+async def test_preserves_locator_prompts_while_inheriting_reference_images(
+    prompt, inherit_images
+):
+    received = []
+
+    async def locate(locate_param, context, runtime, abort_signal):
+        received.append(locate_param["prompt"])
+        return {
+            "element": {
+                "center": [50, 50],
+                "rect": {"left": 40, "top": 40, "width": 20, "height": 20},
+                "description": "target icon",
+            }
+        }
+
+    multimodal_prompt = {
+        "images": [{"name": "reference", "url": "https://example.com/reference.png"}],
+        "convertHttpImage2Base64": True,
+    }
+    builder = task_builder.TaskBuilder(
+        {
+            "interfaceInstance": _LocateInterface(),
+            "service": {"locate": locate},
+            "actionSpace": [],
+            "getDefaultModelRuntime": lambda: None,
+        }
+    )
+    built = await builder.build(
+        [task_builder.locate_plan_for_locate({"prompt": prompt})],
+        None,
+        None,
+        {"multimodalPrompt": multimodal_prompt},
+    )
+    await built["tasks"][0]["executor"](
+        {
+            "task": {"timing": {}},
+            "uiContext": SimpleNamespace(
+                shrunk_shot_to_logical_ratio=1.0,
+                screenshot_base64="data:image/png;base64,SCREENSHOT==",
+                size=SimpleNamespace(width=1000, height=800),
+            ),
+        }
+    )
+
+    expected_prompt = (
+        {"prompt": "target icon", **multimodal_prompt}
+        if inherit_images
+        else prompt
+    )
+    assert received == [expected_prompt]
+
+
+@pytest.mark.asyncio
+async def test_build_dispatches_finished_and_locate_plans():
+    builder = task_builder.TaskBuilder(
+        {
+            "interfaceInstance": _LocateInterface(),
+            "actionSpace": [],
+            "getDefaultModelRuntime": lambda: None,
+        }
+    )
+    built = await builder.build(
+        [
+            {"type": "Finished", "thought": "done"},
+            task_builder.locate_plan_for_locate(
+                {"prompt": "", "locatedPixelResult": {"center": [20, 20]}}
+            ),
+        ],
+        None,
+        None,
+        {},
+    )
+    assert built["tasks"][0]["subType"] == "Finished"
+    await built["tasks"][0]["executor"]({"task": {}, "uiContext": None})
+    result = await built["tasks"][1]["executor"](
+        {"task": {}, "uiContext": None}
+    )
+    assert result["output"]["element"]["center"] == [20, 20]
 
 
 @pytest.mark.parametrize("separate_locate", [False, True])

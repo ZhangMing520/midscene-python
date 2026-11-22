@@ -1,11 +1,11 @@
 {
   "upstream_root": "/home/zhangming/gitspace/midscene",
   "counts": {
-    "modules_with_gaps": 130,
-    "missing_functions": 120,
+    "modules_with_gaps": 115,
+    "missing_functions": 85,
     "moved_functions": 21,
-    "missing_classes": 19,
-    "missing_methods": 104,
+    "missing_classes": 12,
+    "missing_methods": 102,
     "signature_mismatch": 49,
     "modules_scanned": 425,
     "functions_scanned": 601,
@@ -840,118 +840,6 @@
     },
     {
       "package": "core",
-      "upstream": "agent/ui-utils.ts",
-      "python": "core/agent/ui_utils.py",
-      "missing_functions": [
-        {
-          "name": "extractInsightParam",
-          "params": [
-            "taskParam"
-          ]
-        },
-        {
-          "name": "locateParamStr",
-          "params": [
-            "locate?"
-          ]
-        },
-        {
-          "name": "paramStr",
-          "params": [
-            "task"
-          ]
-        },
-        {
-          "name": "pullParamStr",
-          "params": [
-            "pullParam?"
-          ]
-        },
-        {
-          "name": "scrollParamStr",
-          "params": [
-            "scrollParam?"
-          ]
-        },
-        {
-          "name": "taskTitleStr",
-          "params": [
-            "type",
-            "prompt"
-          ]
-        },
-        {
-          "name": "typeStr",
-          "params": [
-            "task"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "agent/utils.ts",
-      "python": "core/agent/utils.py",
-      "missing_functions": [
-        {
-          "name": "commonContextParser",
-          "params": [
-            "interfaceInstance",
-            "_opt"
-          ]
-        },
-        {
-          "name": "createScreenshotBoundUIContext",
-          "params": [
-            "screenshotBase64",
-            "opt"
-          ]
-        },
-        {
-          "name": "ifLocateParamHasLocatedPixelResult",
-          "params": [
-            "planLocateParam"
-          ]
-        },
-        {
-          "name": "matchElementFromCache",
-          "params": [
-            "context",
-            "cacheEntry",
-            "cachePrompt"
-          ]
-        },
-        {
-          "name": "matchElementFromPlan",
-          "params": [
-            "planLocateParam"
-          ]
-        },
-        {
-          "name": "normalizeFilePaths",
-          "params": [
-            "files",
-            "options"
-          ]
-        },
-        {
-          "name": "printReportMsg",
-          "params": [
-            "filepath"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
       "upstream": "agent/insight.ts",
       "python": "core/agent/insight.py",
       "missing_functions": [],
@@ -1130,51 +1018,6 @@
       "signature_mismatch": []
     },
     {
-      "package": "core",
-      "upstream": "device/index.ts",
-      "python": "core/device/__init__.py",
-      "missing_functions": [
-        {
-          "name": "createDefaultMobileActions",
-          "params": [
-            "context"
-          ]
-        },
-        {
-          "name": "defineActionsFromInputPrimitives",
-          "params": [
-            "input",
-            "options"
-          ]
-        },
-        {
-          "name": "resolveSwipeInputPrimitive",
-          "params": [
-            "input"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [
-        {
-          "class": "AbstractInterface",
-          "name": "screenshotBase64",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/shared/types/__init__.py"
-        },
-        {
-          "class": "AbstractInterface",
-          "name": "size",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/shared/types/__init__.py"
-        }
-      ],
-      "signature_mismatch": []
-    },
-    {
       "package": "ios",
       "upstream": "agent.ts",
       "python": "ios/agent.py",
@@ -1254,45 +1097,6 @@
       "missing_classes": [
         "AIRequestTimeoutError"
       ],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "device/input-strategy.ts",
-      "python": "core/device/input_strategy.py",
-      "missing_functions": [
-        {
-          "name": "resolveInputStrategy",
-          "params": [
-            "inputStrategy",
-            "keyboardTypeDelay?"
-          ]
-        },
-        {
-          "name": "resolveTextInputOptions",
-          "params": [
-            "actionOptions?",
-            "platformDefaults?"
-          ]
-        },
-        {
-          "name": "sendTextSequentially",
-          "params": [
-            "text",
-            "handlers",
-            "options?"
-          ]
-        },
-        {
-          "name": "shouldInputSequentially",
-          "params": [
-            "{\n  inputStrategy,\n  keyboardTypeDelay,\n"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
       "missing_methods": [],
       "signature_mismatch": []
     },
@@ -1395,40 +1199,6 @@
       ],
       "moved_functions": [],
       "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "agent/file-chooser.ts",
-      "python": "core/agent/file_chooser.py",
-      "missing_functions": [
-        {
-          "name": "normalizeFileChooserAccept",
-          "params": [
-            "files"
-          ]
-        },
-        {
-          "name": "normalizeFileChooserAcceptInAllowedDir",
-          "params": [
-            "files",
-            "allowedDir"
-          ]
-        },
-        {
-          "name": "withFileChooser",
-          "params": [
-            "interfaceInstance",
-            "fileChooserAccept",
-            "action"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [
-        "FileChooserAccepter"
-      ],
       "missing_methods": [],
       "signature_mismatch": []
     },
@@ -1654,78 +1424,6 @@
           "name": "agentForRDPComputer",
           "params": [
             "opts"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "agent/agent-options.ts",
-      "python": "core/agent/agent_options.py",
-      "missing_functions": [
-        {
-          "name": "normalizeAgentOptions",
-          "params": [
-            "options",
-            "warn"
-          ]
-        },
-        {
-          "name": "withAgentDefaults",
-          "params": [
-            "opts?"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "agent/cache-config.ts",
-      "python": "core/agent/cache_config.py",
-      "missing_functions": [
-        {
-          "name": "normalizeAgentCacheConfig",
-          "params": [
-            "opts"
-          ]
-        },
-        {
-          "name": "validateAgentCacheInput",
-          "params": [
-            "cache"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "agent/screenshot-preparation.ts",
-      "python": "core/agent/screenshot_preparation.py",
-      "missing_functions": [
-        {
-          "name": "prepareRawScreenshot",
-          "params": [
-            "screenshotBase64",
-            "options?"
-          ]
-        },
-        {
-          "name": "prepareScreenshotForPersistence",
-          "params": [
-            "screenshotBase64",
-            "options?"
           ]
         }
       ],
@@ -1996,101 +1694,6 @@
           "name": "createAndroidAdb",
           "params": [
             "{\n  adbExecTimeout,\n  deviceId,\n  device"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "agent/record-to-report.ts",
-      "python": "core/agent/record_to_report.py",
-      "missing_functions": [
-        {
-          "name": "normalizeRecordToReportScreenshot",
-          "params": [
-            "screenshot",
-            "index"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "agent/task-builder.ts",
-      "python": "core/agent/task_builder.py",
-      "missing_functions": [
-        {
-          "name": "locatePlanForLocate",
-          "params": [
-            "param"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [
-        "TaskBuilder"
-      ],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "agent/tasks.ts",
-      "python": "core/agent/tasks.py",
-      "missing_functions": [
-        {
-          "name": "recordAndReleaseScreenshotSequence",
-          "params": [
-            "task",
-            "uiContext"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [
-        "TaskExecutor"
-      ],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "agent/ui-observer.ts",
-      "python": "core/agent/ui_observer.py",
-      "missing_functions": [
-        {
-          "name": "uiContextFromObservationRecord",
-          "params": [
-            "record"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [
-        "UIObservationImpl",
-        "UIObserverImpl"
-      ],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "agent/usage-intent.ts",
-      "python": "core/agent/usage_intent.py",
-      "missing_functions": [
-        {
-          "name": "withUsageIntent",
-          "params": [
-            "usage",
-            "intent"
           ]
         }
       ],
@@ -2844,36 +2447,12 @@
     },
     {
       "package": "core",
-      "upstream": "agent/action-readiness.ts",
-      "python": "core/agent/action_readiness.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [
-        "ActionReadiness"
-      ],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
       "upstream": "agent/agent-report-manager.ts",
       "python": "core/agent/agent_report_manager.py",
       "missing_functions": [],
       "moved_functions": [],
       "missing_classes": [
         "AgentReportManager"
-      ],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "agent/metrics.ts",
-      "python": "core/agent/metrics.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [
-        "MetricsCollector"
       ],
       "missing_methods": [],
       "signature_mismatch": []

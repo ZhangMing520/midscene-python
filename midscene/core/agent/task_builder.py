@@ -20,6 +20,207 @@ from midscene.core.errors import LocateFailureError
 from midscene.core.service import locate_service
 from midscene.core.types import TUserPrompt, UIContext, supports_interface_extension
 
+
+def _normalize_locate_param(param: Any) -> Dict[str, Any]:
+    if isinstance(param, str):
+        return {"prompt": param}
+    if not isinstance(param, dict):
+        raise ValueError("locate parameter must be an object or string")
+    normalized = dict(param)
+    deep_think = normalized.pop("deepThink", None)
+    if "deepLocate" not in normalized and deep_think is not None:
+        normalized["deepLocate"] = deep_think
+    return normalized
+
+
+def locate_plan_for_locate(param: Any) -> Dict[str, Any]:
+    """Build a Locate planning action (upstream locatePlanForLocate)."""
+    return {
+        "type": "Locate",
+        "param": _normalize_locate_param(param),
+        "thought": "",
+    }
+
+
+class _TaskBuilderAgent:
+    """Adapter exposing the Agent surface consumed by task_builder helpers."""
+
+    def __init__(self, deps: Dict[str, Any]) -> None:
+        self.interface = deps.get("interfaceInstance", deps.get("interface_instance"))
+        self.action_space = list(deps.get("actionSpace", deps.get("action_space")) or [])
+        self._task_cache = deps.get("taskCache", deps.get("task_cache"))
+        self._service = deps.get("service")
+        self._get_default_model_runtime = deps.get(
+            "getDefaultModelRuntime", deps.get("get_default_model_runtime")
+        )
+        self._provided_context = None
+
+    def _get_task_cache(self):
+        return self._task_cache
+
+    def model_runtime(self, intent: str = "default"):
+        if callable(self._get_default_model_runtime):
+            return self._get_default_model_runtime()
+        return None
+
+    async def _get_ui_context(self, action: str = "locate") -> UIContext:
+        if self._provided_context is not None:
+            return self._provided_context
+        retriever = getattr(self._service, "contextRetrieverFn", None) or getattr(
+            self._service, "context_retriever_fn", None
+        )
+        if callable(retriever):
+            return await retriever(None)
+        return await self.interface.get_context()
+
+    async def _write_locate_cache(
+        self, prompt_str, element, cache, cacheable, replace_index=None
+    ):
+        return await write_locate_cache(
+            self, prompt_str, element, cache, cacheable, replace_index
+        )
+
+    async def _rect_from_cache_feature(self, feature):
+        return await rect_from_cache_feature(self, feature)
+
+    async def _run_locate(
+        self,
+        prompt,
+        context,
+        deep_locate=False,
+        plan_located_element=None,
+    ):
+        locate_fn = (
+            self._service.get("locate")
+            if isinstance(self._service, dict)
+            else getattr(self._service, "locate", None)
+        )
+        if callable(locate_fn):
+            response = locate_fn(
+                {"prompt": prompt},
+                {"uiContext": context, "planLocatedElement": plan_located_element},
+                self.model_runtime("locate"),
+                None,
+            )
+            if hasattr(response, "__await__"):
+                response = await response
+            element = response.get("element") if isinstance(response, dict) else None
+            if element:
+                return to_logical_coords(element, context)
+        return await run_locate(
+            self,
+            prompt,
+            context,
+            deep_locate=deep_locate,
+            plan_located_element=plan_located_element,
+        )
+
+
+class TaskBuilder:
+    """Plan-to-executable-task builder (upstream agent/task-builder.ts)."""
+
+    def __init__(self, deps: Dict[str, Any]) -> None:
+        self._deps = deps
+        self._agent = _TaskBuilderAgent(deps)
+
+    async def build(
+        self,
+        plans: List[Dict[str, Any]],
+        planning_model: Any,
+        locate_model: Any,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Convert planning actions into executable task descriptors."""
+        options = options or {}
+        tasks: List[Dict[str, Any]] = []
+        for plan in plans:
+            plan_type = plan.get("type")
+            if plan_type == "Finished":
+                tasks.append(
+                    {
+                        "type": "Action Space",
+                        "subType": "Finished",
+                        "param": None,
+                        "thought": plan.get("thought"),
+                        "executor": _noop_executor,
+                    }
+                )
+                continue
+            if plan_type == "Locate":
+                locate_param = _normalize_locate_param(plan.get("param"))
+                if options.get("cacheable") is not None:
+                    locate_param = {
+                        **locate_param,
+                        "cacheable": options["cacheable"],
+                    }
+                if options.get("deepLocate"):
+                    locate_param.setdefault("deepLocate", True)
+                multimodal_prompt = options.get("multimodalPrompt")
+                prompt = locate_param.get("prompt")
+                if multimodal_prompt and prompt:
+                    if isinstance(prompt, str):
+                        locate_param["prompt"] = {
+                            "prompt": prompt,
+                            **multimodal_prompt,
+                        }
+                    elif isinstance(prompt, dict) and not prompt.get("images"):
+                        locate_param["prompt"] = {
+                            **prompt,
+                            **multimodal_prompt,
+                        }
+
+                async def locate_executor(
+                    task_context: Dict[str, Any],
+                    _param=locate_param,
+                ) -> Dict[str, Any]:
+                    previous = self._agent._provided_context
+                    if task_context.get("uiContext") is not None:
+                        self._agent._provided_context = task_context["uiContext"]
+                    try:
+                        element = await locate_for_action(self._agent, _param)
+                    finally:
+                        self._agent._provided_context = previous
+                    return {"output": {"element": element}}
+
+                tasks.append(
+                    {
+                        "type": "Planning",
+                        "subType": "Locate",
+                        "param": locate_param,
+                        "thought": plan.get("thought"),
+                        "executor": locate_executor,
+                    }
+                )
+                continue
+
+            async def action_executor(
+                task_context: Dict[str, Any],
+                _plan=plan,
+            ) -> Dict[str, Any]:
+                await execute_planning_action(
+                    self._agent,
+                    _plan,
+                    distance_ratio=options.get("distanceRatio"),
+                    cacheable=options.get("cacheable"),
+                )
+                return {"output": None}
+
+            tasks.append(
+                {
+                    "type": "Action Space",
+                    "subType": plan_type,
+                    "param": plan.get("param"),
+                    "thought": plan.get("thought"),
+                    "executor": action_executor,
+                }
+            )
+        return {"tasks": tasks}
+
+
+async def _noop_executor(task_context: Dict[str, Any]) -> None:
+    return None
+
+
 async def execute_planning_action(
     agent,
     action: Dict[str, Any],

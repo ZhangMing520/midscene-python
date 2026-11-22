@@ -288,6 +288,21 @@ class AbstractInterface(ABC):
         """Get current UI context"""
         pass
 
+    async def screenshot_base64(self) -> str:
+        """Capture the current screen as base64 (upstream screenshotBase64)."""
+        raise NotImplementedError(
+            "screenshot_base64 is not supported on this interface"
+        )
+
+    async def size(self) -> Size:
+        """Current screen size (upstream size()).
+
+        Interfaces that can capture a context derive it from there; platforms
+        with a cheaper probe override this method.
+        """
+        context = await self.get_context()
+        return context.size
+
     @abstractmethod
     async def action_space(self) -> List[str]:
         """Get available actions"""

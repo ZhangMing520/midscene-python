@@ -11,16 +11,16 @@
 | 口径 | 工具 | 结果 | 含义 |
 |---|---|---|---|
 | 文件级 | `scripts/check_upstream_alignment.py` | 425 aligned / 0 merged / 0 pending / 105 exempt | 每个上游 `.ts` 有对应 Python 文件（或已登记豁免） |
-| 导出级 | `scripts/check_upstream_api_alignment.py` | 109 个模块有差异 / 213 个运行时导出缺失 / 35 个已迁移 | 映射文件里没有这些顶层运行时导出 |
-| 方法级 | `scripts/check_upstream_method_alignment.py` | 130 个模块 / 120 个函数 / 19 个类 / 104 个方法缺失 | 类与函数的方法、参数骨架缺口 |
-| 测试级 | `tests/`（206 个 Python 文件，其中 203 个 `test_*.py`） | 1949 passed / 240 skipped | 上游同名测试已同步，skip 表示已知能力缺口 |
+| 导出级 | `scripts/check_upstream_api_alignment.py` | 94 个模块有差异 / 158 个运行时导出缺失 / 24 个已迁移 | 映射文件里没有这些顶层运行时导出 |
+| 方法级 | `scripts/check_upstream_method_alignment.py` | 115 个模块 / 85 个函数 / 12 个类 / 102 个方法缺失 | 类与函数的方法、参数骨架缺口 |
+| 测试级 | `tests/`（208 个 Python 文件，其中 205 个 `test_*.py`） | 2071 passed / 228 skipped | 上游同名测试已同步，skip 表示已知能力缺口 |
 
 **关键结论**：文件级对齐 ≠ 功能完整。`core/report.ts` → `core/report.py` 文件存在，但 `report.py` 只有 `write_report_html`，所以文件级通过、导出级仍有 7 个缺口、测试级有 17 个 skip。
 
 后续所有进度以**导出级 + 测试级**为准，文件级只作为守门条件。
 
-其中 101 个模块存在真正缺失，另外 8 个模块只有迁移差异。分阶段路线图对
-**全部 101 个模块 / 213 个缺失符号**做了无遗漏分派（见 §7.5）。
+其中 85 个模块存在真正缺失，另外 9 个模块只有迁移差异。分阶段路线图对
+**全部 85 个模块 / 158 个缺失符号**做了无遗漏分派（见 §7.5）。
 
 ### 计数口径
 
@@ -281,33 +281,21 @@ ledger 由脚本生成初稿，人工只维护 `status`、`skip_reasons`、`note
 `extractor/util`、`shared/utils` 已全部对齐，剩余 0 个模块 / 0 个符号。
 `env/types.py` 已重导出原 `moved` 的共享类型符号。
 
-### Phase 3：core 主体
+### Phase 3：core 主体（剩余 57 个模块）
 
-| 上游文件 | 缺失 |
+`device/index`、`device/input-strategy`、`agent/utils`、`agent/ui-observer`、
+`agent/agent-options`、`cache-config`、`screenshot-preparation`、`tasks` 及
+8 个 1-symbol agent 模块已完成。
+
+主要剩余缺口：`ai-model/service-caller/request-timeout`（7）、
+`recorder-generation/yaml`（7）、`deepseek/locate-protocol`（4）、
+`service-caller/utils`（4）、`recorder-generation/common`（4）、
+`recorder-generation/playwright`（4）、`default-planning-protocol`（3），
+其余为 1–2 个符号的模块，明细见 `scripts/upstream_api_gaps.json`。
+
+| 子批次 | 剩余 |
 |---|---|
-| `core/device/index.ts` | 21（`defineAction*` 工厂） |
-| `core/agent/utils.ts` | 11 |
-| `core/agent/ui-utils.ts` | 7 |
-| `core/ai-model/service-caller/request-timeout.ts` | 7 |
-| `core/ai-model/workflows/recorder-generation/yaml.ts` | 7 |
-| `core/ai-model/models/deepseek/locate-protocol.ts` | 4 |
-| `core/ai-model/service-caller/utils.ts` | 4 |
-| `core/ai-model/workflows/recorder-generation/common.ts` | 4 |
-| `core/ai-model/workflows/recorder-generation/playwright.ts` | 4 |
-| `core/ai-model/model-adapter/default-planning-protocol.ts` | 3 |
-| `core/device/input-strategy.ts` | 3 |
-| `core/agent/ui-observer.ts` | 3 |
-| `core/ai-model/models/gemini.ts` | 2 |
-| `core/ai-model/service-caller/openai/openai-request-context.ts` | 2 |
-| `core/ai-model/service-caller/openai/siwc/network.ts` | 2 |
-| `core/ai-model/shared/model-locate-result/pixel-mapper.ts` | 2 |
-| `core/ai-model/shared/model-locate-result/types.ts` | 2 |
-| `core/ai-model/workflows/recorder-generation/markdown.ts` | 2 |
-| `core/dump/report-session.ts` | 2 |
-| `core/index.ts` | 2 |
-| `core/agent/agent-options.ts` / `cache-config` / `screenshot-preparation` / `tasks` | 各 2 |
-| 其余 51 个 core 模块 | 各 1（明细见 `scripts/upstream_api_gaps.json`） |
-| **合计** | **73 个模块 / 145 个符号** |
+| **合计** | **57 个模块 / 90 个符号** |
 
 ### Phase 4：CLI / Web / 平台
 
@@ -342,8 +330,8 @@ ledger 由脚本生成初稿，人工只维护 `status`、`skip_reasons`、`note
 四个阶段的模块数与符号数必须满足：
 
 ```
-模块：0 (P1) + 0 (P2) + 73 (P3) + 28 (P4) = 101
-符号：0 (P1) + 0 (P2) + 145 (P3) + 68 (P4) = 213
+模块：0 (P1) + 0 (P2) + 57 (P3) + 28 (P4) = 85
+符号：0 (P1) + 0 (P2) + 90 (P3) + 68 (P4) = 158
 ```
 
 分派规则（无重叠、无遗漏）：
@@ -356,15 +344,16 @@ ledger 由脚本生成初稿，人工只维护 `status`、`skip_reasons`、`note
 | P4 | 其余所有包（android / cli / computer / harmony / ios / web-integration / webdriver） |
 
 ledger 必须做到**一行一个上游模块**，且每行有且只有一个 `batch`；ratchet 校验
-`101 / 213` 两个总数不变。新增上游模块时，先补 ledger 再动代码。
+`85 / 158` 两个总数不变。新增上游模块时，先补 ledger 再动代码。
 
-另有 8 个模块**只有迁移差异、没有 missing**，不计入 240，但必须按 DoD #3 处理
+另有 9 个模块**只有迁移差异、没有 missing**，不计入 158，但必须按 DoD #3 处理
 re-export：
 
 | 模块 | 迁移符号 | 归入 |
 |---|---|---|
 | `core/agent/agent-report-manager.ts` | `AgentReportManager` | P3 |
 | `core/agent/task-cache.ts` | `debug` | P3 |
+| `core/agent/tasks.ts` | `TaskExecutor` | P3 |
 | `core/dump/html-utils.ts` | `extractImageByIdSync` | P2 |
 | `core/dump/image-reference.ts` | `normalizeScreenshotRef` | P3 |
 | `core/dump/test-report-images.ts` | `TestReportImages` | P1 |

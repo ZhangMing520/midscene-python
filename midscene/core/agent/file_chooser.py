@@ -4,6 +4,7 @@ import inspect
 from pathlib import Path
 from typing import Any, Callable, List, Optional
 
+from midscene.core.agent.utils import normalize_file_paths
 from midscene.core.device import _supports
 from midscene.core.types import AbstractInterface, FileChooserHandler
 
@@ -13,25 +14,16 @@ _FILE_CHOOSER_ACCEPT_KEYS = ("fileChooserAccept", "file_chooser_accept")
 _FILE_CHOOSER_ALLOWED_DIR_KEYS = ("fileChooserAllowedDir", "file_chooser_allowed_dir")
 
 
-def _normalize_file_paths(files: Any) -> List[str]:
-    """Resolve file chooser paths and fail early when a file is missing
-    (upstream normalizeFilePaths)."""
-    items = files if isinstance(files, (list, tuple)) else [files]
-    normalized: List[str] = []
-    for item in items:
-        if not isinstance(item, str) or not item:
-            raise ValueError("File path must be a non-empty string")
-        resolved = Path(item).expanduser().resolve()
-        if not resolved.exists():
-            raise FileNotFoundError(
-                f"File not found: {item}. Resolved to: {resolved}. "
-                f"Current working directory: {Path.cwd()}"
-            )
-        normalized.append(str(resolved))
-    return normalized
+def normalize_file_chooser_accept(files: Any) -> List[str]:
+    """Resolve one or more files for a file chooser accept callback."""
+    return normalize_file_paths(files)
 
 
-def _normalize_file_chooser_accept_in_allowed_dir(
+# Backward-compatible private alias.
+_normalize_file_paths = normalize_file_chooser_accept
+
+
+def normalize_file_chooser_accept_in_allowed_dir(
     files: Any, allowed_dir: str
 ) -> List[str]:
     """Resolve files relative to `allowed_dir` and reject paths escaping it
@@ -52,7 +44,13 @@ def _normalize_file_chooser_accept_in_allowed_dir(
                 f"fileChooserAllowedDir: {item}"
             ) from None
         resolved_files.append(str(resolved))
-    return _normalize_file_paths(resolved_files)
+    return normalize_file_chooser_accept(resolved_files)
+
+
+# Backward-compatible private alias.
+_normalize_file_chooser_accept_in_allowed_dir = (
+    normalize_file_chooser_accept_in_allowed_dir
+)
 
 
 async def _read_registration_error(registration: Any) -> Optional[BaseException]:
@@ -62,7 +60,7 @@ async def _read_registration_error(registration: Any) -> Optional[BaseException]
     return error
 
 
-class _FileChooserAccepter:
+class FileChooserAccepter:
     """Holds the file chooser configuration for one aiAct execution
     (upstream FileChooserAccepter)."""
 
@@ -71,13 +69,13 @@ class _FileChooserAccepter:
         self._registration = None
 
     async def register(self, files: Any) -> None:
-        await self._replace(_normalize_file_paths(files))
+        await self._replace(normalize_file_chooser_accept(files))
 
     async def register_from_allowed_dir(
         self, files: Any, allowed_dir: str
     ) -> None:
         await self._replace(
-            _normalize_file_chooser_accept_in_allowed_dir(files, allowed_dir)
+            normalize_file_chooser_accept_in_allowed_dir(files, allowed_dir)
         )
 
     async def _replace(self, accepted_files: List[str]) -> None:
@@ -108,7 +106,7 @@ class _FileChooserAccepter:
             registration.dispose()
 
 
-async def _with_file_chooser(
+async def with_file_chooser(
     interface: AbstractInterface,
     files: Optional[List[str]],
     action: Callable[[], Any],
@@ -134,3 +132,16 @@ async def _with_file_chooser(
         return result
     finally:
         registration.dispose()
+
+
+# Backward-compatible private aliases.
+_FileChooserAccepter = FileChooserAccepter
+_with_file_chooser = with_file_chooser
+
+
+__all__ = [
+    "FileChooserAccepter",
+    "normalize_file_chooser_accept",
+    "normalize_file_chooser_accept_in_allowed_dir",
+    "with_file_chooser",
+]

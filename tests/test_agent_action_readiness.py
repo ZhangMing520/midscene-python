@@ -66,3 +66,51 @@ async def test_waits_after_every_successful_action_on_android():
         await agent.ai_act("run")
 
     assert readiness_calls and readiness_calls[0]["action"]["name"] == "Sleep"
+
+
+class TestActionReadiness:
+    @pytest.mark.asyncio
+    async def test_waits_with_the_action_and_signal_context(self):
+        """ActionReadiness forwards action and signal to the callback."""
+        from midscene.core.agent.action_readiness import ActionReadiness
+
+        observed = []
+
+        async def callback(context):
+            observed.append(context)
+
+        await ActionReadiness(callback).wait(
+            {"name": "Tap", "id": "action-1", "param": {"xpath": "//a"}}
+        )
+        assert observed[0]["action"]["name"] == "Tap"
+        assert observed[0]["signal"] is None
+
+    @pytest.mark.asyncio
+    async def test_empty_callback_resolves_immediately(self):
+        """an empty callback bypasses generic delays"""
+        from midscene.core.agent.action_readiness import ActionReadiness
+
+        await ActionReadiness(lambda _context: None).wait({"name": "Tap"})
+
+    @pytest.mark.asyncio
+    async def test_wraps_callback_failures_in_action_readiness_error(self):
+        """stops actions on readiness failure"""
+        from midscene.core.agent.action_readiness import (
+            ActionReadiness,
+            ActionReadinessError,
+        )
+
+        async def callback(_context):
+            raise RuntimeError("login did not become ready")
+
+        with pytest.raises(ActionReadinessError) as exc:
+            await ActionReadiness(callback).wait({"name": "Tap"})
+        assert "login did not become ready" in str(exc.value)
+        assert exc.value.action_name == "Tap"
+
+    def test_rejects_a_non_function_callback(self):
+        """waitForActionReady must be a function"""
+        from midscene.core.agent.action_readiness import ActionReadiness
+
+        with pytest.raises(TypeError, match="waitForActionReady must be a function"):
+            ActionReadiness(True)

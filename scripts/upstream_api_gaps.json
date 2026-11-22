@@ -1,13 +1,13 @@
 {
   "upstream_root": "/home/zhangming/gitspace/midscene",
   "counts": {
-    "runtime_exports": 1151,
+    "runtime_exports": 1149,
     "schema_exports": 56,
     "type_exports": 983,
-    "modules_with_gaps": 109,
-    "missing": 213,
-    "moved": 35,
-    "modules_with_missing": 101
+    "modules_with_gaps": 94,
+    "missing": 158,
+    "moved": 24,
+    "modules_with_missing": 85
   },
   "by_package": {
     "android": {
@@ -26,9 +26,9 @@
       "moved": 0
     },
     "core": {
-      "modules": 79,
-      "missing": 145,
-      "moved": 30
+      "modules": 64,
+      "missing": 90,
+      "moved": 19
     },
     "harmony": {
       "modules": 1,
@@ -57,66 +57,6 @@
     }
   },
   "modules": [
-    {
-      "package": "core",
-      "upstream": "device/index.ts",
-      "python": "core/device/__init__.py",
-      "runtime_exports": 24,
-      "missing": [
-        "createDefaultMobileActions",
-        "defineActionClearInput",
-        "defineActionCursorMove",
-        "defineActionDoubleClick",
-        "defineActionDragAndDrop",
-        "defineActionHover",
-        "defineActionInput",
-        "defineActionKeyboardPress",
-        "defineActionLongPress",
-        "defineActionMiddleClick",
-        "defineActionPinch",
-        "defineActionRegisterFileChooserAccept",
-        "defineActionRightClick",
-        "defineActionScroll",
-        "defineActionSleep",
-        "defineActionSwipe",
-        "defineActionTap",
-        "defineActionsFromInputPrimitives",
-        "normalizeMobileSwipeParam",
-        "resolveSwipeInputPrimitive",
-        "z"
-      ],
-      "moved": [
-        {
-          "name": "defineAction",
-          "found_in": "midscene/core/agent/test_runner_nodes.py"
-        }
-      ]
-    },
-    {
-      "package": "core",
-      "upstream": "agent/utils.ts",
-      "python": "core/agent/utils.py",
-      "runtime_exports": 12,
-      "missing": [
-        "commonContextParser",
-        "createScreenshotBoundUIContext",
-        "getMidsceneVersion",
-        "ifLocateParamHasLocatedPixelResult",
-        "matchElementFromCache",
-        "matchElementFromPlan",
-        "normalizeScrollType",
-        "parsePrompt",
-        "printReportMsg",
-        "transformLogicalElementToScreenshot",
-        "transformLogicalRectToScreenshotRect"
-      ],
-      "moved": [
-        {
-          "name": "normalizeFilePaths",
-          "found_in": "midscene/core/agent/file_chooser.py"
-        }
-      ]
-    },
     {
       "package": "cli",
       "upstream": "printer.ts",
@@ -355,18 +295,6 @@
     },
     {
       "package": "core",
-      "upstream": "agent/ui-observer.ts",
-      "python": "core/agent/ui_observer.py",
-      "runtime_exports": 3,
-      "missing": [
-        "UIObservationImpl",
-        "UIObserverImpl",
-        "uiContextFromObservationRecord"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
       "upstream": "ai-model/model-adapter/default-planning-protocol.ts",
       "python": "core/ai_model/model_adapter/default_planning_protocol.py",
       "runtime_exports": 5,
@@ -376,27 +304,6 @@
         "createMidscenePlanningActionOutputParser"
       ],
       "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "device/input-strategy.ts",
-      "python": "core/device/input_strategy.py",
-      "runtime_exports": 5,
-      "missing": [
-        "resolveInputStrategy",
-        "sendTextSequentially",
-        "shouldInputSequentially"
-      ],
-      "moved": [
-        {
-          "name": "inputStrategies",
-          "found_in": "midscene/web_integration/playwright/page.py"
-        },
-        {
-          "name": "resolveTextInputOptions",
-          "found_in": "midscene/web_integration/playwright/page.py"
-        }
-      ]
     },
     {
       "package": "web-integration",
@@ -409,55 +316,6 @@
         "getKeyCommands"
       ],
       "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "agent/agent-options.ts",
-      "python": "core/agent/agent_options.py",
-      "runtime_exports": 2,
-      "missing": [
-        "normalizeAgentOptions",
-        "withAgentDefaults"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "agent/cache-config.ts",
-      "python": "core/agent/cache_config.py",
-      "runtime_exports": 2,
-      "missing": [
-        "normalizeAgentCacheConfig",
-        "validateAgentCacheInput"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "agent/screenshot-preparation.ts",
-      "python": "core/agent/screenshot_preparation.py",
-      "runtime_exports": 2,
-      "missing": [
-        "prepareRawScreenshot",
-        "prepareScreenshotForPersistence"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "agent/tasks.ts",
-      "python": "core/agent/tasks.py",
-      "runtime_exports": 3,
-      "missing": [
-        "TaskExecutor",
-        "recordAndReleaseScreenshotSequence"
-      ],
-      "moved": [
-        {
-          "name": "TaskExecutionError",
-          "found_in": "midscene/core/__init__.py"
-        }
-      ]
     },
     {
       "package": "core",
@@ -548,17 +406,6 @@
       "moved": []
     },
     {
-      "package": "core",
-      "upstream": "index.ts",
-      "python": "core/__init__.py",
-      "runtime_exports": 4,
-      "missing": [
-        "Service",
-        "z"
-      ],
-      "moved": []
-    },
-    {
       "package": "web-integration",
       "upstream": "web-element.ts",
       "python": "web_integration/web_element.py",
@@ -606,116 +453,6 @@
       "runtime_exports": 2,
       "missing": [
         "agentFromWebDriverAgent"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "agent/action-readiness.ts",
-      "python": "core/agent/action_readiness.py",
-      "runtime_exports": 3,
-      "missing": [
-        "ActionReadiness"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "agent/agent.ts",
-      "python": "core/agent/agent.py",
-      "runtime_exports": 2,
-      "missing": [
-        "createAgent"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "agent/file-chooser.ts",
-      "python": "core/agent/file_chooser.py",
-      "runtime_exports": 4,
-      "missing": [
-        "normalizeFileChooserAccept"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "agent/metrics.ts",
-      "python": "core/agent/metrics.py",
-      "runtime_exports": 1,
-      "missing": [
-        "MetricsCollector"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "agent/record-to-report.ts",
-      "python": "core/agent/record_to_report.py",
-      "runtime_exports": 1,
-      "missing": [
-        "normalizeRecordToReportScreenshot"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "agent/task-builder.ts",
-      "python": "core/agent/task_builder.py",
-      "runtime_exports": 2,
-      "missing": [
-        "locatePlanForLocate"
-      ],
-      "moved": [
-        {
-          "name": "TaskBuilder",
-          "found_in": "midscene/core/agent/agent.py"
-        }
-      ]
-    },
-    {
-      "package": "core",
-      "upstream": "agent/ui-utils.ts",
-      "python": "core/agent/ui_utils.py",
-      "runtime_exports": 7,
-      "missing": [
-        "taskTitleStr"
-      ],
-      "moved": [
-        {
-          "name": "extractInsightParam",
-          "found_in": "midscene/core/report_markdown.py"
-        },
-        {
-          "name": "locateParamStr",
-          "found_in": "midscene/core/report_markdown.py"
-        },
-        {
-          "name": "paramStr",
-          "found_in": "midscene/core/report_markdown.py"
-        },
-        {
-          "name": "pullParamStr",
-          "found_in": "midscene/core/report_markdown.py"
-        },
-        {
-          "name": "scrollParamStr",
-          "found_in": "midscene/core/report_markdown.py"
-        },
-        {
-          "name": "typeStr",
-          "found_in": "midscene/core/report_markdown.py"
-        }
-      ]
-    },
-    {
-      "package": "core",
-      "upstream": "agent/usage-intent.ts",
-      "python": "core/agent/usage_intent.py",
-      "runtime_exports": 1,
-      "missing": [
-        "withUsageIntent"
       ],
       "moved": []
     },
@@ -1144,6 +881,16 @@
       "moved": []
     },
     {
+      "package": "core",
+      "upstream": "index.ts",
+      "python": "core/__init__.py",
+      "runtime_exports": 3,
+      "missing": [
+        "Service"
+      ],
+      "moved": []
+    },
+    {
       "package": "cli",
       "upstream": "openai/login.ts",
       "python": "cli/openai/login.py",
@@ -1316,6 +1063,19 @@
         {
           "name": "debug",
           "found_in": "midscene/shared/agent_tools/base_tools.py"
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "agent/tasks.ts",
+      "python": "core/agent/tasks.py",
+      "runtime_exports": 3,
+      "missing": [],
+      "moved": [
+        {
+          "name": "TaskExecutionError",
+          "found_in": "midscene/core/__init__.py"
         }
       ]
     },

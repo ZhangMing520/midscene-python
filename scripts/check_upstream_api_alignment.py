@@ -167,6 +167,13 @@ def scan(upstream_root: str) -> Dict[str, object]:
             continue
         source = open(ts_path, encoding="utf-8").read()
         runtime, schema, type_level = _exported_names(source)
+        # ``export { z }`` re-exports the zod namespace for building schemas.
+        # Python models schemas as plain dicts, so the namespace is not a
+        # portable runtime export (documented as an intentional exception).
+        if re.search(
+            r"import\s*\{[^}]*\bz\b[^}]*\}\s*from\s*['\"]zod['\"]", source
+        ):
+            runtime.discard("z")
         totals["runtime_exports"] += len(runtime)
         totals["schema_exports"] += len(schema)
         totals["type_exports"] += len(type_level)

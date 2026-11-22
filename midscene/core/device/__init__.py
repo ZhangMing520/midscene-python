@@ -6,7 +6,9 @@ Each action binds to device primitives exposed by the platform interface.
 """
 
 import asyncio
+import inspect
 import math
+import re
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
@@ -43,6 +45,8 @@ class DeviceAction:
     supported_by_system_one: bool = False
     primitive: Optional[str] = None  # device method the action requires
     execute: Optional[Callable[..., Any]] = None  # async (param, device, locate_fn)
+    delay_before_runner: Optional[float] = None
+    delay_after_runner: Optional[float] = None
 
     def to_prompt_dict(self) -> Dict[str, Any]:
         return {
@@ -260,6 +264,1035 @@ def normalize_pinch_param(
         "end_distance": end_distance,
         "duration": int(duration),
     }
+
+
+# ---------------------------------------------------------------------------
+# Input-primitive action factories (upstream device/index.ts).
+# Platform adapters expose low-level primitives; these factories bind them to
+# the planning action descriptors instead of duplicating gesture logic.
+# ---------------------------------------------------------------------------
+
+INPUT_LOCATE_DESCRIPTION = (
+    "the position of the placeholder or text content in the target input "
+    "field. If there is no content, locate the center of the input field."
+)
+
+ACTION_TAP_PARAM_SCHEMA = {
+    "locate": {"type": "locate", "description": "The element to be tapped"}
+}
+
+REGISTER_FILE_CHOOSER_ACCEPT_PARAM_SCHEMA = {
+    "files": {
+        "type": "string | string[]",
+        "description": (
+            "File path(s) within the current aiAct call's "
+            "fileChooserAllowedDir to use whenever a later action triggers a "
+            "file chooser. fileChooserAllowedDir must be provided for this "
+            "action. This setting replaces any previously registered file "
+            "path(s)."
+        ),
+    }
+}
+
+ACTION_RIGHT_CLICK_PARAM_SCHEMA = {
+    "locate": {
+        "type": "locate",
+        "description": "The element to be right clicked",
+    }
+}
+
+ACTION_MIDDLE_CLICK_PARAM_SCHEMA = {
+    "locate": {
+        "type": "locate",
+        "description": "The element to be middle clicked",
+    }
+}
+
+ACTION_DOUBLE_CLICK_PARAM_SCHEMA = {
+    "locate": {
+        "type": "locate",
+        "description": "The element to be double clicked",
+    }
+}
+
+ACTION_HOVER_PARAM_SCHEMA = {
+    "locate": {"type": "locate", "description": "The element to be hovered"}
+}
+
+ACTION_INPUT_PARAM_SCHEMA = {
+    "value": {
+        "type": "string | number",
+        "description": (
+            "The text to input. Provide the final content for replace mode, "
+            "only the inserted characters for typeOnly mode, or an empty "
+            "string when using clear mode to remove existing text."
+        ),
+    },
+    "locate": {
+        "type": "locate",
+        "description": INPUT_LOCATE_DESCRIPTION,
+        "optional": True,
+    },
+    "mode": {
+        "type": '"replace" | "clear" | "typeOnly"',
+        "description": (
+            'Input mode: "replace" (default) - clear the field and input the '
+            'value; "typeOnly" - type the value directly without clearing the '
+            "field first, and should be set explicitly for incremental edits "
+            'after moving the cursor; "clear" - clear the field without '
+            "inputting new text."
+        ),
+        "optional": True,
+    },
+    "autoDismissKeyboard": {
+        "type": "boolean",
+        "description": (
+            "If true, the keyboard will be dismissed after the input is "
+            "completed. Do not set it unless the user asks you to do so."
+        ),
+        "optional": True,
+    },
+    "keyboardTypeDelay": {
+        "type": "number",
+        "description": (
+            "Delay in milliseconds between keystrokes when typing. Passed "
+            "through from device/user configuration. Do not set it unless the "
+            "user asks you to do so."
+        ),
+        "optional": True,
+    },
+    "inputStrategy": {
+        "type": '"legacy" | "sequential" | "bulk"',
+        "description": (
+            'Text input strategy: "legacy" (default) preserves the current '
+            'platform behavior; "sequential" enters one Unicode code point at '
+            'a time; "bulk" sends the complete text through one platform '
+            "input operation when supported and requires keyboardTypeDelay to "
+            "be omitted or set to 0. Do not set it unless the user asks you "
+            "to do so."
+        ),
+        "optional": True,
+    },
+}
+
+ACTION_KEYBOARD_PRESS_PARAM_SCHEMA = {
+    "locate": {
+        "type": "locate",
+        "description": (
+            "The optional element to click before pressing the key. Omit this "
+            "when the key should operate on the currently focused element, "
+            "especially when copying or cutting an existing text selection."
+        ),
+        "optional": True,
+    },
+    "keyName": {
+        "type": "string",
+        "description": (
+            "The key to be pressed. Use '+' for key combinations, e.g., "
+            "'Control+A', 'Shift+Enter'"
+        ),
+    },
+}
+
+ACTION_SCROLL_PARAM_SCHEMA = {
+    "scrollType": {
+        "type": (
+            '"singleAction" | "scrollToBottom" | "scrollToTop" | '
+            '"scrollToRight" | "scrollToLeft"'
+        ),
+        "description": (
+            'The scroll behavior: "singleAction" for a single scroll action, '
+            '"scrollToBottom" for scrolling all the way to the bottom by '
+            "rapidly scrolling 5-10 times (skipping intermediate content "
+            'until reaching the bottom), "scrollToTop" for scrolling all the '
+            "way to the top by rapidly scrolling 5-10 times (skipping "
+            'intermediate content until reaching the top), "scrollToRight" '
+            "for scrolling all the way to the right by rapidly scrolling "
+            'multiple times, "scrollToLeft" for scrolling all the way to the '
+            "left by rapidly scrolling multiple times"
+        ),
+        "optional": True,
+    },
+    "direction": {
+        "type": '"down" | "up" | "right" | "left"',
+        "description": (
+            "The direction toward the off-screen content to reveal. Quick "
+            'mapping: want to see content below the current viewport -> '
+            '"down"; above -> "up"; to the left -> "left"; to the right -> '
+            '"right". This does not describe the movement direction of the '
+            'content currently visible on the screen. Only effective when '
+            'scrollType is "singleAction".'
+        ),
+        "optional": True,
+    },
+    "distance": {
+        "type": "number",
+        "description": (
+            "Positive requested scroll amount in screen-coordinate units. On "
+            "touch platforms, it controls the length of the swipe gesture "
+            "used to scroll; on web and desktop platforms, it controls or "
+            "approximates the wheel scroll delta. Only effective when "
+            'scrollType is "singleAction".'
+        ),
+        "optional": True,
+    },
+    "locate": {
+        "type": "locate",
+        "description": (
+            'Describe the target element to be scrolled on, like "the table" '
+            'or "the list" or "the content area" or "the scrollable area". Do '
+            'NOT provide a general intent like "scroll to find some element"'
+        ),
+        "optional": True,
+    },
+}
+
+ACTION_DRAG_AND_DROP_PARAM_SCHEMA = {
+    "from": {"type": "locate", "description": "The position to be dragged"},
+    "to": {"type": "locate", "description": "The position to be dropped"},
+}
+
+ACTION_LONG_PRESS_PARAM_SCHEMA = {
+    "locate": {
+        "type": "locate",
+        "description": "The element to be long pressed",
+    },
+    "duration": {
+        "type": "number",
+        "description": "Long press duration in milliseconds",
+        "optional": True,
+    },
+}
+
+ACTION_CLEAR_INPUT_PARAM_SCHEMA = {
+    "locate": {
+        "type": "locate",
+        "description": "The input field to be cleared",
+        "optional": True,
+    }
+}
+
+ACTION_CURSOR_MOVE_PARAM_SCHEMA = {
+    "direction": {
+        "type": '"left" | "right"',
+        "description": "The direction to move the cursor",
+    },
+    "times": {
+        "type": "number",
+        "description": (
+            "The number of times to move the cursor in the specified direction"
+        ),
+        "optional": True,
+    },
+}
+
+ACTION_PINCH_PARAM_SCHEMA = {
+    "locate": {
+        "type": "locate",
+        "description": (
+            "The element to pinch on. If not specified, the center of the "
+            "screen will be used"
+        ),
+        "optional": True,
+    },
+    "direction": {
+        "type": '"in" | "out"',
+        "description": (
+            'Pinch direction. "in" = pinch fingers together (zoom out / '
+            'shrink), "out" = spread fingers apart (zoom in / enlarge).'
+        ),
+    },
+    "distance": {
+        "type": "number",
+        "description": (
+            "The amount by which the distance between the two fingers "
+            "changes, in pixels. Defaults to a quarter of the shorter screen "
+            "dimension."
+        ),
+        "optional": True,
+    },
+    "duration": {
+        "type": "number",
+        "description": "Duration of the pinch gesture in milliseconds",
+        "optional": True,
+    },
+}
+
+ACTION_SLEEP_PARAM_SCHEMA = {
+    "timeMs": {
+        "type": "number",
+        "description": (
+            "Sleep duration in milliseconds, defaults to 1000ms (1 second)"
+        ),
+        "optional": True,
+    }
+}
+
+
+def _lookup_key(name: Any) -> str:
+    return "".join(char for char in str(name).lower() if char.isalnum())
+
+
+def _snake_name(name: Any) -> str:
+    step = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1_\2", str(name))
+    step = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", step)
+    return step.lower()
+
+
+def _field(source: Any, name: str, default: Any = None) -> Any:
+    """Read a camelCase/snake_case field from a dict or an object."""
+    if source is None:
+        return default
+    if isinstance(source, dict):
+        wanted = _lookup_key(name)
+        for key, value in source.items():
+            if _lookup_key(key) == wanted:
+                return value
+        return default
+    missing = object()
+    value = getattr(source, name, missing)
+    if value is not missing:
+        return value
+    return getattr(source, _snake_name(name), default)
+
+
+def _option(
+    options: Any, snake_name: str, camel_name: Optional[str] = None, default: Any = None
+) -> Any:
+    value = _field(options, snake_name, None)
+    if value is not None:
+        return value
+    if camel_name is not None:
+        return _field(options, camel_name, default)
+    return default
+
+
+async def _invoke(fn: Any, *args: Any) -> Any:
+    """Call a primitive, awaiting it when it is async."""
+    result = fn(*args)
+    if inspect.isawaitable(result):
+        result = await result
+    return result
+
+
+def _point_from_locate(locate: Any, missing_message: str) -> Dict[str, Any]:
+    center = (
+        locate.get("center")
+        if isinstance(locate, dict)
+        else getattr(locate, "center", None)
+    )
+    if locate is None or not center or len(center) < 2:
+        raise ValueError(missing_message)
+    return {"x": center[0], "y": center[1]}
+
+
+def _define_action(
+    *,
+    name: str,
+    description: str,
+    call: Callable[[Dict[str, Any], Any], Any],
+    param_schema: Optional[Dict[str, Any]] = None,
+    locate_fields: Optional[List[str]] = None,
+    distance_fields: Optional[List[str]] = None,
+    sample: Optional[Dict[str, Any]] = None,
+    interface_alias: Optional[str] = None,
+    supported_by_system_one: bool = False,
+    delay_before_runner: Optional[float] = None,
+    delay_after_runner: Optional[float] = None,
+) -> DeviceAction:
+    """Build a descriptor whose executor resolves locate params then calls `call`."""
+    locate_field_names = list(locate_fields or [])
+
+    async def execute(
+        param: Optional[Dict[str, Any]] = None,
+        device: Any = None,
+        locate_fn: Any = None,
+    ) -> Any:
+        resolved = dict(param or {})
+        for field_name in locate_field_names:
+            locate = resolved.get(field_name)
+            if (
+                isinstance(locate, dict)
+                and "center" not in locate
+                and locate_fn is not None
+                and locate.get("prompt")
+            ):
+                located = await locate_fn(locate)
+                resolved[field_name] = {**locate, "center": list(located["center"])}
+        return await call(resolved, None)
+
+    return DeviceAction(
+        name=name,
+        description=description,
+        param_schema=param_schema or {},
+        locate_fields=locate_field_names,
+        distance_fields=list(distance_fields or []),
+        sample=sample,
+        interface_alias=interface_alias,
+        supported_by_system_one=supported_by_system_one,
+        execute=execute,
+        delay_before_runner=delay_before_runner,
+        delay_after_runner=delay_after_runner,
+    )
+
+
+def _define_located_point_action(
+    *,
+    name: str,
+    description: str,
+    primitive: Callable[[Dict[str, Any]], Any],
+    param_schema: Dict[str, Any],
+    sample: Dict[str, Any],
+    missing_locate_message: str,
+    interface_alias: Optional[str] = None,
+    supported_by_system_one: bool = False,
+    call_with_param: Optional[Callable[[Dict[str, Any], Dict[str, Any]], Any]] = None,
+) -> DeviceAction:
+    async def call(param: Dict[str, Any], context: Any = None) -> None:
+        point = _point_from_locate(param.get("locate"), missing_locate_message)
+        if call_with_param is not None:
+            await call_with_param(point, param)
+            return
+        await _invoke(primitive, point)
+
+    return _define_action(
+        name=name,
+        description=description,
+        call=call,
+        param_schema=param_schema,
+        locate_fields=["locate"],
+        sample=sample,
+        interface_alias=interface_alias,
+        supported_by_system_one=supported_by_system_one,
+    )
+
+
+def define_action_tap(
+    tap: Callable[[Dict[str, Any]], Any],
+) -> DeviceAction:
+    return _define_located_point_action(
+        name="Tap",
+        supported_by_system_one=True,
+        description="Tap the element",
+        interface_alias="aiTap",
+        primitive=tap,
+        param_schema=ACTION_TAP_PARAM_SCHEMA,
+        sample={"locate": {"prompt": 'the "Submit" button'}},
+        missing_locate_message="Element not found, cannot tap",
+    )
+
+
+def define_action_register_file_chooser_accept(
+    register: Callable[[Any], Any],
+) -> DeviceAction:
+    async def call(param: Dict[str, Any], context: Any = None) -> None:
+        await _invoke(register, param.get("files"))
+
+    return _define_action(
+        name="RegisterFileChooserAccept",
+        description=(
+            "Configure files for file chooser dialogs triggered by later "
+            "actions in this aiAct"
+        ),
+        call=call,
+        param_schema=REGISTER_FILE_CHOOSER_ACCEPT_PARAM_SCHEMA,
+        sample={"files": ["fixtures/document.pdf"]},
+        interface_alias="registerFileChooserAccept",
+    )
+
+
+def define_action_right_click(
+    right_click: Callable[[Dict[str, Any]], Any],
+) -> DeviceAction:
+    return _define_located_point_action(
+        name="RightClick",
+        supported_by_system_one=True,
+        description="Right click the element",
+        interface_alias="aiRightClick",
+        primitive=right_click,
+        param_schema=ACTION_RIGHT_CLICK_PARAM_SCHEMA,
+        sample={"locate": {"prompt": "the file icon on the desktop"}},
+        missing_locate_message="Element not found, cannot right click",
+    )
+
+
+def define_action_middle_click(
+    middle_click: Callable[[Dict[str, Any]], Any],
+) -> DeviceAction:
+    return _define_located_point_action(
+        name="MiddleClick",
+        description="Middle click the element",
+        interface_alias="aiMiddleClick",
+        primitive=middle_click,
+        param_schema=ACTION_MIDDLE_CLICK_PARAM_SCHEMA,
+        sample={"locate": {"prompt": "the link to open in a new tab"}},
+        missing_locate_message="Element not found, cannot middle click",
+    )
+
+
+def define_action_double_click(
+    double_click: Callable[[Dict[str, Any]], Any],
+) -> DeviceAction:
+    return _define_located_point_action(
+        name="DoubleClick",
+        supported_by_system_one=True,
+        description="Double click the element",
+        interface_alias="aiDoubleClick",
+        primitive=double_click,
+        param_schema=ACTION_DOUBLE_CLICK_PARAM_SCHEMA,
+        sample={"locate": {"prompt": "the folder icon"}},
+        missing_locate_message="Element not found, cannot double click",
+    )
+
+
+def define_action_hover(
+    hover: Callable[[Dict[str, Any]], Any],
+) -> DeviceAction:
+    return _define_located_point_action(
+        name="Hover",
+        supported_by_system_one=True,
+        description="Move the mouse to the element",
+        interface_alias="aiHover",
+        primitive=hover,
+        param_schema=ACTION_HOVER_PARAM_SCHEMA,
+        sample={"locate": {"prompt": 'the navigation menu item "Products"'}},
+        missing_locate_message="Element not found, cannot hover",
+    )
+
+
+def define_action_input(keyboard: Any) -> DeviceAction:
+    async def call(param: Dict[str, Any], context: Any = None) -> None:
+        mode = param.get("mode") or "replace"
+        # Backward compat: convert the deprecated 'append' to 'typeOnly'.
+        if mode == "append":
+            mode = "typeOnly"
+
+        if mode == "clear":
+            await _invoke(_field(keyboard, "clearInput"), param.get("locate"))
+            return
+
+        value = param.get("value")
+        if not value:
+            return
+
+        options: Dict[str, Any] = {
+            "target": param.get("locate"),
+            "replace": mode != "typeOnly",
+            "auto_dismiss_keyboard": param.get("autoDismissKeyboard"),
+        }
+        options.update(input_options(param))
+        if _field(context, "skipDefaultWait", False):
+            options["skip_default_wait"] = True
+        await _invoke(_field(keyboard, "typeText"), str(value), options)
+
+    return _define_action(
+        name="Input",
+        description="Input the value into the element",
+        call=call,
+        param_schema=ACTION_INPUT_PARAM_SCHEMA,
+        locate_fields=["locate"],
+        sample={
+            "value": "test@example.com",
+            "locate": {"prompt": "the email input field"},
+        },
+        interface_alias="aiInput",
+    )
+
+
+def define_action_keyboard_press(
+    keyboard_press: Callable[[str, Dict[str, Any]], Any],
+) -> DeviceAction:
+    async def call(param: Dict[str, Any], context: Any = None) -> None:
+        await _invoke(
+            keyboard_press,
+            param.get("keyName"),
+            {"target": param.get("locate")},
+        )
+
+    return _define_action(
+        name="KeyboardPress",
+        description=(
+            'Press a key or key combination, like "Enter", "Tab", "Escape", '
+            'or "Control+A", "Shift+Enter". Do not use this to type text. '
+            "Omit locate to operate on the current focus without clicking "
+            "again, especially for Copy or Cut after text has been selected."
+        ),
+        call=call,
+        param_schema=ACTION_KEYBOARD_PRESS_PARAM_SCHEMA,
+        locate_fields=["locate"],
+        sample={"keyName": "Enter"},
+        interface_alias="aiKeyboardPress",
+    )
+
+
+def define_action_scroll(
+    scroll: Callable[..., Any],
+) -> DeviceAction:
+    async def call(param: Dict[str, Any], context: Any = None) -> None:
+        if _field(context, "skipDefaultWait", False):
+            await _invoke(scroll, param, {"skip_default_wait": True})
+        else:
+            await _invoke(scroll, param)
+
+    return _define_action(
+        name="Scroll",
+        description=(
+            "Scroll a page or scrollable region to reveal off-screen content. "
+            "Use Scroll when the goal is to browse content outside the "
+            "current viewport. For direct gesture interactions, such as "
+            "adjusting a slider or wheel picker, switching between paged "
+            "cards or images, following an on-screen swipe gesture to "
+            "continue or dismiss, or swiping an item to delete it, use Swipe "
+            "instead if available in the current Action Space. Supports "
+            "scrollToBottom/scrollToTop for boundary navigation. Default: "
+            "direction `down`, scrollType `singleAction`, distance `null`."
+        ),
+        call=call,
+        param_schema=ACTION_SCROLL_PARAM_SCHEMA,
+        locate_fields=["locate"],
+        distance_fields=["distance"],
+        sample={
+            "direction": "down",
+            "scrollType": "singleAction",
+            "locate": {"prompt": "the center of the product list area"},
+        },
+        interface_alias="aiScroll",
+    )
+
+
+def define_action_drag_and_drop(
+    drag_and_drop: Callable[[Dict[str, Any], Dict[str, Any]], Any],
+) -> DeviceAction:
+    async def call(param: Dict[str, Any], context: Any = None) -> None:
+        from_locate = param.get("from")
+        to_locate = param.get("to")
+        if not from_locate:
+            raise ValueError('missing "from" param for drag and drop')
+        if not to_locate:
+            raise ValueError('missing "to" param for drag and drop')
+        await _invoke(
+            drag_and_drop,
+            _point_from_locate(from_locate, 'missing "from" param for drag and drop'),
+            _point_from_locate(to_locate, 'missing "to" param for drag and drop'),
+        )
+
+    return _define_action(
+        name="DragAndDrop",
+        description=(
+            "Pick up a specific UI element and move it to a new position "
+            "(e.g., reorder a card, move a file into a folder, sort list "
+            "items). The element itself moves with your finger/mouse."
+        ),
+        call=call,
+        param_schema=ACTION_DRAG_AND_DROP_PARAM_SCHEMA,
+        locate_fields=["from", "to"],
+        sample={
+            "from": {"prompt": 'the "report.pdf" file icon'},
+            "to": {"prompt": "the upload drop zone"},
+        },
+        interface_alias="aiDragAndDrop",
+    )
+
+
+def define_action_long_press(
+    long_press: Callable[..., Any],
+) -> DeviceAction:
+    async def press(point: Dict[str, Any], param: Dict[str, Any]) -> None:
+        await _invoke(long_press, point, {"duration": param.get("duration")})
+
+    return _define_located_point_action(
+        name="LongPress",
+        description="Long press the element",
+        interface_alias="aiLongPress",
+        primitive=long_press,
+        param_schema=ACTION_LONG_PRESS_PARAM_SCHEMA,
+        sample={"locate": {"prompt": "the message bubble"}},
+        missing_locate_message="LongPress requires an element to be located",
+        call_with_param=press,
+    )
+
+
+def _create_swipe_param_schema(input_mode: str) -> Dict[str, Any]:
+    movement_source = "finger" if input_mode == "touch" else "pointer"
+
+    return {
+        "start": {
+            "type": "locate",
+            "description": (
+                f"Optional starting point of the {movement_source} movement. "
+                "Available in both relative and endpoint forms. If omitted, "
+                "the center of the page is used."
+            ),
+            "optional": True,
+        },
+        "direction": {
+            "type": '"up" | "down" | "left" | "right"',
+            "description": (
+                f"{'Finger' if movement_source == 'finger' else 'Pointer'} "
+                f"movement direction. Quick mapping: move the "
+                f"{movement_source} or content upward -> \"up\"; downward -> "
+                '"down"; leftward -> "left"; rightward -> "right". Required '
+                "together with a positive distance for a relative swipe. "
+                "Omit when using end."
+            ),
+            "optional": True,
+        },
+        "distance": {
+            "type": "number",
+            "description": (
+                f"Positive length of the {movement_source} movement in "
+                "pixels. Required together with direction for a relative "
+                "swipe. Omit when using end."
+            ),
+            "optional": True,
+        },
+        "end": {
+            "type": "locate",
+            "description": (
+                f"Endpoint of the {movement_source} movement. Use for an "
+                "endpoint swipe, optionally with start. Do not provide "
+                "direction or distance when using end."
+            ),
+            "optional": True,
+        },
+        "duration": {
+            "type": "number",
+            "description": "Duration of the swipe gesture in milliseconds",
+            "optional": True,
+        },
+        "repeat": {
+            "type": "number",
+            "description": (
+                "The number of times to repeat the swipe gesture. 1 for "
+                "default, 0 for continuous mode capped at 10 repeats"
+            ),
+            "optional": True,
+        },
+    }
+
+
+ACTION_SWIPE_PARAM_SCHEMA = _create_swipe_param_schema("touch")
+
+
+def normalize_mobile_swipe_param(
+    param: Dict[str, Any], screen_size: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Deprecated alias for `normalize_swipe_param` (upstream name)."""
+    return normalize_swipe_param(param, screen_size)
+
+
+def define_action_swipe(config: Any) -> DeviceAction:
+    swipe = _field(config, "swipe")
+    size = _field(config, "size")
+    input_mode = _field(config, "inputMode", "touch") or "touch"
+
+    async def call(param: Dict[str, Any], context: Any = None) -> None:
+        normalized = normalize_swipe_param(param, await _invoke(size))
+        start_point = normalized["start_point"]
+        end_point = normalized["end_point"]
+        for _ in range(normalized["repeat_count"]):
+            await _invoke(
+                swipe,
+                start_point,
+                end_point,
+                {"duration": normalized["duration"]},
+            )
+
+    description = (
+        "Perform a touch gesture that directly manipulates the UI (e.g., "
+        "adjust a continuous control such as a slider or wheel picker, switch "
+        "between paged cards or images, follow an on-screen swipe gesture to "
+        "continue or dismiss, or swipe an item to delete it). For browsing "
+        "off-screen content in a page or scrollable region, use Scroll "
+        "instead. Choose exactly one movement form: (1) relative swipe — "
+        'provide "direction" and a positive "distance"; or (2) endpoint swipe '
+        '— provide "end". "start" is optional for both forms and defaults to '
+        'the center of the page. Do not combine "end" with "direction" or '
+        '"distance".'
+        if input_mode == "touch"
+        else (
+            "Perform a primary-mouse-button gesture that continuously presses "
+            "and moves the pointer across the desktop UI. Use it to adjust a "
+            "continuous control such as a slider or wheel picker, switch "
+            "between paged cards or images, follow an on-screen swipe gesture "
+            "to continue or dismiss, or swipe an item to delete it. For "
+            "browsing off-screen content in a page or scrollable region, use "
+            "Scroll instead. Choose exactly one movement form: (1) relative "
+            'swipe — provide "direction" and a positive "distance"; or (2) '
+            'endpoint swipe — provide "end". "start" is optional for both '
+            "forms and defaults to the center of the page. Do not combine "
+            '"end" with "direction" or "distance".'
+        )
+    )
+
+    return _define_action(
+        name="Swipe",
+        description=description,
+        call=call,
+        param_schema=(
+            ACTION_SWIPE_PARAM_SCHEMA
+            if input_mode == "touch"
+            else _create_swipe_param_schema(input_mode)
+        ),
+        locate_fields=["start", "end"],
+        distance_fields=["distance"],
+        sample={
+            "start": {"prompt": "center of the notification"},
+            "end": {"prompt": "upper edge of the screen"},
+        },
+        interface_alias="aiSwipe",
+    )
+
+
+def define_action_clear_input(
+    clear_input: Callable[..., Any],
+) -> DeviceAction:
+    async def call(param: Dict[str, Any], context: Any = None) -> None:
+        await _invoke(clear_input, param.get("locate"))
+
+    return _define_action(
+        name="ClearInput",
+        supported_by_system_one=True,
+        description=INPUT_LOCATE_DESCRIPTION,
+        call=call,
+        param_schema=ACTION_CLEAR_INPUT_PARAM_SCHEMA,
+        locate_fields=["locate"],
+        sample={"locate": {"prompt": "the search input field"}},
+        interface_alias="aiClearInput",
+    )
+
+
+def define_action_cursor_move(config: Any) -> DeviceAction:
+    keyboard = _field(config, "keyboard")
+    sleep = _field(config, "sleep")
+
+    async def call(param: Dict[str, Any], context: Any = None) -> None:
+        direction = param.get("direction")
+        times = param.get("times")
+        if times is None:
+            times = 1
+
+        cursor_move = _field(keyboard, "cursorMove")
+        if cursor_move is not None:
+            await _invoke(cursor_move, direction, times)
+            return
+
+        wait = sleep
+        if wait is None:
+
+            async def wait(time_ms: float) -> None:
+                await asyncio.sleep(time_ms / 1000)
+
+        arrow_key = "ArrowLeft" if direction == "left" else "ArrowRight"
+        for _ in range(int(times)):
+            await _invoke(_field(keyboard, "keyboardPress"), arrow_key)
+            await _invoke(wait, 100)
+
+    return _define_action(
+        name="CursorMove",
+        description=(
+            "Move the text cursor (caret) left or right within an input field "
+            "or text area. Use this to reposition the cursor without "
+            "selecting text."
+        ),
+        call=call,
+        param_schema=ACTION_CURSOR_MOVE_PARAM_SCHEMA,
+        sample={"direction": "left", "times": 3},
+    )
+
+
+def define_action_pinch(config: Any) -> Optional[DeviceAction]:
+    pinch = _field(config, "pinch")
+    if pinch is None:
+        return None
+    size = _field(config, "size")
+
+    async def call(param: Dict[str, Any], context: Any = None) -> None:
+        normalized = normalize_pinch_param(param, await _invoke(size))
+        await _invoke(
+            pinch,
+            {"x": normalized["center_x"], "y": normalized["center_y"]},
+            {
+                "start_distance": normalized["start_distance"],
+                "end_distance": normalized["end_distance"],
+                "duration": normalized["duration"],
+            },
+        )
+
+    return _define_action(
+        name="Pinch",
+        description=(
+            "Perform a two-finger pinch gesture. Use direction \"in\" to "
+            "pinch fingers together (zoom out), or \"out\" to spread fingers "
+            "apart (zoom in). Optionally specify distance for the amount by "
+            "which the distance between the two fingers changes."
+        ),
+        call=call,
+        param_schema=ACTION_PINCH_PARAM_SCHEMA,
+        locate_fields=["locate"],
+        distance_fields=["distance"],
+        sample={
+            "locate": {"prompt": "the map area"},
+            "direction": "out",
+            "distance": 200,
+        },
+        interface_alias="aiPinch",
+    )
+
+
+def define_action_sleep(abort_signal: Any = None) -> DeviceAction:
+    async def call(param: Dict[str, Any], context: Any = None) -> None:
+        signal = abort_signal or _field(context, "signal")
+        duration = param.get("timeMs")
+        if duration is None:
+            duration = 1000
+        if signal is not None:
+            signal.throw_if_aborted()
+        await asyncio.sleep(max(float(duration), 0) / 1000)
+        if signal is not None:
+            signal.throw_if_aborted()
+
+    return _define_action(
+        name="Sleep",
+        description=(
+            "Wait for a specified duration before continuing. Defaults to 1 "
+            "second (1000ms) if not specified."
+        ),
+        call=call,
+        param_schema=ACTION_SLEEP_PARAM_SCHEMA,
+        sample={"timeMs": 2000},
+    )
+
+
+def resolve_swipe_input_primitive(
+    input: Any,
+) -> Optional[Dict[str, Any]]:
+    """Resolve the canonical swipe primitive; touch is preferred over mouse."""
+    pointer = _field(input, "pointer")
+    touch = _field(input, "touch")
+
+    touch_swipe = _field(touch, "swipe")
+    if touch_swipe is not None:
+        return {"swipe": touch_swipe, "input_mode": "touch"}
+
+    pointer_swipe = _field(pointer, "swipe")
+    if pointer_swipe is not None:
+        return {"swipe": pointer_swipe, "input_mode": "mouse"}
+
+    return None
+
+
+def _define_system_input_action(config: Any, primitive: Any) -> DeviceAction:
+    async def execute(
+        param: Optional[Dict[str, Any]] = None,
+        device: Any = None,
+        locate_fn: Any = None,
+    ) -> None:
+        await _invoke(primitive)
+
+    return DeviceAction(
+        name=_field(config, "name"),
+        description=_field(config, "description") or "",
+        param_schema=None,
+        sample=None,
+        interface_alias=_field(config, "interfaceAlias"),
+        supported_by_system_one=bool(_field(config, "supportedBySystemOne", False)),
+        execute=execute,
+        delay_before_runner=_field(config, "delayBeforeRunner"),
+        delay_after_runner=_field(config, "delayAfterRunner"),
+    )
+
+
+def define_actions_from_input_primitives(
+    input: Any,
+    options: Any = None,
+) -> List[DeviceAction]:
+    """Build the planning action set from low-level input primitives."""
+    actions: List[Optional[DeviceAction]] = []
+    pointer = _field(input, "pointer")
+    keyboard = _field(input, "keyboard")
+    scroll = _field(input, "scroll")
+    touch = _field(input, "touch")
+    system = _field(input, "system")
+
+    if pointer is not None:
+        actions.append(define_action_tap(_field(pointer, "tap")))
+        double_click = _field(pointer, "doubleClick")
+        if double_click is not None:
+            actions.append(define_action_double_click(double_click))
+        right_click = _field(pointer, "rightClick")
+        if right_click is not None:
+            actions.append(define_action_right_click(right_click))
+        middle_click = _field(pointer, "middleClick")
+        if middle_click is not None:
+            actions.append(define_action_middle_click(middle_click))
+        hover = _field(pointer, "hover")
+        if hover is not None:
+            actions.append(define_action_hover(hover))
+        drag_and_drop = _field(pointer, "dragAndDrop")
+        if drag_and_drop is not None:
+            actions.append(define_action_drag_and_drop(drag_and_drop))
+        long_press = _field(pointer, "longPress")
+        if long_press is not None:
+            actions.append(define_action_long_press(long_press))
+
+    if keyboard is not None:
+        actions.append(define_action_input(keyboard))
+        actions.append(
+            define_action_clear_input(_field(keyboard, "clearInput"))
+        )
+        actions.append(
+            define_action_keyboard_press(_field(keyboard, "keyboardPress"))
+        )
+        actions.append(
+            define_action_cursor_move(
+                {"keyboard": keyboard, "sleep": _option(options, "sleep")}
+            )
+        )
+
+    if scroll is not None:
+        actions.append(define_action_scroll(_field(scroll, "scroll")))
+
+    size = _option(options, "size")
+    swipe_config = resolve_swipe_input_primitive(
+        {"pointer": pointer, "touch": touch}
+    )
+    if (
+        swipe_config is not None
+        and size is not None
+        and _option(options, "include_swipe", "includeSwipe", True) is not False
+    ):
+        actions.append(define_action_swipe({**swipe_config, "size": size}))
+
+    pinch = _field(touch, "pinch")
+    if (
+        pinch is not None
+        and size is not None
+        and _option(options, "include_pinch", "includePinch", True) is not False
+    ):
+        actions.append(define_action_pinch({"pinch": pinch, "size": size}))
+
+    system_actions = _option(options, "system_actions", "systemActions")
+    if system is not None and system_actions is not None:
+        for name in ("backButton", "homeButton", "recentAppsButton"):
+            primitive = _field(system, name)
+            config = _field(system_actions, name)
+            if primitive is not None and config is not None:
+                actions.append(_define_system_input_action(config, primitive))
+
+    return [action for action in actions if action is not None]
+
+
+def create_default_mobile_actions(context: Any) -> List[DeviceAction]:
+    """The default mobile action set built from `context.input` primitives."""
+    return define_actions_from_input_primitives(
+        _field(context, "input"),
+        {
+            "size": _field(context, "size"),
+            "sleep": _field(context, "sleep"),
+            "system_actions": _field(context, "systemActions"),
+        },
+    )
 
 
 # ---------------------------------------------------------------------------

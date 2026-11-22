@@ -20,6 +20,7 @@
 | 官方 React 可视化器 | `packages/visualizer` | Python 使用自研单文件 HTML 查看器，数据结构一致、UI 不同 |
 | Chrome 扩展内 `EventRecorder` | 浏览器扩展 | 需要扩展注入；Python 只消费事件序列 |
 | Playwright `AiFixture` | `web-integration/src/playwright/ai-fixture.ts` | 已登记 `exempt`：面向 Playwright Test runner，Python 用户直接用 pytest |
+| zod 命名空间 `z` | `export { z }`（如 `core/device/index.ts`） | Python 的 action schema 用普通 dict 表示，不伪造 zod 构建器 |
 
 ## 2. 已知功能偏差
 

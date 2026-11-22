@@ -1,7 +1,11 @@
 """Agent options (upstream agent/agent-options.ts)."""
 
+import copy
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, Union
+
+from midscene.core.agent.common import AGENT_AI_CONTEXT_KEYS
+from midscene.core.dump.report_session import assert_report_generation_options
 
 
 @dataclass
@@ -59,3 +63,157 @@ class AgentOptions:
     persist_execution_dump: bool = False
     # Use the device-reported time in planning feedback messages (android)
     use_device_time: bool = False
+
+
+_DEFAULT_OPTIONS = {
+    "generateReport": True,
+    "persistExecutionDump": False,
+    "autoPrintReportMsg": True,
+    "groupName": "Midscene Report",
+    "groupDescription": "",
+}
+
+_SNAKE_DEFAULTS = {
+    "generate_report": True,
+    "persist_execution_dump": False,
+    "auto_print_report_msg": True,
+    "group_name": "Midscene Report",
+    "group_description": "",
+}
+
+
+def _get_option(options: Any, *keys: str, default: Any = None) -> Any:
+    for key in keys:
+        if isinstance(options, dict):
+            if key in options:
+                return options[key]
+        elif hasattr(options, key):
+            return getattr(options, key)
+    return default
+
+
+def _set_option(options: Any, key: str, value: Any) -> None:
+    if isinstance(options, dict):
+        options[key] = value
+    else:
+        setattr(options, key, value)
+
+
+def with_agent_defaults(opts: Any = None):
+    """Return options with the Agent defaults applied (upstream helper)."""
+    if opts is None:
+        options: Any = AgentOptions()
+    elif isinstance(opts, dict):
+        options = dict(_DEFAULT_OPTIONS)
+        options.update(opts)
+    else:
+        options = copy.copy(opts)
+        for key, value in _SNAKE_DEFAULTS.items():
+            if not hasattr(options, key) or getattr(options, key) is None:
+                setattr(options, key, value)
+
+    if isinstance(options, dict):
+        report_opts = {
+            "generateReport": _get_option(
+                options, "generateReport", "generate_report"
+            ),
+            "persistExecutionDump": _get_option(
+                options,
+                "persistExecutionDump",
+                "persist_execution_dump",
+            ),
+        }
+    else:
+        report_opts = {
+            "generateReport": _get_option(
+                options, "generate_report", "generateReport"
+            ),
+            "persistExecutionDump": _get_option(
+                options,
+                "persist_execution_dump",
+                "persistExecutionDump",
+            ),
+        }
+    assert_report_generation_options(report_opts)
+    return options
+
+
+def normalize_agent_options(options: Any, warn: Callable[[str], None]) -> None:
+    """Validate and normalize Agent options in place (upstream helper)."""
+    ai_contexts = _get_option(options, "aiContexts", "ai_contexts")
+    if isinstance(options, dict) and ai_contexts is None and (
+        "aiContexts" in options or "ai_contexts" in options
+    ):
+        raise TypeError("opts.aiContexts must be a plain object")
+    if ai_contexts is not None and not isinstance(ai_contexts, dict):
+        raise TypeError("opts.aiContexts must be a plain object")
+
+    normalized_contexts: Dict[str, Any] = dict(ai_contexts or {})
+    for key, value in normalized_contexts.items():
+        if key not in AGENT_AI_CONTEXT_KEYS:
+            raise TypeError(f"Unknown Agent context key: {key}")
+        if value is not None and not isinstance(value, str):
+            raise TypeError(f'Agent context "{key}" must be a string')
+
+    ai_act_context = _get_option(options, "aiActContext", "ai_act_context")
+    ai_action_context = _get_option(
+        options, "aiActionContext", "ai_action_context"
+    )
+    deprecated_option = (
+        "aiActContext"
+        if ai_act_context is not None
+        else "aiActionContext"
+        if ai_action_context is not None
+        else None
+    )
+    if deprecated_option:
+        warn(
+            f'Agent option "{deprecated_option}" is deprecated; use '
+            '"aiContexts.aiAct" instead. When both are provided, '
+            '"aiContexts.aiAct" takes precedence.'
+        )
+
+    resolved_ai_act_context = next(
+        (
+            value
+            for value in (
+                normalized_contexts.get("aiAct"),
+                ai_act_context,
+                ai_action_context,
+            )
+            if value is not None
+        ),
+        None,
+    )
+    if resolved_ai_act_context is not None:
+        normalized_contexts["aiAct"] = resolved_ai_act_context
+    if isinstance(options, dict):
+        _set_option(options, "aiContexts", normalized_contexts)
+        if resolved_ai_act_context is not None:
+            _set_option(options, "aiActContext", resolved_ai_act_context)
+            _set_option(options, "aiActionContext", resolved_ai_act_context)
+    else:
+        _set_option(options, "ai_contexts", normalized_contexts)
+        if resolved_ai_act_context is not None:
+            _set_option(options, "ai_act_context", resolved_ai_act_context)
+            _set_option(
+                options, "ai_action_context", resolved_ai_act_context
+            )
+
+    model_config = _get_option(options, "modelConfig", "model_config")
+    if (
+        model_config is not None
+        and not isinstance(model_config, dict)
+        and not callable(model_config)
+    ):
+        raise TypeError(
+            "opts.modelConfig must be a plain object map of env keys to "
+            f"values, but got {type(model_config).__name__}"
+        )
+
+
+__all__ = [
+    "AgentOptions",
+    "normalize_agent_options",
+    "with_agent_defaults",
+]

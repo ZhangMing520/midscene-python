@@ -5,6 +5,53 @@ from typing import Any, Dict
 from midscene.core.types import UIContext
 
 
+def type_str(task: Dict[str, Any]) -> str:
+    """Task type label (upstream typeStr)."""
+    from midscene.core.report_markdown import _type_str
+
+    return _type_str(task)
+
+
+def locate_param_str(locate: Any) -> str:
+    """Human-readable locate prompt (upstream locateParamStr)."""
+    from midscene.core.report_markdown import _locate_param_str
+
+    return _locate_param_str(locate)
+
+
+def scroll_param_str(scroll_param: Any) -> str:
+    """Human-readable scroll parameters (upstream scrollParamStr)."""
+    from midscene.core.report_markdown import _scroll_param_str
+
+    return _scroll_param_str(scroll_param)
+
+
+def pull_param_str(pull_param: Any) -> str:
+    """Human-readable pull parameters (upstream pullParamStr)."""
+    from midscene.core.report_markdown import _pull_param_str
+
+    return _pull_param_str(pull_param)
+
+
+def extract_insight_param(task_param: Any) -> Dict[str, Any]:
+    """Extract insight content/images (upstream extractInsightParam)."""
+    from midscene.core.report_markdown import _extract_insight_param
+
+    return _extract_insight_param(task_param)
+
+
+def task_title_str(task_type: str, prompt: str) -> str:
+    """Task title used by the report timeline (upstream taskTitleStr)."""
+    return f"{task_type} - {prompt}" if prompt else task_type
+
+
+def param_str(task: Dict[str, Any]) -> str:
+    """Human-readable task parameters (upstream paramStr)."""
+    from midscene.core.report_markdown import _param_str
+
+    return _param_str(task)
+
+
 def to_logical_coords(element: Dict[str, Any], context: UIContext) -> Dict[str, Any]:
     """Scale screenshot-space coordinates back to logical viewport space
     (upstream task-builder.ts divides the shot coordinates by
@@ -30,3 +77,15 @@ def to_logical_coords(element: Dict[str, Any], context: UIContext) -> Dict[str, 
             },
         }
     return element
+
+
+__all__ = [
+    "extract_insight_param",
+    "locate_param_str",
+    "param_str",
+    "pull_param_str",
+    "scroll_param_str",
+    "task_title_str",
+    "to_logical_coords",
+    "type_str",
+]
