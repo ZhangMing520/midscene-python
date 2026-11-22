@@ -1,4 +1,4 @@
-.PHONY: help install dev test lint format clean build docs requirements-freeze requirements-check
+.PHONY: help install dev test lint format clean build docs requirements-freeze requirements-check check-docs
 
 # Default target
 help:
@@ -9,6 +9,7 @@ help:
 	@echo "  requirements-check     Verify dependencies integrity"
 	@echo "  requirements-quick-check Quick requirements validation"
 	@echo "  test               Run tests"
+	@echo "  check-docs         Verify alignment docs match the repository"
 	@echo "  lint               Run linting"
 	@echo "  format             Format code"
 	@echo "  clean              Clean build artifacts"
@@ -43,6 +44,10 @@ dev: install-dev
 # Run tests
 test:
 	pytest tests/ -v --cov=midscene --cov-report=html --cov-report=term-missing
+
+# Verify alignment docs against baseline, gap report and source facts
+check-docs:
+	python3 scripts/check_docs_consistency.py
 
 # Run tests with specific markers
 test-unit:
