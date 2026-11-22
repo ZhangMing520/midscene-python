@@ -6,6 +6,9 @@ import json
 import math
 import uuid
 from midscene.core.ai_model.models.registry import is_locate_intent
+from midscene.core.ai_model.service_caller.types import AIResponseParseError
+
+__all__ = ["AIResponseParseError"]
 
 # Internal field name stamped onto usage info by the shared model call pipeline.
 # Used for cross-path dedup when the provider does not return a request_id.

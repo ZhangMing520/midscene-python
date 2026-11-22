@@ -13,6 +13,10 @@ import yaml
 from loguru import logger
 
 from midscene.shared.env import MIDSCENE_RUN_DIR, get_midscene_run_dir
+from midscene.shared.logger import get_debug
+
+# Upstream `export const debug = getDebug('cache')`.
+debug = get_debug("cache")
 
 CACHE_FILE_EXT = ".cache.yaml"
 

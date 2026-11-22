@@ -25,8 +25,16 @@ class RefreshableCredentials(TypedDict, total=False):
 
 async def refresh_siwc_credentials(
     saved: Dict[str, Any],
-    proxy: Optional[network.SiwcProxyConfig] = None,
+    signal: Any = None,
+    dependencies: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
+    if signal is not None and hasattr(signal, "throw_if_aborted"):
+        signal.throw_if_aborted()
+    proxy = (
+        dependencies.get("proxy")
+        if isinstance(dependencies, dict)
+        else None
+    )
     client_id = saved.get("client_id")
     refresh_token = saved.get("refresh_token")
     if not client_id or not refresh_token:

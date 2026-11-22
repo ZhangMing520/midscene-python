@@ -46,7 +46,7 @@ async def test_should_execute_hdc_command_without_device_id(hdc_calls):
 
     hdc = HdcClient()
 
-    result = await hdc.exec("list", "targets")
+    result = await hdc.exec(["list", "targets"])
 
     assert result == "output"
     assert hdc_calls.calls == [["hdc", "list", "targets"]]
@@ -58,7 +58,7 @@ async def test_should_include_t_flag_when_device_id_is_specified(hdc_calls):
 
     hdc = HdcClient(device_id="em-1")
 
-    await hdc.exec("shell", "ls")
+    await hdc.exec(["shell", "ls"])
 
     assert hdc_calls.calls == [["hdc", "-t", "em-1", "shell", "ls"]]
 

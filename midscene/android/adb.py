@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
+from midscene.android.adb_shell import escape_for_shell
 from midscene.shared.env.constants import (
     MIDSCENE_ADB_PATH,
     MIDSCENE_ADB_REMOTE_HOST,
@@ -307,6 +308,7 @@ __all__ = [
     "AndroidAdb",
     "DEFAULT_ADB_EXEC_TIMEOUT_MS",
     "create_android_adb",
+    "escape_for_shell",
     "resolve_adb_executable",
     "run_adb_command",
 ]

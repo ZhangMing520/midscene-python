@@ -11,7 +11,7 @@ PLATFORM_BINARY_MAP = {
 }
 
 
-def get_rdp_helper_binary_path(package_root: Optional[str] = None) -> str:
+def get_rdp_helper_binary_path(*, package_root: Optional[str] = None) -> str:
     """Locate the rdp-helper binary shipped with the package."""
     system = platform.system()
     mapping = PLATFORM_BINARY_MAP.get(system)

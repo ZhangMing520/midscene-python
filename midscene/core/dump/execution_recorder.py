@@ -5,7 +5,10 @@ recorder only tracks the latest state of every execution by id (or object
 identity for anonymous executions).
 """
 
+import time
 from typing import Any, Dict, List, Optional
+
+from midscene.core.dump.report_action_dump import ExecutionDump, ReportActionDump
 
 
 class ExecutionRecorder:
@@ -18,13 +21,20 @@ class ExecutionRecorder:
             executions if executions is not None else []
         )
         self._index_by_key: Dict[str, int] = {}
+        self.report_meta: Optional[Dict[str, Any]] = None
 
     @property
     def executions(self) -> List[Dict[str, Any]]:
         return self._executions
 
-    def record(self, execution: Dict[str, Any]) -> str:
+    def record(
+        self,
+        execution: Dict[str, Any],
+        meta: Optional[Dict[str, Any]] = None,
+    ) -> str:
         """Store an execution, replacing any previous state with the same key."""
+        if meta is not None:
+            self.report_meta = meta
         key = self._execution_key(execution)
         index = self._index_by_key.get(key)
         if index is None:
@@ -34,9 +44,67 @@ class ExecutionRecorder:
             self._executions[index] = execution
         return key
 
+    def to_dump(
+        self, meta: Optional[Dict[str, Any]] = None
+    ) -> ReportActionDump:
+        """Build a report dump from the recorded executions (upstream toDump)."""
+        resolved_meta = meta if meta is not None else self.report_meta
+        if resolved_meta is None:
+            raise ValueError(
+                "Cannot create a report without execution metadata"
+            )
+        return ReportActionDump({**resolved_meta, "executions": self._executions})
+
+    def capture(
+        self,
+        execution_ids: Optional[List[str]] = None,
+        meta: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Freeze executions + screenshots (upstream capture)."""
+        selected = set(execution_ids) if execution_ids is not None else None
+        executions = [
+            execution
+            for execution in self._executions
+            if selected is None
+            or (
+                isinstance(execution, dict)
+                and execution.get("id")
+                and execution["id"] in selected
+            )
+        ]
+        resolved_meta = meta if meta is not None else self.report_meta
+        if resolved_meta is None:
+            raise ValueError(
+                "Cannot capture a report without execution metadata"
+            )
+
+        screenshots: List[Any] = []
+        reference_urls: List[str] = []
+        for execution in executions:
+            dump_execution = (
+                execution
+                if isinstance(execution, ExecutionDump)
+                else ExecutionDump.from_json(execution)
+            )
+            screenshots.extend(dump_execution.collect_screenshots())
+            reference_urls.extend(dump_execution.get_reference_image_urls())
+
+        frozen = ReportActionDump({**resolved_meta, "executions": executions})
+        dump = frozen.from_serialized_string(frozen.serialize())
+        return {
+            "capturedAt": time.strftime(
+                "%Y-%m-%dT%H:%M:%S", time.gmtime()
+            )
+            + ".000Z",
+            "dump": dump,
+            "screenshots": screenshots,
+            "referenceImageUrls": list(dict.fromkeys(reference_urls)),
+        }
+
     def clear(self) -> None:
         self._executions.clear()
         self._index_by_key.clear()
+        self.report_meta = None
 
     @staticmethod
     def _execution_key(execution: Dict[str, Any]) -> str:

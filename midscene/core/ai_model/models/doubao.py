@@ -105,11 +105,16 @@ def _parse_doubao_raw_locate_value(input_value: Any) -> Dict[str, Any]:
     )
 
 
+def parse_doubao_raw_locate_value(input: Any) -> Dict[str, Any]:
+    """Public Doubao locate parser (upstream parseDoubaoRawLocateValue)."""
+    return _parse_doubao_raw_locate_value(input)
+
+
 DOUBAO_LOCATE_FORMAT = {
     "resultKey": "bbox",
     "resultKeyAliases": ["bbox_2d"],
     "coordinates": DOUBAO_BBOX_COORDS,
-    "parseRawLocateValue": _parse_doubao_raw_locate_value,
+    "parseRawLocateValue": parse_doubao_raw_locate_value,
 }
 
 
@@ -141,4 +146,5 @@ __all__ = [
     "_build_doubao_params",
     "_parse_doubao_raw_locate_value",
     "doubao_adapters",
+    "parse_doubao_raw_locate_value",
 ]

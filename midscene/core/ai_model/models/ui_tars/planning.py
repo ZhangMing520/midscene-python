@@ -1,6 +1,6 @@
 """UI-TARS custom planner (upstream ai-model/models/ui-tars/planning.ts)."""
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from midscene.core.ai_model.models.ui_tars.actions import transform_ui_tars_actions
 from midscene.core.ai_model.models.ui_tars.parser import (
@@ -51,7 +51,9 @@ def _transform_ui_tars_with_error(
     return transformed
 
 
-def create_ui_tars_planner() -> CustomPlanningDefinition:
+def create_ui_tars_planner(
+    ui_tars_model_version: Optional[str] = None,
+) -> CustomPlanningDefinition:
     return {
         "messages": {
             "system_prompt_placement": "user-message",
@@ -63,7 +65,7 @@ def create_ui_tars_planner() -> CustomPlanningDefinition:
         },
         "coordinates": UI_TARS_COORDINATES,
         "parse_response": lambda raw, context, runtime: parse_ui_tars_planning_response(
-            raw, get_shot_size(context)
+            raw, get_shot_size(context), ui_tars_model_version
         ),
         "transform_actions": lambda parsed, context, action_space, runtime: (
             _transform_ui_tars_with_error(parsed)

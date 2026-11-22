@@ -720,8 +720,20 @@ def generate_agent_report_comment(report: Dict[str, Any]) -> str:
     return "\n<!--\n" + "\n".join(lines) + "\n-->\n"
 
 
+def extract_image_by_id_sync(
+    html_path: str, image_id: str
+) -> Optional[str]:
+    """Re-export of ``screenshot_store.extract_image_by_id_sync``."""
+    from midscene.core.dump.screenshot_store import (
+        extract_image_by_id_sync as _extract_image_by_id_sync,
+    )
+
+    return _extract_image_by_id_sync(html_path, image_id)
+
+
 __all__ = [
     "DATA_SCREENSHOT_MODE_ATTR",
+    "extract_image_by_id_sync",
     "REPORT_ARTIFACT_SCRIPT_TYPE",
     "STREAMING_CHUNK_SIZE",
     "TEST_RUN_REPORT_SCRIPT_TYPE",

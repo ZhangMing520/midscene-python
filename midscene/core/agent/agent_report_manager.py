@@ -192,3 +192,178 @@ def notify_dump_update_listeners(
                 asyncio.ensure_future(result)
         except Exception as e:  # listeners must never break execution
             logger.warning(f"dump update listener threw, ignoring: {e}")
+
+
+class AgentReportManager:
+    """Own report state and persistence (upstream AgentReportManager).
+
+    The Python port keeps report state on the Agent; this facade exposes the
+    upstream manager surface on top of the existing module-level helpers.
+    """
+
+    def __init__(self, agent: Any = None, context: Any = None) -> None:
+        self.agent = agent if agent is not None else context
+        if self.agent is None:
+            raise ValueError("AgentReportManager requires an agent")
+        self._report_file: Optional[str] = None
+        self._report_file_name: Optional[str] = getattr(
+            self.agent, "_report_file_name", None
+        )
+        self._report_by_runner: Dict[int, "AgentReportManager"] = {}
+        self._active_operations: set = set()
+        self._report_reset: Optional[Any] = None
+
+    @property
+    def dump(self) -> Dict[str, Any]:
+        return get_report_builder(self.agent).to_dict()
+
+    @dump.setter
+    def dump(self, value: Any) -> None:
+        builder = get_report_builder(self.agent)
+        builder.dump = value.to_dict() if hasattr(value, "to_dict") else value
+
+    @property
+    def report_file(self) -> Optional[str]:
+        if self._report_file is not None:
+            return self._report_file
+        return getattr(self.agent, "_report_finalized", None) or None
+
+    @report_file.setter
+    def report_file(self, value: Optional[str]) -> None:
+        self._report_file = value
+
+    @property
+    def report_file_name(self) -> Optional[str]:
+        return self._report_file_name
+
+    @report_file_name.setter
+    def report_file_name(self, value: Optional[str]) -> None:
+        self._report_file_name = value
+        self.agent._report_file_name = value
+
+    def assert_report_writable(self) -> Any:
+        if getattr(self.agent, "destroyed", False):
+            raise RuntimeError("Cannot execute using a destroyed Agent.")
+        if self._report_reset is not None:
+            raise RuntimeError(
+                "Report reset is in progress. Await resetDump() first."
+            )
+        if getattr(self.agent, "_report_finalized", None) is not None:
+            raise RuntimeError(
+                "The report has been finalized. Call and await resetDump() "
+                "before executing again."
+            )
+        return self.agent
+
+    async def with_report_operation(self, operation: Callable[[], Any]) -> Any:
+        """Run an operation while it counts as an active report write."""
+        self.assert_report_writable()
+        pending = asyncio.ensure_future(operation())
+        self._active_operations.add(pending)
+        try:
+            return await pending
+        finally:
+            self._active_operations.discard(pending)
+
+    async def reset_dump(self) -> Dict[str, Any]:
+        if self._report_reset is not None:
+            return await self._report_reset
+
+        async def run() -> Dict[str, Any]:
+            result = await reset_dump(self.agent)
+            self._report_file = None
+            self._report_file_name = getattr(
+                self.agent, "_report_file_name", None
+            )
+            return result
+
+        self._report_reset = asyncio.ensure_future(run())
+        try:
+            return await self._report_reset
+        finally:
+            self._report_reset = None
+
+    async def finalize_report(self) -> Optional[str]:
+        path = await finalize_report(self.agent)
+        self._report_file = path
+        return path
+
+    def append_execution_dump(
+        self, execution: Dict[str, Any], runner: Any = None
+    ) -> None:
+        append_execution_dump(self.agent, execution, runner)
+
+    def dump_data_string(self, opt: Optional[Dict[str, Any]] = None) -> str:
+        return dump_data_string(self.agent, opt)
+
+    def report_html_string(self, get_dump_string: Any = None) -> str:
+        return report_html_string(self.agent)
+
+    def write_out_action_dumps(
+        self, execution_dump: Optional[Dict[str, Any]] = None
+    ) -> Optional[str]:
+        return write_out_action_dumps(self.agent, execution_dump)
+
+    async def flush_report(self) -> Optional[str]:
+        return await flush_report(self.agent)
+
+    def add_dump_update_listener(self, listener: Callable) -> Callable[[], None]:
+        return add_dump_update_listener(self.agent, listener)
+
+    def remove_dump_update_listener(self, listener: Callable) -> None:
+        remove_dump_update_listener(self.agent, listener)
+
+    def clear_dump_update_listeners(self) -> None:
+        clear_dump_update_listeners(self.agent)
+
+    def notify_dump_update_listeners(
+        self, execution_dump: Optional[Dict[str, Any]] = None
+    ) -> None:
+        notify_dump_update_listeners(self.agent, execution_dump)
+
+    def bind_runner(self, runner: Any) -> None:
+        self._report_by_runner[id(runner)] = self
+
+    def assert_runner_current(self, runner: Any) -> None:
+        bound = self._report_by_runner.get(id(runner))
+        if (
+            bound is not self
+            or getattr(self.agent, "_report_finalized", None) is not None
+        ):
+            raise RuntimeError(
+                "Cannot write a late execution update into a different or "
+                "finalized report."
+            )
+
+    async def flush_pending_writes(self) -> None:
+        if getattr(self.agent, "_report_builder", None) is None:
+            return
+        await self.flush_report()
+
+    async def wait_for_operations(self) -> None:
+        while self._active_operations:
+            await asyncio.gather(
+                *list(self._active_operations), return_exceptions=True
+            )
+
+    async def wait_for_reset(self) -> None:
+        if self._report_reset is not None:
+            await asyncio.gather(self._report_reset, return_exceptions=True)
+
+
+__all__ = [
+    "AgentReportManager",
+    "add_dump_update_listener",
+    "append_execution_dump",
+    "clear_dump_update_listeners",
+    "dump_data_string",
+    "finalize_report",
+    "flush_report",
+    "get_report_builder",
+    "notify_dump_update_listeners",
+    "remove_dump_update_listener",
+    "report_html_string",
+    "reset_dump",
+    "write_out_action_dumps",
+    "write_report_artifact",
+]

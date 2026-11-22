@@ -174,3 +174,23 @@ def get_shot_size(context: Any) -> Dict[str, int]:
         if shot_size:
             return dict(shot_size)
     raise ValueError("UIContext has no size for the AI workflow")
+
+
+def multimodal_prompt_to_messages(prompt: Any) -> List[Dict[str, Any]]:
+    """Re-export of ``locate_prompt_order.multimodal_prompt_to_messages``."""
+    from midscene.core.ai_model.model_adapter.locate_prompt_order import (
+        multimodal_prompt_to_messages as _impl,
+    )
+
+    return _impl(prompt)
+
+
+def prepared_reference_images_to_messages(
+    reference_images: Any,
+) -> List[Dict[str, Any]]:
+    """Re-export of ``prepared_reference_images_to_messages``."""
+    from midscene.core.ai_model.model_adapter.locate_prompt_order import (
+        prepared_reference_images_to_messages as _impl,
+    )
+
+    return _impl(reference_images)

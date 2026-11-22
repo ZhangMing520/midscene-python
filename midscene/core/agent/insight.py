@@ -11,10 +11,13 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
 from loguru import logger
 
 from midscene.core.ai_model.models.registry import ModelRuntime, get_model_runtime
+from midscene.core.ai_model.prompt.insight import build_type_query_demand_value
 from midscene.shared.env import ModelConfigManager, get_global_model_config_manager
 from midscene.core.ai_model.workflows import ai_extract_element_info
+from midscene.core.agent.utils import _extract_typed_query_result
 from midscene.core.service.describe import ai_describe_element
 from midscene.core.service import locate_service
+from midscene.core.common import user_prompt_to_string
 from midscene.core.types import (
     AssertResult,
     ExtractOption,
@@ -184,6 +187,118 @@ class Insight:
         except Exception as e:
             logger.error(f"Assert failed: {e}")
             raise
+
+    @staticmethod
+    def _option(options: Any, key: str, default: Any = None) -> Any:
+        if isinstance(options, dict):
+            return options.get(key, default)
+        return getattr(options, key, default)
+
+    async def ai_query(
+        self,
+        demand: Any,
+        options: Optional[Any] = None,
+    ) -> Any:
+        """Extract structured data from the UI (upstream aiQuery)."""
+        extract_option = ExtractOption(
+            dom_included=self._option(options, "domIncluded", False),
+            screenshot_included=self._option(options, "screenshotIncluded", True),
+        )
+        result = await self.extract(demand, extract_option)
+        return result.get("data")
+
+    async def _query_primitive(
+        self,
+        demand_type: str,
+        api_name: str,
+        prompt: TUserPrompt,
+        options: Optional[Any] = None,
+    ) -> Any:
+        context = await self._get_context(InsightAction.EXTRACT)
+        demand_value = build_type_query_demand_value(
+            demand_type, user_prompt_to_string(prompt)
+        )
+        response = await ai_extract_element_info(
+            task_type="extract",
+            data_query={demand_type: demand_value},
+            context=context,
+            model_runtime=self.model_runtime("insight"),
+            page_description="",
+            screenshot_included=self._option(options, "screenshotIncluded", True),
+            context_text=self._option(options, "context", None),
+        )
+        await self._notify_dump_subscribers(
+            {
+                "type": "extract",
+                "prompt": prompt,
+                "data": response.get("parse_result", {}).get("data"),
+                "usage": response.get("usage"),
+            }
+        )
+        data = response.get("parse_result", {}).get("data")
+        return _extract_typed_query_result(data, demand_type)
+
+    async def ai_boolean(
+        self,
+        prompt: TUserPrompt,
+        options: Optional[Any] = None,
+    ) -> bool:
+        return bool(await self._query_primitive("Boolean", "aiBoolean", prompt, options))
+
+    async def ai_number(
+        self,
+        prompt: TUserPrompt,
+        options: Optional[Any] = None,
+    ) -> float:
+        return await self._query_primitive("Number", "aiNumber", prompt, options)
+
+    async def ai_string(
+        self,
+        prompt: TUserPrompt,
+        options: Optional[Any] = None,
+    ) -> str:
+        return await self._query_primitive("String", "aiString", prompt, options)
+
+    async def ai_ask(
+        self,
+        prompt: TUserPrompt,
+        options: Optional[Any] = None,
+    ) -> str:
+        return await self._query_primitive("String", "aiAsk", prompt, options)
+
+    async def ai_assert(
+        self,
+        assertion: TUserPrompt,
+        message: Optional[str] = None,
+        options: Optional[Any] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Assert a condition about the UI (upstream aiAssert)."""
+        assertion_text = user_prompt_to_string(assertion)
+        result = await self.assert_condition(
+            assertion,
+            ExtractOption(
+                screenshot_included=self._option(
+                    options, "screenshotIncluded", True
+                )
+            ),
+        )
+        failure_message = (
+            None
+            if result.passed
+            else (
+                f"Assertion failed: {message or assertion_text}\n"
+                f"Reason: {result.thought or '(no_reason)'}"
+            )
+        )
+        if self._option(options, "keepRawResponse", False):
+            return {
+                "pass": result.passed,
+                "thought": result.thought,
+                "message": failure_message,
+            }
+        if not result.passed:
+            raise AssertionError(failure_message)
+        return None
 
     async def describe(
         self,

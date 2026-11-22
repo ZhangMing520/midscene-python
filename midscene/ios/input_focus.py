@@ -42,7 +42,7 @@ async def active_input(
 
 
 async def wait_for_input_focus(
-    request: InputRequest, timeout_ms: float = 3000.0
+    request: InputRequest, *, timeout_ms: float = 3000.0
 ) -> None:
     """Block until an element owns the keyboard, or fail loudly."""
     deadline = time.monotonic() + timeout_ms / 1000.0

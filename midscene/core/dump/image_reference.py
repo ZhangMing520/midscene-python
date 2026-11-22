@@ -110,6 +110,15 @@ def report_image_asset_path(ref: Dict[str, Any]) -> str:
     return f"./screenshots/{quote(str(ref['id']), safe='')}.{image_ref_file_extension(ref)}"
 
 
+def normalize_screenshot_ref(value: Any) -> Optional[Dict[str, Any]]:
+    """Re-export of ``screenshot_store.normalize_screenshot_ref``."""
+    from midscene.core.dump.screenshot_store import (
+        normalize_screenshot_ref as _normalize_screenshot_ref,
+    )
+
+    return _normalize_screenshot_ref(value)
+
+
 def _is_image_string(value: str, key: Optional[str]) -> bool:
     if value.startswith("data:image/"):
         return True
@@ -129,6 +138,7 @@ __all__ = [
     "image_mime_type_for_file_extension",
     "image_ref_file_extension",
     "normalize_image_url_ref",
+    "normalize_screenshot_ref",
     "normalize_stored_image_ref",
     "report_image_asset_path",
 ]

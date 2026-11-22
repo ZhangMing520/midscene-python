@@ -71,7 +71,9 @@ class TestServiceCallerSiwc:
             token = await manager.refresh_access_token("old", proxy)
 
         assert token == "new"
-        refresh_mock.assert_awaited_once_with(record["credentials"], proxy)
+        refresh_mock.assert_awaited_once_with(
+            record["credentials"], None, {"proxy": proxy}
+        )
 
     @pytest.mark.asyncio
     async def test_exchange_uses_configured_proxy(self):
@@ -118,7 +120,8 @@ class TestServiceCallerSiwc:
             credentials = await siwc.exchange_siwc_code(
                 attempt,
                 {"code": "code-1", "client_id": "client-1"},
-                {"httpProxy": "http://proxy:8080", "socksProxy": None},
+                None,
+                {"proxy": {"httpProxy": "http://proxy:8080", "socksProxy": None}},
             )
 
         assert captured["proxy"] == "http://proxy:8080"

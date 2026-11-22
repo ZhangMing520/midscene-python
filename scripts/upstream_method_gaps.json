@@ -1,888 +1,17 @@
 {
   "upstream_root": "/home/zhangming/gitspace/midscene",
   "counts": {
+    "missing_functions": 0,
+    "moved_functions": 0,
+    "missing_classes": 0,
+    "missing_methods": 0,
+    "signature_mismatch": 0,
+    "allowlisted_signature_mismatch": 30,
     "modules_scanned": 425,
     "functions_scanned": 601,
-    "classes_scanned": 100,
-    "modules_with_gaps": 64,
-    "missing_functions": 5,
-    "moved_functions": 20,
-    "missing_classes": 2,
-    "missing_methods": 66,
-    "signature_mismatch": 43
+    "classes_scanned": 100
   },
   "modules": [
-    {
-      "package": "android",
-      "upstream": "device.ts",
-      "python": "android/device.py",
-      "missing_functions": [],
-      "moved_functions": [
-        {
-          "name": "escapeForShell",
-          "params": [
-            "text"
-          ],
-          "found_in": "midscene/android/adb_shell.py"
-        }
-      ],
-      "missing_classes": [],
-      "missing_methods": [
-        {
-          "class": "AndroidDevice",
-          "name": "createVisualActionRegistry",
-          "params": [
-            "{\n        tap: (point)",
-            "doubleClick",
-            "longPress",
-            "dragAndDrop",
-            "keyboardPress",
-            "typeText",
-            "clearInput",
-            "cursorMove",
-            "actionScroll",
-            "back",
-            "home",
-            "recentApps",
-            "pullGesture",
-            "launch",
-            "terminate",
-            "runAdbShell",
-            "execYadb",
-            "scrollUntilTop",
-            "scrollUntilBottom",
-            "scrollUntilLeft",
-            "scrollUntilRight",
-            "scrollUp",
-            "scrollDown",
-            "scrollLeft",
-            "scrollRight",
-            "scroll",
-            "pullDown",
-            "pullDrag",
-            "pullUp",
-            "hideKeyboard",
-            "}",
-            "async ()"
-          ],
-          "async": false,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "describe",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "ensureYadb",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "execYadb",
-          "params": [
-            "keyboardContent"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "forceScreenshot",
-          "params": [
-            "path"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "getAdb",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "getDisplayDensity",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "getDisplayOrientation",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "getElementsInfo",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "getElementsNodeTree",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "getScreenSize",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "getUITree",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "launch",
-          "params": [
-            "uri"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "screenshotBase64",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "scrollDown",
-          "params": [
-            "distance?",
-            "startPoint?"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "scrollLeft",
-          "params": [
-            "distance?",
-            "startPoint?"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "scrollRight",
-          "params": [
-            "distance?",
-            "startPoint?"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "scrollUntilBottom",
-          "params": [
-            "startPoint?"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "scrollUntilLeft",
-          "params": [
-            "startPoint?"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "scrollUntilRight",
-          "params": [
-            "startPoint?"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "scrollUntilTop",
-          "params": [
-            "startPoint?"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "scrollUp",
-          "params": [
-            "distance?",
-            "startPoint?"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "terminate",
-          "params": [
-            "uri"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "url",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        }
-      ],
-      "signature_mismatch": [
-        {
-          "kind": "method",
-          "class": "AndroidDevice",
-          "name": "clearInput",
-          "ts_params": [
-            "element?"
-          ],
-          "python_params": [
-            "self"
-          ]
-        }
-      ]
-    },
-    {
-      "package": "computer",
-      "upstream": "input-driver.ts",
-      "python": "computer/input_driver.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [
-        {
-          "class": "ComputerInputDriver",
-          "name": "assertMousePosition",
-          "params": [
-            "targetX",
-            "targetY",
-            "context"
-          ],
-          "async": false,
-          "python_owner": "midscene/computer/input_driver.py"
-        },
-        {
-          "class": "ComputerInputDriver",
-          "name": "delay",
-          "params": [
-            "ms"
-          ],
-          "async": true,
-          "python_owner": "midscene/computer/input_driver.py"
-        },
-        {
-          "class": "ComputerInputDriver",
-          "name": "destroy",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/computer/input_driver.py"
-        },
-        {
-          "class": "ComputerInputDriver",
-          "name": "emitScrollDetents",
-          "params": [
-            "dx",
-            "dy",
-            "detents",
-            "delayMs"
-          ],
-          "async": true,
-          "python_owner": "midscene/computer/input_driver.py"
-        },
-        {
-          "class": "ComputerInputDriver",
-          "name": "focusActiveWindow",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/computer/input_driver.py"
-        },
-        {
-          "class": "ComputerInputDriver",
-          "name": "getMousePos",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/computer/input_driver.py"
-        },
-        {
-          "class": "ComputerInputDriver",
-          "name": "getScreenSize",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/computer/input_driver.py"
-        },
-        {
-          "class": "ComputerInputDriver",
-          "name": "keyTap",
-          "params": [
-            "key",
-            "modifiers?"
-          ],
-          "async": false,
-          "python_owner": "midscene/computer/input_driver.py"
-        },
-        {
-          "class": "ComputerInputDriver",
-          "name": "keyTapWithModifierDelay",
-          "params": [
-            "key",
-            "modifiers",
-            "delayMs"
-          ],
-          "async": true,
-          "python_owner": "midscene/computer/input_driver.py"
-        },
-        {
-          "class": "ComputerInputDriver",
-          "name": "keyToggle",
-          "params": [
-            "key",
-            "state",
-            "modifiers?"
-          ],
-          "async": false,
-          "python_owner": "midscene/computer/input_driver.py"
-        },
-        {
-          "class": "ComputerInputDriver",
-          "name": "mouseClick",
-          "params": [
-            "button?",
-            "double?"
-          ],
-          "async": false,
-          "python_owner": "midscene/computer/input_driver.py"
-        },
-        {
-          "class": "ComputerInputDriver",
-          "name": "mouseToggle",
-          "params": [
-            "state",
-            "button"
-          ],
-          "async": false,
-          "python_owner": "midscene/computer/input_driver.py"
-        },
-        {
-          "class": "ComputerInputDriver",
-          "name": "moveMouse",
-          "params": [
-            "x",
-            "y"
-          ],
-          "async": false,
-          "python_owner": "midscene/computer/input_driver.py"
-        },
-        {
-          "class": "ComputerInputDriver",
-          "name": "runPhasedScroll",
-          "params": [
-            "direction",
-            "pixels",
-            "steps"
-          ],
-          "async": false,
-          "python_owner": "midscene/computer/input_driver.py"
-        },
-        {
-          "class": "ComputerInputDriver",
-          "name": "scrollMouse",
-          "params": [
-            "x",
-            "y"
-          ],
-          "async": false,
-          "python_owner": "midscene/computer/input_driver.py"
-        },
-        {
-          "class": "ComputerInputDriver",
-          "name": "sendKey",
-          "params": [
-            "key",
-            "modifiers"
-          ],
-          "async": false,
-          "python_owner": "midscene/computer/input_driver.py"
-        },
-        {
-          "class": "ComputerInputDriver",
-          "name": "sendKeyViaAppleScript",
-          "params": [
-            "key",
-            "modifiers"
-          ],
-          "async": false,
-          "python_owner": "midscene/computer/input_driver.py"
-        },
-        {
-          "class": "ComputerInputDriver",
-          "name": "smoothMoveMouse",
-          "params": [
-            "targetX",
-            "targetY",
-            "steps",
-            "stepDelay"
-          ],
-          "async": true,
-          "python_owner": "midscene/computer/input_driver.py"
-        },
-        {
-          "class": "ComputerInputDriver",
-          "name": "typeString",
-          "params": [
-            "text"
-          ],
-          "async": false,
-          "python_owner": "midscene/computer/input_driver.py"
-        },
-        {
-          "class": "ComputerInputDriver",
-          "name": "withMouseButton",
-          "params": [
-            "button",
-            "run"
-          ],
-          "async": true,
-          "python_owner": "midscene/computer/input_driver.py"
-        }
-      ],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "agent/insight.ts",
-      "python": "core/agent/insight.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [
-        {
-          "class": "Insight",
-          "name": "aiAsk",
-          "params": [
-            "prompt",
-            "options"
-          ],
-          "async": true,
-          "python_owner": "midscene/core/agent/insight.py"
-        },
-        {
-          "class": "Insight",
-          "name": "aiAssert",
-          "params": [
-            "assertion",
-            "message?",
-            "options?"
-          ],
-          "async": true,
-          "python_owner": "midscene/core/agent/insight.py"
-        },
-        {
-          "class": "Insight",
-          "name": "aiBoolean",
-          "params": [
-            "prompt",
-            "options"
-          ],
-          "async": true,
-          "python_owner": "midscene/core/agent/insight.py"
-        },
-        {
-          "class": "Insight",
-          "name": "aiNumber",
-          "params": [
-            "prompt",
-            "options"
-          ],
-          "async": true,
-          "python_owner": "midscene/core/agent/insight.py"
-        },
-        {
-          "class": "Insight",
-          "name": "aiQuery",
-          "params": [
-            "demand",
-            "options"
-          ],
-          "async": true,
-          "python_owner": "midscene/core/agent/insight.py"
-        },
-        {
-          "class": "Insight",
-          "name": "aiString",
-          "params": [
-            "prompt",
-            "options"
-          ],
-          "async": true,
-          "python_owner": "midscene/core/agent/insight.py"
-        }
-      ],
-      "signature_mismatch": []
-    },
-    {
-      "package": "computer",
-      "upstream": "rdp/device.ts",
-      "python": "computer/rdp/device.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [
-        {
-          "class": "RDPDevice",
-          "name": "describe",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/computer/rdp/device.py"
-        },
-        {
-          "class": "RDPDevice",
-          "name": "destroy",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/computer/rdp/device.py"
-        },
-        {
-          "class": "RDPDevice",
-          "name": "screenshotBase64",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/computer/rdp/device.py"
-        },
-        {
-          "class": "RDPDevice",
-          "name": "size",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/computer/rdp/device.py"
-        }
-      ],
-      "signature_mismatch": []
-    },
-    {
-      "package": "harmony",
-      "upstream": "device.ts",
-      "python": "harmony/device.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [
-        {
-          "class": "HarmonyDevice",
-          "name": "describe",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/harmony/device.py"
-        },
-        {
-          "class": "HarmonyDevice",
-          "name": "getHdc",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/harmony/device.py"
-        },
-        {
-          "class": "HarmonyDevice",
-          "name": "launch",
-          "params": [
-            "uri"
-          ],
-          "async": true,
-          "python_owner": "midscene/harmony/device.py"
-        }
-      ],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "report-generator.ts",
-      "python": "core/report_generator.py",
-      "missing_functions": [],
-      "moved_functions": [
-        {
-          "name": "assertReportGenerationOptions",
-          "params": [
-            "opts"
-          ],
-          "found_in": "midscene/core/dump/report_session.py"
-        }
-      ],
-      "missing_classes": [],
-      "missing_methods": [
-        {
-          "class": "ReportGenerator",
-          "name": "createSourceSnapshot",
-          "params": [
-            "scopeId",
-            "executionIds?"
-          ],
-          "async": true,
-          "python_owner": "midscene/core/dump/report_session.py"
-        },
-        {
-          "class": "ReportGenerator",
-          "name": "enableSourceSnapshots",
-          "params": [
-            "scopeId"
-          ],
-          "async": false,
-          "python_owner": "midscene/core/dump/report_session.py"
-        },
-        {
-          "class": "ReportGenerator",
-          "name": "writeRunnerReport",
-          "params": [
-            "input",
-            "scopeId",
-            "meta"
-          ],
-          "async": true,
-          "python_owner": "midscene/core/dump/report_session.py"
-        }
-      ],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "dump/execution-recorder.ts",
-      "python": "core/dump/execution_recorder.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [
-        {
-          "class": "ExecutionRecorder",
-          "name": "capture",
-          "params": [
-            "executionIds?",
-            "meta"
-          ],
-          "async": false,
-          "python_owner": "midscene/core/dump/execution_recorder.py"
-        },
-        {
-          "class": "ExecutionRecorder",
-          "name": "toDump",
-          "params": [
-            "meta"
-          ],
-          "async": false,
-          "python_owner": "midscene/core/dump/execution_recorder.py"
-        }
-      ],
-      "signature_mismatch": [
-        {
-          "kind": "method",
-          "class": "ExecutionRecorder",
-          "name": "record",
-          "ts_params": [
-            "execution",
-            "meta"
-          ],
-          "python_params": [
-            "self",
-            "execution"
-          ]
-        }
-      ]
-    },
-    {
-      "package": "core",
-      "upstream": "yaml/utils.ts",
-      "python": "core/yaml/utils.py",
-      "missing_functions": [
-        {
-          "name": "interpolateEnvVars",
-          "params": [
-            "content"
-          ]
-        },
-        {
-          "name": "parseLegacyYamlScript",
-          "params": [
-            "content",
-            "filePath?",
-            "onConfig?"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/models/doubao.ts",
-      "python": "core/ai_model/models/doubao.py",
-      "missing_functions": [
-        {
-          "name": "parseDoubaoRawLocateValue",
-          "params": [
-            "input"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/service-caller/codex/codex-app-server.ts",
-      "python": "core/ai_model/service_caller/codex/codex_app_server.py",
-      "missing_functions": [
-        {
-          "name": "__shutdownCodexAppServerForTests",
-          "params": []
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "distance-schema.ts",
-      "python": "core/distance_schema.py",
-      "missing_functions": [
-        {
-          "name": "getMidsceneDistanceSchema",
-          "params": []
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "shared",
-      "upstream": "env/model-config-manager.ts",
-      "python": "shared/env/model_config_manager.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [
-        {
-          "class": "ModelConfigManager",
-          "name": "registerGlobalConfigManager",
-          "params": [
-            "globalConfigManager"
-          ],
-          "async": false,
-          "python_owner": "midscene/shared/env/model_config_manager.py"
-        }
-      ],
-      "signature_mismatch": []
-    },
-    {
-      "package": "android",
-      "upstream": "scrcpy-device-adapter.ts",
-      "python": "android/scrcpy_device_adapter.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [
-        {
-          "class": "ScrcpyDeviceAdapter",
-          "name": "createAndroidAdb",
-          "params": [
-            "{ adbExecTimeout: 60_000, deviceId }"
-          ],
-          "async": false,
-          "python_owner": "midscene/android/scrcpy_device_adapter.py"
-        }
-      ],
-      "signature_mismatch": [
-        {
-          "kind": "method",
-          "class": "ScrcpyDeviceAdapter",
-          "name": "screenshotBase64",
-          "ts_params": [
-            "deviceInfo"
-          ],
-          "python_params": [
-            "self",
-            "device_info",
-            "fallback"
-          ]
-        }
-      ]
-    },
-    {
-      "package": "core",
-      "upstream": "test-runner/errors.ts",
-      "python": "core/test_runner/errors.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [
-        {
-          "class": "NodeInputValidationError",
-          "name": "fromZod",
-          "params": [
-            "node",
-            "error"
-          ],
-          "async": false,
-          "python_owner": "midscene/core/test_runner/errors.py"
-        }
-      ],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "yaml/player.ts",
-      "python": "core/yaml/player.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [
-        {
-          "class": "ScriptPlayer",
-          "name": "playTask",
-          "params": [
-            "taskStatus",
-            "agent"
-          ],
-          "async": true,
-          "python_owner": "midscene/core/yaml/player.py"
-        }
-      ],
-      "signature_mismatch": []
-    },
     {
       "package": "shared",
       "upstream": "agent-tools/user-prompt.ts",
@@ -891,7 +20,8 @@
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [],
-      "signature_mismatch": [
+      "signature_mismatch": [],
+      "allowlisted_signature": [
         {
           "kind": "function",
           "name": "composeUserPrompt",
@@ -903,39 +33,11 @@
             "image",
             "image_name",
             "convert_http_image_to_base64"
-          ]
+          ],
+          "category": "options-object",
+          "reason": "Upstream input is {prompt, image?, ...}; Python takes the destructured fields directly."
         }
       ]
-    },
-    {
-      "package": "core",
-      "upstream": "agent/agent-report-manager.ts",
-      "python": "core/agent/agent_report_manager.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [
-        "AgentReportManager"
-      ],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "agent/report-file-name.ts",
-      "python": "core/agent/report_file_name.py",
-      "missing_functions": [],
-      "moved_functions": [
-        {
-          "name": "getReportFileName",
-          "params": [
-            "tag"
-          ],
-          "found_in": "midscene/core/dump/report_action_dump.py"
-        }
-      ],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
     },
     {
       "package": "core",
@@ -945,7 +47,8 @@
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [],
-      "signature_mismatch": [
+      "signature_mismatch": [],
+      "allowlisted_signature": [
         {
           "kind": "function",
           "name": "prepareModelImage",
@@ -957,7 +60,9 @@
             "width",
             "height",
             "policy"
-          ]
+          ],
+          "category": "options-object",
+          "reason": "Upstream input is {imageBase64,width,height,policy}; Python takes those fields as parameters."
         }
       ]
     },
@@ -969,7 +74,8 @@
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [],
-      "signature_mismatch": [
+      "signature_mismatch": [],
+      "allowlisted_signature": [
         {
           "kind": "function",
           "name": "resolveLocate",
@@ -980,7 +86,9 @@
           ],
           "python_params": [
             "adapter"
-          ]
+          ],
+          "category": "context-object",
+          "reason": "Upstream locate definition plus resolved planner/protocol context; Python reads them from the ModelAdapter instance."
         }
       ]
     },
@@ -992,7 +100,8 @@
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [],
-      "signature_mismatch": [
+      "signature_mismatch": [],
+      "allowlisted_signature": [
         {
           "kind": "function",
           "name": "resolvePlanning",
@@ -1005,28 +114,11 @@
           "python_params": [
             "adapter",
             "protocol_context"
-          ]
+          ],
+          "category": "context-object",
+          "reason": "Upstream planning definition plus resolved planner/protocol context; Python reads them from the ModelAdapter instance."
         }
       ]
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/models/jev/image.ts",
-      "python": "core/ai_model/models/jev/image.py",
-      "missing_functions": [],
-      "moved_functions": [
-        {
-          "name": "mapJevBox",
-          "params": [
-            "box",
-            "targetSize"
-          ],
-          "found_in": "midscene/core/ai_model/models/jev/locate.py"
-        }
-      ],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
     },
     {
       "package": "core",
@@ -1036,7 +128,8 @@
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [],
-      "signature_mismatch": [
+      "signature_mismatch": [],
+      "allowlisted_signature": [
         {
           "kind": "function",
           "name": "buildJevAction",
@@ -1054,7 +147,9 @@
             "include_locate_in_planning",
             "shot_size",
             "reference_images"
-          ]
+          ],
+          "category": "options-object",
+          "reason": "Upstream options object (actionSpace, includeLocateInPlanning, shotSize, referenceImages) flattened into Python parameters."
         }
       ]
     },
@@ -1066,7 +161,8 @@
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [],
-      "signature_mismatch": [
+      "signature_mismatch": [],
+      "allowlisted_signature": [
         {
           "kind": "function",
           "name": "prepareJevPlanningContext",
@@ -1082,7 +178,9 @@
             "conversation_history",
             "action_context",
             "reference_images"
-          ]
+          ],
+          "category": "options-object",
+          "reason": "Upstream options object (modelRuntime, actionSpace, history, ...) flattened into Python parameters."
         }
       ]
     },
@@ -1094,7 +192,8 @@
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [],
-      "signature_mismatch": [
+      "signature_mismatch": [],
+      "allowlisted_signature": [
         {
           "kind": "function",
           "name": "decideJevAction",
@@ -1107,50 +206,9 @@
             "model_runtime",
             "action_space",
             "include_locate_in_planning"
-          ]
-        }
-      ]
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/models/ui-tars/parser.ts",
-      "python": "core/ai_model/models/ui_tars/parser.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": [
-        {
-          "kind": "function",
-          "name": "parseUiTarsPlanningResponse",
-          "ts_params": [
-            "rawResponse",
-            "shotSize",
-            "uiTarsModelVersion"
           ],
-          "python_params": [
-            "raw_response",
-            "shot_size"
-          ]
-        }
-      ]
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/models/ui-tars/planning.ts",
-      "python": "core/ai_model/models/ui_tars/planning.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": [
-        {
-          "kind": "function",
-          "name": "createUiTarsPlanner",
-          "ts_params": [
-            "uiTarsModelVersion"
-          ],
-          "python_params": []
+          "category": "options-object",
+          "reason": "Upstream options object (modelRuntime, actionSpace, includeLocateInPlanning) flattened into Python parameters."
         }
       ]
     },
@@ -1162,7 +220,8 @@
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [],
-      "signature_mismatch": [
+      "signature_mismatch": [],
+      "allowlisted_signature": [
         {
           "kind": "function",
           "name": "buildInsightSystemPrompt",
@@ -1173,7 +232,9 @@
             "insight_protocol",
             "screenshot_included",
             "reference_images_included"
-          ]
+          ],
+          "category": "options-object",
+          "reason": "Upstream options object (protocol, screenshot/reference-image flags) flattened into Python parameters."
         }
       ]
     },
@@ -1185,7 +246,8 @@
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [],
-      "signature_mismatch": [
+      "signature_mismatch": [],
+      "allowlisted_signature": [
         {
           "kind": "function",
           "name": "buildStandardPlanningSystemPrompt",
@@ -1200,29 +262,11 @@
             "include_sub_goals",
             "include_thought",
             "include_log"
-          ]
+          ],
+          "category": "options-object",
+          "reason": "Upstream input object (actionSpace, protocol, locate spec, include flags) flattened into Python parameters."
         }
       ]
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/service-caller/model-call.ts",
-      "python": "core/ai_model/service_caller/model_call.py",
-      "missing_functions": [],
-      "moved_functions": [
-        {
-          "name": "callAIWithStringResponse",
-          "params": [
-            "msgs",
-            "modelRuntime",
-            "options?"
-          ],
-          "found_in": "midscene/core/ai_model/service_caller/call_ai.py"
-        }
-      ],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
     },
     {
       "package": "core",
@@ -1232,7 +276,8 @@
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [],
-      "signature_mismatch": [
+      "signature_mismatch": [],
+      "allowlisted_signature": [
         {
           "kind": "function",
           "name": "createSiwcAuthorization",
@@ -1244,92 +289,9 @@
             "redirect_uri",
             "client_id",
             "agent_name"
-          ]
-        },
-        {
-          "kind": "function",
-          "name": "exchangeSiwcCode",
-          "ts_params": [
-            "attempt",
-            "callback",
-            "signal",
-            "dependencies?"
           ],
-          "python_params": [
-            "attempt",
-            "callback",
-            "proxy"
-          ]
-        }
-      ]
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/service-caller/openai/siwc/prepare-call.ts",
-      "python": "core/ai_model/service_caller/openai/siwc/prepare_call.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": [
-        {
-          "kind": "function",
-          "name": "prepareSiwcCall",
-          "ts_params": [
-            "modelRuntime",
-            "options?"
-          ],
-          "python_params": [
-            "model_runtime"
-          ]
-        }
-      ]
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/service-caller/openai/siwc/refresh.ts",
-      "python": "core/ai_model/service_caller/openai/siwc/refresh.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": [
-        {
-          "kind": "function",
-          "name": "refreshSiwcCredentials",
-          "ts_params": [
-            "saved",
-            "signal",
-            "dependencies?"
-          ],
-          "python_params": [
-            "saved",
-            "proxy"
-          ]
-        }
-      ]
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/service-caller/system-one/prepare-system-one.ts",
-      "python": "core/ai_model/service_caller/system_one/prepare_system_one.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": [
-        {
-          "kind": "function",
-          "name": "prepareSystemOne",
-          "ts_params": [
-            "config",
-            "request"
-          ],
-          "python_params": [
-            "config",
-            "request",
-            "execution_id"
-          ]
+          "category": "options-object",
+          "reason": "Upstream options object (hostId, redirectUri, clientId, agentName) flattened into Python parameters."
         }
       ]
     },
@@ -1341,7 +303,8 @@
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [],
-      "signature_mismatch": [
+      "signature_mismatch": [],
+      "allowlisted_signature": [
         {
           "kind": "function",
           "name": "parseModelResponseJson",
@@ -1353,7 +316,9 @@
             "raw",
             "source",
             "preserve_string_value_keys"
-          ]
+          ],
+          "category": "options-object",
+          "reason": "Upstream context object {source, preserveStringValueKeys} flattened into Python parameters."
         }
       ]
     },
@@ -1365,7 +330,8 @@
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [],
-      "signature_mismatch": [
+      "signature_mismatch": [],
+      "allowlisted_signature": [
         {
           "kind": "function",
           "name": "createLocateResultPromptSpec",
@@ -1377,7 +343,9 @@
             "resolved_coordinates",
             "result_key",
             "result_key_aliases"
-          ]
+          ],
+          "category": "options-object",
+          "reason": "Upstream options object (resultKey, aliases) flattened into Python parameters."
         }
       ]
     },
@@ -1389,7 +357,8 @@
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [],
-      "signature_mismatch": [
+      "signature_mismatch": [],
+      "allowlisted_signature": [
         {
           "kind": "function",
           "name": "AiLocateElement",
@@ -1403,7 +372,9 @@
             "locate_image",
             "abort_signal",
             "search_config"
-          ]
+          ],
+          "category": "options-object",
+          "reason": "Upstream options object (context, modelRuntime, locateImage, searchConfig, ...) flattened into Python parameters."
         }
       ]
     },
@@ -1415,7 +386,8 @@
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [],
-      "signature_mismatch": [
+      "signature_mismatch": [],
+      "allowlisted_signature": [
         {
           "kind": "function",
           "name": "buildSearchAreaConfig",
@@ -1425,7 +397,9 @@
           "python_params": [
             "context",
             "base_rect"
-          ]
+          ],
+          "category": "options-object",
+          "reason": "Upstream options object (context, baseRect) flattened into Python parameters."
         }
       ]
     },
@@ -1437,7 +411,8 @@
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [],
-      "signature_mismatch": [
+      "signature_mismatch": [],
+      "allowlisted_signature": [
         {
           "kind": "function",
           "name": "AiLocateSection",
@@ -1448,7 +423,9 @@
             "context",
             "section_description",
             "model_runtime"
-          ]
+          ],
+          "category": "options-object",
+          "reason": "Upstream options object (context, sectionDescription, modelRuntime) flattened into Python parameters."
         }
       ]
     },
@@ -1460,7 +437,8 @@
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [],
-      "signature_mismatch": [
+      "signature_mismatch": [],
+      "allowlisted_signature": [
         {
           "kind": "function",
           "name": "extractBoolean",
@@ -1474,7 +452,9 @@
             "model_runtime",
             "page_description",
             "context_text"
-          ]
+          ],
+          "category": "options-object",
+          "reason": "Upstream options object (booleanFn, dataQuery, context, ...) flattened into Python parameters."
         }
       ]
     },
@@ -1486,7 +466,8 @@
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [],
-      "signature_mismatch": [
+      "signature_mismatch": [],
+      "allowlisted_signature": [
         {
           "kind": "function",
           "name": "AiExtractElementInfo",
@@ -1502,31 +483,9 @@
             "screenshot_included",
             "context_text",
             "screenshot_sequence"
-          ]
-        }
-      ]
-    },
-    {
-      "package": "core",
-      "upstream": "ai-model/workflows/insight/insight-response-parser.ts",
-      "python": "core/ai_model/workflows/insight/insight_response_parser.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": [
-        {
-          "kind": "function",
-          "name": "parseInsightResponse",
-          "ts_params": [
-            "content",
-            "dataOutputProtocol",
-            "jsonParser"
           ],
-          "python_params": [
-            "content",
-            "data_output_protocol"
-          ]
+          "category": "options-object",
+          "reason": "Upstream options object (taskType, dataQuery, context, screenshots, ...) flattened into Python parameters."
         }
       ]
     },
@@ -1538,7 +497,8 @@
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [],
-      "signature_mismatch": [
+      "signature_mismatch": [],
+      "allowlisted_signature": [
         {
           "kind": "function",
           "name": "buildCustomPlanningMessages",
@@ -1554,7 +514,9 @@
             "screenshot_url",
             "action_context",
             "include_screenshot"
-          ]
+          ],
+          "category": "options-object",
+          "reason": "Upstream input object (system prompt, instruction, history, screenshot, ...) flattened into Python parameters."
         },
         {
           "kind": "function",
@@ -1573,7 +535,9 @@
             "config",
             "include_locate_in_planning",
             "action_context"
-          ]
+          ],
+          "category": "options-object",
+          "reason": "Upstream options object (context, modelRuntime, actionSpace, ...) flattened into Python parameters."
         }
       ]
     },
@@ -1585,7 +549,8 @@
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [],
-      "signature_mismatch": [
+      "signature_mismatch": [],
+      "allowlisted_signature": [
         {
           "kind": "function",
           "name": "parseStandardPlanningResponse",
@@ -1599,7 +564,9 @@
             "action_space",
             "include_thought",
             "log_source"
-          ]
+          ],
+          "category": "options-object",
+          "reason": "Upstream options object (action output protocol, actionSpace, include flags) flattened into Python parameters."
         }
       ]
     },
@@ -1611,7 +578,8 @@
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [],
-      "signature_mismatch": [
+      "signature_mismatch": [],
+      "allowlisted_signature": [
         {
           "kind": "function",
           "name": "standardPlan",
@@ -1631,7 +599,9 @@
             "planning_advice",
             "reference_images",
             "images_include_count"
-          ]
+          ],
+          "category": "options-object",
+          "reason": "Upstream opts object (context, modelRuntime, actionSpace, effort, advice, ...) flattened into Python parameters."
         }
       ]
     },
@@ -1643,7 +613,8 @@
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [],
-      "signature_mismatch": [
+      "signature_mismatch": [],
+      "allowlisted_signature": [
         {
           "kind": "function",
           "name": "generateRecorderSessionMetadata",
@@ -1657,7 +628,9 @@
             "model_runtime",
             "fallback_name",
             "max_screenshots"
-          ]
+          ],
+          "category": "options-object",
+          "reason": "Upstream input object (target, events, modelRuntime, ...) and modelConfig flattened into Python parameters."
         }
       ]
     },
@@ -1669,7 +642,8 @@
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [],
-      "signature_mismatch": [
+      "signature_mismatch": [],
+      "allowlisted_signature": [
         {
           "kind": "function",
           "name": "getBridgeServerHost",
@@ -1679,7 +653,9 @@
           "python_params": [
             "host",
             "allow_remote_access"
-          ]
+          ],
+          "category": "options-object",
+          "reason": "Upstream options object (host, allowRemoteAccess) flattened into Python parameters."
         }
       ]
     },
@@ -1691,7 +667,8 @@
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [],
-      "signature_mismatch": [
+      "signature_mismatch": [],
+      "allowlisted_signature": [
         {
           "kind": "function",
           "name": "createCliInterruptWaiter",
@@ -1704,100 +681,11 @@
             "source",
             "input_source",
             "force_exit"
-          ]
-        },
-        {
-          "kind": "function",
-          "name": "waitForCliInterrupt",
-          "ts_params": [
-            "watchdogMs",
-            "source",
-            "input"
           ],
-          "python_params": [
-            "watchdog_ms",
-            "source"
-          ]
+          "category": "options-object",
+          "reason": "Upstream options object (source, inputSource, forceExit) flattened into Python parameters."
         }
       ]
-    },
-    {
-      "package": "core",
-      "upstream": "common.ts",
-      "python": "core/common.py",
-      "missing_functions": [],
-      "moved_functions": [
-        {
-          "name": "findActionInActionSpaceOrThrow",
-          "params": [
-            "planType",
-            "actionSpace"
-          ],
-          "found_in": "midscene/core/device/__init__.py"
-        }
-      ],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "web-integration",
-      "upstream": "common/cache-helper.ts",
-      "python": "web_integration/common/cache_helper.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": [
-        {
-          "kind": "function",
-          "name": "judgeOrderSensitive",
-          "ts_params": [
-            "options",
-            "debug"
-          ],
-          "python_params": [
-            "options"
-          ]
-        }
-      ]
-    },
-    {
-      "package": "core",
-      "upstream": "dump/html-utils.ts",
-      "python": "core/dump/html_utils.py",
-      "missing_functions": [],
-      "moved_functions": [
-        {
-          "name": "extractImageByIdSync",
-          "params": [
-            "htmlPath",
-            "imageId"
-          ],
-          "found_in": "midscene/core/dump/screenshot_store.py"
-        }
-      ],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "dump/image-reference.ts",
-      "python": "core/dump/image_reference.py",
-      "missing_functions": [],
-      "moved_functions": [
-        {
-          "name": "normalizeScreenshotRef",
-          "params": [
-            "value"
-          ],
-          "found_in": "midscene/core/dump/screenshot_store.py"
-        }
-      ],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
     },
     {
       "package": "core",
@@ -1807,7 +695,8 @@
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [],
-      "signature_mismatch": [
+      "signature_mismatch": [],
+      "allowlisted_signature": [
         {
           "kind": "function",
           "name": "verifyLocator",
@@ -1823,185 +712,79 @@
             "prompt",
             "expect_center",
             "opt"
-          ]
+          ],
+          "category": "context-object",
+          "reason": "Upstream separates locateOpt and verifyLocateOption; Python merges both into one options mapping."
         }
       ]
-    },
-    {
-      "package": "shared",
-      "upstream": "env/global-config-manager.ts",
-      "python": "shared/env/global_config_manager.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": [
-        {
-          "kind": "method",
-          "class": "GlobalConfigManager",
-          "name": "overrideAIConfig",
-          "ts_params": [
-            "newConfig",
-            "extendMode",
-            "// true"
-          ],
-          "python_params": [
-            "self",
-            "new_config",
-            "extend_mode"
-          ]
-        }
-      ]
-    },
-    {
-      "package": "harmony",
-      "upstream": "hdc.ts",
-      "python": "harmony/hdc.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": [
-        {
-          "kind": "method",
-          "class": "HdcClient",
-          "name": "exec",
-          "ts_params": [
-            "args"
-          ],
-          "python_params": [
-            "self"
-          ]
-        }
-      ]
-    },
-    {
-      "package": "ios",
-      "upstream": "input-focus.ts",
-      "python": "ios/input_focus.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": [
-        {
-          "kind": "function",
-          "name": "waitForInputFocus",
-          "ts_params": [
-            "request"
-          ],
-          "python_params": [
-            "request",
-            "timeout_ms"
-          ]
-        }
-      ]
-    },
-    {
-      "package": "ios",
-      "upstream": "ios-webdriver-client.ts",
-      "python": "ios/ios_webdriver_client.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [
-        "IOSWebDriverClient"
-      ],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "computer",
-      "upstream": "rdp/helper-binary.ts",
-      "python": "computer/rdp/helper_binary.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": [
-        {
-          "kind": "function",
-          "name": "getRdpHelperBinaryPath",
-          "ts_params": [],
-          "python_params": [
-            "package_root"
-          ]
-        }
-      ]
-    },
-    {
-      "package": "shared",
-      "upstream": "report-artifact.ts",
-      "python": "shared/report_artifact.py",
-      "missing_functions": [],
-      "moved_functions": [
-        {
-          "name": "assertReportArtifactPath",
-          "params": [
-            "path"
-          ],
-          "found_in": "midscene/core/dump/report_artifact_store.py"
-        },
-        {
-          "name": "parseReportArtifactManifest",
-          "params": [
-            "value"
-          ],
-          "found_in": "midscene/core/dump/report_artifact_store.py"
-        }
-      ],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
     },
     {
       "package": "core",
       "upstream": "report-cli.ts",
       "python": "core/report_cli.py",
       "missing_functions": [],
-      "moved_functions": [
-        {
-          "name": "mergeReportFiles",
-          "params": [
-            "options"
-          ],
-          "found_in": "midscene/core/dump/report_dump_compactor.py"
-        },
-        {
-          "name": "reportFileToMarkdown",
-          "params": [
-            "options"
-          ],
-          "found_in": "midscene/core/report_markdown.py"
-        },
-        {
-          "name": "splitReportFile",
-          "params": [
-            "options"
-          ],
-          "found_in": "midscene/core/dump/test_report_images.py"
-        }
-      ],
+      "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [],
-      "signature_mismatch": []
+      "signature_mismatch": [],
+      "allowlisted_signature": [
+        {
+          "kind": "function",
+          "name": "mergeReportFiles",
+          "ts_params": [
+            "options"
+          ],
+          "python_params": [
+            "html_paths",
+            "output_dir",
+            "output_name",
+            "overwrite"
+          ],
+          "category": "options-object",
+          "reason": "Upstream options object (htmlPaths, outputDir, outputName, overwrite) flattened into Python parameters."
+        },
+        {
+          "kind": "function",
+          "name": "splitReportFile",
+          "ts_params": [
+            "options"
+          ],
+          "python_params": [
+            "html_path",
+            "output_dir"
+          ],
+          "category": "options-object",
+          "reason": "Upstream options object (htmlPath, outputDir) flattened into Python parameters."
+        }
+      ]
     },
     {
       "package": "core",
       "upstream": "report.ts",
       "python": "core/report.py",
       "missing_functions": [],
-      "moved_functions": [
-        {
-          "name": "exportReportArtifact",
-          "params": [
-            "options"
-          ],
-          "found_in": "midscene/core/dump/report_artifact_writer.py"
-        }
-      ],
+      "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [],
-      "signature_mismatch": []
+      "signature_mismatch": [],
+      "allowlisted_signature": [
+        {
+          "kind": "function",
+          "name": "exportReportArtifact",
+          "ts_params": [
+            "options"
+          ],
+          "python_params": [
+            "report_path",
+            "output_dir",
+            "report_file_name",
+            "output_format",
+            "overwrite"
+          ],
+          "category": "options-object",
+          "reason": "Upstream options object (reportPath, outputDir, reportFileName, outputFormat, overwrite) flattened into Python parameters."
+        }
+      ]
     },
     {
       "package": "core",
@@ -2011,7 +794,8 @@
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [],
-      "signature_mismatch": [
+      "signature_mismatch": [],
+      "allowlisted_signature": [
         {
           "kind": "function",
           "name": "defineNode",
@@ -2025,7 +809,9 @@
             "description",
             "string_input_key",
             "input_schema"
-          ]
+          ],
+          "category": "options-object",
+          "reason": "Upstream options object (name, execute, title, description, input schema) flattened into Python parameters."
         }
       ]
     },
@@ -2037,7 +823,8 @@
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [],
-      "signature_mismatch": [
+      "signature_mismatch": [],
+      "allowlisted_signature": [
         {
           "kind": "function",
           "name": "captureAndroidUITree",
@@ -2047,68 +834,11 @@
           "python_params": [
             "run_adb_command",
             "device_id"
-          ]
+          ],
+          "category": "options-object",
+          "reason": "Upstream options object (runAdbCommand, deviceId) flattened into Python parameters."
         }
       ]
-    },
-    {
-      "package": "core",
-      "upstream": "utils.ts",
-      "python": "core/utils.py",
-      "missing_functions": [],
-      "moved_functions": [
-        {
-          "name": "getReportTpl",
-          "params": [],
-          "found_in": "midscene/core/dump/html_utils.py"
-        },
-        {
-          "name": "insertContentBeforeClosingHtml",
-          "params": [
-            "html",
-            "content"
-          ],
-          "found_in": "midscene/core/dump/html_utils.py"
-        },
-        {
-          "name": "insertScriptBeforeClosingHtml",
-          "params": [
-            "filePath",
-            "scriptContent"
-          ],
-          "found_in": "midscene/core/dump/html_utils.py"
-        },
-        {
-          "name": "reportHTMLContent",
-          "params": [
-            "dumpData",
-            "reportPath?",
-            "appendReport?",
-            "withTpl",
-            "// whether return with report template, default"
-          ],
-          "found_in": "midscene/core/dump/html_utils.py"
-        },
-        {
-          "name": "writeDumpReport",
-          "params": [
-            "fileName",
-            "dumpData",
-            "appendReport?"
-          ],
-          "found_in": "midscene/core/dump/html_utils.py"
-        },
-        {
-          "name": "writeLogFile",
-          "params": [
-            "opts"
-          ],
-          "found_in": "midscene/core/dump/html_utils.py"
-        }
-      ],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
     }
   ]
 }

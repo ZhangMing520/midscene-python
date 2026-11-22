@@ -190,6 +190,19 @@ class ScrcpyDeviceAdapter:
 
     # -- configuration ----------------------------------------------------
 
+    @staticmethod
+    async def create_android_adb(
+        adb_exec_timeout: float = 60_000,
+        device_id: Optional[str] = None,
+    ) -> Any:
+        """Create the ADB client used by the scrcpy backend (upstream)."""
+        from midscene.android.adb import create_android_adb
+
+        return await create_android_adb(
+            adb_exec_timeout=adb_exec_timeout,
+            device_id=device_id,
+        )
+
     def _create_default_backend(self) -> Any:
         from midscene.android.scrcpy_manager import AdbCommandBackend
 
@@ -408,6 +421,7 @@ class ScrcpyDeviceAdapter:
     async def screenshot_base64(
         self,
         device_info: Any = None,
+        *,
         fallback: Optional[Callable[[], Any]] = None,
     ) -> str:
         """Capture via scrcpy, falling back to the ADB path when unavailable.

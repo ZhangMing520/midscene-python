@@ -16,6 +16,7 @@ from midscene.core.ai_model.service_caller.system_one.utils import (
 def prepare_system_one(
     config: Dict[str, Any],
     request: Dict[str, Any],
+    *,
     execution_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     if not config.get("openaiApiKey"):

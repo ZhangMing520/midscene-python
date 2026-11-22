@@ -121,6 +121,14 @@ class HarmonyDevice(AbstractInterface):
         assert self.hdc is not None
         return self.hdc
 
+    def describe(self) -> str:
+        """Human-readable device description (upstream describe)."""
+        return f"DeviceId: {self.device_id}"
+
+    async def get_hdc(self) -> HdcClient:
+        """Current HDC client, connecting on first use (upstream getHdc)."""
+        return await self._get_hdc()
+
     async def get_context(self) -> UIContext:
         screenshot = await self.screenshot_base64()
         size = await self.size()
@@ -445,6 +453,11 @@ class HarmonyDevice(AbstractInterface):
             await hdc.start_ability(bundle_name, ability_name)
         else:
             await hdc.launch(target)
+
+    async def launch(self, uri: str) -> 'HarmonyDevice':
+        """Launch an app or URI and return this device (upstream launch)."""
+        await self.launch_app(uri)
+        return self
 
     async def stop_app(self, bundle_name: str) -> None:
         resolved = self._resolve_bundle_name_for_terminate(bundle_name)

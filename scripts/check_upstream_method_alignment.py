@@ -31,6 +31,7 @@ from typing import Dict, Iterable, List, Optional, Tuple
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BASELINE = os.path.join(REPO_ROOT, "scripts", "upstream_alignment_baseline.json")
+ALLOWLIST = os.path.join(REPO_ROOT, "scripts", "method_alignment_allowlist.json")
 DEFAULT_UPSTREAM_ROOT = "/home/zhangming/gitspace/midscene"
 
 _EXPORT_DECL = re.compile(
@@ -197,9 +198,12 @@ def _split_params(params: str) -> List[str]:
 def _param_names(params: str) -> List[str]:
     names: List[str] = []
     for raw in _split_params(params):
+        # Line/block comments inside a parameter list are not parameters.
+        raw = re.sub(r"//[^\n]*", "", raw)
+        raw = re.sub(r"/\*.*?\*/", "", raw, flags=re.DOTALL)
         value = raw.split("=")[0].strip()
         value = value.lstrip(".").strip()
-        value = value.rstrip("?")
+        value = value.rstrip("?").strip()
         if not value:
             continue
         if value[0] in "{[":
@@ -233,6 +237,25 @@ def _class_body(source: str, name_end: int) -> Tuple[str, int]:
     return source[open_index + 1 :], open_index + 1
 
 
+def _is_continuation_line(body: str, offset: int) -> bool:
+    """True when the line at ``offset`` continues a multi-line expression.
+
+    Class fields such as ``private readonly actions =\\n  build({...})`` put a
+    call expression at the start of a line; without this guard the scanner
+    would report the call as a public method.
+    """
+    line_start = body.rfind("\n", 0, offset) + 1
+    prefix = body[line_start:offset]
+    if prefix.strip():
+        return False
+    previous_end = line_start - 1
+    if previous_end < 0:
+        return False
+    previous_start = body.rfind("\n", 0, previous_end) + 1
+    previous = body[previous_start:previous_end].rstrip()
+    return previous.endswith(("=", "(", ",", "&&", "||", "?", ":", "+"))
+
+
 def _ts_classes(source: str) -> Dict[str, Dict[str, Dict[str, object]]]:
     """Public methods per exported class: {class: {method: info}}."""
     classes: Dict[str, Dict[str, Dict[str, object]]] = {}
@@ -248,6 +271,8 @@ def _ts_classes(source: str) -> Dict[str, Dict[str, Dict[str, object]]]:
         for method in _METHOD.finditer(body):
             offset = method.start(3)
             if depths[offset] != 0:
+                continue
+            if _is_continuation_line(body, method.start()):
                 continue
             modifiers = method.group(1) or ""
             if re.search(r"\b(private|protected)\b", modifiers):
@@ -296,14 +321,25 @@ def _python_signature(node: ast.AST) -> Dict[str, object]:
     }
 
 
-def _python_api(path: str) -> Tuple[Dict[str, Dict[str, object]], Dict[str, Dict[str, Dict[str, object]]]]:
-    """Return (functions, classes{name: {method: signature}})."""
+def _python_api(
+    path: str,
+) -> Tuple[
+    Dict[str, Dict[str, object]],
+    Dict[str, Dict[str, Dict[str, object]]],
+    Dict[str, str],
+]:
+    """Return (functions, classes{name: {method: signature}}, aliases).
+
+    ``aliases`` maps a local name to the imported/assigned target, so modules
+    that expose a class as ``Client = Backend`` are not reported as missing.
+    """
     try:
         tree = ast.parse(open(path, encoding="utf-8").read())
     except (OSError, SyntaxError):
-        return {}, {}
+        return {}, {}, {}
     functions: Dict[str, Dict[str, object]] = {}
     classes: Dict[str, Dict[str, Dict[str, object]]] = {}
+    aliases: Dict[str, str] = {}
     for node in tree.body:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             functions[node.name] = _python_signature(node)
@@ -315,7 +351,21 @@ def _python_api(path: str) -> Tuple[Dict[str, Dict[str, object]], Dict[str, Dict
                         continue
                     methods[child.name] = _python_signature(child)
             classes[node.name] = methods
-    return functions, classes
+        elif isinstance(node, ast.Assign) and len(node.targets) == 1:
+            target = node.targets[0]
+            if isinstance(target, ast.Name):
+                value = node.value
+                if isinstance(value, ast.Name):
+                    aliases[target.id] = value.id
+                elif isinstance(value, ast.Attribute):
+                    aliases[target.id] = value.attr
+        elif isinstance(node, (ast.Import, ast.ImportFrom)):
+            # Re-exports are commonly plain imports; the symbol is available
+            # from this module even though it is defined elsewhere.
+            for alias in node.names:
+                local_name = alias.asname or alias.name.split(".")[-1]
+                aliases.setdefault(local_name, alias.name.split(".")[-1])
+    return functions, classes, aliases
 
 
 def _python_class_index() -> Dict[str, Tuple[str, Dict[str, Dict[str, object]]]]:
@@ -323,7 +373,7 @@ def _python_class_index() -> Dict[str, Tuple[str, Dict[str, Dict[str, object]]]]
     index: Dict[str, Tuple[str, Dict[str, Dict[str, object]]]] = {}
     for path in glob.glob(os.path.join(REPO_ROOT, "midscene", "**", "*.py"),
                            recursive=True):
-        _, classes = _python_api(path)
+        _, classes, _ = _python_api(path)
         rel = os.path.relpath(path, REPO_ROOT)
         for name, methods in classes.items():
             index.setdefault(name, (rel, methods))
@@ -335,7 +385,7 @@ def _python_function_index() -> Dict[str, Tuple[str, Dict[str, object]]]:
     index: Dict[str, Tuple[str, Dict[str, object]]] = {}
     for path in glob.glob(os.path.join(REPO_ROOT, "midscene", "**", "*.py"),
                            recursive=True):
-        functions, _ = _python_api(path)
+        functions, _, _ = _python_api(path)
         rel = os.path.relpath(path, REPO_ROOT)
         for name, signature in functions.items():
             index.setdefault(name, (rel, signature))
@@ -349,8 +399,33 @@ def _arity_mismatch(ts_params: List[str], py_params: List[str]) -> bool:
     return len(ts_params) != len(py_params)
 
 
+def _load_allowlist() -> Dict[Tuple[str, str, str, str], Dict[str, object]]:
+    """Documented signature equivalences, keyed by module/kind/class/name."""
+    if not os.path.exists(ALLOWLIST):
+        return {}
+    try:
+        data = json.load(open(ALLOWLIST, encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    entries: Dict[Tuple[str, str, str, str], Dict[str, object]] = {}
+    for entry in data.get("entries", []):
+        module = entry.get("module")
+        name = entry.get("name")
+        if not module or not name:
+            continue
+        key = (
+            module,
+            entry.get("kind", "function"),
+            entry.get("class", ""),
+            name,
+        )
+        entries[key] = entry
+    return entries
+
+
 def scan(upstream_root: str, only_module: Optional[str] = None) -> Dict[str, object]:
     baseline = json.load(open(BASELINE, encoding="utf-8"))
+    allowlist = _load_allowlist()
     class_index = _python_class_index()
     function_index = _python_function_index()
     modules: List[Dict[str, object]] = []
@@ -373,8 +448,8 @@ def scan(upstream_root: str, only_module: Optional[str] = None) -> Dict[str, obj
 
         py_rel = os.path.join("midscene", entry["python"])
         py_path = os.path.join(REPO_ROOT, py_rel)
-        py_functions, py_classes = (
-            _python_api(py_path) if os.path.exists(py_path) else ({}, {})
+        py_functions, py_classes, py_aliases = (
+            _python_api(py_path) if os.path.exists(py_path) else ({}, {}, {})
         )
 
         missing_functions: List[Dict[str, object]] = []
@@ -382,10 +457,19 @@ def scan(upstream_root: str, only_module: Optional[str] = None) -> Dict[str, obj
         missing_classes: List[str] = []
         missing_methods: List[Dict[str, object]] = []
         signature_mismatch: List[Dict[str, object]] = []
+        allowlisted_signature: List[Dict[str, object]] = []
 
         for name, info in sorted(ts_functions.items()):
             snake = python_symbol_name(name)
             local = py_functions.get(snake)
+            if local is None and snake in py_aliases:
+                owner = function_index.get(py_aliases[snake])
+                if owner:
+                    local = owner[1]
+                else:
+                    # Imported from outside the audited package: treat the
+                    # re-export as present.
+                    continue
             if local is None:
                 owner = function_index.get(snake)
                 if owner:
@@ -400,20 +484,32 @@ def scan(upstream_root: str, only_module: Optional[str] = None) -> Dict[str, obj
                 missing_functions.append({"name": name, "params": info["params"]})
                 continue
             if _arity_mismatch(info["params"], local["params"]):  # type: ignore[arg-type]
-                signature_mismatch.append(
-                    {
-                        "kind": "function",
-                        "name": name,
-                        "ts_params": info["params"],
-                        "python_params": local["params"],
-                    }
-                )
+                mismatch = {
+                    "kind": "function",
+                    "name": name,
+                    "ts_params": info["params"],
+                    "python_params": local["params"],
+                }
+                allowed = allowlist.get((key, "function", "", name))
+                if allowed:
+                    allowlisted_signature.append(
+                        {
+                            **mismatch,
+                            "category": allowed.get("category"),
+                            "reason": allowed.get("reason"),
+                        }
+                    )
+                else:
+                    signature_mismatch.append(mismatch)
 
         for class_name, methods in sorted(ts_classes.items()):
             python_methods = py_classes.get(class_name, {})
             python_owner = py_rel
             if class_name not in py_classes:
-                owner = class_index.get(class_name)
+                target = py_aliases.get(class_name)
+                owner = class_index.get(target) if target else class_index.get(
+                    class_name
+                )
                 if not owner:
                     # The class itself is missing; report it once instead of
                     # listing every public method as a separate gap.
@@ -438,23 +534,35 @@ def scan(upstream_root: str, only_module: Optional[str] = None) -> Dict[str, obj
                     info["params"],  # type: ignore[arg-type]
                     [p for p in local["params"] if p not in ("self", "cls")],  # type: ignore[union-attr]
                 ):
-                    signature_mismatch.append(
-                        {
-                            "kind": "method",
-                            "class": class_name,
-                            "name": method_name,
-                            "ts_params": info["params"],
-                            "python_params": local["params"],
-                        }
+                    mismatch = {
+                        "kind": "method",
+                        "class": class_name,
+                        "name": method_name,
+                        "ts_params": info["params"],
+                        "python_params": local["params"],
+                    }
+                    allowed = allowlist.get(
+                        (key, "method", class_name, method_name)
                     )
+                    if allowed:
+                        allowlisted_signature.append(
+                            {
+                                **mismatch,
+                                "category": allowed.get("category"),
+                                "reason": allowed.get("reason"),
+                            }
+                        )
+                    else:
+                        signature_mismatch.append(mismatch)
 
-        if (
+        has_real_gap = bool(
             missing_functions
             or moved_functions
             or missing_classes
             or missing_methods
             or signature_mismatch
-        ):
+        )
+        if has_real_gap or allowlisted_signature:
             modules.append(
                 {
                     "package": entry["package"],
@@ -465,14 +573,17 @@ def scan(upstream_root: str, only_module: Optional[str] = None) -> Dict[str, obj
                     "missing_classes": missing_classes,
                     "missing_methods": missing_methods,
                     "signature_mismatch": signature_mismatch,
+                    "allowlisted_signature": allowlisted_signature,
                 }
             )
+        if has_real_gap:
             totals["modules_with_gaps"] += 1
-            totals["missing_functions"] += len(missing_functions)
-            totals["moved_functions"] += len(moved_functions)
-            totals["missing_classes"] += len(missing_classes)
-            totals["missing_methods"] += len(missing_methods)
-            totals["signature_mismatch"] += len(signature_mismatch)
+        totals["missing_functions"] += len(missing_functions)
+        totals["moved_functions"] += len(moved_functions)
+        totals["missing_classes"] += len(missing_classes)
+        totals["missing_methods"] += len(missing_methods)
+        totals["signature_mismatch"] += len(signature_mismatch)
+        totals["allowlisted_signature_mismatch"] += len(allowlisted_signature)
         totals["modules_scanned"] += 1
         totals["functions_scanned"] += len(ts_functions)
         totals["classes_scanned"] += len(ts_classes)
@@ -498,7 +609,9 @@ def _print_report(result: Dict[str, object], limit: int) -> None:
         f"{counts.get('moved_functions', 0)} moved functions, "
         f"{counts.get('missing_classes', 0)} missing classes, "
         f"{counts.get('missing_methods', 0)} missing methods, "
-        f"{counts.get('signature_mismatch', 0)} signature mismatches."
+        f"{counts.get('signature_mismatch', 0)} signature mismatches, "
+        f"{counts.get('allowlisted_signature_mismatch', 0)} allowlisted "
+        "signature equivalences."
     )
     print(
         f"Scanned {counts.get('modules_scanned', 0)} modules, "

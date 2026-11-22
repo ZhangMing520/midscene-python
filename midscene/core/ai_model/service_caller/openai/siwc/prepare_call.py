@@ -7,10 +7,12 @@ from midscene.core.ai_model.service_caller.openai.siwc.token_manager import (
 )
 
 
-async def prepare_siwc_call(model_runtime) -> Tuple[Any, Optional[dict]]:
+async def prepare_siwc_call(
+    model_runtime, options: Optional[dict] = None
+) -> Tuple[Any, Optional[dict]]:
     """Build effective request settings without mutating the user's configuration."""
     if model_runtime.config.get("authMode") != "siwc":
-        return model_runtime, None
+        return model_runtime, options
     base_url = "https://api.openai.com/v1"
     api_key = await siwc_token_manager.get_access_token()
     from midscene.core.ai_model.models.registry import ModelRuntime
@@ -22,4 +24,7 @@ async def prepare_siwc_call(model_runtime) -> Tuple[Any, Optional[dict]]:
         "protocol": "openai-responses",
         "streamMode": "stream",
     }
-    return ModelRuntime(new_config, model_runtime.adapter), {"stream": True}
+    return ModelRuntime(new_config, model_runtime.adapter), {
+        **(options or {}),
+        "stream": True,
+    }

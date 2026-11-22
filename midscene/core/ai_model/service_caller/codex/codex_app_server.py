@@ -918,6 +918,16 @@ async def __shutdown_codex_app_server_for_tests() -> None:
     await codex_connection_manager.shutdown_for_tests()
 
 
+async def shutdown_codex_app_server_for_tests() -> None:
+    """Shut down the shared app-server connection (test helper)."""
+    await codex_connection_manager.shutdown_for_tests()
+
+
+async def _shutdown_codex_app_server_for_tests() -> None:
+    """Underscored alias of :func:`shutdown_codex_app_server_for_tests`."""
+    await shutdown_codex_app_server_for_tests()
+
+
 __all__ = [
     "CODEX_PROVIDER_SCHEME",
     "CodexAppServerAbortError",

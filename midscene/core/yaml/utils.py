@@ -140,6 +140,52 @@ def resolve_yaml_output_config(script: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _interpolate_env_var_refs(
+    value: str, keep_unresolved_refs: bool = False
+) -> str:
+    """Replace ``${VAR}`` references in a single line (upstream helper)."""
+    result = ""
+    last_index = 0
+    search_from = 0
+    while search_from < len(value):
+        start = value.find("${", search_from)
+        if start == -1:
+            break
+        end = value.find("}", start + 2)
+        if end == -1:
+            break
+        raw_name = value[start + 2 : end]
+        if not raw_name:
+            search_from = end + 1
+            continue
+        result += value[last_index:start]
+        env_var = raw_name.strip()
+        env_value = os.environ.get(env_var)
+        if env_value is None:
+            if keep_unresolved_refs:
+                result += value[start : end + 1]
+            else:
+                raise ValueError(
+                    f'Environment variable "{env_var}" is not defined'
+                )
+        else:
+            result += env_value
+        last_index = end + 1
+        search_from = end + 1
+    return result + value[last_index:]
+
+
+def interpolate_env_vars(content: str) -> str:
+    """Interpolate env vars, skipping YAML comment lines (upstream interpolateEnvVars)."""
+    lines = []
+    for line in content.split("\n"):
+        if line.lstrip().startswith("#"):
+            lines.append(line)
+        else:
+            lines.append(_interpolate_env_var_refs(line))
+    return "\n".join(lines)
+
+
 def _interpolate_env_vars(content: str) -> str:
     """Replace ${VAR} references line by line (upstream interpolateYamlScriptEnvVars).
 
@@ -208,6 +254,32 @@ def parse_yaml_script(content: str, file_path: Optional[str] = None) -> Dict[str
     for key in target_keys:
         if obj.get(key) is not None:
             script[key] = obj[key]
+    return script
+
+
+def parse_legacy_yaml_script(
+    content: str,
+    file_path: Optional[str] = None,
+    on_config: Optional[Any] = None,
+) -> Dict[str, Any]:
+    """Parse a legacy YAML script with an optional collection observer."""
+    processed_content = content
+    if "android" in content and re.search(r"deviceId:\s*(\d+)", content):
+        import sys
+
+        matched = re.search(r"deviceId:\s*(\d+)", content)
+        processed_content = re.sub(
+            r"deviceId:\s*(\d+)", r"deviceId: '\1'", content
+        )
+        print(
+            "please use string-style deviceId in yaml script, for example: "
+            f'deviceId: "{matched.group(1) if matched else ""}"',
+            file=sys.stderr,
+        )
+
+    script = parse_yaml_script(processed_content, file_path)
+    if on_config is not None:
+        on_config(script)
     return script
 
 

@@ -5,6 +5,7 @@ Android device management using ADB
 import asyncio
 import base64
 import math
+import re
 import subprocess
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
@@ -26,7 +27,7 @@ from midscene.android.utils import (
     parse_screen_size_output,
 )
 from midscene.core.device.mobile_scroll import resolve_default_mobile_scroll
-from midscene.android.adb import run_adb_command
+from midscene.android.adb import create_android_adb, run_adb_command
 from midscene.android.scrcpy_device_adapter import ScrcpyDeviceAdapter
 from midscene.android.ui_tree_capture import capture_android_ui_tree
 from midscene.core.types import (
@@ -262,6 +263,8 @@ class AndroidDevice(AbstractInterface):
         self._yadb_bin_path: Optional[str] = None
         self._app_name_mapping: Dict[str, str] = {}
         self._scrcpy_adapter: Optional[ScrcpyDeviceAdapter] = None
+        self._adb: Optional[Any] = None
+        self._description: Optional[str] = None
     
     @classmethod
     async def create(cls, device_id: Optional[str] = None) -> 'AndroidDevice':
@@ -304,6 +307,12 @@ class AndroidDevice(AbstractInterface):
             
             # Get screen size
             await self._get_screen_size()
+            if self._screen_size is not None:
+                self._description = (
+                    f"\nDeviceId: {self.device_id}\nScreenSize:\n"
+                    f"  width size: {self._screen_size.width}\n"
+                    f"  height size: {self._screen_size.height}\n"
+                )
             
             # Setup IME if needed
             if self.config.use_ime:
@@ -362,7 +371,196 @@ class AndroidDevice(AbstractInterface):
             raise RuntimeError("scrcpy is disabled in AndroidDevice options")
         await adapter.initialize()
         return adapter.get_status()
-    
+
+    # -- upstream public surface ------------------------------------------
+
+    def describe(self) -> str:
+        """Human-readable device description (upstream describe)."""
+        return self._description or f"DeviceId: {self.device_id}"
+
+    async def get_adb(self) -> Any:
+        """Current ADB client (upstream getAdb).
+
+        The Python SDK normally runs adb per command; this exposes the same
+        lazily-created client object for callers that need it directly.
+        """
+        if self._adb is None:
+            self._adb = await create_android_adb(
+                adb_exec_timeout=60000,
+                device_id=self.device_id,
+                device_options={
+                    "androidAdbPath": self.config.adb_path,
+                    "displayId": self.config.display_id,
+                },
+            )
+        return self._adb
+
+    async def ensure_yadb(self) -> None:
+        """Push the Yadb tool to the device once (upstream ensureYadb)."""
+        await self._ensure_yadb()
+
+    async def exec_yadb(self, keyboard_content: str) -> None:
+        """Inject keyboard content through Yadb (upstream execYadb)."""
+        await self._exec_yadb_raw(keyboard_content)
+
+    async def force_screenshot(self, path: str) -> None:
+        """Capture a screenshot that ignores FLAG_SECURE via Yadb."""
+        await self._ensure_yadb()
+        await self._run_adb_command([
+            "-s", self.device_id, "shell",
+            "app_process",
+            f"-Djava.class.path={YADB_DEVICE_PATH}",
+            YADB_DEVICE_PATH,
+            "com.ysbing.yadb.Main",
+            "-screenshot",
+            path,
+        ])
+
+    async def screenshot_base64(self) -> str:
+        """Capture the current frame as base64 (upstream screenshotBase64)."""
+        return await self._take_screenshot()
+
+    async def get_display_density(self) -> int:
+        """Display density (upstream getDisplayDensity, default 160)."""
+        return await self._get_screen_density()
+
+    async def get_display_orientation(self) -> int:
+        """Surface orientation 0..3 (upstream getDisplayOrientation)."""
+        try:
+            result = await self._run_adb_command(
+                ["-s", self.device_id, "shell", "dumpsys", "input"],
+                capture_output=True,
+            )
+            match = re.search(
+                r"SurfaceOrientation:\s*(\d)",
+                result.stdout.decode("utf-8", errors="ignore"),
+            )
+            if match:
+                return int(match.group(1))
+        except Exception as e:  # noqa: BLE001 - falls back to display dump
+            logger.debug(f"Failed to get orientation from input: {e}")
+
+        try:
+            result = await self._run_adb_command(
+                ["-s", self.device_id, "shell", "dumpsys", "display"],
+                capture_output=True,
+            )
+            match = re.search(
+                r"mCurrentOrientation=(\d)",
+                result.stdout.decode("utf-8", errors="ignore"),
+            )
+            if match:
+                return int(match.group(1))
+        except Exception as e:  # noqa: BLE001 - default below
+            logger.debug(f"Failed to get orientation from display: {e}")
+        return 0
+
+    async def get_elements_info(self) -> List[Any]:
+        """Element list is not extracted on Android (upstream returns [])."""
+        return []
+
+    async def get_elements_node_tree(self) -> Dict[str, Any]:
+        """Simplified empty node tree (upstream)."""
+        return {"node": None, "children": []}
+
+    async def get_screen_size(self) -> Dict[str, int]:
+        """Logical screen size as ``{width, height}`` (upstream)."""
+        return await self.size()
+
+    async def get_ui_tree(self) -> UITree:
+        """Current UI tree snapshot (upstream getUITree)."""
+        return await self._build_ui_tree()
+
+    async def launch(self, uri: str) -> 'AndroidDevice':
+        """Launch a URI, app name or package and return this device."""
+        await self.launch_app(uri)
+        return self
+
+    async def terminate(self, uri: str) -> None:
+        """Force-stop an app by package name (upstream terminate)."""
+        await self.stop_app(uri)
+
+    async def url(self) -> str:
+        """Current page URL is unavailable on Android (upstream returns '')."""
+        return ""
+
+    async def _scroll_in_content_direction(
+        self,
+        direction: str,
+        distance: Optional[int] = None,
+        start_point: Optional[Sequence[float]] = None,
+    ) -> None:
+        """Scroll `direction` (content direction) with upstream defaults."""
+        if distance is None and start_point is None:
+            if not self._screen_size:
+                await self._get_screen_size()
+            (from_x, from_y), (to_x, to_y) = resolve_default_mobile_scroll(
+                direction,
+                {
+                    "width": self._screen_size.width,
+                    "height": self._screen_size.height,
+                },
+            )
+            await self.swipe(
+                from_x, from_y, to_x, to_y,
+                duration=DEFAULT_NORMAL_SCROLL_DURATION,
+            )
+            return
+        # The finger travels opposite to the content direction.
+        await self._swipe_direction(
+            _SCROLL_DIRECTION_FOR_SWIPE[direction],
+            distance,
+            point=start_point,
+        )
+
+    async def scroll_up(
+        self,
+        distance: Optional[int] = None,
+        start_point: Optional[Sequence[float]] = None,
+    ) -> None:
+        await self._scroll_in_content_direction("up", distance, start_point)
+
+    async def scroll_down(
+        self,
+        distance: Optional[int] = None,
+        start_point: Optional[Sequence[float]] = None,
+    ) -> None:
+        await self._scroll_in_content_direction("down", distance, start_point)
+
+    async def scroll_left(
+        self,
+        distance: Optional[int] = None,
+        start_point: Optional[Sequence[float]] = None,
+    ) -> None:
+        await self._scroll_in_content_direction("left", distance, start_point)
+
+    async def scroll_right(
+        self,
+        distance: Optional[int] = None,
+        start_point: Optional[Sequence[float]] = None,
+    ) -> None:
+        await self._scroll_in_content_direction("right", distance, start_point)
+
+    async def scroll_until_top(
+        self, start_point: Optional[Sequence[float]] = None
+    ) -> None:
+        await self.scroll("up", point=start_point, scroll_type="scrollToTop")
+
+    async def scroll_until_bottom(
+        self, start_point: Optional[Sequence[float]] = None
+    ) -> None:
+        await self.scroll("down", point=start_point, scroll_type="scrollToBottom")
+
+    async def scroll_until_left(
+        self, start_point: Optional[Sequence[float]] = None
+    ) -> None:
+        await self.scroll("left", point=start_point, scroll_type="scrollToLeft")
+
+    async def scroll_until_right(
+        self, start_point: Optional[Sequence[float]] = None
+    ) -> None:
+        await self.scroll("right", point=start_point, scroll_type="scrollToRight")
+
     async def get_context(self) -> UIContext:
         """Get current UI context"""
         try:
@@ -860,8 +1058,11 @@ class AndroidDevice(AbstractInterface):
         )
         return result.stdout.decode("utf-8").strip()
     
-    async def clear_input(self) -> None:
-        """Clear text in focused field (alias of clear_text)"""
+    async def clear_input(self, element: Any = None) -> None:
+        """Clear text in the focused field, optionally focusing ``element`` first."""
+        if element is not None:
+            center = element.center
+            await self.tap(center[0], center[1])
         await self.clear_text()
 
     async def replace_input(self, text: str) -> None:

@@ -117,11 +117,14 @@ def _normalize_box(box_text: str) -> str:
 
 
 def parse_ui_tars_planning_response(
-    raw_response: str, shot_size: Dict[str, Any]
+    raw_response: str,
+    shot_size: Dict[str, Any],
+    ui_tars_model_version: Optional[str] = None,
 ) -> Dict[str, Any]:
     return {
         "rawResponse": raw_response,
         "actions": parse_ui_tars_action_calls(raw_response),
+        "uiTarsModelVersion": ui_tars_model_version,
     }
 
 

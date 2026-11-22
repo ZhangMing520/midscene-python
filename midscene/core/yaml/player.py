@@ -6,7 +6,14 @@ from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
-from midscene.core.yaml.player_state import initialize_legacy_yaml_player_state
+from midscene.core.yaml.player_state import (
+    get_legacy_yaml_player_state,
+    initialize_legacy_yaml_player_state,
+)
+from midscene.core.yaml.legacy_yaml_runtime import (
+    create_legacy_yaml_runtime,
+    legacy_yaml_outcome_error,
+)
 from midscene.core.yaml.report_policy import _execution_count, _record_yaml_task_error
 from midscene.core.yaml.utils import (
     _ACTION_COMMANDS,
@@ -29,7 +36,68 @@ class ScriptPlayer:
         self.result: Dict[str, Any] = {}
         self.failed_tasks: List[Dict[str, Any]] = []
         self.output_path: Optional[str] = None
+        self.current_task_index: Optional[int] = None
+        self.report_file: Optional[str] = None
+        self._unnamed_result_index = 0
         initialize_legacy_yaml_player_state(self)
+
+    def _set_result(self, key: Optional[str], value: Any) -> None:
+        key_to_use = key or self._unnamed_result_index
+        if not key:
+            self._unnamed_result_index += 1
+        self.result[key_to_use] = value
+
+    async def play_task(self, task_status: Dict[str, Any], agent: Any) -> None:
+        """Run one YAML task against ``agent`` (upstream playTask)."""
+        flow = (
+            task_status.get("flow")
+            if isinstance(task_status, dict)
+            else getattr(task_status, "flow", None)
+        )
+        if not flow:
+            raise AssertionError("missing flow in task")
+
+        tasks = self.script.get("tasks") or []
+        try:
+            task_index = tasks.index(task_status)
+        except ValueError:
+            declared = (
+                task_status.get("index")
+                if isinstance(task_status, dict)
+                else getattr(task_status, "index", None)
+            )
+            task_index = (
+                declared
+                if isinstance(declared, int) and not isinstance(declared, bool)
+                else 0
+            )
+
+        state = get_legacy_yaml_player_state(self)
+        runtime = create_legacy_yaml_runtime(
+            {
+                "agent": agent,
+                "actionSpace": getattr(agent, "_action_space", None) or [],
+                "sourcePath": None,
+                "setResult": self._set_result,
+            }
+        )
+        execution_result = await runtime.run_task(task_status, task_index)
+        state["executionResult"] = execution_result
+
+        cases = execution_result.get("cases") or []
+        outcome = cases[0] if cases else None
+        if not outcome or outcome.get("status") == "not-run":
+            raise RuntimeError(
+                f'Task "{task_status.get("name")}" did not run.'
+            )
+        if outcome.get("status") == "failed":
+            raise legacy_yaml_outcome_error(outcome)
+
+        self.report_file = (
+            getattr(agent, "report_file", None)
+            or getattr(agent, "_report_file", None)
+            or getattr(agent, "_report_finalized", None)
+        )
 
     async def run(self) -> None:
         self.status = "running"

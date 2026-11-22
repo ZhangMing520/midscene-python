@@ -49,7 +49,9 @@ class SiwcTokenManager:
         if saved.get("access_token") != previous_access_token:
             return saved["access_token"]
         try:
-            credentials = await refresh.refresh_siwc_credentials(saved, proxy)
+            credentials = await refresh.refresh_siwc_credentials(
+                saved, None, {"proxy": proxy}
+            )
         except Exception as cause:
             raise SiwcError(
                 "Unable to refresh SIWC credentials: "

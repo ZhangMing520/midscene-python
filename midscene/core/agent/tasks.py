@@ -5,6 +5,7 @@ import time
 from typing import Any, Dict, List, Optional
 
 from midscene.core.agent.utils import _strip_runtime_locate_result
+from midscene.core.task_runner import TaskExecutionError
 from midscene.core.dump import build_execution_task
 from midscene.core.screenshot_item import ScreenshotItem
 
@@ -237,6 +238,7 @@ class TaskExecutor:
 
 
 __all__ = [
+    "TaskExecutionError",
     "TaskExecutor",
     "action_progress_summary",
     "build_action_report_task",

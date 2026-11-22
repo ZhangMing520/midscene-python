@@ -192,8 +192,12 @@ def create_cli_interrupt_waiter(
     return CliInterruptWaiter(watchdog_ms, source, input_source, force_exit)
 
 
-async def wait_for_cli_interrupt(watchdog_ms: float, source: Any = None) -> str:
-    waiter = create_cli_interrupt_waiter(watchdog_ms, source)
+async def wait_for_cli_interrupt(
+    watchdog_ms: float, source: Any = None, input: Any = None
+) -> str:
+    waiter = create_cli_interrupt_waiter(
+        watchdog_ms, source, input_source=input
+    )
     try:
         return await waiter.result
     finally:

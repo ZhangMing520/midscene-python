@@ -198,17 +198,33 @@ class WebDriverAgentBackend(WebDriverClient):
             raise
         return element_id_from(response.get("value"))
 
+    async def get_active_element(self) -> Optional[str]:
+        """Active element id, or None when discovery fails (upstream)."""
+        try:
+            return await self.get_active_element_id()
+        except Exception as e:  # noqa: BLE001 - upstream swallows errors
+            logger.debug(f"Failed to get active element: {e}")
+            return None
+
+    async def clear_element(self, element_id: str) -> None:
+        """Clear an element through the W3C clear endpoint (upstream)."""
+        try:
+            await self._request("POST", f"/element/{element_id}/clear")
+        except Exception as e:  # noqa: BLE001 - wrapped with context
+            logger.debug(f"Failed to clear element: {e}")
+            raise RuntimeError(f"Failed to clear element: {e}") from e
+
     async def get_element_attribute(self, element_id: str, name: str) -> Any:
         response = await self._request(
             "GET", f"/element/{element_id}/attribute/{name}"
         )
         return response.get("value")
 
-    async def wait_for_input_focus(self, timeout_ms: float = 3000.0) -> None:
+    async def wait_for_input_focus(self, *, timeout_ms: float = 3000.0) -> None:
         """Block until an element owns the keyboard, or fail loudly."""
         from midscene.ios.input_focus import wait_for_input_focus
 
-        await wait_for_input_focus(self._request, timeout_ms)
+        await wait_for_input_focus(self._request, timeout_ms=timeout_ms)
 
     async def clear_active_element(self) -> bool:
         """Clear the focused input and keep focus (upstream input-focus)."""
@@ -234,6 +250,19 @@ class WebDriverAgentBackend(WebDriverClient):
     async def double_tap(self, x: float, y: float) -> None:
         await self._request(
             "POST", "/wda/doubleTap", {"x": x, "y": y}
+        )
+
+    async def triple_tap(self, x: float, y: float) -> None:
+        """Triple tap through WDA's tapWithNumberOfTaps (upstream)."""
+        await self._request(
+            "POST",
+            "/wda/tapWithNumberOfTaps",
+            {
+                "x": x,
+                "y": y,
+                "numberOfTaps": 3,
+                "numberOfTouches": 1,
+            },
         )
 
     async def long_press(self, x: float, y: float, duration: float = 1000.0) -> None:

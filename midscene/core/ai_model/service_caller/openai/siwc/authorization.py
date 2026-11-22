@@ -119,9 +119,17 @@ def parse_siwc_callback(
 async def exchange_siwc_code(
     attempt: Dict[str, Any],
     callback: Dict[str, str],
-    proxy: Optional[network.SiwcProxyConfig] = None,
+    signal: Any = None,
+    dependencies: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Exchange the OAuth code for tokens and verify the ID token."""
+    if signal is not None and hasattr(signal, "throw_if_aborted"):
+        signal.throw_if_aborted()
+    proxy = (
+        dependencies.get("proxy")
+        if isinstance(dependencies, dict)
+        else None
+    )
     async with httpx.AsyncClient(
         timeout=30.0, proxy=network._siwc_proxy(proxy)
     ) as client:

@@ -1,0 +1,219 @@
+{
+  "description": "Documented, reviewed signature equivalences between upstream TypeScript functions and their Python ports. Entries are exempt from the arity check because the Python API is a deliberate, behaviour-preserving adaptation; every entry must carry a concrete reason.",
+  "categories": {
+    "options-object": "TypeScript takes one options/input object; Python exposes the same fields as explicit parameters (Pythonic keyword API).",
+    "context-object": "TypeScript passes several context arguments; Python bundles them into one adapter/context object."
+  },
+  "entries": [
+    {
+      "module": "shared/agent-tools/user-prompt.ts",
+      "kind": "function",
+      "name": "composeUserPrompt",
+      "category": "options-object",
+      "reason": "Upstream input is {prompt, image?, ...}; Python takes the destructured fields directly."
+    },
+    {
+      "module": "core/ai-model/model-adapter/image-preprocess.ts",
+      "kind": "function",
+      "name": "prepareModelImage",
+      "category": "options-object",
+      "reason": "Upstream input is {imageBase64,width,height,policy}; Python takes those fields as parameters."
+    },
+    {
+      "module": "core/ai-model/model-adapter/locate.ts",
+      "kind": "function",
+      "name": "resolveLocate",
+      "category": "context-object",
+      "reason": "Upstream locate definition plus resolved planner/protocol context; Python reads them from the ModelAdapter instance."
+    },
+    {
+      "module": "core/ai-model/model-adapter/planning.ts",
+      "kind": "function",
+      "name": "resolvePlanning",
+      "category": "context-object",
+      "reason": "Upstream planning definition plus resolved planner/protocol context; Python reads them from the ModelAdapter instance."
+    },
+    {
+      "module": "core/ai-model/models/jev/planning-action.ts",
+      "kind": "function",
+      "name": "buildJevAction",
+      "category": "options-object",
+      "reason": "Upstream options object (actionSpace, includeLocateInPlanning, shotSize, referenceImages) flattened into Python parameters."
+    },
+    {
+      "module": "core/ai-model/models/jev/planning-context.ts",
+      "kind": "function",
+      "name": "prepareJevPlanningContext",
+      "category": "options-object",
+      "reason": "Upstream options object (modelRuntime, actionSpace, history, ...) flattened into Python parameters."
+    },
+    {
+      "module": "core/ai-model/models/jev/planning-decision.ts",
+      "kind": "function",
+      "name": "decideJevAction",
+      "category": "options-object",
+      "reason": "Upstream options object (modelRuntime, actionSpace, includeLocateInPlanning) flattened into Python parameters."
+    },
+    {
+      "module": "core/ai-model/prompt/insight/system-prompt.ts",
+      "kind": "function",
+      "name": "buildInsightSystemPrompt",
+      "category": "options-object",
+      "reason": "Upstream options object (protocol, screenshot/reference-image flags) flattened into Python parameters."
+    },
+    {
+      "module": "core/ai-model/prompt/planning/system-prompt.ts",
+      "kind": "function",
+      "name": "buildStandardPlanningSystemPrompt",
+      "category": "options-object",
+      "reason": "Upstream input object (actionSpace, protocol, locate spec, include flags) flattened into Python parameters."
+    },
+    {
+      "module": "core/ai-model/service-caller/openai/siwc/authorization.ts",
+      "kind": "function",
+      "name": "createSiwcAuthorization",
+      "category": "options-object",
+      "reason": "Upstream options object (hostId, redirectUri, clientId, agentName) flattened into Python parameters."
+    },
+    {
+      "module": "core/ai-model/shared/json.ts",
+      "kind": "function",
+      "name": "parseModelResponseJson",
+      "category": "options-object",
+      "reason": "Upstream context object {source, preserveStringValueKeys} flattened into Python parameters."
+    },
+    {
+      "module": "core/ai-model/shared/model-locate-result/prompt-spec.ts",
+      "kind": "function",
+      "name": "createLocateResultPromptSpec",
+      "category": "options-object",
+      "reason": "Upstream options object (resultKey, aliases) flattened into Python parameters."
+    },
+    {
+      "module": "core/ai-model/workflows/grounding/locate.ts",
+      "kind": "function",
+      "name": "AiLocateElement",
+      "category": "options-object",
+      "reason": "Upstream options object (context, modelRuntime, locateImage, searchConfig, ...) flattened into Python parameters."
+    },
+    {
+      "module": "core/ai-model/workflows/grounding/search-area.ts",
+      "kind": "function",
+      "name": "buildSearchAreaConfig",
+      "category": "options-object",
+      "reason": "Upstream options object (context, baseRect) flattened into Python parameters."
+    },
+    {
+      "module": "core/ai-model/workflows/grounding/section-locate.ts",
+      "kind": "function",
+      "name": "AiLocateSection",
+      "category": "options-object",
+      "reason": "Upstream options object (context, sectionDescription, modelRuntime) flattened into Python parameters."
+    },
+    {
+      "module": "core/ai-model/workflows/insight/boolean.ts",
+      "kind": "function",
+      "name": "extractBoolean",
+      "category": "options-object",
+      "reason": "Upstream options object (booleanFn, dataQuery, context, ...) flattened into Python parameters."
+    },
+    {
+      "module": "core/ai-model/workflows/insight/extraction.ts",
+      "kind": "function",
+      "name": "AiExtractElementInfo",
+      "category": "options-object",
+      "reason": "Upstream options object (taskType, dataQuery, context, screenshots, ...) flattened into Python parameters."
+    },
+    {
+      "module": "core/ai-model/workflows/planning/custom-planning.ts",
+      "kind": "function",
+      "name": "buildCustomPlanningMessages",
+      "category": "options-object",
+      "reason": "Upstream input object (system prompt, instruction, history, screenshot, ...) flattened into Python parameters."
+    },
+    {
+      "module": "core/ai-model/workflows/planning/custom-planning.ts",
+      "kind": "function",
+      "name": "runCustomPlanning",
+      "category": "options-object",
+      "reason": "Upstream options object (context, modelRuntime, actionSpace, ...) flattened into Python parameters."
+    },
+    {
+      "module": "core/ai-model/workflows/planning/standard-planning-parser.ts",
+      "kind": "function",
+      "name": "parseStandardPlanningResponse",
+      "category": "options-object",
+      "reason": "Upstream options object (action output protocol, actionSpace, include flags) flattened into Python parameters."
+    },
+    {
+      "module": "core/ai-model/workflows/planning/standard-planning.ts",
+      "kind": "function",
+      "name": "standardPlan",
+      "category": "options-object",
+      "reason": "Upstream opts object (context, modelRuntime, actionSpace, effort, advice, ...) flattened into Python parameters."
+    },
+    {
+      "module": "core/ai-model/workflows/recorder-generation/metadata.ts",
+      "kind": "function",
+      "name": "generateRecorderSessionMetadata",
+      "category": "options-object",
+      "reason": "Upstream input object (target, events, modelRuntime, ...) and modelConfig flattened into Python parameters."
+    },
+    {
+      "module": "web-integration/bridge-mode/common.ts",
+      "kind": "function",
+      "name": "getBridgeServerHost",
+      "category": "options-object",
+      "reason": "Upstream options object (host, allowRemoteAccess) flattened into Python parameters."
+    },
+    {
+      "module": "shared/cli/interrupt.ts",
+      "kind": "function",
+      "name": "createCliInterruptWaiter",
+      "category": "options-object",
+      "reason": "Upstream options object (source, inputSource, forceExit) flattened into Python parameters."
+    },
+    {
+      "module": "core/element-describer.ts",
+      "kind": "function",
+      "name": "verifyLocator",
+      "category": "context-object",
+      "reason": "Upstream separates locateOpt and verifyLocateOption; Python merges both into one options mapping."
+    },
+    {
+      "module": "core/report-cli.ts",
+      "kind": "function",
+      "name": "mergeReportFiles",
+      "category": "options-object",
+      "reason": "Upstream options object (htmlPaths, outputDir, outputName, overwrite) flattened into Python parameters."
+    },
+    {
+      "module": "core/report-cli.ts",
+      "kind": "function",
+      "name": "splitReportFile",
+      "category": "options-object",
+      "reason": "Upstream options object (htmlPath, outputDir) flattened into Python parameters."
+    },
+    {
+      "module": "core/report.ts",
+      "kind": "function",
+      "name": "exportReportArtifact",
+      "category": "options-object",
+      "reason": "Upstream options object (reportPath, outputDir, reportFileName, outputFormat, overwrite) flattened into Python parameters."
+    },
+    {
+      "module": "core/test-runner/node/define-node.ts",
+      "kind": "function",
+      "name": "defineNode",
+      "category": "options-object",
+      "reason": "Upstream options object (name, execute, title, description, input schema) flattened into Python parameters."
+    },
+    {
+      "module": "android/ui-tree-capture.ts",
+      "kind": "function",
+      "name": "captureAndroidUITree",
+      "category": "options-object",
+      "reason": "Upstream options object (runAdbCommand, deviceId) flattened into Python parameters."
+    }
+  ]
+}

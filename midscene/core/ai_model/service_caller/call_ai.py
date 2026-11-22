@@ -60,7 +60,9 @@ async def call_generative_ai(
 ) -> Dict[str, Any]:
     """Call the model and return {content, reasoning_content, usage, ...}."""
     options = dict(options or {})
-    model_runtime, siwc_options = await prepare_siwc_call(original_model_runtime)
+    model_runtime, siwc_options = await prepare_siwc_call(
+        original_model_runtime, options
+    )
     if siwc_options:
         options.update(siwc_options)
 

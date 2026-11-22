@@ -1,6 +1,6 @@
 """Per-intent model config manager (upstream packages/shared/src/env/model-config-manager.ts)."""
 
-from typing import Dict, Optional, Union
+from typing import Any, Dict, Optional, Union
 import os
 
 from midscene.shared.env.constants import (
@@ -30,6 +30,7 @@ class ModelConfigManager:
         self.env_provider = env_provider
         self._model_config_map: Optional[Dict[TIntent, Dict]] = None
         self._isolated = model_config is not None
+        self.global_config_manager: Optional[Any] = None
 
     @property
     def isolated_mode(self) -> bool:
@@ -38,11 +39,15 @@ class ModelConfigManager:
     def _get_env(self, key: str) -> Optional[str]:
         if self.env_provider is not None:
             return self.env_provider.get(key)
+        if self.global_config_manager is not None:
+            return self.global_config_manager.get_all_env_config().get(key)
         return os.environ.get(key)
 
     def _all_env(self) -> Dict[str, Optional[str]]:
         if self.env_provider is not None:
             return dict(self.env_provider)
+        if self.global_config_manager is not None:
+            return dict(self.global_config_manager.get_all_env_config())
         return dict(os.environ)
 
     def _initialize(self) -> None:
@@ -100,6 +105,12 @@ class ModelConfigManager:
         model_config = self.get_model_config("locate")
         if not model_config.get("modelFamily"):
             raise ValueError(model_family_required_for_locate_message(model_config["slot"]))
+
+    def register_global_config_manager(
+        self, global_config_manager: Any
+    ) -> None:
+        """Attach the global config manager used in non-isolated mode."""
+        self.global_config_manager = global_config_manager
 
     def get_upload_test_server_url(self) -> Optional[str]:
         model_config = self.get_model_config("default")

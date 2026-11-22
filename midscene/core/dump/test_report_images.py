@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 from typing import Dict, List
 
+from midscene.core.dump.report_artifact_writer import TestReportImages
 from midscene.core.dump.report_dump_compactor import (
     _DUMP_HEADER_KEYS,
     collect_report_executions,
@@ -44,4 +45,4 @@ def split_report_file(html_path: str, output_dir: str) -> Dict[str, List[str]]:
     }
 
 
-__all__ = ["split_report_file"]
+__all__ = ["TestReportImages", "split_report_file"]

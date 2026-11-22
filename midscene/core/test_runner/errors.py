@@ -64,6 +64,37 @@ class NodeInputValidationError(WorkflowError):
             message, {"code": "NODE_INPUT_VALIDATION_ERROR", "details": details}
         )
 
+    @staticmethod
+    def from_zod(node: str, error: Any) -> "NodeInputValidationError":
+        """Build the error from a zod-compatible validation error (fromZod)."""
+        raw_issues = getattr(error, "issues", None) or []
+        issues: List[Dict[str, Any]] = []
+        for issue in raw_issues:
+            if isinstance(issue, dict):
+                code = issue.get("code")
+                path = issue.get("path")
+                message = issue.get("message")
+            else:
+                code = getattr(issue, "code", None)
+                path = getattr(issue, "path", None)
+                message = getattr(issue, "message", None)
+            if isinstance(path, (list, tuple)):
+                path = ".".join(str(part) for part in path)
+            issues.append(
+                {
+                    "code": code,
+                    "path": path or "",
+                    "message": message or "invalid input",
+                }
+            )
+        first = issues[0] if issues else {}
+        path = first.get("path") or "<root>"
+        message = first.get("message") or "invalid input"
+        return NodeInputValidationError(
+            f'Node "{node}" input validation failed at "{path}": {message}',
+            {"node": node, "issues": issues},
+        )
+
     @classmethod
     def from_validation_issues(
         cls, node: str, issues: List[Dict[str, Any]]

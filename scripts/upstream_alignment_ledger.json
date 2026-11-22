@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-11-22T11:08:13+00:00",
+  "generated_at": "2026-11-22T11:33:56+00:00",
   "upstream_root": "/home/zhangming/gitspace/midscene",
   "counts": {
     "modules": 425,
     "api_missing": 0,
-    "method_missing_functions": 5,
-    "method_missing_classes": 2,
-    "method_missing_methods": 66,
-    "signature_mismatch": 43
+    "method_missing_functions": 0,
+    "method_missing_classes": 0,
+    "method_missing_methods": 0,
+    "signature_mismatch": 0
   },
   "modules": [
     {
@@ -75,40 +75,13 @@
       "python": "android/device.py",
       "package": "android",
       "batch": "P4",
-      "status": "partial",
+      "status": "done",
       "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
-      "method_missing_methods": [
-        "AndroidDevice.createVisualActionRegistry",
-        "AndroidDevice.describe",
-        "AndroidDevice.ensureYadb",
-        "AndroidDevice.execYadb",
-        "AndroidDevice.forceScreenshot",
-        "AndroidDevice.getAdb",
-        "AndroidDevice.getDisplayDensity",
-        "AndroidDevice.getDisplayOrientation",
-        "AndroidDevice.getElementsInfo",
-        "AndroidDevice.getElementsNodeTree",
-        "AndroidDevice.getScreenSize",
-        "AndroidDevice.getUITree",
-        "AndroidDevice.launch",
-        "AndroidDevice.screenshotBase64",
-        "AndroidDevice.scrollDown",
-        "AndroidDevice.scrollLeft",
-        "AndroidDevice.scrollRight",
-        "AndroidDevice.scrollUntilBottom",
-        "AndroidDevice.scrollUntilLeft",
-        "AndroidDevice.scrollUntilRight",
-        "AndroidDevice.scrollUntilTop",
-        "AndroidDevice.scrollUp",
-        "AndroidDevice.terminate",
-        "AndroidDevice.url"
-      ],
-      "signature_mismatch": [
-        "AndroidDevice.clearInput"
-      ],
+      "method_missing_methods": [],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -147,17 +120,13 @@
       "python": "android/scrcpy_device_adapter.py",
       "package": "android",
       "batch": "P4",
-      "status": "partial",
+      "status": "done",
       "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
-      "method_missing_methods": [
-        "ScrcpyDeviceAdapter.createAndroidAdb"
-      ],
-      "signature_mismatch": [
-        "ScrcpyDeviceAdapter.screenshotBase64"
-      ],
+      "method_missing_methods": [],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -187,9 +156,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".captureAndroidUITree"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -603,33 +570,12 @@
       "python": "computer/input_driver.py",
       "package": "computer",
       "batch": "P4",
-      "status": "partial",
+      "status": "done",
       "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
-      "method_missing_methods": [
-        "ComputerInputDriver.assertMousePosition",
-        "ComputerInputDriver.delay",
-        "ComputerInputDriver.destroy",
-        "ComputerInputDriver.emitScrollDetents",
-        "ComputerInputDriver.focusActiveWindow",
-        "ComputerInputDriver.getMousePos",
-        "ComputerInputDriver.getScreenSize",
-        "ComputerInputDriver.keyTap",
-        "ComputerInputDriver.keyTapWithModifierDelay",
-        "ComputerInputDriver.keyToggle",
-        "ComputerInputDriver.mouseClick",
-        "ComputerInputDriver.mouseToggle",
-        "ComputerInputDriver.moveMouse",
-        "ComputerInputDriver.runPhasedScroll",
-        "ComputerInputDriver.scrollMouse",
-        "ComputerInputDriver.sendKey",
-        "ComputerInputDriver.sendKeyViaAppleScript",
-        "ComputerInputDriver.smoothMoveMouse",
-        "ComputerInputDriver.typeString",
-        "ComputerInputDriver.withMouseButton"
-      ],
+      "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
       "owner": ""
@@ -699,17 +645,12 @@
       "python": "computer/rdp/device.py",
       "package": "computer",
       "batch": "P4",
-      "status": "partial",
+      "status": "done",
       "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
-      "method_missing_methods": [
-        "RDPDevice.describe",
-        "RDPDevice.destroy",
-        "RDPDevice.screenshotBase64",
-        "RDPDevice.size"
-      ],
+      "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
       "owner": ""
@@ -725,9 +666,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".getRdpHelperBinaryPath"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -811,18 +750,11 @@
       "python": "core/agent/agent_report_manager.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
+      "status": "done",
       "api_missing": [],
-      "api_moved": [
-        {
-          "name": "AgentReportManager",
-          "found_in": "midscene/core/agent/agent.py"
-        }
-      ],
+      "api_moved": [],
       "method_missing_functions": [],
-      "method_missing_classes": [
-        "AgentReportManager"
-      ],
+      "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
@@ -923,19 +855,12 @@
       "python": "core/agent/insight.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
+      "status": "done",
       "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
-      "method_missing_methods": [
-        "Insight.aiAsk",
-        "Insight.aiAssert",
-        "Insight.aiBoolean",
-        "Insight.aiNumber",
-        "Insight.aiQuery",
-        "Insight.aiString"
-      ],
+      "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
       "owner": ""
@@ -1127,12 +1052,7 @@
       "batch": "P3",
       "status": "done",
       "api_missing": [],
-      "api_moved": [
-        {
-          "name": "debug",
-          "found_in": "midscene/shared/agent_tools/base_tools.py"
-        }
-      ],
+      "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
@@ -1147,12 +1067,7 @@
       "batch": "P3",
       "status": "done",
       "api_missing": [],
-      "api_moved": [
-        {
-          "name": "TaskExecutionError",
-          "found_in": "midscene/core/__init__.py"
-        }
-      ],
+      "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
@@ -1411,9 +1326,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".prepareModelImage"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -1518,9 +1431,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".resolveLocate"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -1565,9 +1476,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".resolvePlanning"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -1786,12 +1695,10 @@
       "python": "core/ai_model/models/doubao.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
+      "status": "done",
       "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "parseDoubaoRawLocateValue"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -1895,12 +1802,7 @@
       "batch": "P3",
       "status": "done",
       "api_missing": [],
-      "api_moved": [
-        {
-          "name": "mapJevBox",
-          "found_in": "midscene/core/ai_model/models/jev/locate.py"
-        }
-      ],
+      "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
@@ -1934,9 +1836,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".buildJevAction"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -1951,9 +1851,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".prepareJevPlanningContext"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -1968,9 +1866,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".decideJevAction"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -2135,9 +2031,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".parseUiTarsPlanningResponse"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -2152,9 +2046,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".createUiTarsPlanner"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -2229,9 +2121,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".buildInsightSystemPrompt"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -2426,9 +2316,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".buildStandardPlanningSystemPrompt"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -2467,12 +2355,10 @@
       "python": "core/ai_model/service_caller/codex/codex_app_server.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
+      "status": "done",
       "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "__shutdownCodexAppServerForTests"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -2730,10 +2616,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".createSiwcAuthorization",
-        ".exchangeSiwcCode"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -2808,9 +2691,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".prepareSiwcCall"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -2825,9 +2706,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".refreshSiwcCredentials"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -2947,9 +2826,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".prepareSystemOne"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -3020,12 +2897,7 @@
       "batch": "P3",
       "status": "done",
       "api_missing": [],
-      "api_moved": [
-        {
-          "name": "AIResponseParseError",
-          "found_in": "midscene/core/ai_model/__init__.py"
-        }
-      ],
+      "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
@@ -3044,9 +2916,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".parseModelResponseJson"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -3166,9 +3036,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".createLocateResultPromptSpec"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -3224,16 +3092,7 @@
       "batch": "P3",
       "status": "done",
       "api_missing": [],
-      "api_moved": [
-        {
-          "name": "multimodalPromptToMessages",
-          "found_in": "midscene/core/ai_model/model_adapter/locate_prompt_order.py"
-        },
-        {
-          "name": "preparedReferenceImagesToMessages",
-          "found_in": "midscene/core/ai_model/model_adapter/locate_prompt_order.py"
-        }
-      ],
+      "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
@@ -3282,9 +3141,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".AiLocateElement"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -3329,9 +3186,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".buildSearchAreaConfig"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -3346,9 +3201,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".AiLocateSection"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -3393,9 +3246,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".extractBoolean"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -3410,9 +3261,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".AiExtractElementInfo"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -3442,9 +3291,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".parseInsightResponse"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -3489,10 +3336,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".buildCustomPlanningMessages",
-        ".runCustomPlanning"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -3567,9 +3411,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".parseStandardPlanningResponse"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -3584,9 +3426,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".standardPlan"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -3661,9 +3501,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".generateRecorderSessionMetadata"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -3792,12 +3630,10 @@
       "python": "core/distance_schema.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
+      "status": "done",
       "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "getMidsceneDistanceSchema"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -3809,18 +3645,13 @@
       "python": "core/dump/execution_recorder.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
+      "status": "done",
       "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
-      "method_missing_methods": [
-        "ExecutionRecorder.capture",
-        "ExecutionRecorder.toDump"
-      ],
-      "signature_mismatch": [
-        "ExecutionRecorder.record"
-      ],
+      "method_missing_methods": [],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -3831,12 +3662,7 @@
       "batch": "P3",
       "status": "done",
       "api_missing": [],
-      "api_moved": [
-        {
-          "name": "extractImageByIdSync",
-          "found_in": "midscene/core/screenshot_item.py"
-        }
-      ],
+      "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
@@ -3851,12 +3677,7 @@
       "batch": "P3",
       "status": "done",
       "api_missing": [],
-      "api_moved": [
-        {
-          "name": "normalizeScreenshotRef",
-          "found_in": "midscene/core/screenshot_item.py"
-        }
-      ],
+      "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
@@ -4066,12 +3887,7 @@
       "batch": "P3",
       "status": "done",
       "api_missing": [],
-      "api_moved": [
-        {
-          "name": "TestReportImages",
-          "found_in": "midscene/core/dump/report_artifact_writer.py"
-        }
-      ],
+      "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
@@ -4090,9 +3906,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".verifyLocator"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -4133,12 +3947,7 @@
       "batch": "P1",
       "status": "done",
       "api_missing": [],
-      "api_moved": [
-        {
-          "name": "reportFileToMarkdown",
-          "found_in": "midscene/core/report_markdown.py"
-        }
-      ],
+      "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
@@ -4151,16 +3960,12 @@
       "python": "core/report_generator.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
+      "status": "done",
       "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
-      "method_missing_methods": [
-        "ReportGenerator.createSourceSnapshot",
-        "ReportGenerator.enableSourceSnapshots",
-        "ReportGenerator.writeRunnerReport"
-      ],
+      "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
       "owner": ""
@@ -4590,14 +4395,12 @@
       "python": "core/test_runner/errors.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
+      "status": "done",
       "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
-      "method_missing_methods": [
-        "NodeInputValidationError.fromZod"
-      ],
+      "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
       "owner": ""
@@ -4643,9 +4446,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".defineNode"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -5044,14 +4845,12 @@
       "python": "core/yaml/player.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
+      "status": "done",
       "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
-      "method_missing_methods": [
-        "ScriptPlayer.playTask"
-      ],
+      "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
       "owner": ""
@@ -5106,18 +4905,10 @@
       "python": "core/yaml/utils.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
+      "status": "done",
       "api_missing": [],
-      "api_moved": [
-        {
-          "name": "parseLegacyYamlScript",
-          "found_in": "midscene/core/yaml_runtime.py"
-        }
-      ],
-      "method_missing_functions": [
-        "interpolateEnvVars",
-        "parseLegacyYamlScript"
-      ],
+      "api_moved": [],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
@@ -5159,16 +4950,12 @@
       "python": "harmony/device.py",
       "package": "harmony",
       "batch": "P4",
-      "status": "partial",
+      "status": "done",
       "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
-      "method_missing_methods": [
-        "HarmonyDevice.describe",
-        "HarmonyDevice.getHdc",
-        "HarmonyDevice.launch"
-      ],
+      "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
       "owner": ""
@@ -5199,9 +4986,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        "HdcClient.exec"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -5336,9 +5121,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".waitForInputFocus"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -5347,13 +5130,11 @@
       "python": "ios/ios_webdriver_client.py",
       "package": "ios",
       "batch": "P4",
-      "status": "partial",
+      "status": "done",
       "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
-      "method_missing_classes": [
-        "IOSWebDriverClient"
-      ],
+      "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
@@ -5625,9 +5406,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".composeUserPrompt"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -5717,10 +5496,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".createCliInterruptWaiter",
-        ".waitForCliInterrupt"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -5885,9 +5661,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        "GlobalConfigManager.overrideAIConfig"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -5941,14 +5715,12 @@
       "python": "shared/env/model_config_manager.py",
       "package": "shared",
       "batch": "P2",
-      "status": "partial",
+      "status": "done",
       "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
-      "method_missing_methods": [
-        "ModelConfigManager.registerGlobalConfigManager"
-      ],
+      "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
       "owner": ""
@@ -5990,20 +5762,7 @@
       "batch": "P2",
       "status": "done",
       "api_missing": [],
-      "api_moved": [
-        {
-          "name": "globalConfigManager",
-          "found_in": "midscene/shared/env/global_config_manager.py"
-        },
-        {
-          "name": "globalModelConfigManager",
-          "found_in": "midscene/shared/env/global_config_manager.py"
-        },
-        {
-          "name": "overrideAIConfig",
-          "found_in": "midscene/core/ai_model/__init__.py"
-        }
-      ],
+      "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
@@ -6213,12 +5972,7 @@
       "batch": "P2",
       "status": "done",
       "api_missing": [],
-      "api_moved": [
-        {
-          "name": "REPORT_ARTIFACT_SCRIPT_TYPE",
-          "found_in": "midscene/core/dump/html_utils.py"
-        }
-      ],
+      "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
@@ -6312,9 +6066,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".getBridgeServerHost"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -6419,9 +6171,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".judgeOrderSensitive"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },

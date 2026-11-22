@@ -209,7 +209,7 @@ class IOSDevice(AbstractInterface):
     async def clear_input(self, element: Optional[Any] = None) -> None:
         """Clear the focused field with the W3C element API (upstream clearInputAt)."""
         await self._ensure_connected()
-        await self.wda.wait_for_input_focus(INPUT_FOCUS_TIMEOUT_MS)
+        await self.wda.wait_for_input_focus(timeout_ms=INPUT_FOCUS_TIMEOUT_MS)
         if not await self.wda.clear_active_element():
             raise RuntimeError(
                 "Cannot verify that input was cleared; refusing to append text"

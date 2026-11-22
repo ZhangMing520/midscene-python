@@ -84,4 +84,11 @@ async def prepare_references(prompt: Any) -> Dict[str, Any]:
     return await _prepare_jev_references(prompt)
 
 
-__all__ = ["prepare_jev_image", "prepare_references"]
+def map_jev_box(box: Dict[str, float], target_size: Dict[str, Any]) -> Dict[str, Any]:
+    """Re-export of ``locate.map_jev_box`` (lazy to avoid an import cycle)."""
+    from midscene.core.ai_model.models.jev.locate import map_jev_box as _impl
+
+    return _impl(box, target_size)
+
+
+__all__ = ["map_jev_box", "prepare_jev_image", "prepare_references"]

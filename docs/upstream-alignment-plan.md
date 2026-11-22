@@ -11,16 +11,16 @@
 | 口径 | 工具 | 结果 | 含义 |
 |---|---|---|---|
 | 文件级 | `scripts/check_upstream_alignment.py` | 425 aligned / 0 merged / 0 pending / 105 exempt | 每个上游 `.ts` 有对应 Python 文件（或已登记豁免） |
-| 导出级 | `scripts/check_upstream_api_alignment.py` | 13 个模块有差异 / 0 个运行时导出缺失 / 16 个已迁移 | 映射文件里没有这些顶层运行时导出 |
-| 方法级 | `scripts/check_upstream_method_alignment.py` | 64 个模块 / 5 个函数 / 2 个类 / 66 个方法缺失 | 类与函数的方法、参数骨架缺口 |
+| 导出级 | `scripts/check_upstream_api_alignment.py` | 0 个模块有差异 / 0 个运行时导出缺失 / 0 个已迁移 | 映射文件里没有这些顶层运行时导出 |
+| 方法级 | `scripts/check_upstream_method_alignment.py` | 0 个模块 / 0 个函数 / 0 个类 / 0 个方法缺失（另 30 项已登记为等价签名） | 类与函数的方法、参数骨架缺口 |
 | 测试级 | `tests/`（220 个 Python 文件，其中 217 个 `test_*.py`） | 2350 passed / 208 skipped | 上游同名测试已同步，skip 表示已知能力缺口 |
 
 **关键结论**：文件级对齐 ≠ 功能完整。`core/report.ts` → `core/report.py` 文件存在，但 `report.py` 只有 `write_report_html`，所以文件级通过、导出级仍有 7 个缺口、测试级有 17 个 skip。
 
 后续所有进度以**导出级 + 测试级**为准，文件级只作为守门条件。
 
-其中 0 个模块存在真正缺失，另外 13 个模块只有迁移差异。
-需要按 DoD #3 处理 re-export（见 §7.5）。剩余工作集中在方法级签名对齐（§7.6）。
+其中 0 个模块存在真正缺失，另外 0 个模块只有迁移差异。
+剩余 30 项函数签名差异已登记为等价适配（`scripts/method_alignment_allowlist.json`，见 §7.6）。
 
 ### 计数口径
 
@@ -338,24 +338,25 @@ planning/grounding、recorder-generation、report-session、Service/errors 等�
 ledger 必须做到**一行一个上游模块**，且每行有且只有一个 `batch`；ratchet 校验
 两个总数不变。新增上游模块时，先补 ledger 再动代码。
 
-另有 13 个模块**只有迁移差异、没有 missing**，不计入 68，但必须按 DoD #3 处理
-re-export：
+另有 0 个模块只有迁移差异、没有 missing（原有 16 个迁移符号已全部在映射模块 re-export，DoD #3 完成）。
+re-export 覆盖 `AgentReportManager`、`TestReportImages`、`mapJevBox`、
+`multimodalPromptToMessages`、`REPORT_ARTIFACT_SCRIPT_TYPE` 等；`debug`、`TaskExecutionError`、
+`AIResponseParseError`、`parseLegacyYamlScript`、`reportFileToMarkdown` 等也已就位。
 
-| 模块 | 迁移符号 | 归入 |
+### 7.6 方法级对齐（已完成）
+
+方法级审计结果：`0` 个模块 / `0` 个函数 / `0` 个类 / `0` 个方法缺失。
+剩余 `30` 项函数“签名差异”是 Python 侧的等价适配，已登记在
+`scripts/method_alignment_allowlist.json`，分两类：
+
+| 类别 | 含义 | 典型例子 |
 |---|---|---|
-| `core/agent/agent-report-manager.ts` | `AgentReportManager` | P3 |
-| `core/agent/task-cache.ts` | `debug` | P3 |
-| `core/agent/tasks.ts` | `TaskExecutionError` | P3 |
-| `core/ai-model/models/jev/image.ts` | `mapJevBox` | P3 |
-| `core/ai-model/service-caller/utils.ts` | `AIResponseParseError` | P3 |
-| `core/ai-model/shared/multimodal-prompt.ts` | `multimodalPromptToMessages` / `preparedReferenceImagesToMessages` | P3 |
-| `core/dump/html-utils.ts` | `extractImageByIdSync` | P2 |
-| `core/dump/image-reference.ts` | `normalizeScreenshotRef` | P3 |
-| `core/dump/test-report-images.ts` | `TestReportImages` | P1 |
-| `core/report-cli.ts` | `reportFileToMarkdown` | P1 |
-| `core/yaml/utils.ts` | `parseLegacyYamlScript` | P3 |
-| `shared/env/utils.ts` | `globalConfigManager` / `globalModelConfigManager` / `overrideAIConfig` | P2 |
-| `shared/report-artifact.ts` | `REPORT_ARTIFACT_SCRIPT_TYPE` | P2 |
+| `options-object` | 上游接收单个 options/input 对象，Python 展开为显式关键字参数 | `prepareModelImage`、`standardPlan`、`defineNode` |
+| `context-object` | 上游分开传多个上下文参数，Python 聚合为 adapter/context 对象 | `resolveLocate`、`resolvePlanning`、`verifyLocator` |
+
+检查脚本会把这类条目计入 `allowlisted_signature_mismatch` 并输出原因，
+不计入 `signature_mismatch`；`--strict` 只对未登记的缺口失败。新增条目必须写明
+具体技术原因，禁止用它掩盖真实的参数缺失。
 
 ---
 

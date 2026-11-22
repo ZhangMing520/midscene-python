@@ -88,3 +88,19 @@
 - 单次执行的 JSON dump 仅在 `persistExecutionDump`（默认 false）时写入。
 - `generateReport: false` 时全部跳过。
 - `aiAct` 同时写 JSON + HTML。
+
+---
+
+## 4. 方法级签名等价登记
+
+`scripts/method_alignment_allowlist.json` 登记了 30 项上游函数与 Python 移植之间的签名等价关系。
+它们不是缺失：Python 侧只是把上游的 options/context 对象展开或聚合，行为保持一致。
+
+- `options-object`：上游接收单个 `{...}` options/input 对象，Python 暴露同名关键字参数。
+  例如 `prepareModelImage(options)` → `prepare_model_image(image_base64, width, height, policy)`。
+- `context-object`：上游分开传多个上下文参数，Python 聚合成 adapter/context 对象。
+  例如 `resolveLocate(locate, resolvedCustomPlanner, protocolContext)` → `resolve_locate(adapter)`。
+
+`check_upstream_method_alignment.py` 将这些条目单独计数为
+`allowlisted_signature_mismatch` 并输出原因，不混入 `signature_mismatch`。
+新增条目必须写明具体技术原因；不得用来掩盖真实的参数缺失。

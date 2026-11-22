@@ -77,7 +77,7 @@ class HdcClient:
             return ["-t", self.device_id, *args]
         return list(args)
 
-    async def exec(self, *args: str) -> str:
+    async def exec(self, args: List[str]) -> str:
         """Run one hdc command; serialized to prevent concurrent processes
         competing for the device connection (upstream execMutex)."""
         async with self._exec_lock:
@@ -117,13 +117,13 @@ class HdcClient:
             return stdout_text
 
     async def shell(self, command: str) -> str:
-        return await self.exec("shell", command)
+        return await self.exec(["shell", command])
 
     async def file_send(self, local_path: str, remote_path: str) -> None:
-        await self.exec("file", "send", local_path, remote_path)
+        await self.exec(["file", "send", local_path, remote_path])
 
     async def file_recv(self, remote_path: str, local_path: str) -> None:
-        await self.exec("file", "recv", remote_path, local_path)
+        await self.exec(["file", "recv", remote_path, local_path])
 
     # -- assertions ----------------------------------------------------------
 
@@ -312,7 +312,7 @@ class HdcClient:
         )
 
     async def list_targets(self) -> List[str]:
-        stdout = await self.exec("list", "targets")
+        stdout = await self.exec(["list", "targets"])
         return [
             line.strip()
             for line in stdout.strip().splitlines()

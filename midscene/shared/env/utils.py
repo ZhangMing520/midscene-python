@@ -19,6 +19,26 @@ from midscene.shared.env.constants import (
     MIDSCENE_PREFERRED_LANGUAGE,
     MIDSCENE_REPLANNING_CYCLE_LIMIT,
 )
+from midscene.shared.env.global_config_manager import (
+    get_global_config_manager,
+    get_global_model_config_manager,
+    override_ai_config,
+)
+
+# Upstream `packages/shared/src/env/utils.ts` re-exports these instances.
+global_config_manager = get_global_config_manager()
+global_model_config_manager = get_global_model_config_manager()
+
+
+__all__ = [
+    "get_midscene_run_dir",
+    "get_preferred_language",
+    "global_config_manager",
+    "global_model_config_manager",
+    "is_cache_enabled",
+    "get_replanning_cycle_limit",
+    "override_ai_config",
+]
 
 
 def get_midscene_run_dir(sub_dir: str = "") -> str:

@@ -418,6 +418,9 @@ class ReportGenerator:
         self._written = False
         self._finalized = False
         self._printed = False
+        self._report_stream_id = uuid.uuid4().hex
+        self._last_report_meta: Optional[ReportMeta] = None
+        self._source_directory: Optional[str] = None
 
     @classmethod
     def create(cls, report_file_name: str, opts: Dict[str, Any]) -> IReportGenerator:
@@ -454,6 +457,7 @@ class ReportGenerator:
             self._recorder = ExecutionRecorder(
                 self._dump.setdefault("executions", [])
             )
+        self._recorder.report_meta = report_meta
         self._recorder.record(execution)
         self._written = False
 
@@ -479,7 +483,92 @@ class ReportGenerator:
     def get_report_path(self) -> Optional[str]:
         return self.report_path
 
+    def enable_source_snapshots(self, scope_id: Optional[str] = None) -> None:
+        """Prepare the source-snapshot directory for a report scope."""
+        scope_id = scope_id or self._report_stream_id
+        if (
+            not scope_id
+            or scope_id in (".", "..")
+            or "/" in scope_id
+            or "\\" in scope_id
+        ):
+            raise ValueError("Invalid report scope ID")
+        if self._source_directory is not None:
+            return
+        self._source_directory = os.path.join(
+            get_midscene_run_dir("test-results"), scope_id, "records"
+        )
+
+    def _snapshot_meta(self) -> Dict[str, Any]:
+        return dict(
+            self._last_report_meta
+            or {
+                "sdkVersion": "",
+                "groupName": "YAML execution",
+                "modelBriefs": [],
+            }
+        )
+
+    async def create_source_snapshot(
+        self,
+        scope_id: str,
+        execution_ids: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """Persist a frozen source snapshot (upstream createSourceSnapshot)."""
+        if self._finalized:
+            raise RuntimeError("The report has been finalized.")
+        if not scope_id or os.path.basename(scope_id) != scope_id:
+            raise ValueError("Invalid report scope ID")
+        self.enable_source_snapshots(scope_id)
+
+        if self._recorder is None:
+            self._recorder = ExecutionRecorder(
+                self._dump.setdefault("executions", [])
+            )
+        self._recorder.report_meta = self._snapshot_meta()
+        captured = self._recorder.capture(execution_ids, self._recorder.report_meta)
+
+        directory = self._source_directory
+        assert directory is not None
+        os.makedirs(directory, exist_ok=True)
+        dump_path = os.path.join(
+            directory,
+            f"{self._report_stream_id}.{scope_id}.{uuid.uuid4().hex}.json",
+        )
+        with open(dump_path, "w", encoding="utf-8") as handle:
+            handle.write(captured["dump"].serialize())
+
+        return {
+            "sourcePath": self.report_path,
+            "dumpPath": dump_path,
+            "collection": {
+                "status": "complete",
+                "capturedAt": captured["capturedAt"],
+            },
+        }
+
+    async def write_runner_report(
+        self,
+        input: Dict[str, Any],
+        scope_id: str,
+        meta: ReportMeta,
+    ) -> Optional[str]:
+        """Publish a runner snapshot into this report (upstream writeRunnerReport)."""
+        if self._finalized:
+            raise RuntimeError("The report has been finalized.")
+        self._merge_report_meta(meta)
+        if self._recorder is None:
+            self._recorder = ExecutionRecorder(
+                self._dump.setdefault("executions", [])
+            )
+        self._recorder.report_meta = meta
+        self.enable_source_snapshots(scope_id)
+        await self.create_source_snapshot(scope_id)
+        await self.flush()
+        return self.report_path
+
     def _merge_report_meta(self, report_meta: ReportMeta) -> None:
+        self._last_report_meta = dict(report_meta)
         if "sdkVersion" not in self._dump and report_meta.get("sdkVersion"):
             self._dump["sdkVersion"] = report_meta["sdkVersion"]
         if report_meta.get("groupName"):

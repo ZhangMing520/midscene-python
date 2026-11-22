@@ -20,6 +20,23 @@ from midscene.core.dump.report_dump_compactor import (
 )
 from midscene.core.dump.test_report_images import split_report_file
 
+def report_file_to_markdown(options: Dict[str, Any]) -> Dict[str, List[str]]:
+    """Convert a report file to Markdown (upstream reportFileToMarkdown)."""
+    from midscene.core.report_markdown import (
+        report_file_to_markdown as _report_file_to_markdown,
+    )
+
+    html_path = options.get("htmlPath") or options.get("html_path")
+    output_dir = options.get("outputDir") or options.get("output_dir")
+    if not html_path:
+        raise ValueError("reportFileToMarkdown: htmlPath is required")
+    if not output_dir:
+        raise ValueError("reportFileToMarkdown: outputDir is required")
+    return _report_file_to_markdown(
+        resolve_report_html_path(html_path), output_dir
+    )
+
+
 REPORT_TOOL_ACTIONS = ("split", "to-markdown", "merge-html", "export")
 
 
@@ -215,6 +232,7 @@ __all__ = [
     "create_report_cli_commands",
     "merge_report_files",
     "read_report_dump",
+    "report_file_to_markdown",
     "resolve_report_html_path",
     "split_report_file",
 ]

@@ -28,7 +28,9 @@ async def call_system_one(
     semantics); callers parse `answers` themselves.
     """
     config = model_runtime.config
-    prepared = prepare_system_one(config, request, model_runtime.execution_id)
+    prepared = prepare_system_one(
+        config, request, execution_id=model_runtime.execution_id
+    )
     questions: Dict[str, Any] = prepared["questions"]
 
     proxy = prepared.get("proxy")

@@ -9,6 +9,7 @@ The implementation now lives under `midscene.core.dump`:
 This module re-exports the original names so existing imports keep working.
 """
 
+from midscene.core.dump.html_utils import REPORT_ARTIFACT_SCRIPT_TYPE
 from midscene.core.dump.report_artifact_publication import publish_report_artifact
 from midscene.core.dump.report_artifact_reader import read_report_artifact
 from midscene.core.dump.report_artifact_store import (
@@ -30,6 +31,7 @@ REPORT_ARTIFACT_SCHEMA_VERSION = SCHEMA_VERSION
 
 __all__ = [
     "REPORT_ARTIFACT_SCHEMA_VERSION",
+    "REPORT_ARTIFACT_SCRIPT_TYPE",
     "ReportArtifactError",
     "ReportArtifactStore",
     "SCHEMA_VERSION",

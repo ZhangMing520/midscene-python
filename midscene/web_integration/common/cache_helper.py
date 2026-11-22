@@ -1,6 +1,6 @@
 """Locate-cache feature helpers (upstream common/cache-helper.ts)."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from midscene.core.ai_model.workflows.insight.order_sensitive import (
     resolve_order_sensitive,
@@ -18,9 +18,13 @@ def sanitize_xpaths(xpaths: Any) -> List[str]:
 
 async def judge_order_sensitive(
     options: Optional[Dict[str, Any]] = None,
+    debug: Optional[Callable[..., Any]] = None,
 ) -> bool:
     """Shared isOrderSensitive judgement for web cache features."""
-    return await resolve_order_sensitive(options)
+    result = await resolve_order_sensitive(options)
+    if debug is not None:
+        debug("order sensitive", result)
+    return result
 
 
 def build_rect_from_element_info(element_info: Dict[str, Any]) -> Dict[str, Any]:

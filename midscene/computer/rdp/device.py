@@ -9,6 +9,7 @@ from typing import List, Optional
 
 from loguru import logger
 
+from midscene.computer.rdp.address import format_rdp_server_address
 from midscene.computer.rdp.backend_client import (
     UnsupportedRDPBackendClient,
 )
@@ -40,10 +41,50 @@ class RDPDevice(AbstractInterface):
         self.config = config
         self.backend: RDPBackendClient = backend or UnsupportedRDPBackendClient()
         self._connection_info: Optional[RDPConnectionInfo] = None
+        self._destroyed = False
 
     @property
     def interface_type(self) -> InterfaceType:
         return InterfaceType.COMPUTER
+
+    def describe(self) -> str:
+        """Human-readable connection description (upstream describe)."""
+        port = int(self.config.get("port") or 3389)
+        server = format_rdp_server_address(
+            str(self.config.get("host", "")), port
+        )
+        username = (
+            f" as {self.config['username']}"
+            if self.config.get("username")
+            else ""
+        )
+        session_id = (self._connection_info or {}).get("sessionId")
+        session = f" [session {session_id}]" if session_id else ""
+        return f"RDP Device {server}{username}{session}"
+
+    def _assert_connected(self) -> None:
+        if self._destroyed:
+            raise RuntimeError("RDPDevice has been destroyed")
+        if self._connection_info is None:
+            raise RuntimeError("RDPDevice is not connected")
+
+    async def screenshot_base64(self) -> str:
+        """Current frame as base64 (upstream screenshotBase64)."""
+        self._assert_connected()
+        return await self.backend.screenshot_base64()
+
+    async def size(self) -> Size:
+        """Remote desktop size (upstream size)."""
+        self._assert_connected()
+        return await self.backend.size()
+
+    async def destroy(self) -> None:
+        """Disconnect and release the backend (upstream destroy)."""
+        if self._destroyed:
+            return
+        self._destroyed = True
+        self._connection_info = None
+        await self.backend.disconnect()
 
     async def connect(self) -> None:
         self._connection_info = await self.backend.connect(self.config)
