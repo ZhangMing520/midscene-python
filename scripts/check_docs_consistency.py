@@ -200,15 +200,14 @@ def check_counts(
     moved_only = [m for m in modules if m["moved"] and not m["missing"]]
     missing_total = sum(len(m["missing"]) for m in modules)
     moved_total = sum(len(m["moved"]) for m in modules)
+    moved_count = re.search(r"另有 (\d+) 个模块", plan)
 
-    checker.check("gap modules with missing == 120", len(missing_modules) == 120,
-                  str(len(missing_modules)))
-    checker.check("gap missing symbols == 329", missing_total == 329,
-                  str(missing_total))
-    checker.check("gap moved symbols == 154", moved_total == 154,
-                  str(moved_total))
-    checker.check("moved-only modules == 4", len(moved_only) == 4,
-                  str(len(moved_only)))
+    checker.check("plan states moved-only count", bool(moved_count))
+    checker.check(
+        "moved-only count matches",
+        bool(moved_count) and int(moved_count.group(1)) == len(moved_only),  # type: ignore[union-attr]
+        f"doc={moved_count.group(1) if moved_count else '?'} repo={len(moved_only)}",
+    )
 
     baseline = load_json(BASELINE)
     status = Counter(item["status"] for item in baseline["files"])  # type: ignore[index]
@@ -353,7 +352,9 @@ def check_counts(
                           f"doc={expected} repo={actual}")
 
     # Moved-only modules must be listed with a re-export batch.
-    moved_section = checker.section(plan, "另有 4 个模块", "## 8. 并行执行约定")
+    moved_section = checker.section(
+        plan, "只有迁移差异、没有 missing", "## 8. 并行执行约定"
+    )
     documented_moved = set(MODULE_PATH.findall(moved_section))
     repo_moved = {f"{m['package']}/{m['upstream']}" for m in moved_only}
     checker.check("moved-only modules documented", documented_moved == repo_moved,

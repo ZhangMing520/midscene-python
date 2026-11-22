@@ -4,18 +4,320 @@ Exports a directory artifact or single-file report as a standalone HTML file or
 an HTML + asset folder, publishing the result atomically.
 """
 
+import asyncio
+import base64
+import json
 import os
 import shutil
 import tempfile
+import uuid
 from pathlib import Path
-from typing import Union
+from typing import Any, Dict, List, Optional, Set, Union
 
+from midscene.core.dump.html_utils import (
+    DATA_SCREENSHOT_MODE_ATTR,
+    generate_dump_script_tag,
+    generate_image_script_tag,
+    generate_report_artifact_script_tag,
+    generate_test_run_report_script_tag,
+    get_base_url_fix_script,
+    get_report_tpl,
+    stream_inline_report_images,
+)
+from midscene.core.dump.image_reference import (
+    image_ref_file_extension,
+    normalize_stored_image_ref,
+)
 from midscene.core.dump.report_artifact_publication import publish_report_artifact
 from midscene.core.dump.report_artifact_reader import _load_report_dump_for_export
 from midscene.core.dump.report_artifact_store import (
     ReportArtifactError,
+    assert_report_artifact_path,
+    parse_report_artifact_manifest,
     write_report_artifact_file,
 )
+from midscene.core.dump.screenshot_store import (
+    parse_base64_image_data_url,
+    report_image_file_name,
+)
+
+
+class TestReportImages:
+    """Rewrite image references into the final delivery format."""
+
+    def __init__(self, report_path: Union[str, Path], external: bool):
+        self.report_path = Path(report_path)
+        self.external = external
+        self._locations: Dict[str, Dict[str, Any]] = {}
+        self._files: Set[str] = set()
+
+    def _reference(self, ref: Dict[str, Any], data_uri: str) -> Dict[str, Any]:
+        known = self._locations.get(ref["id"])
+        if known is not None:
+            return {**ref, **known}
+        if self.external:
+            data = base64.b64decode(
+                parse_base64_image_data_url(data_uri)["rawBase64"]
+            )
+            location = {
+                "storage": "file",
+                "path": (
+                    f"./screenshots/{report_image_file_name(image_ref_file_extension(ref), data)}"
+                ),
+            }
+        else:
+            location = {"storage": "inline"}
+        self._locations[ref["id"]] = location
+        return {**ref, **location}
+
+    def _rewrite(self, serialized: str) -> str:
+        return json.dumps(self._replace(json.loads(serialized)), ensure_ascii=False)
+
+    def _replace(self, value: Any) -> Any:
+        ref = normalize_stored_image_ref(value)
+        if ref is not None:
+            known = self._locations.get(ref["id"])
+            return {**ref, **known} if known is not None else ref
+        if isinstance(value, dict):
+            return {key: self._replace(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [self._replace(item) for item in value]
+        return value
+
+    def _collect(self, serialized: str) -> List[Dict[str, Any]]:
+        refs: Dict[str, Dict[str, Any]] = {}
+
+        def visit(value: Any) -> None:
+            ref = normalize_stored_image_ref(value)
+            if ref is not None:
+                if ref.get("storage") == "file":
+                    assert_report_artifact_path(ref.get("path"))
+                if ref["id"] not in self._locations:
+                    refs.setdefault(ref["id"], ref)
+                return
+            if isinstance(value, dict):
+                for item in value.values():
+                    visit(item)
+            elif isinstance(value, list):
+                for item in value:
+                    visit(item)
+
+        visit(json.loads(serialized))
+        return list(refs.values())
+
+    def _inline_sources(
+        self,
+        refs: List[Dict[str, Any]],
+        source_path: str,
+        origins: Optional[Dict[str, str]],
+    ) -> Dict[str, Dict[str, Dict[str, Any]]]:
+        sources: Dict[str, Dict[str, Dict[str, Any]]] = {}
+        for ref in refs:
+            if ref.get("storage") != "inline":
+                continue
+            source = (origins or {}).get(ref["id"]) or source_path
+            sources.setdefault(source, {})[ref["id"]] = ref
+        return sources
+
+    def _write_sync(self, ref: Dict[str, Any], data: str) -> None:
+        target = self._reference(ref, data)
+        if target.get("storage") == "file":
+            path = target.get("path")
+            if path not in self._files:
+                destination = self.report_path.parent / path
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_bytes(
+                    base64.b64decode(
+                        parse_base64_image_data_url(data)["rawBase64"]
+                    )
+                )
+                self._files.add(path)
+            return
+        with open(self.report_path, "a", encoding="utf-8") as handle:
+            handle.write(f"{generate_image_script_tag(ref['id'], data)}\n")
+
+    def rewrite_sync(
+        self,
+        serialized: str,
+        source_path: str,
+        origins: Optional[Dict[str, str]] = None,
+    ) -> str:
+        refs = self._collect(serialized)
+        for ref in refs:
+            if ref.get("storage") != "file":
+                continue
+            source = (origins or {}).get(ref["id"]) or source_path
+            data = (Path(source).parent / ref["path"]).read_bytes()
+            self._write_sync(
+                ref,
+                f"data:{ref['mimeType']};base64,{base64.b64encode(data).decode('ascii')}",
+            )
+        for source, images in self._inline_sources(
+            refs, source_path, origins
+        ).items():
+            def visit(image_id: str, data: str) -> bool:
+                ref = images.get(image_id)
+                if ref is not None:
+                    self._write_sync(ref, data)
+                    images.pop(image_id, None)
+                return not images
+
+            stream_inline_report_images(source, visit)
+            if images:
+                missing = next(iter(images))
+                raise ReportArtifactError(
+                    f"Missing report image {missing} in {source}"
+                )
+        return self._rewrite(serialized)
+
+    async def rewrite_async(
+        self,
+        serialized: str,
+        source_path: str,
+        origins: Optional[Dict[str, str]] = None,
+    ) -> str:
+        """Async variant of :meth:`rewrite_sync` (upstream rewriteAsync)."""
+        return await asyncio.to_thread(
+            self.rewrite_sync, serialized, source_path, origins
+        )
+
+
+class ReportArtifactWriter:
+    """Final publisher shared by Test, report merging, and conversion."""
+
+    def __init__(
+        self,
+        entry: Union[str, Path],
+        external: bool,
+        kind: str,
+        report_id: Optional[str] = None,
+    ):
+        self.entry = Path(entry)
+        self.external = external
+        self.kind = kind
+        self.manifest: Dict[str, Any] = {
+            "schemaVersion": 1,
+            "kind": kind,
+            "reportId": report_id or uuid.uuid4().hex,
+            "entry": self.entry.name,
+            "status": "complete",
+            "groups": [],
+        }
+        self.images = TestReportImages(self.entry, external)
+
+    @property
+    def template(self) -> str:
+        template = get_report_tpl()
+        end = template.rfind("</html>")
+        base = template if end < 0 else template[:end]
+        return base + (get_base_url_fix_script() if self.external else "")
+
+    def initialize(self) -> None:
+        self.entry.parent.mkdir(parents=True, exist_ok=True)
+        self.entry.write_text(self.template, encoding="utf-8")
+
+    def initialize_sync(self) -> None:
+        self.initialize()
+
+    def _group(
+        self, group_id: str, attributes: Dict[str, Any]
+    ) -> Path:
+        if any(group["id"] == group_id for group in self.manifest["groups"]):
+            raise ReportArtifactError(f"Duplicate report group: {group_id}")
+        path = f"data/group-{len(self.manifest['groups']) + 1}/1.json"
+        self.manifest["groups"].append(
+            {
+                "id": group_id,
+                "status": "complete",
+                "attributes": {
+                    **attributes,
+                    DATA_SCREENSHOT_MODE_ATTR: "directory",
+                },
+                "dumps": [path],
+            }
+        )
+        return self.entry.parent / path
+
+    def _inline_group(
+        self,
+        group_id: str,
+        attributes: Dict[str, Any],
+        serialized: str,
+    ) -> str:
+        return generate_dump_script_tag(
+            serialized,
+            {
+                **attributes,
+                "data-group-id": group_id,
+                DATA_SCREENSHOT_MODE_ATTR: "inline",
+                "data-report-kind": self.manifest["kind"],
+            },
+        )
+
+    def add_group(
+        self,
+        group_id: str,
+        serialized: str,
+        source_path: str,
+        attributes: Dict[str, Any],
+        origins: Optional[Dict[str, str]] = None,
+    ) -> None:
+        rewritten = self.images.rewrite_sync(
+            serialized, source_path, origins
+        )
+        if self.external:
+            write_report_artifact_file(
+                self._group(group_id, attributes), rewritten
+            )
+        else:
+            with open(self.entry, "a", encoding="utf-8") as handle:
+                handle.write(
+                    self._inline_group(group_id, attributes, rewritten)
+                )
+
+    def add_group_sync(
+        self,
+        group_id: str,
+        serialized: str,
+        source_path: str,
+        attributes: Dict[str, Any],
+        origins: Optional[Dict[str, str]] = None,
+    ) -> None:
+        self.add_group(group_id, serialized, source_path, attributes, origins)
+
+    def _footer(
+        self, runner: Optional[Dict[str, Any]], comment: str
+    ) -> str:
+        if self.external:
+            data = generate_report_artifact_script_tag("report.json")
+        elif runner:
+            data = generate_test_run_report_script_tag(runner)
+        else:
+            data = ""
+        return f"{data}{comment}\n</html>\n"
+
+    def finish(
+        self, runner: Optional[Dict[str, Any]] = None, comment: str = ""
+    ) -> None:
+        if self.external:
+            if runner:
+                self.manifest["runner"] = "data/runner.json"
+                write_report_artifact_file(
+                    self.entry.parent / self.manifest["runner"],
+                    json.dumps(runner, ensure_ascii=False),
+                )
+            parse_report_artifact_manifest(self.manifest)
+            write_report_artifact_file(
+                self.entry.parent / "report.json",
+                json.dumps(self.manifest, ensure_ascii=False),
+            )
+        with open(self.entry, "a", encoding="utf-8") as handle:
+            handle.write(self._footer(runner, comment))
+
+    def finish_sync(
+        self, runner: Optional[Dict[str, Any]] = None, comment: str = ""
+    ) -> None:
+        self.finish(runner, comment)
 
 
 def _validate_export_file_name(file_name: str) -> None:
@@ -109,6 +411,8 @@ def export_report_artifact(
 
 
 __all__ = [
+    "ReportArtifactWriter",
+    "TestReportImages",
     "_validate_export_file_name",
     "export_report_artifact",
 ]

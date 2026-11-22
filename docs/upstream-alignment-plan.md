@@ -11,16 +11,16 @@
 | 口径 | 工具 | 结果 | 含义 |
 |---|---|---|---|
 | 文件级 | `scripts/check_upstream_alignment.py` | 425 aligned / 0 merged / 0 pending / 105 exempt | 每个上游 `.ts` 有对应 Python 文件（或已登记豁免） |
-| 导出级 | `scripts/check_upstream_api_alignment.py` | 124 个模块有差异 / 329 个运行时导出缺失 / 154 个已迁移 | 映射文件里没有这些顶层运行时导出 |
-| 方法级 | `scripts/check_upstream_method_alignment.py` | 154 个模块 / 196 个函数 / 26 个类 / 294 个方法缺失 | 类与函数的方法、参数骨架缺口 |
-| 测试级 | `tests/`（205 个 Python 文件，其中 202 个 `test_*.py`） | 1750 passed / 287 skipped | 上游同名测试已同步，skip 表示已知能力缺口 |
+| 导出级 | `scripts/check_upstream_api_alignment.py` | 121 个模块有差异 / 293 个运行时导出缺失 / 161 个已迁移 | 映射文件里没有这些顶层运行时导出 |
+| 方法级 | `scripts/check_upstream_method_alignment.py` | 139 个模块 / 173 个函数 / 22 个类 / 104 个方法缺失 | 类与函数的方法、参数骨架缺口 |
+| 测试级 | `tests/`（205 个 Python 文件，其中 202 个 `test_*.py`） | 1777 passed / 260 skipped | 上游同名测试已同步，skip 表示已知能力缺口 |
 
 **关键结论**：文件级对齐 ≠ 功能完整。`core/report.ts` → `core/report.py` 文件存在，但 `report.py` 只有 `write_report_html`，所以文件级通过、导出级仍有 7 个缺口、测试级有 17 个 skip。
 
 后续所有进度以**导出级 + 测试级**为准，文件级只作为守门条件。
 
-其中 120 个模块存在真正缺失，另外 4 个模块只有迁移差异。分阶段路线图对
-**全部 120 个模块 / 329 个缺失符号**做了无遗漏分派（见 §7.5）。
+其中 116 个模块存在真正缺失，另外 5 个模块只有迁移差异。分阶段路线图对
+**全部 116 个模块 / 293 个缺失符号**做了无遗漏分派（见 §7.5）。
 
 ### 计数口径
 
@@ -260,20 +260,24 @@ ledger 由脚本生成初稿，人工只维护 `status`、`skip_reasons`、`note
 
 验收：工具能对 1 个模块输出函数/类/方法缺口，ledger 可生成，ratchet 可运行。
 
-### Phase 1：报表链路（解锁 27 个 skip）
+### Phase 1：报表链路（report 合并已完成）
+
+`core/report.ts` 与 `core/report-markdown.ts` 已对齐，`tests/test_report.py`（17）
+和 `tests/test_report_markdown.py`（10）的 27 个 skip 已全部转为真实断言。
+剩余缺口：
 
 | 上游文件 | 缺失 | 对应测试 |
 |---|---|---|
-| `core/report.ts` | 7 | `tests/test_report.py`（17 skip） |
-| `core/report-markdown.ts` | 1 | `tests/test_report_markdown.py`（10 skip） |
-| `core/dump/report-artifact-reader.ts` | 6 | 现有 artifact 测试 |
+| `core/dump/report-artifact-reader.ts` | 1 | 现有 artifact 测试 |
 | `core/dump/report-action-dump.ts` | 3 | 现有 dump 测试 |
 | `core/dump/screenshot-store.ts` | 3 | `tests/test_screenshot_store.py` |
 | `core/dump/screenshot-restoration.ts` | 3 | 现有 restoration 测试 |
 | `core/report-cli.ts` | 1 | 现有 report-cli 测试 |
-| **合计** | **7 个模块 / 24 个符号** | |
+| **合计** | **5 个模块 / 11 个符号** | |
 
-重点：`ReportMergingTool`、`isDirectoryModeReport`、`TestRunReportAssembler`、`collectDedupedExecutions`、`executionToMarkdown`。
+已补齐：`ReportMergingTool`、`TestRunReportAssembler`、`collectDedupedExecutions`、
+`dedupeExecutionsKeepLatest`、`isDirectoryModeReport`、`removeReportArtifact`、
+`splitReportHtmlByExecution`、`exportReportArtifact`、`executionToMarkdown`。
 
 ### Phase 2：共享基础设施（被多模块依赖）
 
@@ -289,7 +293,7 @@ ledger 由脚本生成初稿，人工只维护 `status`、`skip_reasons`、`note
 | `shared/env/constants.ts` | 1 | 环境常量 |
 | `shared/env/parse-model-config.ts` | 1 | 模型配置解析 |
 | `shared/logger.ts` | 1 | 日志封装 |
-| **合计** | **10 个模块 / 84 个符号** | |
+| **合计** | **10 个模块 / 69 个符号** | |
 
 ### Phase 3：core 主体
 
@@ -317,7 +321,7 @@ ledger 由脚本生成初稿，人工只维护 `status`、`skip_reasons`、`note
 | `core/index.ts` | 2 |
 | `core/agent/agent-options.ts` / `cache-config` / `screenshot-preparation` / `tasks` | 各 2 |
 | 其余 51 个 core 模块 | 各 1（明细见 `scripts/upstream_api_gaps.json`） |
-| **合计** | **75 个模块 / 153 个符号** |
+| **合计** | **73 个模块 / 145 个符号** |
 
 ### Phase 4：CLI / Web / 平台
 
@@ -352,23 +356,23 @@ ledger 由脚本生成初稿，人工只维护 `status`、`skip_reasons`、`note
 四个阶段的模块数与符号数必须满足：
 
 ```
-模块：7 (P1) + 10 (P2) + 75 (P3) + 28 (P4) = 120
-符号：24 (P1) + 84 (P2) + 153 (P3) + 68 (P4) = 329
+模块：5 (P1) + 10 (P2) + 73 (P3) + 28 (P4) = 116
+符号：11 (P1) + 69 (P2) + 145 (P3) + 68 (P4) = 293
 ```
 
 分派规则（无重叠、无遗漏）：
 
 | 阶段 | 范围 |
 |---|---|
-| P1 | §7 Phase 1 表中 7 个报表模块 |
+| P1 | §7 Phase 1 表中 5 个剩余报表模块 |
 | P2 | 所有 `shared` 包缺失模块 + `core/dump/html-utils.ts` |
 | P3 | 其余所有 `core` 包缺失模块 |
 | P4 | 其余所有包（android / cli / computer / harmony / ios / web-integration / webdriver） |
 
 ledger 必须做到**一行一个上游模块**，且每行有且只有一个 `batch`；ratchet 校验
-`120 / 329` 两个总数不变。新增上游模块时，先补 ledger 再动代码。
+`116 / 293` 两个总数不变。新增上游模块时，先补 ledger 再动代码。
 
-另有 4 个模块**只有迁移差异、没有 missing**，不计入 329，但必须按 DoD #3 处理
+另有 5 个模块**只有迁移差异、没有 missing**，不计入 293，但必须按 DoD #3 处理
 re-export：
 
 | 模块 | 迁移符号 | 归入 |
@@ -376,6 +380,7 @@ re-export：
 | `core/agent/agent-report-manager.ts` | `AgentReportManager` | P3 |
 | `core/agent/task-cache.ts` | `debug` | P3 |
 | `core/dump/image-reference.ts` | `normalizeScreenshotRef` | P3 |
+| `core/dump/test-report-images.ts` | `TestReportImages` | P1 |
 | `shared/env/utils.ts` | `globalConfigManager` / `globalModelConfigManager` / `overrideAIConfig` | P2 |
 
 ---

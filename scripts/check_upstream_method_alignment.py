@@ -39,8 +39,8 @@ _EXPORT_DECL = re.compile(
     re.MULTILINE,
 )
 _METHOD = re.compile(
-    r"^[ \t]*(?:(?:public|private|protected|static|readonly|override|abstract|async)"
-    r"[ \t]+)*(?:(get|set)[ \t]+)?([A-Za-z_$][\w$]*)[ \t]*"
+    r"^[ \t]*((?:(?:public|private|protected|static|readonly|override|abstract|async)"
+    r"[ \t]+)*)(?:(get|set)[ \t]+)?([A-Za-z_$][\w$]*)[ \t]*"
     r"(?:<[^<>{}]*>)?[ \t]*\(",
     re.MULTILINE,
 )
@@ -236,18 +236,21 @@ def _ts_classes(source: str) -> Dict[str, Dict[str, Dict[str, object]]]:
         depths = _depths(body)
         methods: Dict[str, Dict[str, object]] = {}
         for method in _METHOD.finditer(body):
-            offset = method.start(2)
+            offset = method.start(3)
             if depths[offset] != 0:
                 continue
-            method_name = method.group(2)
+            modifiers = method.group(1) or ""
+            if re.search(r"\b(private|protected)\b", modifiers):
+                continue
+            method_name = method.group(3)
             if method_name in _RESERVED or _strip_private(method_name):
                 continue
-            if method.group(1):
+            if method.group(2):
                 # Public getter/setter: tracked but not compared as a method.
                 continue
             if method_name in methods:
                 continue
-            params = _function_params(body, method.end(2))
+            params = _function_params(body, method.end(3))
             methods[method_name] = {
                 "params": _param_names(params),
                 "async": bool(re.search(r"\basync\b", method.group(0))),

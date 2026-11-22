@@ -7,15 +7,24 @@ report template, and persist dump/log artifacts.
 
 import json
 import os
+import re
 import uuid
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Callable, Dict, Iterator, List, Optional, Union
+from urllib.parse import quote
 
 from loguru import logger
 
 from midscene.core.constants import IS_REPORT_BUILD
+from midscene.core.dump.report_artifact_store import assert_report_artifact_path
 from midscene.core.report_html_template import _TEMPLATE
 from midscene.shared.env import get_midscene_run_dir
+
+DATA_SCREENSHOT_MODE_ATTR = "data-screenshot-mode"
+REPORT_ARTIFACT_SCRIPT_TYPE = "midscene_report_artifact"
+TEST_RUN_REPORT_SCRIPT_TYPE = "midscene_test_run_dump"
+
+STREAMING_CHUNK_SIZE = 64 * 1024
 
 _report_initialized: Dict[str, bool] = {}
 _report_group_ids: Dict[str, str] = {}
@@ -159,13 +168,341 @@ def write_log_file(opts: Dict[str, Any]) -> Optional[str]:
     return str(Path(target_dir) / f"{file_name}.{file_ext}")
 
 
+def _iter_tag_contents(
+    file_path: str,
+    open_tag: str,
+    close_tag: str,
+    chunk_size: int = STREAMING_CHUNK_SIZE,
+) -> Iterator[str]:
+    """Yield the contents between matching tags while keeping memory bounded."""
+    with open(file_path, "r", encoding="utf-8") as handle:
+        pending = ""
+        capturing = False
+        content = ""
+        while True:
+            chunk = handle.read(chunk_size)
+            if not chunk:
+                break
+            data = pending + chunk
+            pending = ""
+            search = 0
+            while True:
+                if not capturing:
+                    start = data.find(open_tag, search)
+                    if start == -1:
+                        keep = max(0, len(open_tag) - 1)
+                        pending = data[-keep:] if keep else ""
+                        break
+                    search = start + len(open_tag)
+                    capturing = True
+                    content = ""
+                    continue
+                end = data.find(close_tag, search)
+                if end == -1:
+                    keep = max(0, len(close_tag) - 1)
+                    if keep:
+                        cut = max(search, len(data) - keep)
+                        content += data[search:cut]
+                        pending = data[cut:]
+                    else:
+                        content += data[search:]
+                        pending = ""
+                    break
+                content += data[search:end]
+                yield content
+                capturing = False
+                content = ""
+                search = end + len(close_tag)
+
+
+_SCRIPT_TYPE_PATTERN = re.compile(
+    r"""(?:^|\s)type\s*=\s*["']([^"']+)["']""", re.IGNORECASE
+)
+_IMAGE_ID_ATTRIBUTE_PATTERN = re.compile(
+    r"""(?:^|\s)data-id\s*=\s*["']([a-z0-9_-]{1,128})["']""", re.IGNORECASE
+)
+
+
+def _script_type(attributes: str) -> Optional[str]:
+    match = _SCRIPT_TYPE_PATTERN.search(attributes)
+    return match.group(1) if match else None
+
+
+def stream_dump_scripts_sync(
+    file_path: str,
+    visitor: Callable[[Dict[str, str]], bool],
+) -> None:
+    """Stream every ``midscene_web_dump`` script; return early when asked."""
+    for content in _iter_tag_contents(file_path, "<script", "</script>"):
+        tag_end = content.find(">")
+        if tag_end == -1:
+            continue
+        if _script_type(content[:tag_end]) != "midscene_web_dump":
+            continue
+        open_tag = "<script" + content[: tag_end + 1]
+        if visitor({"openTag": open_tag, "content": content[tag_end + 1 :]}):
+            return
+
+
+def extract_all_dump_scripts_sync(file_path: str) -> List[Dict[str, str]]:
+    """Return every ``midscene_web_dump`` script tag with its open tag."""
+    results: List[Dict[str, str]] = []
+    stream_dump_scripts_sync(
+        file_path,
+        lambda dump: results.append(dump) or False,
+    )
+    return results
+
+
+def extract_last_dump_script_sync(file_path: str) -> str:
+    """Return the last embedded dump payload, or an empty string."""
+    last = ""
+    for content in _iter_tag_contents(file_path, "<script", "</script>"):
+        tag_end = content.find(">")
+        if tag_end == -1:
+            continue
+        if _script_type(content[:tag_end]) != "midscene_web_dump":
+            continue
+        last = content[tag_end + 1 :].strip()
+    return last
+
+
+def stream_inline_report_images(
+    file_path: str,
+    visit: Callable[[str, str], bool],
+) -> None:
+    """Visit one ``midscene-image`` payload at a time."""
+    for content in _iter_tag_contents(file_path, "<script", "</script>"):
+        tag_end = content.find(">")
+        if tag_end == -1:
+            continue
+        attributes = content[:tag_end]
+        if _script_type(attributes) != "midscene-image":
+            continue
+        id_match = _IMAGE_ID_ATTRIBUTE_PATTERN.search(attributes)
+        if not id_match:
+            continue
+        if visit(
+            id_match.group(1),
+            anti_escape_script_tag(content[tag_end + 1 :]),
+        ):
+            return
+
+
+def extract_report_artifact_path_sync(file_path: str) -> Optional[str]:
+    """Extract the manifest path declared by a directory report."""
+    for content in _iter_tag_contents(file_path, "<script", "</script>"):
+        tag_end = content.find(">")
+        if tag_end == -1:
+            continue
+        if _script_type(content[:tag_end]) != REPORT_ARTIFACT_SCRIPT_TYPE:
+            continue
+        value = json.loads(anti_escape_script_tag(content[tag_end + 1 :]))
+        return assert_report_artifact_path(value)
+    return None
+
+
+def parse_image_scripts(html: str) -> Dict[str, str]:
+    """Collect inline report images from an HTML string by id."""
+    image_map: Dict[str, str] = {}
+    pattern = re.compile(
+        r'<script type="midscene-image" data-id="([^"]+)">([\s\S]*?)</script>'
+    )
+    for match in pattern.finditer(html):
+        image_map[match.group(1)] = anti_escape_script_tag(match.group(2))
+    return image_map
+
+
+def _encode_attribute(value: Any) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return quote(str(value), safe="-_.!~*'()")
+
+
+def generate_dump_script_tag(
+    json_string: str,
+    attributes: Optional[Dict[str, Any]] = None,
+) -> str:
+    """Build a ``midscene_web_dump`` tag with optional attributes."""
+    attr_string = ""
+    if attributes:
+        attr_string = " " + " ".join(
+            f'{key}="{_encode_attribute(value)}"'
+            for key, value in attributes.items()
+            if value is not None
+        )
+    return (
+        '<script type="midscene_web_dump"'
+        + attr_string
+        + ">"
+        + escape_script_tag(json_string)
+        + "</script>"
+    )
+
+
+def generate_image_script_tag(image_id: str, data: str) -> str:
+    """Build an inline ``midscene-image`` tag."""
+    return (
+        '<script type="midscene-image" data-id="'
+        + image_id
+        + '">'
+        + escape_script_tag(data)
+        + "</script>"
+    )
+
+
+def generate_report_artifact_script_tag(path: str) -> str:
+    assert_report_artifact_path(path)
+    return (
+        '<script type="'
+        + REPORT_ARTIFACT_SCRIPT_TYPE
+        + '">'
+        + json.dumps(path)
+        + "</script>"
+    )
+
+
+def generate_test_run_report_script_tag(dump: Dict[str, Any]) -> str:
+    return (
+        '<script type="'
+        + TEST_RUN_REPORT_SCRIPT_TYPE
+        + '">\n'
+        + escape_script_tag(json.dumps(dump, ensure_ascii=False))
+        + "\n</script>\n"
+    )
+
+
+def get_base_url_fix_script() -> str:
+    """Inline script that fixes relative URL resolution for directory reports."""
+    return (
+        "\n<script>(function(){"
+        'var p=window.location.pathname;'
+        'if(p.endsWith("/")||/\\.\\w+$/.test(p))return;'
+        'var b=document.createElement("base");'
+        'b.href=p+"/";'
+        "document.head.insertBefore(b,document.head.firstChild)"
+        "})()"
+        "</script>"
+        "\n"
+    )
+
+
+def _clean_html_comment_value(value: Any) -> str:
+    text = "N/A" if value is None else str(value)
+    return text.replace("\0", "").replace("--", "- -")
+
+
+def _format_model_brief_for_agent(brief: Dict[str, Any]) -> str:
+    intent = brief.get("intent") or "default"
+    model = brief.get("name") or "unknown"
+    description = (
+        f" ({brief['modelDescription']})" if brief.get("modelDescription") else ""
+    )
+    return f"{intent}: {model}{description}"
+
+
+def _has_usage_model_info(usage: Optional[Dict[str, Any]]) -> bool:
+    if not usage:
+        return False
+    return any(
+        usage.get(key)
+        for key in (
+            "model_name",
+            "response_model_name",
+            "model_description",
+            "intent",
+        )
+    )
+
+
+def _format_usage_model_for_agent(source: str, usage: Dict[str, Any]) -> str:
+    intent = usage.get("intent") or source
+    model = usage.get("model_name") or usage.get("response_model_name") or "unknown"
+    description = (
+        f" ({usage['model_description']})"
+        if usage.get("model_description")
+        else ""
+    )
+    return f"{intent}: {model}{description}"
+
+
+def _collect_usage_models_for_agent(report: Dict[str, Any]) -> str:
+    models: Dict[str, str] = {}
+    executions = report.get("executions")
+    if not isinstance(executions, list):
+        executions = []
+    for execution in executions:
+        tasks = execution.get("tasks") if isinstance(execution, dict) else None
+        if not isinstance(tasks, list):
+            tasks = []
+        for task in tasks:
+            for source, usage in (
+                ("main", task.get("usage")),
+                ("searchArea", task.get("searchAreaUsage")),
+            ):
+                if not _has_usage_model_info(usage):
+                    continue
+                formatted = _format_usage_model_for_agent(source, usage)
+                models[formatted] = formatted
+    return "; ".join(models.values())
+
+
+def generate_agent_report_comment(report: Dict[str, Any]) -> str:
+    """Build the agent-readable HTML comment embedded in every report."""
+    executions = report.get("executions")
+    if not isinstance(executions, list):
+        executions = []
+    task_count = sum(
+        len(execution.get("tasks") or [])
+        for execution in executions
+        if isinstance(execution, dict)
+    )
+    model_briefs = report.get("modelBriefs")
+    if isinstance(model_briefs, list) and model_briefs:
+        models = "; ".join(
+            _format_model_brief_for_agent(brief) for brief in model_briefs
+        )
+    else:
+        models = _collect_usage_models_for_agent(report) or "No model metadata recorded"
+
+    lines = [
+        "For Agent Analysis:",
+        f"Report: {_clean_html_comment_value(report.get('groupName'))}",
+        f"SDK: {_clean_html_comment_value(report.get('sdkVersion'))}",
+        f"Device: {_clean_html_comment_value(report.get('deviceType'))}",
+        f"Executions: {len(executions)}; Tasks: {task_count}",
+        f"Models: {_clean_html_comment_value(models)}",
+        'Structured report JSON is stored in script[type="midscene_web_dump"] tags near this comment.',
+        'Screenshots are stored as script[type="midscene-image"] tags or files referenced by screenshot refs.',
+        "For AI analysis, inspect each execution task for type, status, timing, param, output, usage, searchAreaUsage, recorder, and screenshot refs.",
+        "Use the Markdown export when available; it contains the same report context plus image links for agent review.",
+    ]
+    return "\n<!--\n" + "\n".join(lines) + "\n-->\n"
+
+
 __all__ = [
+    "DATA_SCREENSHOT_MODE_ATTR",
+    "REPORT_ARTIFACT_SCRIPT_TYPE",
+    "STREAMING_CHUNK_SIZE",
+    "TEST_RUN_REPORT_SCRIPT_TYPE",
     "anti_escape_script_tag",
     "escape_script_tag",
+    "extract_all_dump_scripts_sync",
+    "extract_last_dump_script_sync",
+    "extract_report_artifact_path_sync",
+    "generate_agent_report_comment",
+    "generate_dump_script_tag",
+    "generate_image_script_tag",
+    "generate_report_artifact_script_tag",
+    "generate_test_run_report_script_tag",
+    "get_base_url_fix_script",
     "get_report_tpl",
     "insert_content_before_closing_html",
     "insert_script_before_closing_html",
+    "parse_image_scripts",
     "report_html_content",
+    "stream_dump_scripts_sync",
+    "stream_inline_report_images",
     "write_dump_report",
     "write_log_file",
 ]

@@ -4,10 +4,10 @@
     "runtime_exports": 1151,
     "schema_exports": 56,
     "type_exports": 983,
-    "modules_with_gaps": 124,
-    "missing": 329,
-    "moved": 154,
-    "modules_with_missing": 120
+    "modules_with_gaps": 121,
+    "missing": 293,
+    "moved": 161,
+    "modules_with_missing": 116
   },
   "by_package": {
     "android": {
@@ -26,9 +26,9 @@
       "moved": 0
     },
     "core": {
-      "modules": 86,
-      "missing": 202,
-      "moved": 24
+      "modules": 83,
+      "missing": 167,
+      "moved": 30
     },
     "harmony": {
       "modules": 1,
@@ -42,8 +42,8 @@
     },
     "shared": {
       "modules": 10,
-      "missing": 59,
-      "moved": 129
+      "missing": 58,
+      "moved": 130
     },
     "web-integration": {
       "modules": 7,
@@ -57,45 +57,6 @@
     }
   },
   "modules": [
-    {
-      "package": "core",
-      "upstream": "dump/html-utils.ts",
-      "python": "core/dump/html_utils.py",
-      "runtime_exports": 26,
-      "missing": [
-        "DATA_SCREENSHOT_MODE_ATTR",
-        "STREAMING_CHUNK_SIZE",
-        "collectImageScriptIds",
-        "escapeContent",
-        "extractAllDumpScriptsSync",
-        "extractLastDumpScriptSync",
-        "extractReportArtifactPathAsync",
-        "extractReportArtifactPathSync",
-        "extractTestRunReportDumpSync",
-        "generateAgentReportComment",
-        "generateDumpScriptTag",
-        "generateImageScriptTag",
-        "generateReportArtifactScriptTag",
-        "generateTestRunReportScriptTag",
-        "getBaseUrlFixScript",
-        "parseDumpScript",
-        "parseDumpScriptAttributes",
-        "parseImageScripts",
-        "streamDumpScriptsAsync",
-        "streamDumpScriptsSync",
-        "streamImageScriptsToFile",
-        "streamInlineReportImages",
-        "streamScanTags",
-        "streamScanTagsAsync",
-        "unescapeContent"
-      ],
-      "moved": [
-        {
-          "name": "extractImageByIdSync",
-          "found_in": "midscene/core/screenshot_item.py"
-        }
-      ]
-    },
     {
       "package": "core",
       "upstream": "device/index.ts",
@@ -215,6 +176,31 @@
       ]
     },
     {
+      "package": "core",
+      "upstream": "dump/html-utils.ts",
+      "python": "core/dump/html_utils.py",
+      "runtime_exports": 26,
+      "missing": [
+        "collectImageScriptIds",
+        "escapeContent",
+        "extractReportArtifactPathAsync",
+        "extractTestRunReportDumpSync",
+        "parseDumpScript",
+        "parseDumpScriptAttributes",
+        "streamDumpScriptsAsync",
+        "streamImageScriptsToFile",
+        "streamScanTags",
+        "streamScanTagsAsync",
+        "unescapeContent"
+      ],
+      "moved": [
+        {
+          "name": "extractImageByIdSync",
+          "found_in": "midscene/core/screenshot_item.py"
+        }
+      ]
+    },
+    {
       "package": "cli",
       "upstream": "printer.ts",
       "python": "cli/printer.py",
@@ -251,7 +237,7 @@
       "moved": [
         {
           "name": "antiEscapeScriptTag",
-          "found_in": "midscene/core/utils.py"
+          "found_in": "midscene/core/report.py"
         },
         {
           "name": "escapeScriptTag",
@@ -281,22 +267,6 @@
         "notExecutedError",
         "printExecutionFinished",
         "resolveYamlMaxAttempts"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "agent/ui-utils.ts",
-      "python": "core/agent/ui_utils.py",
-      "runtime_exports": 7,
-      "missing": [
-        "extractInsightParam",
-        "locateParamStr",
-        "paramStr",
-        "pullParamStr",
-        "scrollParamStr",
-        "taskTitleStr",
-        "typeStr"
       ],
       "moved": []
     },
@@ -362,27 +332,6 @@
       "moved": []
     },
     {
-      "package": "core",
-      "upstream": "report.ts",
-      "python": "core/report.py",
-      "runtime_exports": 8,
-      "missing": [
-        "ReportMergingTool",
-        "TestRunReportAssembler",
-        "collectDedupedExecutions",
-        "dedupeExecutionsKeepLatest",
-        "isDirectoryModeReport",
-        "removeReportArtifact",
-        "splitReportHtmlByExecution"
-      ],
-      "moved": [
-        {
-          "name": "exportReportArtifact",
-          "found_in": "midscene/core/__init__.py"
-        }
-      ]
-    },
-    {
       "package": "web-integration",
       "upstream": "bridge-mode/common.ts",
       "python": "web_integration/bridge_mode/common.py",
@@ -394,21 +343,6 @@
         "DefaultLocalEndpoint",
         "KeyboardEvent",
         "MouseEvent"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "dump/report-artifact-reader.ts",
-      "python": "core/dump/report_artifact_reader.py",
-      "runtime_exports": 6,
-      "missing": [
-        "readReportActionDump",
-        "readReportArtifactManifest",
-        "readReportArtifactManifestAsync",
-        "readReportDumpScripts",
-        "readReportRunnerDump",
-        "streamReportDumpScripts"
       ],
       "moved": []
     },
@@ -1292,17 +1226,6 @@
       "moved": []
     },
     {
-      "package": "shared",
-      "upstream": "report-artifact.ts",
-      "python": "shared/report_artifact.py",
-      "runtime_exports": 4,
-      "missing": [
-        "REPORT_ARTIFACT_SCHEMA_VERSION",
-        "REPORT_ARTIFACT_SCRIPT_TYPE"
-      ],
-      "moved": []
-    },
-    {
       "package": "web-integration",
       "upstream": "web-element.ts",
       "python": "web_integration/web_element.py",
@@ -1415,6 +1338,41 @@
         {
           "name": "TaskBuilder",
           "found_in": "midscene/core/agent/agent.py"
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "agent/ui-utils.ts",
+      "python": "core/agent/ui_utils.py",
+      "runtime_exports": 7,
+      "missing": [
+        "taskTitleStr"
+      ],
+      "moved": [
+        {
+          "name": "extractInsightParam",
+          "found_in": "midscene/core/report_markdown.py"
+        },
+        {
+          "name": "locateParamStr",
+          "found_in": "midscene/core/report_markdown.py"
+        },
+        {
+          "name": "paramStr",
+          "found_in": "midscene/core/report_markdown.py"
+        },
+        {
+          "name": "pullParamStr",
+          "found_in": "midscene/core/report_markdown.py"
+        },
+        {
+          "name": "scrollParamStr",
+          "found_in": "midscene/core/report_markdown.py"
+        },
+        {
+          "name": "typeStr",
+          "found_in": "midscene/core/report_markdown.py"
         }
       ]
     },
@@ -1834,11 +1792,11 @@
     },
     {
       "package": "core",
-      "upstream": "dump/report-artifact-writer.ts",
-      "python": "core/dump/report_artifact_writer.py",
-      "runtime_exports": 1,
+      "upstream": "dump/report-artifact-reader.ts",
+      "python": "core/dump/report_artifact_reader.py",
+      "runtime_exports": 6,
       "missing": [
-        "ReportArtifactWriter"
+        "readReportArtifactManifestAsync"
       ],
       "moved": []
     },
@@ -1849,16 +1807,6 @@
       "runtime_exports": 1,
       "missing": [
         "compactReportDumps"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "dump/test-report-images.ts",
-      "python": "core/dump/test_report_images.py",
-      "runtime_exports": 1,
-      "missing": [
-        "TestReportImages"
       ],
       "moved": []
     },
@@ -1933,6 +1881,21 @@
       "moved": []
     },
     {
+      "package": "shared",
+      "upstream": "report-artifact.ts",
+      "python": "shared/report_artifact.py",
+      "runtime_exports": 4,
+      "missing": [
+        "REPORT_ARTIFACT_SCHEMA_VERSION"
+      ],
+      "moved": [
+        {
+          "name": "REPORT_ARTIFACT_SCRIPT_TYPE",
+          "found_in": "midscene/core/dump/html_utils.py"
+        }
+      ]
+    },
+    {
       "package": "core",
       "upstream": "report-cli.ts",
       "python": "core/report_cli.py",
@@ -1954,16 +1917,6 @@
       "runtime_exports": 1,
       "missing": [
         "REPORT_HTML_TEMPLATE"
-      ],
-      "moved": []
-    },
-    {
-      "package": "core",
-      "upstream": "report-markdown.ts",
-      "python": "core/report_markdown.py",
-      "runtime_exports": 2,
-      "missing": [
-        "executionToMarkdown"
       ],
       "moved": []
     },
@@ -2113,6 +2066,19 @@
         {
           "name": "normalizeScreenshotRef",
           "found_in": "midscene/core/screenshot_item.py"
+        }
+      ]
+    },
+    {
+      "package": "core",
+      "upstream": "dump/test-report-images.ts",
+      "python": "core/dump/test_report_images.py",
+      "runtime_exports": 1,
+      "missing": [],
+      "moved": [
+        {
+          "name": "TestReportImages",
+          "found_in": "midscene/core/dump/report_artifact_writer.py"
         }
       ]
     },

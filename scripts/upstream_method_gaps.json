@@ -1,12 +1,12 @@
 {
   "upstream_root": "/home/zhangming/gitspace/midscene",
   "counts": {
-    "modules_with_gaps": 154,
-    "missing_functions": 196,
+    "modules_with_gaps": 139,
+    "missing_functions": 173,
     "moved_functions": 21,
-    "missing_classes": 26,
-    "missing_methods": 294,
-    "signature_mismatch": 53,
+    "missing_classes": 22,
+    "missing_methods": 104,
+    "signature_mismatch": 51,
     "modules_scanned": 425,
     "functions_scanned": 601,
     "classes_scanned": 100
@@ -28,66 +28,6 @@
       ],
       "missing_classes": [],
       "missing_methods": [
-        {
-          "class": "AndroidDevice",
-          "name": "adjustCoordinates",
-          "params": [
-            "x",
-            "y"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "calculateScrollEndPoint",
-          "params": [
-            "start",
-            "deltaX",
-            "deltaY",
-            "maxWidth",
-            "maxHeight"
-          ],
-          "async": false,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "captureScreenshotBase64FromDeviceFile",
-          "params": [
-            "label",
-            "capture"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "clearInputRaw",
-          "params": [
-            "element?"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "clearInputWithKeyboard",
-          "params": [
-            "adb"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "createAdbProxy",
-          "params": [
-            "adb"
-          ],
-          "async": false,
-          "python_owner": "midscene/android/device.py"
-        },
         {
           "class": "AndroidDevice",
           "name": "createVisualActionRegistry",
@@ -153,15 +93,6 @@
         },
         {
           "class": "AndroidDevice",
-          "name": "execYadbRaw",
-          "params": [
-            "keyboardContent"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
           "name": "forceScreenshot",
           "params": [
             "path"
@@ -172,20 +103,6 @@
         {
           "class": "AndroidDevice",
           "name": "getAdb",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "getAdjustScale",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "getDevicePhysicalInfo",
           "params": [],
           "async": true,
           "python_owner": "midscene/android/device.py"
@@ -220,20 +137,6 @@
         },
         {
           "class": "AndroidDevice",
-          "name": "getOrientedPhysicalSize",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "getScrcpyAdapter",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
           "name": "getScreenSize",
           "params": [],
           "async": true,
@@ -248,86 +151,9 @@
         },
         {
           "class": "AndroidDevice",
-          "name": "initializeDevicePixelRatio",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
           "name": "launch",
           "params": [
             "uri"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "launchRaw",
-          "params": [
-            "uri"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "openScrcpyFrameSource",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "performActionScroll",
-          "params": [
-            "param",
-            "opts?"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "performPullGesture",
-          "params": [
-            "param"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "prepareFallbackScreenshot",
-          "params": [
-            "screenshotBase64"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "resolvePackageName",
-          "params": [
-            "appName"
-          ],
-          "async": false,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "resolveYadbBinPath",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "runAdbShellRaw",
-          "params": [
-            "param",
-            "context?"
           ],
           "async": true,
           "python_owner": "midscene/android/device.py"
@@ -341,33 +167,7 @@
         },
         {
           "class": "AndroidDevice",
-          "name": "screenshotBase64ViaYadb",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "scrollDefault",
-          "params": [
-            "direction"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
           "name": "scrollDown",
-          "params": [
-            "distance?",
-            "startPoint?"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "scrollDownRaw",
           "params": [
             "distance?",
             "startPoint?"
@@ -387,27 +187,7 @@
         },
         {
           "class": "AndroidDevice",
-          "name": "scrollLeftRaw",
-          "params": [
-            "distance?",
-            "startPoint?"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
           "name": "scrollRight",
-          "params": [
-            "distance?",
-            "startPoint?"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "scrollRightRaw",
           "params": [
             "distance?",
             "startPoint?"
@@ -426,25 +206,7 @@
         },
         {
           "class": "AndroidDevice",
-          "name": "scrollUntilBottomRaw",
-          "params": [
-            "startPoint?"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
           "name": "scrollUntilLeft",
-          "params": [
-            "startPoint?"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "scrollUntilLeftRaw",
           "params": [
             "startPoint?"
           ],
@@ -462,25 +224,7 @@
         },
         {
           "class": "AndroidDevice",
-          "name": "scrollUntilRightRaw",
-          "params": [
-            "startPoint?"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
           "name": "scrollUntilTop",
-          "params": [
-            "startPoint?"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "scrollUntilTopRaw",
           "params": [
             "startPoint?"
           ],
@@ -499,35 +243,7 @@
         },
         {
           "class": "AndroidDevice",
-          "name": "scrollUpRaw",
-          "params": [
-            "distance?",
-            "startPoint?"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "shouldUseYadbForText",
-          "params": [
-            "text"
-          ],
-          "async": false,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
           "name": "terminate",
-          "params": [
-            "uri"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "terminateRaw",
           "params": [
             "uri"
           ],
@@ -539,17 +255,6 @@
           "name": "url",
           "params": [],
           "async": true,
-          "python_owner": "midscene/android/device.py"
-        },
-        {
-          "class": "AndroidDevice",
-          "name": "warnScrollDistanceClamped",
-          "params": [
-            "direction",
-            "requestedDistance",
-            "appliedDistance"
-          ],
-          "async": false,
           "python_owner": "midscene/android/device.py"
         }
       ],
@@ -566,656 +271,6 @@
           ]
         }
       ]
-    },
-    {
-      "package": "ios",
-      "upstream": "device.ts",
-      "python": "ios/device.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [
-        {
-          "class": "IOSDevice",
-          "name": "clearInputAt",
-          "params": [
-            "point?"
-          ],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "compareScreenshots",
-          "params": [
-            "screenshot1",
-            "screenshot2",
-            "tolerancePercent",
-            "// Allow 2% difference"
-          ],
-          "async": false,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "consumePendingKeyboardFollowUp",
-          "params": [
-            "key"
-          ],
-          "async": false,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "describe",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "doubleTapPoint",
-          "params": [
-            "point"
-          ],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "ensureMjpegFrameSource",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "getConnectedDeviceInfo",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "getElementsInfo",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "getElementsNodeTree",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "getScreenSize",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "hideKeyboard",
-          "params": [
-            "keyNames?"
-          ],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "initializeDevicePixelRatio",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "invalidatePendingKeyboardFollowUp",
-          "params": [
-            "reason"
-          ],
-          "async": false,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "launch",
-          "params": [
-            "uri"
-          ],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "longPressPoint",
-          "params": [
-            "point",
-            "duration"
-          ],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "openMjpegFrameSource",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "openUrl",
-          "params": [
-            "url",
-            "options?"
-          ],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "openUrlViaSafari",
-          "params": [
-            "url"
-          ],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "performActionScroll",
-          "params": [
-            "param",
-            "opts?"
-          ],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "pressKey",
-          "params": [
-            "key",
-            "target?"
-          ],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "registerPendingKeyboardFollowUp",
-          "params": [
-            "target?"
-          ],
-          "async": false,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "resolveBundleId",
-          "params": [
-            "appName"
-          ],
-          "async": false,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "scrollDefault",
-          "params": [
-            "direction"
-          ],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "scrollDown",
-          "params": [
-            "distance?",
-            "startPoint?"
-          ],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "scrollInDirection",
-          "params": [
-            "direction",
-            "distance?",
-            "startPoint?",
-            "duration"
-          ],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "scrollLeft",
-          "params": [
-            "distance?",
-            "startPoint?"
-          ],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "scrollRight",
-          "params": [
-            "distance?",
-            "startPoint?"
-          ],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "scrollUntilBottom",
-          "params": [
-            "startPoint?"
-          ],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "scrollUntilBoundary",
-          "params": [
-            "direction",
-            "startPoint?",
-            "maxUnchangedCount"
-          ],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "scrollUntilLeft",
-          "params": [
-            "startPoint?"
-          ],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "scrollUntilRight",
-          "params": [
-            "startPoint?"
-          ],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "scrollUntilTop",
-          "params": [
-            "startPoint?"
-          ],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "scrollUp",
-          "params": [
-            "distance?",
-            "startPoint?"
-          ],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "swipeCoordinates",
-          "params": [
-            "fromX",
-            "fromY",
-            "toX",
-            "toY",
-            "duration"
-          ],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "swipePoint",
-          "params": [
-            "start",
-            "end",
-            "duration"
-          ],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "tapPoint",
-          "params": [
-            "point"
-          ],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "terminate",
-          "params": [
-            "bundleId"
-          ],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "tryAutoDismissKeyboard",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "typeText",
-          "params": [
-            "text",
-            "options?",
-            "focusRestorePoint?",
-            "resolvedInputOptions"
-          ],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        },
-        {
-          "class": "IOSDevice",
-          "name": "url",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/ios/device.py"
-        }
-      ],
-      "signature_mismatch": [
-        {
-          "kind": "method",
-          "class": "IOSDevice",
-          "name": "clearInput",
-          "ts_params": [
-            "element?"
-          ],
-          "python_params": [
-            "self"
-          ]
-        },
-        {
-          "kind": "method",
-          "class": "IOSDevice",
-          "name": "connect",
-          "ts_params": [],
-          "python_params": [
-            "self",
-            "capabilities"
-          ]
-        },
-        {
-          "kind": "method",
-          "class": "IOSDevice",
-          "name": "swipe",
-          "ts_params": [
-            "fromX",
-            "fromY",
-            "toX",
-            "toY",
-            "duration"
-          ],
-          "python_params": [
-            "self",
-            "direction",
-            "distance"
-          ]
-        }
-      ]
-    },
-    {
-      "package": "computer",
-      "upstream": "device.ts",
-      "python": "computer/device.py",
-      "missing_functions": [
-        {
-          "name": "getDisplayInfoBinary",
-          "params": []
-        },
-        {
-          "name": "getPhasedScrollBinary",
-          "params": []
-        },
-        {
-          "name": "mapDisplayLocalPointToGlobal",
-          "params": [
-            "point",
-            "geometry?"
-          ]
-        },
-        {
-          "name": "readDarwinDisplayGeometries",
-          "params": []
-        },
-        {
-          "name": "resolveDarwinDisplayGeometryFromList",
-          "params": [
-            "displayId",
-            "displays"
-          ]
-        },
-        {
-          "name": "runPhasedScroll",
-          "params": [
-            "direction",
-            "pixels",
-            "steps"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [
-        {
-          "class": "ComputerDevice",
-          "name": "connect",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/computer/device.py"
-        },
-        {
-          "class": "ComputerDevice",
-          "name": "describe",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/computer/device.py"
-        },
-        {
-          "class": "ComputerDevice",
-          "name": "destroy",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/computer/device.py"
-        },
-        {
-          "class": "ComputerDevice",
-          "name": "focusKeyboardTarget",
-          "params": [
-            "element",
-            "delayMs"
-          ],
-          "async": true,
-          "python_owner": "midscene/computer/device.py"
-        },
-        {
-          "class": "ComputerDevice",
-          "name": "healthCheck",
-          "params": [
-            "displays"
-          ],
-          "async": true,
-          "python_owner": "midscene/computer/device.py"
-        },
-        {
-          "class": "ComputerDevice",
-          "name": "isRunningAsAdmin",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/computer/device.py"
-        },
-        {
-          "class": "ComputerDevice",
-          "name": "listDisplays",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/computer/device.py"
-        },
-        {
-          "class": "ComputerDevice",
-          "name": "moveDisplayPointer",
-          "params": [
-            "point",
-            "context",
-            "smooth?"
-          ],
-          "async": false,
-          "python_owner": "midscene/computer/device.py"
-        },
-        {
-          "class": "ComputerDevice",
-          "name": "moveGlobalPointer",
-          "params": [
-            "point",
-            "context",
-            "smooth?"
-          ],
-          "async": true,
-          "python_owner": "midscene/computer/device.py"
-        },
-        {
-          "class": "ComputerDevice",
-          "name": "moveMouseToScrollTarget",
-          "params": [
-            "param"
-          ],
-          "async": true,
-          "python_owner": "midscene/computer/device.py"
-        },
-        {
-          "class": "ComputerDevice",
-          "name": "performPointerDrag",
-          "params": [
-            "from",
-            "to",
-            "duration?"
-          ],
-          "async": true,
-          "python_owner": "midscene/computer/device.py"
-        },
-        {
-          "class": "ComputerDevice",
-          "name": "performScroll",
-          "params": [
-            "param"
-          ],
-          "async": true,
-          "python_owner": "midscene/computer/device.py"
-        },
-        {
-          "class": "ComputerDevice",
-          "name": "pressKeyboardShortcut",
-          "params": [
-            "keyName"
-          ],
-          "async": true,
-          "python_owner": "midscene/computer/device.py"
-        },
-        {
-          "class": "ComputerDevice",
-          "name": "resolveUntargetedScrollPoint",
-          "params": [
-            "screenSize"
-          ],
-          "async": false,
-          "python_owner": "midscene/computer/device.py"
-        },
-        {
-          "class": "ComputerDevice",
-          "name": "screenshotBase64",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/computer/device.py"
-        },
-        {
-          "class": "ComputerDevice",
-          "name": "screenshotViaPowershell",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/computer/device.py"
-        },
-        {
-          "class": "ComputerDevice",
-          "name": "selectAllAndDelete",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/computer/device.py"
-        },
-        {
-          "class": "ComputerDevice",
-          "name": "smartTypeString",
-          "params": [
-            "text",
-            "inputOptions"
-          ],
-          "async": true,
-          "python_owner": "midscene/computer/device.py"
-        },
-        {
-          "class": "ComputerDevice",
-          "name": "toGlobalPoint",
-          "params": [
-            "point"
-          ],
-          "async": false,
-          "python_owner": "midscene/computer/device.py"
-        },
-        {
-          "class": "ComputerDevice",
-          "name": "typeStringWithDelay",
-          "params": [
-            "text",
-            "keyboardTypeDelay"
-          ],
-          "async": true,
-          "python_owner": "midscene/computer/device.py"
-        },
-        {
-          "class": "ComputerDevice",
-          "name": "typeViaClipboard",
-          "params": [
-            "text"
-          ],
-          "async": true,
-          "python_owner": "midscene/computer/device.py"
-        },
-        {
-          "class": "ComputerDevice",
-          "name": "url",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/computer/device.py"
-        }
-      ],
-      "signature_mismatch": []
     },
     {
       "package": "computer",
@@ -1227,29 +282,11 @@
       "missing_methods": [
         {
           "class": "ComputerInputDriver",
-          "name": "assertActive",
-          "params": [
-            "methodName"
-          ],
-          "async": false,
-          "python_owner": "midscene/computer/input_driver.py"
-        },
-        {
-          "class": "ComputerInputDriver",
           "name": "assertMousePosition",
           "params": [
             "targetX",
             "targetY",
             "context"
-          ],
-          "async": false,
-          "python_owner": "midscene/computer/input_driver.py"
-        },
-        {
-          "class": "ComputerInputDriver",
-          "name": "createDestroyedError",
-          "params": [
-            "methodName"
           ],
           "async": false,
           "python_owner": "midscene/computer/input_driver.py"
@@ -1286,15 +323,6 @@
           "class": "ComputerInputDriver",
           "name": "focusActiveWindow",
           "params": [],
-          "async": false,
-          "python_owner": "midscene/computer/input_driver.py"
-        },
-        {
-          "class": "ComputerInputDriver",
-          "name": "getLibnutOrThrow",
-          "params": [
-            "methodName"
-          ],
           "async": false,
           "python_owner": "midscene/computer/input_driver.py"
         },
@@ -1376,22 +404,6 @@
         },
         {
           "class": "ComputerInputDriver",
-          "name": "rejectPendingInputDelays",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/computer/input_driver.py"
-        },
-        {
-          "class": "ComputerInputDriver",
-          "name": "releaseMouseButton",
-          "params": [
-            "button"
-          ],
-          "async": false,
-          "python_owner": "midscene/computer/input_driver.py"
-        },
-        {
-          "class": "ComputerInputDriver",
           "name": "runPhasedScroll",
           "params": [
             "direction",
@@ -1445,15 +457,6 @@
         },
         {
           "class": "ComputerInputDriver",
-          "name": "tryReleaseKey",
-          "params": [
-            "key"
-          ],
-          "async": false,
-          "python_owner": "midscene/computer/input_driver.py"
-        },
-        {
-          "class": "ComputerInputDriver",
           "name": "typeString",
           "params": [
             "text"
@@ -1475,566 +478,218 @@
       "signature_mismatch": []
     },
     {
-      "package": "android",
-      "upstream": "scrcpy-manager.ts",
-      "python": "android/scrcpy_manager.py",
+      "package": "ios",
+      "upstream": "device.ts",
+      "python": "ios/device.py",
       "missing_functions": [],
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [
         {
-          "class": "ScrcpyScreenshotManager",
-          "name": "advanceStreamEpoch",
+          "class": "IOSDevice",
+          "name": "describe",
           "params": [],
           "async": false,
-          "python_owner": "midscene/android/scrcpy_manager.py"
+          "python_owner": "midscene/ios/device.py"
         },
         {
-          "class": "ScrcpyScreenshotManager",
-          "name": "clearFrameCache",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/android/scrcpy_manager.py"
-        },
-        {
-          "class": "ScrcpyScreenshotManager",
-          "name": "collectServerOutput",
-          "params": [
-            "output",
-            "lines"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/scrcpy_manager.py"
-        },
-        {
-          "class": "ScrcpyScreenshotManager",
-          "name": "connectScrcpy",
+          "class": "IOSDevice",
+          "name": "getConnectedDeviceInfo",
           "params": [],
           "async": true,
-          "python_owner": "midscene/android/scrcpy_manager.py"
+          "python_owner": "midscene/ios/device.py"
         },
         {
-          "class": "ScrcpyScreenshotManager",
-          "name": "consumeFramesLoop",
-          "params": [
-            "reader",
-            "streamReaderEpoch"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/scrcpy_manager.py"
-        },
-        {
-          "class": "ScrcpyScreenshotManager",
-          "name": "createConnectionError",
-          "params": [
-            "error",
-            "serverOutput"
-          ],
-          "async": false,
-          "python_owner": "midscene/android/scrcpy_manager.py"
-        },
-        {
-          "class": "ScrcpyScreenshotManager",
-          "name": "estimateDeviceTimeUs",
-          "params": [
-            "hostMonotonicUs",
-            "calibration"
-          ],
-          "async": false,
-          "python_owner": "midscene/android/scrcpy_manager.py"
-        },
-        {
-          "class": "ScrcpyScreenshotManager",
-          "name": "estimateFrameAge",
-          "params": [
-            "packetPtsUs",
-            "hostMonotonicUs"
-          ],
-          "async": false,
-          "python_owner": "midscene/android/scrcpy_manager.py"
-        },
-        {
-          "class": "ScrcpyScreenshotManager",
-          "name": "estimateFrameAgeUs",
-          "params": [
-            "packetPtsUs",
-            "hostMonotonicUs"
-          ],
-          "async": false,
-          "python_owner": "midscene/android/scrcpy_manager.py"
-        },
-        {
-          "class": "ScrcpyScreenshotManager",
-          "name": "estimateFrameTiming",
-          "params": [
-            "packetPtsUs",
-            "receivedAtUs"
-          ],
-          "async": false,
-          "python_owner": "midscene/android/scrcpy_manager.py"
-        },
-        {
-          "class": "ScrcpyScreenshotManager",
-          "name": "getCalibrationUncertaintyUs",
-          "params": [
-            "calibration"
-          ],
-          "async": false,
-          "python_owner": "midscene/android/scrcpy_manager.py"
-        },
-        {
-          "class": "ScrcpyScreenshotManager",
-          "name": "getErrorOutput",
-          "params": [
-            "error"
-          ],
-          "async": false,
-          "python_owner": "midscene/android/scrcpy_manager.py"
-        },
-        {
-          "class": "ScrcpyScreenshotManager",
-          "name": "isFrameAgeAcceptable",
-          "params": [
-            "packetPtsUs",
-            "hostMonotonicUs"
-          ],
-          "async": false,
-          "python_owner": "midscene/android/scrcpy_manager.py"
-        },
-        {
-          "class": "ScrcpyScreenshotManager",
-          "name": "isFrameFresh",
-          "params": [
-            "packetPtsUs"
-          ],
-          "async": false,
-          "python_owner": "midscene/android/scrcpy_manager.py"
-        },
-        {
-          "class": "ScrcpyScreenshotManager",
-          "name": "monotonicTimeUs",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/android/scrcpy_manager.py"
-        },
-        {
-          "class": "ScrcpyScreenshotManager",
-          "name": "processFrame",
-          "params": [
-            "packet",
-            "streamReaderEpoch"
-          ],
-          "async": false,
-          "python_owner": "midscene/android/scrcpy_manager.py"
-        },
-        {
-          "class": "ScrcpyScreenshotManager",
-          "name": "readDeviceClockCalibration",
+          "class": "IOSDevice",
+          "name": "getElementsInfo",
           "params": [],
           "async": true,
-          "python_owner": "midscene/android/scrcpy_manager.py"
+          "python_owner": "midscene/ios/device.py"
         },
         {
-          "class": "ScrcpyScreenshotManager",
-          "name": "recalibrateFrameClock",
+          "class": "IOSDevice",
+          "name": "getElementsNodeTree",
           "params": [],
           "async": true,
-          "python_owner": "midscene/android/scrcpy_manager.py"
+          "python_owner": "midscene/ios/device.py"
         },
         {
-          "class": "ScrcpyScreenshotManager",
-          "name": "requestVideoReset",
+          "class": "IOSDevice",
+          "name": "getScreenSize",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "hideKeyboard",
           "params": [
-            "deadlineAt"
+            "keyNames?"
           ],
           "async": true,
-          "python_owner": "midscene/android/scrcpy_manager.py"
+          "python_owner": "midscene/ios/device.py"
         },
         {
-          "class": "ScrcpyScreenshotManager",
-          "name": "resetFrameFreshnessState",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/android/scrcpy_manager.py"
-        },
-        {
-          "class": "ScrcpyScreenshotManager",
-          "name": "restoreFrameCache",
+          "class": "IOSDevice",
+          "name": "launch",
           "params": [
-            "frame"
-          ],
-          "async": false,
-          "python_owner": "midscene/android/scrcpy_manager.py"
-        },
-        {
-          "class": "ScrcpyScreenshotManager",
-          "name": "sampleFrameClockCalibration",
-          "params": [
-            "force"
+            "uri"
           ],
           "async": true,
-          "python_owner": "midscene/android/scrcpy_manager.py"
+          "python_owner": "midscene/ios/device.py"
         },
         {
-          "class": "ScrcpyScreenshotManager",
-          "name": "startFrameConsumer",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/android/scrcpy_manager.py"
-        },
-        {
-          "class": "ScrcpyScreenshotManager",
-          "name": "waitForVideoResetWrite",
+          "class": "IOSDevice",
+          "name": "openUrl",
           "params": [
-            "writePromise",
-            "deadlineAt"
+            "url",
+            "options?"
           ],
           "async": true,
-          "python_owner": "midscene/android/scrcpy_manager.py"
+          "python_owner": "midscene/ios/device.py"
         },
         {
-          "class": "ScrcpyScreenshotManager",
-          "name": "warnFrameFreshness",
+          "class": "IOSDevice",
+          "name": "openUrlViaSafari",
+          "params": [
+            "url"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "scrollDown",
+          "params": [
+            "distance?",
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "scrollLeft",
+          "params": [
+            "distance?",
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "scrollRight",
+          "params": [
+            "distance?",
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "scrollUntilBottom",
+          "params": [
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "scrollUntilLeft",
+          "params": [
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "scrollUntilRight",
+          "params": [
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "scrollUntilTop",
+          "params": [
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "scrollUp",
+          "params": [
+            "distance?",
+            "startPoint?"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "terminate",
+          "params": [
+            "bundleId"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
+        },
+        {
+          "class": "IOSDevice",
+          "name": "url",
           "params": [],
-          "async": false,
-          "python_owner": "midscene/android/scrcpy_manager.py"
+          "async": true,
+          "python_owner": "midscene/ios/device.py"
         }
       ],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "dump/html-utils.ts",
-      "python": "core/dump/html_utils.py",
-      "missing_functions": [
+      "signature_mismatch": [
         {
-          "name": "collectImageScriptIds",
-          "params": [
-            "filePath"
+          "kind": "method",
+          "class": "IOSDevice",
+          "name": "clearInput",
+          "ts_params": [
+            "element?"
+          ],
+          "python_params": [
+            "self"
           ]
         },
         {
-          "name": "extractAllDumpScriptsSync",
-          "params": [
-            "filePath"
+          "kind": "method",
+          "class": "IOSDevice",
+          "name": "connect",
+          "ts_params": [],
+          "python_params": [
+            "self",
+            "capabilities"
           ]
         },
         {
-          "name": "extractLastDumpScriptSync",
-          "params": [
-            "filePath"
-          ]
-        },
-        {
-          "name": "extractReportArtifactPathAsync",
-          "params": [
-            "filePath"
-          ]
-        },
-        {
-          "name": "extractReportArtifactPathSync",
-          "params": [
-            "filePath"
-          ]
-        },
-        {
-          "name": "extractTestRunReportDumpSync",
-          "params": [
-            "filePath"
-          ]
-        },
-        {
-          "name": "generateAgentReportComment",
-          "params": [
-            "report"
-          ]
-        },
-        {
-          "name": "generateDumpScriptTag",
-          "params": [
-            "json",
-            "attributes?"
-          ]
-        },
-        {
-          "name": "generateImageScriptTag",
-          "params": [
-            "id",
-            "data"
-          ]
-        },
-        {
-          "name": "generateReportArtifactScriptTag",
-          "params": [
-            "path"
-          ]
-        },
-        {
-          "name": "generateTestRunReportScriptTag",
-          "params": [
-            "dump"
-          ]
-        },
-        {
-          "name": "getBaseUrlFixScript",
-          "params": []
-        },
-        {
-          "name": "parseDumpScript",
-          "params": [
-            "html"
-          ]
-        },
-        {
-          "name": "parseDumpScriptAttributes",
-          "params": [
-            "html"
-          ]
-        },
-        {
-          "name": "parseImageScripts",
-          "params": [
-            "html"
-          ]
-        },
-        {
-          "name": "streamDumpScriptsAsync",
-          "params": [
-            "filePath",
-            "visitor"
-          ]
-        },
-        {
-          "name": "streamDumpScriptsSync",
-          "params": [
-            "filePath",
-            "visitor"
-          ]
-        },
-        {
-          "name": "streamImageScriptsToFile",
-          "params": [
-            "srcFilePath",
-            "destFilePath",
-            "writtenImageIds"
-          ]
-        },
-        {
-          "name": "streamInlineReportImages",
-          "params": [
-            "filePath",
-            "visit"
-          ]
-        },
-        {
-          "name": "streamScanTags",
-          "params": [
-            "filePath",
-            "openTag",
-            "closeTag",
-            "onMatch"
-          ]
-        },
-        {
-          "name": "streamScanTagsAsync",
-          "params": [
-            "filePath",
-            "openTag",
-            "closeTag",
-            "onMatch"
+          "kind": "method",
+          "class": "IOSDevice",
+          "name": "swipe",
+          "ts_params": [
+            "fromX",
+            "fromY",
+            "toX",
+            "toY",
+            "duration"
+          ],
+          "python_params": [
+            "self",
+            "direction",
+            "distance"
           ]
         }
-      ],
-      "moved_functions": [
-        {
-          "name": "extractImageByIdSync",
-          "params": [
-            "htmlPath",
-            "imageId"
-          ],
-          "found_in": "midscene/core/dump/screenshot_store.py"
-        }
-      ],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "report-generator.ts",
-      "python": "core/report_generator.py",
-      "missing_functions": [],
-      "moved_functions": [
-        {
-          "name": "assertReportGenerationOptions",
-          "params": [
-            "opts"
-          ],
-          "found_in": "midscene/core/dump/report_session.py"
-        }
-      ],
-      "missing_classes": [],
-      "missing_methods": [
-        {
-          "class": "ReportGenerator",
-          "name": "appendAgentReportComment",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/core/dump/report_session.py"
-        },
-        {
-          "class": "ReportGenerator",
-          "name": "assertOpen",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/core/dump/report_session.py"
-        },
-        {
-          "class": "ReportGenerator",
-          "name": "createSourceSnapshot",
-          "params": [
-            "scopeId",
-            "executionIds?"
-          ],
-          "async": true,
-          "python_owner": "midscene/core/dump/report_session.py"
-        },
-        {
-          "class": "ReportGenerator",
-          "name": "doWriteExecution",
-          "params": [
-            "execution",
-            "reportMeta"
-          ],
-          "async": true,
-          "python_owner": "midscene/core/dump/report_session.py"
-        },
-        {
-          "class": "ReportGenerator",
-          "name": "enableSourceSnapshots",
-          "params": [
-            "scopeId"
-          ],
-          "async": false,
-          "python_owner": "midscene/core/dump/report_session.py"
-        },
-        {
-          "class": "ReportGenerator",
-          "name": "finishPublication",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/core/dump/report_session.py"
-        },
-        {
-          "class": "ReportGenerator",
-          "name": "getDumpScriptAttributes",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/core/dump/report_session.py"
-        },
-        {
-          "class": "ReportGenerator",
-          "name": "getExecutionCommentKey",
-          "params": [
-            "execution"
-          ],
-          "async": false,
-          "python_owner": "midscene/core/dump/report_session.py"
-        },
-        {
-          "class": "ReportGenerator",
-          "name": "getExecutionLogKey",
-          "params": [
-            "execution"
-          ],
-          "async": false,
-          "python_owner": "midscene/core/dump/report_session.py"
-        },
-        {
-          "class": "ReportGenerator",
-          "name": "hydrateStateFromExistingReport",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/core/dump/report_session.py"
-        },
-        {
-          "class": "ReportGenerator",
-          "name": "mergeReportAttributes",
-          "params": [
-            "attributes?"
-          ],
-          "async": false,
-          "python_owner": "midscene/core/dump/report_session.py"
-        },
-        {
-          "class": "ReportGenerator",
-          "name": "persistExecutionDumpToFile",
-          "params": [
-            "execution",
-            "singleDump",
-            "referenceImageRefs"
-          ],
-          "async": true,
-          "python_owner": "midscene/core/dump/report_session.py"
-        },
-        {
-          "class": "ReportGenerator",
-          "name": "persistReferenceImages",
-          "params": [
-            "execution"
-          ],
-          "async": true,
-          "python_owner": "midscene/core/dump/report_session.py"
-        },
-        {
-          "class": "ReportGenerator",
-          "name": "printReportPath",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/core/dump/report_session.py"
-        },
-        {
-          "class": "ReportGenerator",
-          "name": "serializeSourceDump",
-          "params": [
-            "snapshot?"
-          ],
-          "async": true,
-          "python_owner": "midscene/core/dump/report_session.py"
-        },
-        {
-          "class": "ReportGenerator",
-          "name": "wrapAsReportDump",
-          "params": [
-            "execution",
-            "reportMeta"
-          ],
-          "async": false,
-          "python_owner": "midscene/core/dump/report_session.py"
-        },
-        {
-          "class": "ReportGenerator",
-          "name": "writeExecution",
-          "params": [
-            "execution",
-            "singleDump"
-          ],
-          "async": true,
-          "python_owner": "midscene/core/dump/report_session.py"
-        },
-        {
-          "class": "ReportGenerator",
-          "name": "writeRunnerReport",
-          "params": [
-            "input",
-            "scopeId",
-            "meta"
-          ],
-          "async": true,
-          "python_owner": "midscene/core/dump/report_session.py"
-        }
-      ],
-      "signature_mismatch": []
+      ]
     },
     {
       "package": "shared",
@@ -2148,138 +803,6 @@
       ]
     },
     {
-      "package": "computer",
-      "upstream": "rdp/device.ts",
-      "python": "computer/rdp/device.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [
-        {
-          "class": "RDPDevice",
-          "name": "assertConnected",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/computer/rdp/device.py"
-        },
-        {
-          "class": "RDPDevice",
-          "name": "clearInput",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/computer/rdp/device.py"
-        },
-        {
-          "class": "RDPDevice",
-          "name": "defaultScrollDistance",
-          "params": [
-            "direction"
-          ],
-          "async": false,
-          "python_owner": "midscene/computer/rdp/device.py"
-        },
-        {
-          "class": "RDPDevice",
-          "name": "describe",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/computer/rdp/device.py"
-        },
-        {
-          "class": "RDPDevice",
-          "name": "destroy",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/computer/rdp/device.py"
-        },
-        {
-          "class": "RDPDevice",
-          "name": "edgeScrollDirection",
-          "params": [
-            "scrollType"
-          ],
-          "async": false,
-          "python_owner": "midscene/computer/rdp/device.py"
-        },
-        {
-          "class": "RDPDevice",
-          "name": "movePointer",
-          "params": [
-            "targetX",
-            "targetY",
-            "options?"
-          ],
-          "async": true,
-          "python_owner": "midscene/computer/rdp/device.py"
-        },
-        {
-          "class": "RDPDevice",
-          "name": "moveToElement",
-          "params": [
-            "element",
-            "options?"
-          ],
-          "async": true,
-          "python_owner": "midscene/computer/rdp/device.py"
-        },
-        {
-          "class": "RDPDevice",
-          "name": "performPointerDrag",
-          "params": [
-            "from",
-            "to",
-            "duration?"
-          ],
-          "async": true,
-          "python_owner": "midscene/computer/rdp/device.py"
-        },
-        {
-          "class": "RDPDevice",
-          "name": "performWheel",
-          "params": [
-            "direction",
-            "amount",
-            "x?",
-            "y?"
-          ],
-          "async": true,
-          "python_owner": "midscene/computer/rdp/device.py"
-        },
-        {
-          "class": "RDPDevice",
-          "name": "screenshotBase64",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/computer/rdp/device.py"
-        },
-        {
-          "class": "RDPDevice",
-          "name": "size",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/computer/rdp/device.py"
-        },
-        {
-          "class": "RDPDevice",
-          "name": "throwIfDestroyed",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/computer/rdp/device.py"
-        },
-        {
-          "class": "RDPDevice",
-          "name": "typeText",
-          "params": [
-            "value",
-            "inputOptions"
-          ],
-          "async": true,
-          "python_owner": "midscene/computer/rdp/device.py"
-        }
-      ],
-      "signature_mismatch": []
-    },
-    {
       "package": "shared",
       "upstream": "img/transform.ts",
       "python": "shared/img/transform.py",
@@ -2381,357 +904,174 @@
       "signature_mismatch": []
     },
     {
-      "package": "android",
-      "upstream": "scrcpy-device-adapter.ts",
-      "python": "android/scrcpy_device_adapter.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [
+      "package": "computer",
+      "upstream": "device.ts",
+      "python": "computer/device.py",
+      "missing_functions": [
         {
-          "class": "ScrcpyDeviceAdapter",
-          "name": "applyPendingActionBarrier",
+          "name": "getDisplayInfoBinary",
+          "params": []
+        },
+        {
+          "name": "getPhasedScrollBinary",
+          "params": []
+        },
+        {
+          "name": "mapDisplayLocalPointToGlobal",
           "params": [
-            "manager"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/scrcpy_device_adapter.py"
+            "point",
+            "geometry?"
+          ]
         },
         {
-          "class": "ScrcpyDeviceAdapter",
-          "name": "attachKeyframeListener",
+          "name": "readDarwinDisplayGeometries",
+          "params": []
+        },
+        {
+          "name": "resolveDarwinDisplayGeometryFromList",
           "params": [
-            "manager",
-            "listener",
-            "force"
-          ],
-          "async": false,
-          "python_owner": "midscene/android/scrcpy_device_adapter.py"
+            "displayId",
+            "displays"
+          ]
         },
         {
-          "class": "ScrcpyDeviceAdapter",
-          "name": "attachKeyframeListeners",
+          "name": "runPhasedScroll",
           "params": [
-            "manager",
-            "force"
-          ],
-          "async": false,
-          "python_owner": "midscene/android/scrcpy_device_adapter.py"
-        },
-        {
-          "class": "ScrcpyDeviceAdapter",
-          "name": "clearFailure",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/android/scrcpy_device_adapter.py"
-        },
-        {
-          "class": "ScrcpyDeviceAdapter",
-          "name": "createAndroidAdb",
-          "params": [
-            "{ adbExecTimeout: 60_000, deviceId }"
-          ],
-          "async": false,
-          "python_owner": "midscene/android/scrcpy_device_adapter.py"
-        },
-        {
-          "class": "ScrcpyDeviceAdapter",
-          "name": "deferActionBarrier",
-          "params": [
-            "actionCompletedAtHostUs"
-          ],
-          "async": false,
-          "python_owner": "midscene/android/scrcpy_device_adapter.py"
-        },
-        {
-          "class": "ScrcpyDeviceAdapter",
-          "name": "ensureConnectedManager",
-          "params": [
-            "deviceInfo"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/scrcpy_device_adapter.py"
-        },
-        {
-          "class": "ScrcpyDeviceAdapter",
-          "name": "ensureRetryReady",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/android/scrcpy_device_adapter.py"
-        },
-        {
-          "class": "ScrcpyDeviceAdapter",
-          "name": "jpegBufferToBase64",
-          "params": [
-            "screenshotBuffer"
-          ],
-          "async": false,
-          "python_owner": "midscene/android/scrcpy_device_adapter.py"
-        },
-        {
-          "class": "ScrcpyDeviceAdapter",
-          "name": "monotonicTimeUs",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/android/scrcpy_device_adapter.py"
-        },
-        {
-          "class": "ScrcpyDeviceAdapter",
-          "name": "recordFailure",
-          "params": [
-            "error"
-          ],
-          "async": false,
-          "python_owner": "midscene/android/scrcpy_device_adapter.py"
-        },
-        {
-          "class": "ScrcpyDeviceAdapter",
-          "name": "restartAndCaptureOnce",
-          "params": [
-            "deviceInfo"
-          ],
-          "async": true,
-          "python_owner": "midscene/android/scrcpy_device_adapter.py"
-        }
-      ],
-      "signature_mismatch": [
-        {
-          "kind": "method",
-          "class": "ScrcpyDeviceAdapter",
-          "name": "screenshotBase64",
-          "ts_params": [
-            "deviceInfo"
-          ],
-          "python_params": [
-            "self",
-            "device_info",
-            "fallback"
+            "direction",
+            "pixels",
+            "steps"
           ]
         }
-      ]
-    },
-    {
-      "package": "core",
-      "upstream": "yaml/player.ts",
-      "python": "core/yaml/player.py",
-      "missing_functions": [],
+      ],
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [
         {
-          "class": "ScriptPlayer",
-          "name": "createRuntime",
-          "params": [
-            "agent"
-          ],
-          "async": false,
-          "python_owner": "midscene/core/yaml/player.py"
-        },
-        {
-          "class": "ScriptPlayer",
-          "name": "flushResult",
+          "class": "ComputerDevice",
+          "name": "connect",
           "params": [],
           "async": true,
-          "python_owner": "midscene/core/yaml/player.py"
+          "python_owner": "midscene/computer/device.py"
         },
         {
-          "class": "ScriptPlayer",
-          "name": "flushUnstableLogContent",
+          "class": "ComputerDevice",
+          "name": "describe",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/computer/device.py"
+        },
+        {
+          "class": "ComputerDevice",
+          "name": "destroy",
           "params": [],
           "async": true,
-          "python_owner": "midscene/core/yaml/player.py"
+          "python_owner": "midscene/computer/device.py"
         },
         {
-          "class": "ScriptPlayer",
-          "name": "notifyCurrentTaskStatusChange",
-          "params": [
-            "taskIndex?"
-          ],
-          "async": false,
-          "python_owner": "midscene/core/yaml/player.py"
-        },
-        {
-          "class": "ScriptPlayer",
-          "name": "playTask",
-          "params": [
-            "taskStatus",
-            "agent"
-          ],
-          "async": true,
-          "python_owner": "midscene/core/yaml/player.py"
-        },
-        {
-          "class": "ScriptPlayer",
-          "name": "publish",
-          "params": [
-            "path",
-            "write"
-          ],
-          "async": true,
-          "python_owner": "midscene/core/yaml/player.py"
-        },
-        {
-          "class": "ScriptPlayer",
-          "name": "runInContext",
+          "class": "ComputerDevice",
+          "name": "listDisplays",
           "params": [],
           "async": true,
-          "python_owner": "midscene/core/yaml/player.py"
+          "python_owner": "midscene/computer/device.py"
         },
         {
-          "class": "ScriptPlayer",
-          "name": "setPlayerStatus",
-          "params": [
-            "status",
-            "error?"
-          ],
-          "async": false,
-          "python_owner": "midscene/core/yaml/player.py"
-        },
-        {
-          "class": "ScriptPlayer",
-          "name": "setResult",
-          "params": [
-            "key",
-            "value"
-          ],
-          "async": false,
-          "python_owner": "midscene/core/yaml/player.py"
-        },
-        {
-          "class": "ScriptPlayer",
-          "name": "setTaskIndex",
-          "params": [
-            "taskIndex"
-          ],
-          "async": false,
-          "python_owner": "midscene/core/yaml/player.py"
-        },
-        {
-          "class": "ScriptPlayer",
-          "name": "setTaskStatus",
-          "params": [
-            "index",
-            "statusValue",
-            "error?"
-          ],
+          "class": "ComputerDevice",
+          "name": "screenshotBase64",
+          "params": [],
           "async": true,
-          "python_owner": "midscene/core/yaml/player.py"
+          "python_owner": "midscene/computer/device.py"
+        },
+        {
+          "class": "ComputerDevice",
+          "name": "url",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/computer/device.py"
         }
       ],
       "signature_mismatch": []
     },
     {
       "package": "core",
-      "upstream": "agent/insight.ts",
-      "python": "core/agent/insight.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [
+      "upstream": "dump/html-utils.ts",
+      "python": "core/dump/html_utils.py",
+      "missing_functions": [
         {
-          "class": "Insight",
-          "name": "aiAsk",
+          "name": "collectImageScriptIds",
           "params": [
-            "prompt",
-            "options"
-          ],
-          "async": true,
-          "python_owner": "midscene/core/agent/insight.py"
+            "filePath"
+          ]
         },
         {
-          "class": "Insight",
-          "name": "aiAssert",
+          "name": "extractReportArtifactPathAsync",
           "params": [
-            "assertion",
-            "message?",
-            "options?"
-          ],
-          "async": true,
-          "python_owner": "midscene/core/agent/insight.py"
+            "filePath"
+          ]
         },
         {
-          "class": "Insight",
-          "name": "aiBoolean",
+          "name": "extractTestRunReportDumpSync",
           "params": [
-            "prompt",
-            "options"
-          ],
-          "async": true,
-          "python_owner": "midscene/core/agent/insight.py"
+            "filePath"
+          ]
         },
         {
-          "class": "Insight",
-          "name": "aiNumber",
+          "name": "parseDumpScript",
           "params": [
-            "prompt",
-            "options"
-          ],
-          "async": true,
-          "python_owner": "midscene/core/agent/insight.py"
+            "html"
+          ]
         },
         {
-          "class": "Insight",
-          "name": "aiQuery",
+          "name": "parseDumpScriptAttributes",
           "params": [
-            "demand",
-            "options"
-          ],
-          "async": true,
-          "python_owner": "midscene/core/agent/insight.py"
+            "html"
+          ]
         },
         {
-          "class": "Insight",
-          "name": "aiString",
+          "name": "streamDumpScriptsAsync",
           "params": [
-            "prompt",
-            "options"
-          ],
-          "async": true,
-          "python_owner": "midscene/core/agent/insight.py"
+            "filePath",
+            "visitor"
+          ]
         },
         {
-          "class": "Insight",
-          "name": "executionOptions",
+          "name": "streamImageScriptsToFile",
           "params": [
-            "options?",
-            "includeAbortSignal"
-          ],
-          "async": false,
-          "python_owner": "midscene/core/agent/insight.py"
+            "srcFilePath",
+            "destFilePath",
+            "writtenImageIds"
+          ]
         },
         {
-          "class": "Insight",
-          "name": "queryPrimitive",
+          "name": "streamScanTags",
           "params": [
-            "type",
-            "apiName",
-            "prompt",
-            "options"
-          ],
-          "async": true,
-          "python_owner": "midscene/core/agent/insight.py"
+            "filePath",
+            "openTag",
+            "closeTag",
+            "onMatch"
+          ]
         },
         {
-          "class": "Insight",
-          "name": "resolveContext",
+          "name": "streamScanTagsAsync",
           "params": [
-            "apiName",
-            "options?"
-          ],
-          "async": false,
-          "python_owner": "midscene/core/agent/insight.py"
-        },
-        {
-          "class": "Insight",
-          "name": "withContext",
-          "params": [
-            "apiName",
-            "options"
-          ],
-          "async": false,
-          "python_owner": "midscene/core/agent/insight.py"
+            "filePath",
+            "openTag",
+            "closeTag",
+            "onMatch"
+          ]
         }
       ],
+      "moved_functions": [
+        {
+          "name": "extractImageByIdSync",
+          "params": [
+            "htmlPath",
+            "imageId"
+          ],
+          "found_in": "midscene/core/dump/screenshot_store.py"
+        }
+      ],
+      "missing_classes": [],
+      "missing_methods": [],
       "signature_mismatch": []
     },
     {
@@ -2967,76 +1307,72 @@
     },
     {
       "package": "core",
-      "upstream": "task-runner.ts",
-      "python": "core/task_runner.py",
+      "upstream": "agent/insight.ts",
+      "python": "core/agent/insight.py",
       "missing_functions": [],
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [
         {
-          "class": "TaskRunner",
-          "name": "attachRecorderItem",
+          "class": "Insight",
+          "name": "aiAsk",
           "params": [
-            "task",
-            "screenshot",
-            "phase"
-          ],
-          "async": false,
-          "python_owner": "midscene/core/task_runner.py"
-        },
-        {
-          "class": "TaskRunner",
-          "name": "captureScreenshot",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/core/task_runner.py"
-        },
-        {
-          "class": "TaskRunner",
-          "name": "emitSnapshotChange",
-          "params": [
-            "error?"
+            "prompt",
+            "options"
           ],
           "async": true,
-          "python_owner": "midscene/core/task_runner.py"
+          "python_owner": "midscene/core/agent/insight.py"
         },
         {
-          "class": "TaskRunner",
-          "name": "emitTaskEvent",
+          "class": "Insight",
+          "name": "aiAssert",
           "params": [
-            "kind",
-            "task"
-          ],
-          "async": true,
-          "python_owner": "midscene/core/task_runner.py"
-        },
-        {
-          "class": "TaskRunner",
-          "name": "getUiContext",
-          "params": [
+            "assertion",
+            "message?",
             "options?"
           ],
           "async": true,
-          "python_owner": "midscene/core/task_runner.py"
+          "python_owner": "midscene/core/agent/insight.py"
         },
         {
-          "class": "TaskRunner",
-          "name": "markTaskAsPending",
+          "class": "Insight",
+          "name": "aiBoolean",
           "params": [
-            "task"
+            "prompt",
+            "options"
           ],
-          "async": false,
-          "python_owner": "midscene/core/task_runner.py"
+          "async": true,
+          "python_owner": "midscene/core/agent/insight.py"
         },
         {
-          "class": "TaskRunner",
-          "name": "normalizeStatusFromError",
+          "class": "Insight",
+          "name": "aiNumber",
           "params": [
-            "options?",
-            "errorMessage?"
+            "prompt",
+            "options"
           ],
-          "async": false,
-          "python_owner": "midscene/core/task_runner.py"
+          "async": true,
+          "python_owner": "midscene/core/agent/insight.py"
+        },
+        {
+          "class": "Insight",
+          "name": "aiQuery",
+          "params": [
+            "demand",
+            "options"
+          ],
+          "async": true,
+          "python_owner": "midscene/core/agent/insight.py"
+        },
+        {
+          "class": "Insight",
+          "name": "aiString",
+          "params": [
+            "prompt",
+            "options"
+          ],
+          "async": true,
+          "python_owner": "midscene/core/agent/insight.py"
         }
       ],
       "signature_mismatch": []
@@ -3057,15 +1393,6 @@
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [
-        {
-          "class": "AndroidAgent",
-          "name": "createActionWrapper",
-          "params": [
-            "name"
-          ],
-          "async": false,
-          "python_owner": "midscene/android/agent.py"
-        },
         {
           "class": "AndroidAgent",
           "name": "getTestRunnerNodeDefinitions",
@@ -3122,15 +1449,6 @@
       "missing_methods": [
         {
           "class": "HarmonyAgent",
-          "name": "createActionWrapper",
-          "params": [
-            "name"
-          ],
-          "async": false,
-          "python_owner": "midscene/harmony/agent.py"
-        },
-        {
-          "class": "HarmonyAgent",
           "name": "getTestRunnerNodeDefinitions",
           "params": [],
           "async": false,
@@ -3162,228 +1480,6 @@
           ],
           "async": true,
           "python_owner": "midscene/harmony/agent.py"
-        }
-      ],
-      "signature_mismatch": []
-    },
-    {
-      "package": "harmony",
-      "upstream": "device.ts",
-      "python": "harmony/device.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [
-        {
-          "class": "HarmonyDevice",
-          "name": "describe",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/harmony/device.py"
-        },
-        {
-          "class": "HarmonyDevice",
-          "name": "getHdc",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/harmony/device.py"
-        },
-        {
-          "class": "HarmonyDevice",
-          "name": "launch",
-          "params": [
-            "uri"
-          ],
-          "async": true,
-          "python_owner": "midscene/harmony/device.py"
-        },
-        {
-          "class": "HarmonyDevice",
-          "name": "performActionScroll",
-          "params": [
-            "param",
-            "opts?"
-          ],
-          "async": true,
-          "python_owner": "midscene/harmony/device.py"
-        },
-        {
-          "class": "HarmonyDevice",
-          "name": "resolveBundleNameForTerminate",
-          "params": [
-            "target"
-          ],
-          "async": false,
-          "python_owner": "midscene/harmony/device.py"
-        },
-        {
-          "class": "HarmonyDevice",
-          "name": "resolveMappedAppTarget",
-          "params": [
-            "appName"
-          ],
-          "async": false,
-          "python_owner": "midscene/harmony/device.py"
-        }
-      ],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "dump/report-artifact-reader.ts",
-      "python": "core/dump/report_artifact_reader.py",
-      "missing_functions": [
-        {
-          "name": "readReportActionDump",
-          "params": [
-            "reportPath"
-          ]
-        },
-        {
-          "name": "readReportArtifactManifest",
-          "params": [
-            "reportPath"
-          ]
-        },
-        {
-          "name": "readReportArtifactManifestAsync",
-          "params": [
-            "reportPath"
-          ]
-        },
-        {
-          "name": "readReportDumpScripts",
-          "params": [
-            "reportPath"
-          ]
-        },
-        {
-          "name": "readReportRunnerDump",
-          "params": [
-            "reportPath"
-          ]
-        },
-        {
-          "name": "streamReportDumpScripts",
-          "params": [
-            "reportPath",
-            "visitor"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "ios",
-      "upstream": "agent.ts",
-      "python": "ios/agent.py",
-      "missing_functions": [
-        {
-          "name": "agentFromWebDriverAgent",
-          "params": [
-            "opts?"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [
-        {
-          "class": "IOSAgent",
-          "name": "createActionWrapper",
-          "params": [
-            "name"
-          ],
-          "async": false,
-          "python_owner": "midscene/ios/agent.py"
-        },
-        {
-          "class": "IOSAgent",
-          "name": "getTestRunnerNodeDefinitions",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/ios/agent.py"
-        },
-        {
-          "class": "IOSAgent",
-          "name": "launch",
-          "params": [
-            "uri"
-          ],
-          "async": true,
-          "python_owner": "midscene/ios/agent.py"
-        },
-        {
-          "class": "IOSAgent",
-          "name": "terminate",
-          "params": [
-            "uri"
-          ],
-          "async": true,
-          "python_owner": "midscene/ios/agent.py"
-        }
-      ],
-      "signature_mismatch": []
-    },
-    {
-      "package": "web-integration",
-      "upstream": "common/browser-agent.ts",
-      "python": "web_integration/common/browser_agent.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [
-        {
-          "class": "BrowserPageManager",
-          "name": "createNewPageWaiter",
-          "params": [
-            "timeout"
-          ],
-          "async": false,
-          "python_owner": "midscene/web_integration/common/browser_agent.py"
-        },
-        {
-          "class": "BrowserPageManager",
-          "name": "followNewPage",
-          "params": [
-            "event"
-          ],
-          "async": true,
-          "python_owner": "midscene/web_integration/common/browser_agent.py"
-        },
-        {
-          "class": "BrowserPageManager",
-          "name": "isNewPageEvent",
-          "params": [
-            "event"
-          ],
-          "async": false,
-          "python_owner": "midscene/web_integration/common/browser_agent.py"
-        },
-        {
-          "class": "BrowserPageManager",
-          "name": "pageSummary",
-          "params": [
-            "page",
-            "index",
-            "active"
-          ],
-          "async": true,
-          "python_owner": "midscene/web_integration/common/browser_agent.py"
-        },
-        {
-          "class": "BrowserPageManager",
-          "name": "tryPageSummary",
-          "params": [
-            "page",
-            "index",
-            "active"
-          ],
-          "async": true,
-          "python_owner": "midscene/web_integration/common/browser_agent.py"
         }
       ],
       "signature_mismatch": []
@@ -3434,55 +1530,46 @@
       "signature_mismatch": []
     },
     {
-      "package": "core",
-      "upstream": "report.ts",
-      "python": "core/report.py",
+      "package": "ios",
+      "upstream": "agent.ts",
+      "python": "ios/agent.py",
       "missing_functions": [
         {
-          "name": "collectDedupedExecutions",
+          "name": "agentFromWebDriverAgent",
           "params": [
-            "htmlPath"
-          ]
-        },
-        {
-          "name": "dedupeExecutionsKeepLatest",
-          "params": [
-            "executions"
-          ]
-        },
-        {
-          "name": "isDirectoryModeReport",
-          "params": [
-            "reportFilePath"
-          ]
-        },
-        {
-          "name": "removeReportArtifact",
-          "params": [
-            "reportFilePath"
-          ]
-        },
-        {
-          "name": "splitReportHtmlByExecution",
-          "params": [
-            "options"
+            "opts?"
           ]
         }
       ],
-      "moved_functions": [
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [
         {
-          "name": "exportReportArtifact",
+          "class": "IOSAgent",
+          "name": "getTestRunnerNodeDefinitions",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/ios/agent.py"
+        },
+        {
+          "class": "IOSAgent",
+          "name": "launch",
           "params": [
-            "options"
+            "uri"
           ],
-          "found_in": "midscene/core/dump/report_artifact_writer.py"
+          "async": true,
+          "python_owner": "midscene/ios/agent.py"
+        },
+        {
+          "class": "IOSAgent",
+          "name": "terminate",
+          "params": [
+            "uri"
+          ],
+          "async": true,
+          "python_owner": "midscene/ios/agent.py"
         }
       ],
-      "missing_classes": [
-        "ReportMergingTool",
-        "TestRunReportAssembler"
-      ],
-      "missing_methods": [],
       "signature_mismatch": []
     },
     {
@@ -3565,110 +1652,40 @@
       "signature_mismatch": []
     },
     {
-      "package": "harmony",
-      "upstream": "hdc.ts",
-      "python": "harmony/hdc.py",
+      "package": "computer",
+      "upstream": "rdp/device.ts",
+      "python": "computer/rdp/device.py",
       "missing_functions": [],
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [
         {
-          "class": "HdcClient",
-          "name": "assertUiInputSucceeded",
-          "params": [
-            "operation",
-            "output",
-            "detail?"
-          ],
+          "class": "RDPDevice",
+          "name": "describe",
+          "params": [],
           "async": false,
-          "python_owner": "midscene/harmony/hdc.py"
+          "python_owner": "midscene/computer/rdp/device.py"
         },
         {
-          "class": "HdcClient",
-          "name": "buildArgs",
-          "params": [
-            "args"
-          ],
-          "async": false,
-          "python_owner": "midscene/harmony/hdc.py"
-        },
-        {
-          "class": "HdcClient",
-          "name": "buildPointerMovementArgs",
-          "params": [
-            "operation",
-            "fromX",
-            "fromY",
-            "toX",
-            "toY",
-            "speed?"
-          ],
-          "async": false,
-          "python_owner": "midscene/harmony/hdc.py"
-        },
-        {
-          "class": "HdcClient",
-          "name": "runUiInput",
-          "params": [
-            "operation",
-            "args",
-            "detail?"
-          ],
-          "async": true,
-          "python_owner": "midscene/harmony/hdc.py"
-        }
-      ],
-      "signature_mismatch": [
-        {
-          "kind": "method",
-          "class": "HdcClient",
-          "name": "exec",
-          "ts_params": [
-            "args"
-          ],
-          "python_params": [
-            "self"
-          ]
-        }
-      ]
-    },
-    {
-      "package": "webdriver",
-      "upstream": "managers/WDAManager.ts",
-      "python": "webdriver/managers/wda_manager.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [
-        {
-          "class": "WDAManager",
-          "name": "checkWDAPreparation",
+          "class": "RDPDevice",
+          "name": "destroy",
           "params": [],
           "async": true,
-          "python_owner": "midscene/webdriver/managers/wda_manager.py"
+          "python_owner": "midscene/computer/rdp/device.py"
         },
         {
-          "class": "WDAManager",
-          "name": "isWDARunning",
+          "class": "RDPDevice",
+          "name": "screenshotBase64",
           "params": [],
           "async": true,
-          "python_owner": "midscene/webdriver/managers/wda_manager.py"
+          "python_owner": "midscene/computer/rdp/device.py"
         },
         {
-          "class": "WDAManager",
-          "name": "startWDA",
+          "class": "RDPDevice",
+          "name": "size",
           "params": [],
           "async": true,
-          "python_owner": "midscene/webdriver/managers/wda_manager.py"
-        },
-        {
-          "class": "WDAManager",
-          "name": "waitForWDA",
-          "params": [
-            "timeout"
-          ],
-          "async": true,
-          "python_owner": "midscene/webdriver/managers/wda_manager.py"
+          "python_owner": "midscene/computer/rdp/device.py"
         }
       ],
       "signature_mismatch": []
@@ -3772,40 +1789,6 @@
     },
     {
       "package": "core",
-      "upstream": "ai-model/service-caller/model-call-recorder.ts",
-      "python": "core/ai_model/service_caller/model_call_recorder.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [
-        {
-          "class": "ModelCallRecorder",
-          "name": "getFilePath",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/core/ai_model/service_caller/model_call_recorder.py"
-        },
-        {
-          "class": "ModelCallRecorder",
-          "name": "initializeFilePath",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/core/ai_model/service_caller/model_call_recorder.py"
-        },
-        {
-          "class": "ModelCallRecorder",
-          "name": "writeEvent",
-          "params": [
-            "event"
-          ],
-          "async": true,
-          "python_owner": "midscene/core/ai_model/service_caller/model_call_recorder.py"
-        }
-      ],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
       "upstream": "ai-model/service-caller/utils.ts",
       "python": "core/ai_model/service_caller/utils.py",
       "missing_functions": [
@@ -3886,6 +1869,40 @@
       ]
     },
     {
+      "package": "harmony",
+      "upstream": "device.ts",
+      "python": "harmony/device.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "HarmonyDevice",
+          "name": "describe",
+          "params": [],
+          "async": false,
+          "python_owner": "midscene/harmony/device.py"
+        },
+        {
+          "class": "HarmonyDevice",
+          "name": "getHdc",
+          "params": [],
+          "async": true,
+          "python_owner": "midscene/harmony/device.py"
+        },
+        {
+          "class": "HarmonyDevice",
+          "name": "launch",
+          "params": [
+            "uri"
+          ],
+          "async": true,
+          "python_owner": "midscene/harmony/device.py"
+        }
+      ],
+      "signature_mismatch": []
+    },
+    {
       "package": "core",
       "upstream": "dump/screenshot-restoration.ts",
       "python": "core/dump/screenshot_restoration.py",
@@ -3917,37 +1934,50 @@
       "signature_mismatch": []
     },
     {
-      "package": "shared",
-      "upstream": "env/model-config-manager.ts",
-      "python": "shared/env/model_config_manager.py",
+      "package": "core",
+      "upstream": "report-generator.ts",
+      "python": "core/report_generator.py",
       "missing_functions": [],
-      "moved_functions": [],
+      "moved_functions": [
+        {
+          "name": "assertReportGenerationOptions",
+          "params": [
+            "opts"
+          ],
+          "found_in": "midscene/core/dump/report_session.py"
+        }
+      ],
       "missing_classes": [],
       "missing_methods": [
         {
-          "class": "ModelConfigManager",
-          "name": "initialize",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/shared/env/model_config_manager.py"
+          "class": "ReportGenerator",
+          "name": "createSourceSnapshot",
+          "params": [
+            "scopeId",
+            "executionIds?"
+          ],
+          "async": true,
+          "python_owner": "midscene/core/dump/report_session.py"
         },
         {
-          "class": "ModelConfigManager",
-          "name": "normalizeModelConfig",
+          "class": "ReportGenerator",
+          "name": "enableSourceSnapshots",
           "params": [
-            "config"
+            "scopeId"
           ],
           "async": false,
-          "python_owner": "midscene/shared/env/model_config_manager.py"
+          "python_owner": "midscene/core/dump/report_session.py"
         },
         {
-          "class": "ModelConfigManager",
-          "name": "registerGlobalConfigManager",
+          "class": "ReportGenerator",
+          "name": "writeRunnerReport",
           "params": [
-            "globalConfigManager"
+            "input",
+            "scopeId",
+            "meta"
           ],
-          "async": false,
-          "python_owner": "midscene/shared/env/model_config_manager.py"
+          "async": true,
+          "python_owner": "midscene/core/dump/report_session.py"
         }
       ],
       "signature_mismatch": []
@@ -4251,37 +2281,6 @@
     },
     {
       "package": "web-integration",
-      "upstream": "bridge-mode/io-server.ts",
-      "python": "web_integration/bridge_mode/io_server.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [
-        {
-          "class": "BridgeServer",
-          "name": "emitCall",
-          "params": [
-            "id"
-          ],
-          "async": true,
-          "python_owner": "midscene/web_integration/bridge_mode/io_server.py"
-        },
-        {
-          "class": "BridgeServer",
-          "name": "triggerCallResponseCallback",
-          "params": [
-            "id",
-            "error",
-            "response"
-          ],
-          "async": true,
-          "python_owner": "midscene/web_integration/bridge_mode/io_server.py"
-        }
-      ],
-      "signature_mismatch": []
-    },
-    {
-      "package": "web-integration",
       "upstream": "common/viewport.ts",
       "python": "web_integration/common/viewport.py",
       "missing_functions": [
@@ -4350,31 +2349,6 @@
       ]
     },
     {
-      "package": "core",
-      "upstream": "dump/report-artifact-store.ts",
-      "python": "core/dump/report_artifact_store.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [
-        {
-          "class": "ReportArtifactStore",
-          "name": "assertOpen",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/core/dump/report_artifact_store.py"
-        },
-        {
-          "class": "ReportArtifactStore",
-          "name": "publish",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/core/dump/report_artifact_store.py"
-        }
-      ],
-      "signature_mismatch": []
-    },
-    {
       "package": "web-integration",
       "upstream": "web-page.ts",
       "python": "web_integration/web_page.py",
@@ -4414,24 +2388,6 @@
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "shared",
-      "upstream": "agent-tools/base-tools.ts",
-      "python": "shared/agent_tools/base_tools.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [
-        {
-          "class": "BaseMidsceneTools",
-          "name": "getInitArgKeys",
-          "params": [],
-          "async": false,
-          "python_owner": "midscene/shared/agent_tools/base_tools.py"
-        }
-      ],
       "signature_mismatch": []
     },
     {
@@ -4888,24 +2844,6 @@
       "signature_mismatch": []
     },
     {
-      "package": "web-integration",
-      "upstream": "bridge-mode/agent-cli-side.ts",
-      "python": "web_integration/bridge_mode/agent_cli_side.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [
-        {
-          "class": "AgentOverChromeBridge",
-          "name": "configureWaterFlowAnimation",
-          "params": [],
-          "async": true,
-          "python_owner": "midscene/web_integration/bridge_mode/agent_cli_side.py"
-        }
-      ],
-      "signature_mismatch": []
-    },
-    {
       "package": "core",
       "upstream": "distance-schema.ts",
       "python": "core/distance_schema.py",
@@ -4932,6 +2870,23 @@
             "destination",
             "directory",
             "overwrite"
+          ]
+        }
+      ],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "dump/report-artifact-reader.ts",
+      "python": "core/dump/report_artifact_reader.py",
+      "missing_functions": [
+        {
+          "name": "readReportArtifactManifestAsync",
+          "params": [
+            "reportPath"
           ]
         }
       ],
@@ -4991,6 +2946,26 @@
     },
     {
       "package": "shared",
+      "upstream": "env/model-config-manager.ts",
+      "python": "shared/env/model_config_manager.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "ModelConfigManager",
+          "name": "registerGlobalConfigManager",
+          "params": [
+            "globalConfigManager"
+          ],
+          "async": false,
+          "python_owner": "midscene/shared/env/model_config_manager.py"
+        }
+      ],
+      "signature_mismatch": []
+    },
+    {
+      "package": "shared",
       "upstream": "img/box-select.ts",
       "python": "shared/img/box_select.py",
       "missing_functions": [
@@ -5023,26 +2998,6 @@
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "ios",
-      "upstream": "mjpeg-frame-source.ts",
-      "python": "ios/mjpeg_frame_source.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [
-        {
-          "class": "MjpegFrameSource",
-          "name": "run",
-          "params": [
-            "signal"
-          ],
-          "async": true,
-          "python_owner": "midscene/ios/mjpeg_frame_source.py"
-        }
-      ],
       "signature_mismatch": []
     },
     {
@@ -5101,55 +3056,38 @@
       "signature_mismatch": []
     },
     {
-      "package": "core",
-      "upstream": "report-markdown.ts",
-      "python": "core/report_markdown.py",
-      "missing_functions": [
-        {
-          "name": "executionToMarkdown",
-          "params": [
-            "execution",
-            "options?"
-          ]
-        }
-      ],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": [
-        {
-          "kind": "function",
-          "name": "reportToMarkdown",
-          "ts_params": [
-            "report",
-            "options?"
-          ],
-          "python_params": [
-            "dump"
-          ]
-        }
-      ]
-    },
-    {
-      "package": "core",
-      "upstream": "screenshot-item.ts",
-      "python": "core/screenshot_item.py",
+      "package": "android",
+      "upstream": "scrcpy-device-adapter.ts",
+      "python": "android/scrcpy_device_adapter.py",
       "missing_functions": [],
       "moved_functions": [],
       "missing_classes": [],
       "missing_methods": [
         {
-          "class": "ScreenshotItem",
-          "name": "createRef",
+          "class": "ScrcpyDeviceAdapter",
+          "name": "createAndroidAdb",
           "params": [
-            "storage",
-            "relativePath?"
+            "{ adbExecTimeout: 60_000, deviceId }"
           ],
           "async": false,
-          "python_owner": "midscene/core/screenshot_item.py"
+          "python_owner": "midscene/android/scrcpy_device_adapter.py"
         }
       ],
-      "signature_mismatch": []
+      "signature_mismatch": [
+        {
+          "kind": "method",
+          "class": "ScrcpyDeviceAdapter",
+          "name": "screenshotBase64",
+          "ts_params": [
+            "deviceInfo"
+          ],
+          "python_params": [
+            "self",
+            "device_info",
+            "fallback"
+          ]
+        }
+      ]
     },
     {
       "package": "core",
@@ -5366,6 +3304,27 @@
           ]
         }
       ]
+    },
+    {
+      "package": "core",
+      "upstream": "yaml/player.ts",
+      "python": "core/yaml/player.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [
+        {
+          "class": "ScriptPlayer",
+          "name": "playTask",
+          "params": [
+            "taskStatus",
+            "agent"
+          ],
+          "async": true,
+          "python_owner": "midscene/core/yaml/player.py"
+        }
+      ],
+      "signature_mismatch": []
     },
     {
       "package": "shared",
@@ -6162,34 +4121,6 @@
       ]
     },
     {
-      "package": "webdriver",
-      "upstream": "clients/WebDriverClient.ts",
-      "python": "webdriver/clients/webdriver_client.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [],
-      "missing_methods": [],
-      "signature_mismatch": [
-        {
-          "kind": "method",
-          "class": "WebDriverClient",
-          "name": "makeRequest",
-          "ts_params": [
-            "method",
-            "endpoint",
-            "data?",
-            "options?"
-          ],
-          "python_params": [
-            "self",
-            "method",
-            "path",
-            "body"
-          ]
-        }
-      ]
-    },
-    {
       "package": "core",
       "upstream": "common.ts",
       "python": "core/common.py",
@@ -6263,36 +4194,12 @@
     },
     {
       "package": "core",
-      "upstream": "dump/report-artifact-writer.ts",
-      "python": "core/dump/report_artifact_writer.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [
-        "ReportArtifactWriter"
-      ],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
       "upstream": "dump/report-session.ts",
       "python": "core/dump/report_session.py",
       "missing_functions": [],
       "moved_functions": [],
       "missing_classes": [
         "ReportSession"
-      ],
-      "missing_methods": [],
-      "signature_mismatch": []
-    },
-    {
-      "package": "core",
-      "upstream": "dump/test-report-images.ts",
-      "python": "core/dump/test_report_images.py",
-      "missing_functions": [],
-      "moved_functions": [],
-      "missing_classes": [
-        "TestReportImages"
       ],
       "missing_methods": [],
       "signature_mismatch": []
@@ -6362,6 +4269,28 @@
       ],
       "missing_methods": [],
       "signature_mismatch": []
+    },
+    {
+      "package": "harmony",
+      "upstream": "hdc.ts",
+      "python": "harmony/hdc.py",
+      "missing_functions": [],
+      "moved_functions": [],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": [
+        {
+          "kind": "method",
+          "class": "HdcClient",
+          "name": "exec",
+          "ts_params": [
+            "args"
+          ],
+          "python_params": [
+            "self"
+          ]
+        }
+      ]
     },
     {
       "package": "ios",
@@ -6459,6 +4388,24 @@
             "value"
           ],
           "found_in": "midscene/core/dump/report_artifact_store.py"
+        }
+      ],
+      "missing_classes": [],
+      "missing_methods": [],
+      "signature_mismatch": []
+    },
+    {
+      "package": "core",
+      "upstream": "report.ts",
+      "python": "core/report.py",
+      "missing_functions": [],
+      "moved_functions": [
+        {
+          "name": "exportReportArtifact",
+          "params": [
+            "options"
+          ],
+          "found_in": "midscene/core/dump/report_artifact_writer.py"
         }
       ],
       "missing_classes": [],

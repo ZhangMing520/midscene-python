@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-11-22T08:25:58+00:00",
+  "generated_at": "2026-11-22T08:42:32+00:00",
   "upstream_root": "/home/zhangming/gitspace/midscene",
   "counts": {
     "modules": 425,
-    "api_missing": 329,
-    "method_missing_functions": 196,
-    "method_missing_classes": 26,
-    "method_missing_methods": 294,
-    "signature_mismatch": 53
+    "api_missing": 293,
+    "method_missing_functions": 173,
+    "method_missing_classes": 22,
+    "method_missing_methods": 104,
+    "signature_mismatch": 51
   },
   "modules": [
     {
@@ -67,7 +67,6 @@
       ],
       "method_missing_classes": [],
       "method_missing_methods": [
-        "AndroidAgent.createActionWrapper",
         "AndroidAgent.getTestRunnerNodeDefinitions",
         "AndroidAgent.launch",
         "AndroidAgent.runAdbShell",
@@ -103,63 +102,30 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [
-        "AndroidDevice.adjustCoordinates",
-        "AndroidDevice.calculateScrollEndPoint",
-        "AndroidDevice.captureScreenshotBase64FromDeviceFile",
-        "AndroidDevice.clearInputRaw",
-        "AndroidDevice.clearInputWithKeyboard",
-        "AndroidDevice.createAdbProxy",
         "AndroidDevice.createVisualActionRegistry",
         "AndroidDevice.describe",
         "AndroidDevice.ensureYadb",
         "AndroidDevice.execYadb",
-        "AndroidDevice.execYadbRaw",
         "AndroidDevice.forceScreenshot",
         "AndroidDevice.getAdb",
-        "AndroidDevice.getAdjustScale",
-        "AndroidDevice.getDevicePhysicalInfo",
         "AndroidDevice.getDisplayDensity",
         "AndroidDevice.getDisplayOrientation",
         "AndroidDevice.getElementsInfo",
         "AndroidDevice.getElementsNodeTree",
-        "AndroidDevice.getOrientedPhysicalSize",
-        "AndroidDevice.getScrcpyAdapter",
         "AndroidDevice.getScreenSize",
         "AndroidDevice.getUITree",
-        "AndroidDevice.initializeDevicePixelRatio",
         "AndroidDevice.launch",
-        "AndroidDevice.launchRaw",
-        "AndroidDevice.openScrcpyFrameSource",
-        "AndroidDevice.performActionScroll",
-        "AndroidDevice.performPullGesture",
-        "AndroidDevice.prepareFallbackScreenshot",
-        "AndroidDevice.resolvePackageName",
-        "AndroidDevice.resolveYadbBinPath",
-        "AndroidDevice.runAdbShellRaw",
         "AndroidDevice.screenshotBase64",
-        "AndroidDevice.screenshotBase64ViaYadb",
-        "AndroidDevice.scrollDefault",
         "AndroidDevice.scrollDown",
-        "AndroidDevice.scrollDownRaw",
         "AndroidDevice.scrollLeft",
-        "AndroidDevice.scrollLeftRaw",
         "AndroidDevice.scrollRight",
-        "AndroidDevice.scrollRightRaw",
         "AndroidDevice.scrollUntilBottom",
-        "AndroidDevice.scrollUntilBottomRaw",
         "AndroidDevice.scrollUntilLeft",
-        "AndroidDevice.scrollUntilLeftRaw",
         "AndroidDevice.scrollUntilRight",
-        "AndroidDevice.scrollUntilRightRaw",
         "AndroidDevice.scrollUntilTop",
-        "AndroidDevice.scrollUntilTopRaw",
         "AndroidDevice.scrollUp",
-        "AndroidDevice.scrollUpRaw",
-        "AndroidDevice.shouldUseYadbForText",
         "AndroidDevice.terminate",
-        "AndroidDevice.terminateRaw",
-        "AndroidDevice.url",
-        "AndroidDevice.warnScrollDistanceClamped"
+        "AndroidDevice.url"
       ],
       "signature_mismatch": [
         "AndroidDevice.clearInput"
@@ -208,18 +174,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [
-        "ScrcpyDeviceAdapter.applyPendingActionBarrier",
-        "ScrcpyDeviceAdapter.attachKeyframeListener",
-        "ScrcpyDeviceAdapter.attachKeyframeListeners",
-        "ScrcpyDeviceAdapter.clearFailure",
-        "ScrcpyDeviceAdapter.createAndroidAdb",
-        "ScrcpyDeviceAdapter.deferActionBarrier",
-        "ScrcpyDeviceAdapter.ensureConnectedManager",
-        "ScrcpyDeviceAdapter.ensureRetryReady",
-        "ScrcpyDeviceAdapter.jpegBufferToBase64",
-        "ScrcpyDeviceAdapter.monotonicTimeUs",
-        "ScrcpyDeviceAdapter.recordFailure",
-        "ScrcpyDeviceAdapter.restartAndCaptureOnce"
+        "ScrcpyDeviceAdapter.createAndroidAdb"
       ],
       "signature_mismatch": [
         "ScrcpyDeviceAdapter.screenshotBase64"
@@ -232,38 +187,12 @@
       "python": "android/scrcpy_manager.py",
       "package": "android",
       "batch": "P4",
-      "status": "partial",
+      "status": "done",
       "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
-      "method_missing_methods": [
-        "ScrcpyScreenshotManager.advanceStreamEpoch",
-        "ScrcpyScreenshotManager.clearFrameCache",
-        "ScrcpyScreenshotManager.collectServerOutput",
-        "ScrcpyScreenshotManager.connectScrcpy",
-        "ScrcpyScreenshotManager.consumeFramesLoop",
-        "ScrcpyScreenshotManager.createConnectionError",
-        "ScrcpyScreenshotManager.estimateDeviceTimeUs",
-        "ScrcpyScreenshotManager.estimateFrameAge",
-        "ScrcpyScreenshotManager.estimateFrameAgeUs",
-        "ScrcpyScreenshotManager.estimateFrameTiming",
-        "ScrcpyScreenshotManager.getCalibrationUncertaintyUs",
-        "ScrcpyScreenshotManager.getErrorOutput",
-        "ScrcpyScreenshotManager.isFrameAgeAcceptable",
-        "ScrcpyScreenshotManager.isFrameFresh",
-        "ScrcpyScreenshotManager.monotonicTimeUs",
-        "ScrcpyScreenshotManager.processFrame",
-        "ScrcpyScreenshotManager.readDeviceClockCalibration",
-        "ScrcpyScreenshotManager.recalibrateFrameClock",
-        "ScrcpyScreenshotManager.requestVideoReset",
-        "ScrcpyScreenshotManager.resetFrameFreshnessState",
-        "ScrcpyScreenshotManager.restoreFrameCache",
-        "ScrcpyScreenshotManager.sampleFrameClockCalibration",
-        "ScrcpyScreenshotManager.startFrameConsumer",
-        "ScrcpyScreenshotManager.waitForVideoResetWrite",
-        "ScrcpyScreenshotManager.warnFrameFreshness"
-      ],
+      "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
       "owner": ""
@@ -755,24 +684,8 @@
         "ComputerDevice.connect",
         "ComputerDevice.describe",
         "ComputerDevice.destroy",
-        "ComputerDevice.focusKeyboardTarget",
-        "ComputerDevice.healthCheck",
-        "ComputerDevice.isRunningAsAdmin",
         "ComputerDevice.listDisplays",
-        "ComputerDevice.moveDisplayPointer",
-        "ComputerDevice.moveGlobalPointer",
-        "ComputerDevice.moveMouseToScrollTarget",
-        "ComputerDevice.performPointerDrag",
-        "ComputerDevice.performScroll",
-        "ComputerDevice.pressKeyboardShortcut",
-        "ComputerDevice.resolveUntargetedScrollPoint",
         "ComputerDevice.screenshotBase64",
-        "ComputerDevice.screenshotViaPowershell",
-        "ComputerDevice.selectAllAndDelete",
-        "ComputerDevice.smartTypeString",
-        "ComputerDevice.toGlobalPoint",
-        "ComputerDevice.typeStringWithDelay",
-        "ComputerDevice.typeViaClipboard",
         "ComputerDevice.url"
       ],
       "signature_mismatch": [],
@@ -805,14 +718,11 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [
-        "ComputerInputDriver.assertActive",
         "ComputerInputDriver.assertMousePosition",
-        "ComputerInputDriver.createDestroyedError",
         "ComputerInputDriver.delay",
         "ComputerInputDriver.destroy",
         "ComputerInputDriver.emitScrollDetents",
         "ComputerInputDriver.focusActiveWindow",
-        "ComputerInputDriver.getLibnutOrThrow",
         "ComputerInputDriver.getMousePos",
         "ComputerInputDriver.getScreenSize",
         "ComputerInputDriver.keyTap",
@@ -821,14 +731,11 @@
         "ComputerInputDriver.mouseClick",
         "ComputerInputDriver.mouseToggle",
         "ComputerInputDriver.moveMouse",
-        "ComputerInputDriver.rejectPendingInputDelays",
-        "ComputerInputDriver.releaseMouseButton",
         "ComputerInputDriver.runPhasedScroll",
         "ComputerInputDriver.scrollMouse",
         "ComputerInputDriver.sendKey",
         "ComputerInputDriver.sendKeyViaAppleScript",
         "ComputerInputDriver.smoothMoveMouse",
-        "ComputerInputDriver.tryReleaseKey",
         "ComputerInputDriver.typeString",
         "ComputerInputDriver.withMouseButton"
       ],
@@ -911,20 +818,10 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [
-        "RDPDevice.assertConnected",
-        "RDPDevice.clearInput",
-        "RDPDevice.defaultScrollDistance",
         "RDPDevice.describe",
         "RDPDevice.destroy",
-        "RDPDevice.edgeScrollDirection",
-        "RDPDevice.movePointer",
-        "RDPDevice.moveToElement",
-        "RDPDevice.performPointerDrag",
-        "RDPDevice.performWheel",
         "RDPDevice.screenshotBase64",
-        "RDPDevice.size",
-        "RDPDevice.throwIfDestroyed",
-        "RDPDevice.typeText"
+        "RDPDevice.size"
       ],
       "signature_mismatch": [],
       "notes": "",
@@ -1186,11 +1083,7 @@
         "Insight.aiBoolean",
         "Insight.aiNumber",
         "Insight.aiQuery",
-        "Insight.aiString",
-        "Insight.executionOptions",
-        "Insight.queryPrimitive",
-        "Insight.resolveContext",
-        "Insight.withContext"
+        "Insight.aiString"
       ],
       "signature_mismatch": [],
       "notes": "",
@@ -1494,15 +1387,34 @@
       "batch": "P3",
       "status": "partial",
       "api_missing": [
-        "extractInsightParam",
-        "locateParamStr",
-        "paramStr",
-        "pullParamStr",
-        "scrollParamStr",
-        "taskTitleStr",
-        "typeStr"
+        "taskTitleStr"
       ],
-      "api_moved": [],
+      "api_moved": [
+        {
+          "name": "extractInsightParam",
+          "found_in": "midscene/core/report_markdown.py"
+        },
+        {
+          "name": "locateParamStr",
+          "found_in": "midscene/core/report_markdown.py"
+        },
+        {
+          "name": "paramStr",
+          "found_in": "midscene/core/report_markdown.py"
+        },
+        {
+          "name": "pullParamStr",
+          "found_in": "midscene/core/report_markdown.py"
+        },
+        {
+          "name": "scrollParamStr",
+          "found_in": "midscene/core/report_markdown.py"
+        },
+        {
+          "name": "typeStr",
+          "found_in": "midscene/core/report_markdown.py"
+        }
+      ],
       "method_missing_functions": [
         "extractInsightParam",
         "locateParamStr",
@@ -2920,16 +2832,12 @@
       "python": "core/ai_model/service_caller/model_call_recorder.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
+      "status": "done",
       "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
-      "method_missing_methods": [
-        "ModelCallRecorder.getFilePath",
-        "ModelCallRecorder.initializeFilePath",
-        "ModelCallRecorder.writeEvent"
-      ],
+      "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
       "owner": ""
@@ -4453,28 +4361,14 @@
       "batch": "P3",
       "status": "partial",
       "api_missing": [
-        "DATA_SCREENSHOT_MODE_ATTR",
-        "STREAMING_CHUNK_SIZE",
         "collectImageScriptIds",
         "escapeContent",
-        "extractAllDumpScriptsSync",
-        "extractLastDumpScriptSync",
         "extractReportArtifactPathAsync",
-        "extractReportArtifactPathSync",
         "extractTestRunReportDumpSync",
-        "generateAgentReportComment",
-        "generateDumpScriptTag",
-        "generateImageScriptTag",
-        "generateReportArtifactScriptTag",
-        "generateTestRunReportScriptTag",
-        "getBaseUrlFixScript",
         "parseDumpScript",
         "parseDumpScriptAttributes",
-        "parseImageScripts",
         "streamDumpScriptsAsync",
-        "streamDumpScriptsSync",
         "streamImageScriptsToFile",
-        "streamInlineReportImages",
         "streamScanTags",
         "streamScanTagsAsync",
         "unescapeContent"
@@ -4487,24 +4381,12 @@
       ],
       "method_missing_functions": [
         "collectImageScriptIds",
-        "extractAllDumpScriptsSync",
-        "extractLastDumpScriptSync",
         "extractReportArtifactPathAsync",
-        "extractReportArtifactPathSync",
         "extractTestRunReportDumpSync",
-        "generateAgentReportComment",
-        "generateDumpScriptTag",
-        "generateImageScriptTag",
-        "generateReportArtifactScriptTag",
-        "generateTestRunReportScriptTag",
-        "getBaseUrlFixScript",
         "parseDumpScript",
         "parseDumpScriptAttributes",
-        "parseImageScripts",
         "streamDumpScriptsAsync",
-        "streamDumpScriptsSync",
         "streamImageScriptsToFile",
-        "streamInlineReportImages",
         "streamScanTags",
         "streamScanTagsAsync"
       ],
@@ -4597,21 +4479,11 @@
       "batch": "P1",
       "status": "partial",
       "api_missing": [
-        "readReportActionDump",
-        "readReportArtifactManifest",
-        "readReportArtifactManifestAsync",
-        "readReportDumpScripts",
-        "readReportRunnerDump",
-        "streamReportDumpScripts"
+        "readReportArtifactManifestAsync"
       ],
       "api_moved": [],
       "method_missing_functions": [
-        "readReportActionDump",
-        "readReportArtifactManifest",
-        "readReportArtifactManifestAsync",
-        "readReportDumpScripts",
-        "readReportRunnerDump",
-        "streamReportDumpScripts"
+        "readReportArtifactManifestAsync"
       ],
       "method_missing_classes": [],
       "method_missing_methods": [],
@@ -4624,15 +4496,12 @@
       "python": "core/dump/report_artifact_store.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
+      "status": "done",
       "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
-      "method_missing_methods": [
-        "ReportArtifactStore.assertOpen",
-        "ReportArtifactStore.publish"
-      ],
+      "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
       "owner": ""
@@ -4642,15 +4511,11 @@
       "python": "core/dump/report_artifact_writer.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "ReportArtifactWriter"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
-      "method_missing_classes": [
-        "ReportArtifactWriter"
-      ],
+      "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
@@ -4793,15 +4658,16 @@
       "python": "core/dump/test_report_images.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
-      "api_missing": [
-        "TestReportImages"
+      "status": "done",
+      "api_missing": [],
+      "api_moved": [
+        {
+          "name": "TestReportImages",
+          "found_in": "midscene/core/dump/report_artifact_writer.py"
+        }
       ],
-      "api_moved": [],
       "method_missing_functions": [],
-      "method_missing_classes": [
-        "TestReportImages"
-      ],
+      "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
@@ -4896,23 +4762,8 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [
-        "ReportGenerator.appendAgentReportComment",
-        "ReportGenerator.assertOpen",
         "ReportGenerator.createSourceSnapshot",
-        "ReportGenerator.doWriteExecution",
         "ReportGenerator.enableSourceSnapshots",
-        "ReportGenerator.finishPublication",
-        "ReportGenerator.getDumpScriptAttributes",
-        "ReportGenerator.getExecutionCommentKey",
-        "ReportGenerator.getExecutionLogKey",
-        "ReportGenerator.hydrateStateFromExistingReport",
-        "ReportGenerator.mergeReportAttributes",
-        "ReportGenerator.persistExecutionDumpToFile",
-        "ReportGenerator.persistReferenceImages",
-        "ReportGenerator.printReportPath",
-        "ReportGenerator.serializeSourceDump",
-        "ReportGenerator.wrapAsReportDump",
-        "ReportGenerator.writeExecution",
         "ReportGenerator.writeRunnerReport"
       ],
       "signature_mismatch": [],
@@ -4941,19 +4792,13 @@
       "python": "core/report_markdown.py",
       "package": "core",
       "batch": "P1",
-      "status": "partial",
-      "api_missing": [
-        "executionToMarkdown"
-      ],
+      "status": "done",
+      "api_missing": [],
       "api_moved": [],
-      "method_missing_functions": [
-        "executionToMarkdown"
-      ],
+      "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        ".reportToMarkdown"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -4977,33 +4822,11 @@
       "python": "core/report.py",
       "package": "core",
       "batch": "P1",
-      "status": "partial",
-      "api_missing": [
-        "ReportMergingTool",
-        "TestRunReportAssembler",
-        "collectDedupedExecutions",
-        "dedupeExecutionsKeepLatest",
-        "isDirectoryModeReport",
-        "removeReportArtifact",
-        "splitReportHtmlByExecution"
-      ],
-      "api_moved": [
-        {
-          "name": "exportReportArtifact",
-          "found_in": "midscene/core/__init__.py"
-        }
-      ],
-      "method_missing_functions": [
-        "collectDedupedExecutions",
-        "dedupeExecutionsKeepLatest",
-        "isDirectoryModeReport",
-        "removeReportArtifact",
-        "splitReportHtmlByExecution"
-      ],
-      "method_missing_classes": [
-        "ReportMergingTool",
-        "TestRunReportAssembler"
-      ],
+      "status": "done",
+      "api_missing": [],
+      "api_moved": [],
+      "method_missing_functions": [],
+      "method_missing_classes": [],
       "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
@@ -5014,14 +4837,12 @@
       "python": "core/screenshot_item.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
+      "status": "done",
       "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
-      "method_missing_methods": [
-        "ScreenshotItem.createRef"
-      ],
+      "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
       "owner": ""
@@ -5095,20 +4916,12 @@
       "python": "core/task_runner.py",
       "package": "core",
       "batch": "P3",
-      "status": "partial",
+      "status": "done",
       "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
-      "method_missing_methods": [
-        "TaskRunner.attachRecorderItem",
-        "TaskRunner.captureScreenshot",
-        "TaskRunner.emitSnapshotChange",
-        "TaskRunner.emitTaskEvent",
-        "TaskRunner.getUiContext",
-        "TaskRunner.markTaskAsPending",
-        "TaskRunner.normalizeStatusFromError"
-      ],
+      "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
       "owner": ""
@@ -5854,17 +5667,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [
-        "ScriptPlayer.createRuntime",
-        "ScriptPlayer.flushResult",
-        "ScriptPlayer.flushUnstableLogContent",
-        "ScriptPlayer.notifyCurrentTaskStatusChange",
-        "ScriptPlayer.playTask",
-        "ScriptPlayer.publish",
-        "ScriptPlayer.runInContext",
-        "ScriptPlayer.setPlayerStatus",
-        "ScriptPlayer.setResult",
-        "ScriptPlayer.setTaskIndex",
-        "ScriptPlayer.setTaskStatus"
+        "ScriptPlayer.playTask"
       ],
       "signature_mismatch": [],
       "notes": "",
@@ -5958,7 +5761,6 @@
       ],
       "method_missing_classes": [],
       "method_missing_methods": [
-        "HarmonyAgent.createActionWrapper",
         "HarmonyAgent.getTestRunnerNodeDefinitions",
         "HarmonyAgent.launch",
         "HarmonyAgent.runHdcShell",
@@ -5996,10 +5798,7 @@
       "method_missing_methods": [
         "HarmonyDevice.describe",
         "HarmonyDevice.getHdc",
-        "HarmonyDevice.launch",
-        "HarmonyDevice.performActionScroll",
-        "HarmonyDevice.resolveBundleNameForTerminate",
-        "HarmonyDevice.resolveMappedAppTarget"
+        "HarmonyDevice.launch"
       ],
       "signature_mismatch": [],
       "notes": "",
@@ -6025,17 +5824,12 @@
       "python": "harmony/hdc.py",
       "package": "harmony",
       "batch": "P4",
-      "status": "partial",
+      "status": "done",
       "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
-      "method_missing_methods": [
-        "HdcClient.assertUiInputSucceeded",
-        "HdcClient.buildArgs",
-        "HdcClient.buildPointerMovementArgs",
-        "HdcClient.runUiInput"
-      ],
+      "method_missing_methods": [],
       "signature_mismatch": [
         "HdcClient.exec"
       ],
@@ -6117,7 +5911,6 @@
       ],
       "method_missing_classes": [],
       "method_missing_methods": [
-        "IOSAgent.createActionWrapper",
         "IOSAgent.getTestRunnerNodeDefinitions",
         "IOSAgent.launch",
         "IOSAgent.terminate"
@@ -6154,45 +5947,24 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [
-        "IOSDevice.clearInputAt",
-        "IOSDevice.compareScreenshots",
-        "IOSDevice.consumePendingKeyboardFollowUp",
         "IOSDevice.describe",
-        "IOSDevice.doubleTapPoint",
-        "IOSDevice.ensureMjpegFrameSource",
         "IOSDevice.getConnectedDeviceInfo",
         "IOSDevice.getElementsInfo",
         "IOSDevice.getElementsNodeTree",
         "IOSDevice.getScreenSize",
         "IOSDevice.hideKeyboard",
-        "IOSDevice.initializeDevicePixelRatio",
-        "IOSDevice.invalidatePendingKeyboardFollowUp",
         "IOSDevice.launch",
-        "IOSDevice.longPressPoint",
-        "IOSDevice.openMjpegFrameSource",
         "IOSDevice.openUrl",
         "IOSDevice.openUrlViaSafari",
-        "IOSDevice.performActionScroll",
-        "IOSDevice.pressKey",
-        "IOSDevice.registerPendingKeyboardFollowUp",
-        "IOSDevice.resolveBundleId",
-        "IOSDevice.scrollDefault",
         "IOSDevice.scrollDown",
-        "IOSDevice.scrollInDirection",
         "IOSDevice.scrollLeft",
         "IOSDevice.scrollRight",
         "IOSDevice.scrollUntilBottom",
-        "IOSDevice.scrollUntilBoundary",
         "IOSDevice.scrollUntilLeft",
         "IOSDevice.scrollUntilRight",
         "IOSDevice.scrollUntilTop",
         "IOSDevice.scrollUp",
-        "IOSDevice.swipeCoordinates",
-        "IOSDevice.swipePoint",
-        "IOSDevice.tapPoint",
         "IOSDevice.terminate",
-        "IOSDevice.tryAutoDismissKeyboard",
-        "IOSDevice.typeText",
         "IOSDevice.url"
       ],
       "signature_mismatch": [
@@ -6272,14 +6044,12 @@
       "python": "ios/mjpeg_frame_source.py",
       "package": "ios",
       "batch": "P4",
-      "status": "partial",
+      "status": "done",
       "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
-      "method_missing_methods": [
-        "MjpegFrameSource.run"
-      ],
+      "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
       "owner": ""
@@ -6353,14 +6123,12 @@
       "python": "shared/agent_tools/base_tools.py",
       "package": "shared",
       "batch": "P2",
-      "status": "partial",
+      "status": "done",
       "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
-      "method_missing_methods": [
-        "BaseMidsceneTools.getInitArgKeys"
-      ],
+      "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
       "owner": ""
@@ -6850,8 +6618,6 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [
-        "ModelConfigManager.initialize",
-        "ModelConfigManager.normalizeModelConfig",
         "ModelConfigManager.registerGlobalConfigManager"
       ],
       "signature_mismatch": [],
@@ -7697,10 +7463,14 @@
       "batch": "P2",
       "status": "partial",
       "api_missing": [
-        "REPORT_ARTIFACT_SCHEMA_VERSION",
-        "REPORT_ARTIFACT_SCRIPT_TYPE"
+        "REPORT_ARTIFACT_SCHEMA_VERSION"
       ],
-      "api_moved": [],
+      "api_moved": [
+        {
+          "name": "REPORT_ARTIFACT_SCRIPT_TYPE",
+          "found_in": "midscene/core/dump/html_utils.py"
+        }
+      ],
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
@@ -7743,7 +7513,7 @@
       "api_moved": [
         {
           "name": "antiEscapeScriptTag",
-          "found_in": "midscene/core/utils.py"
+          "found_in": "midscene/core/report.py"
         },
         {
           "name": "escapeScriptTag",
@@ -7794,14 +7564,12 @@
       "python": "web_integration/bridge_mode/agent_cli_side.py",
       "package": "web-integration",
       "batch": "P4",
-      "status": "partial",
+      "status": "done",
       "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
-      "method_missing_methods": [
-        "AgentOverChromeBridge.configureWaterFlowAnimation"
-      ],
+      "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
       "owner": ""
@@ -7867,15 +7635,12 @@
       "python": "web_integration/bridge_mode/io_server.py",
       "package": "web-integration",
       "batch": "P4",
-      "status": "partial",
+      "status": "done",
       "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
-      "method_missing_methods": [
-        "BridgeServer.emitCall",
-        "BridgeServer.triggerCallResponseCallback"
-      ],
+      "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
       "owner": ""
@@ -7919,18 +7684,12 @@
       "python": "web_integration/common/browser_agent.py",
       "package": "web-integration",
       "batch": "P4",
-      "status": "partial",
+      "status": "done",
       "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
-      "method_missing_methods": [
-        "BrowserPageManager.createNewPageWaiter",
-        "BrowserPageManager.followNewPage",
-        "BrowserPageManager.isNewPageEvent",
-        "BrowserPageManager.pageSummary",
-        "BrowserPageManager.tryPageSummary"
-      ],
+      "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
       "owner": ""
@@ -8109,9 +7868,7 @@
       "method_missing_functions": [],
       "method_missing_classes": [],
       "method_missing_methods": [],
-      "signature_mismatch": [
-        "WebDriverClient.makeRequest"
-      ],
+      "signature_mismatch": [],
       "notes": "",
       "owner": ""
     },
@@ -8165,17 +7922,12 @@
       "python": "webdriver/managers/wda_manager.py",
       "package": "webdriver",
       "batch": "P4",
-      "status": "partial",
+      "status": "done",
       "api_missing": [],
       "api_moved": [],
       "method_missing_functions": [],
       "method_missing_classes": [],
-      "method_missing_methods": [
-        "WDAManager.checkWDAPreparation",
-        "WDAManager.isWDARunning",
-        "WDAManager.startWDA",
-        "WDAManager.waitForWDA"
-      ],
+      "method_missing_methods": [],
       "signature_mismatch": [],
       "notes": "",
       "owner": ""
