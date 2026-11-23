@@ -79,6 +79,25 @@ class TestRunYamlBatchWithCaseIds:
         assert occurrences[0]["result"]["file"] == setup
         assert occurrences[1]["result"]["file"] == files[0]
 
+    def test_includes_the_before_all_occurrence_in_the_case_ids(self, tmp_path):
+        files = _scripts(tmp_path, ["main.yaml"])
+        setup = _scripts(tmp_path, ["setup.yaml"])[0]
+
+        occurrences = asyncio.run(
+            run_yaml_batch_with_case_ids(
+                {"files": files, "beforeAll": setup},
+                ["setup-case", "main-case"],
+                {"player_factory": _factory},
+            )
+        )
+
+        assert [occurrence["caseId"] for occurrence in occurrences] == [
+            "setup-case",
+            "main-case",
+        ]
+        assert occurrences[0]["result"]["file"] == setup
+        assert occurrences[1]["result"]["file"] == files[0]
+
     def test_rejects_a_case_id_count_mismatch(self, tmp_path):
         files = _scripts(tmp_path, ["a.yaml", "b.yaml"])
 

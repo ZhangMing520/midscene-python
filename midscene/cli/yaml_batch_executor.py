@@ -127,6 +127,24 @@ def load_batch_config(path: str) -> Dict[str, Any]:
     return parse_batch_config(obj)
 
 
+def _deep_merge(base: Any, override: Any) -> Any:
+    """Recursively merge `override` into `base` (upstream lodash.merge).
+
+    Nested maps are merged key by key, so overriding one option (for example
+    one HTTP header or waitForNetworkIdle.timeout) keeps the script's other
+    nested options. Non-map values, including lists, are replaced wholesale.
+    """
+    if not isinstance(base, dict) or not isinstance(override, dict):
+        return override
+    merged = dict(base)
+    for key, value in override.items():
+        if key in merged:
+            merged[key] = _deep_merge(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
+
+
 def merge_web_overrides(
     script: Dict[str, Any], overrides: Dict[str, Any]
 ) -> Dict[str, Any]:
@@ -144,7 +162,7 @@ def merge_web_overrides(
         None,
     )
     if web_key:
-        merged[web_key] = {**merged[web_key], **overrides}
+        merged[web_key] = _deep_merge(merged[web_key], overrides)
     else:
         merged["web"] = dict(overrides)
     return merged
@@ -272,8 +290,9 @@ async def run_yaml_batch_with_case_ids(
     The occurrence count covers the setup file (when configured) plus every
     main file; IDs must be unique and in execution order.
     """
+    setup_file = config.get("setup") or config.get("beforeAll")
     occurrence_count = len(config.get("files") or []) + (
-        1 if config.get("setup") else 0
+        1 if setup_file else 0
     )
     if len(case_ids) != occurrence_count:
         raise ValueError(
@@ -376,14 +395,39 @@ async def _run_one(
     max_attempts = retries + 1
     last_error: Optional[str] = None
 
-    content = Path(file_path).read_text(encoding="utf-8")
+    try:
+        content = Path(file_path).read_text(encoding="utf-8")
+    except OSError as e:
+        return {
+            "file": file_path,
+            "success": False,
+            "executed": True,
+            "error": str(e),
+            "attempts": [],
+            "duration": int((time.time() - start) * 1000),
+            "resultType": "failed",
+        }
     if overrides:
         content = _apply_web_overrides(content, overrides)
     if native_overrides:
         content = _apply_native_overrides(content, native_overrides)
 
     for attempt in range(1, max_attempts + 1):
-        player = player_factory(content, file_path)
+        try:
+            player = player_factory(content, file_path)
+        except Exception as e:
+            # Player creation (YAML parse, target setup) is not retried:
+            # record this file as failed and let the batch continue.
+            attempts.append({"attempt": attempt, "success": False})
+            return {
+                "file": file_path,
+                "success": False,
+                "executed": True,
+                "error": str(e),
+                "attempts": attempts,
+                "duration": int((time.time() - start) * 1000),
+                "resultType": "failed",
+            }
         last_error = None
         run_error = None
         try:
@@ -452,7 +496,7 @@ def _apply_web_overrides(content: str, overrides: Dict[str, Any]) -> str:
         (k for k in _WEB_TARGET_KEYS if isinstance(doc.get(k), dict)), None
     )
     if web_key:
-        doc[web_key] = {**doc[web_key], **overrides}
+        doc[web_key] = _deep_merge(doc[web_key], overrides)
     else:
         doc["web"] = dict(overrides)
     return yaml.safe_dump(doc, allow_unicode=True, sort_keys=False)
@@ -474,7 +518,7 @@ def _apply_native_overrides(
         return content
     for key, values in overrides.items():
         own = doc.get(key)
-        doc[key] = {**own, **values} if isinstance(own, dict) else dict(values)
+        doc[key] = _deep_merge(own, values) if isinstance(own, dict) else dict(values)
     return yaml.safe_dump(doc, allow_unicode=True, sort_keys=False)
 
 

@@ -160,6 +160,11 @@ def build_request_abort_signal(
     return RequestAbortSignal(controller, cleanup)
 
 
+def _consume_task_exception(task: "asyncio.Future[Any]") -> None:
+    if not task.cancelled():
+        task.exception()
+
+
 async def run_with_abort_signal(
     signal: Any,
     operation: Callable[[], Coroutine[Any, Any, T]],
@@ -197,6 +202,10 @@ async def run_with_abort_signal(
         _remove_abort_listener(signal, on_abort)
         if not aborted.done():
             aborted.cancel()
+        if not task.done():
+            # The operation is abandoned on abort; retrieve its eventual
+            # exception so a late failure is not reported as unhandled.
+            task.add_done_callback(_consume_task_exception)
 
 
 async def wait_for_retry(ms: float, signal: Optional[Any] = None) -> None:

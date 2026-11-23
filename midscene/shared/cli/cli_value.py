@@ -77,7 +77,8 @@ def _accepts_type(type_name: str, field: Field, value: Any) -> Optional[bool]:
     if name == "literal":
         return value == field.get("value")
     if name == "enum":
-        return value in (field.get("enum") or [])
+        values = field.get("enum", field.get("values"))
+        return value in (values or [])
     if name == "nativeenum":
         values = field.get("enum", field.get("values"))
         if isinstance(values, dict):

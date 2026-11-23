@@ -11,10 +11,6 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from midscene.core.dump.report_action_dump import get_report_file_name
-from midscene.core.report import write_report_html
-from midscene.shared.env import get_midscene_run_dir
-
 _REPORT_DUMP_PATTERN = re.compile(
     r'<script id="midscene_report_dump" type="application/json">(.*?)</script>',
     re.DOTALL,
@@ -92,39 +88,31 @@ def merge_report_files(
     output_dir: Optional[str] = None,
     output_name: Optional[str] = None,
     overwrite: bool = False,
+    output_format: Optional[str] = None,
 ) -> Dict[str, str]:
-    """Merge multiple report HTMLs into one HTML report."""
+    """Merge multiple report HTMLs into one report.
+
+    Delegates to ``ReportMergingTool`` (upstream mergeReportFiles) so both
+    ``single-html`` and ``html-and-external-assets`` outputs are supported.
+    """
     if not html_paths:
         raise ValueError("mergeReportFiles: htmlPaths is required")
 
-    executions: List[Dict[str, Any]] = []
-    base_dump: Optional[Dict[str, Any]] = None
+    from midscene.core.report import ReportMergingTool
+
+    tool = ReportMergingTool()
     for html_path in html_paths:
-        dump, current = collect_report_executions(html_path)
-        if base_dump is None:
-            base_dump = dump
-        executions.extend(current)
-    executions = _dedupe_executions(executions)
-
-    target_dir = Path(output_dir or get_midscene_run_dir("report"))
-    target_dir.mkdir(parents=True, exist_ok=True)
-    name = (
-        get_report_file_name("merged-report")
-        if not output_name or output_name == "AUTO"
-        else output_name
-    )
-    output_path = target_dir / f"{name}.html"
-    if output_path.exists() and not overwrite:
-        raise ValueError(
-            f"Report file already exists: {output_path}\n"
-            "Set overwrite to true to overwrite this file."
+        tool.append(
+            {"reportFilePath": str(resolve_report_html_path(str(html_path)))}
         )
-
-    # Preserve every top-level key from the base dump (including custom report
-    # attributes), only replacing the executions list with the merged set.
-    merged: Dict[str, Any] = dict(base_dump)
-    merged["executions"] = executions
-    result = write_report_html(merged, name, str(target_dir))
+    result = tool.merge_reports(
+        output_name or "AUTO",
+        {
+            "overwrite": overwrite,
+            "outputDir": output_dir,
+            "outputFormat": output_format or "single-html",
+        },
+    )
     if not result:
         raise ValueError("mergeReportFiles: failed to produce a merged report")
     return {"mergedReportPath": result}

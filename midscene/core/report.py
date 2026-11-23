@@ -477,9 +477,31 @@ class ReportMergingTool:
                             ),
                         )
                     else:
-                        serialized = (
-                            extract_last_dump_script_sync(report_file_path)
-                            or serialized
+                        serialized = extract_last_dump_script_sync(
+                            report_file_path
+                        )
+                        if not serialized:
+                            # Legacy single-file reports embed
+                            # ``midscene_report_dump`` instead of the streaming
+                            # ``midscene_web_dump`` script; load them so their
+                            # executions are not silently dropped.
+                            try:
+                                legacy_dump = _load_report_dump_for_export(
+                                    Path(report_file_path)
+                                )
+                            except Exception as error:  # noqa: BLE001
+                                logger.debug(
+                                    "Failed to read legacy report dump "
+                                    f"{report_file_path}: {error}"
+                                )
+                                legacy_dump = None
+                            if legacy_dump:
+                                serialized = json.dumps(
+                                    legacy_dump, ensure_ascii=False
+                                )
+                        serialized = serialized or self.create_empty_dump_string(
+                            attributes.get("testTitle") or "",
+                            attributes.get("testDescription"),
                         )
                 if group_id in group_ids:
                     group_id = f"merged-group-{uuid.uuid4().hex}"
@@ -505,26 +527,31 @@ class ReportMergingTool:
                             ),
                         }
                     )
+                group_attributes = {
+                    **(
+                        {"data-report-id": group_id}
+                        if has_runner_dump
+                        else {}
+                    ),
+                    "playwright_test_duration": attributes.get("testDuration"),
+                    "playwright_test_status": attributes.get("testStatus"),
+                    "playwright_test_title": attributes.get("testTitle"),
+                    "playwright_test_id": attributes.get("testId"),
+                    "playwright_test_description": attributes.get(
+                        "testDescription"
+                    ),
+                    "is_merged": True,
+                }
                 writer.add_group_sync(
                     group_id,
                     serialized,
                     report_file_path or str(entry),
+                    # Manifest attributes are portable scalars only; unknown
+                    # metadata stays absent instead of being written as null.
                     {
-                        **(
-                            {"data-report-id": group_id}
-                            if has_runner_dump
-                            else {}
-                        ),
-                        "playwright_test_duration": attributes.get(
-                            "testDuration"
-                        ),
-                        "playwright_test_status": attributes.get("testStatus"),
-                        "playwright_test_title": attributes.get("testTitle"),
-                        "playwright_test_id": attributes.get("testId"),
-                        "playwright_test_description": attributes.get(
-                            "testDescription"
-                        ),
-                        "is_merged": True,
+                        key: value
+                        for key, value in group_attributes.items()
+                        if value is not None
                     },
                 )
 

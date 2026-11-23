@@ -266,6 +266,37 @@ async def test_create_report_cli_commands_run_merge(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_create_report_cli_commands_merge_into_a_directory_artifact(tmp_path):
+    """honors --outputFormat html-and-external-assets for merge"""
+    report_a = _write_report(tmp_path, "merge-dir-a", "dir-group-A", "exec-A")
+    report_b = _write_report(tmp_path, "merge-dir-b", "dir-group-B", "exec-B")
+    output_dir = tmp_path / "merge-output-directory"
+    [command] = create_report_cli_commands()
+
+    result = await command.definition.handler(
+        {
+            "action": "merge-html",
+            "htmlReport": [report_a, report_b],
+            "outputDir": str(output_dir),
+            "outputName": "merged-dir",
+            "outputFormat": "html-and-external-assets",
+        }
+    )
+
+    assert result["isError"] is False
+    artifact = output_dir / "merged-dir"
+    assert (artifact / "index.html").exists()
+    manifest = json.loads((artifact / "report.json").read_text(encoding="utf-8"))
+    assert manifest["kind"] == "agent"
+    merged = " ".join(
+        path.read_text(encoding="utf-8")
+        for path in sorted((artifact / "data").glob("*/*.json"))
+    )
+    assert "exec-A" in merged
+    assert "exec-B" in merged
+
+
+@pytest.mark.asyncio
 async def test_create_report_cli_commands_require_html_report_for_merge(tmp_path):
     """throws when --htmlReport is missing for the merge action"""
     [command] = create_report_cli_commands()

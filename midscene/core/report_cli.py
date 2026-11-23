@@ -153,6 +153,7 @@ async def _handle_report_tool(args: Dict[str, Any]) -> Dict[str, Any]:
             output_dir,
             output_name,
             _is_truthy_flag(overwrite),
+            output_format,
         )
         return _tool_result(
             f"Merged {len(paths)} report(s) into {result['mergedReportPath']}"

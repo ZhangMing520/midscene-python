@@ -728,6 +728,48 @@ class TestBatchRunnerGlobalConfig:
         assert script["web"]["serve"] == "/global/serve"
 
     @pytest.mark.asyncio
+    async def test_should_deep_merge_nested_global_config(self, scripts):
+        path = scripts / "file1.yml"
+        path.write_text(
+            "tasks: []\n"
+            "web:\n"
+            "  url: http://file.com\n"
+            "  extraHTTPHeaders:\n"
+            "    Accept-Language: en-US\n"
+            "  waitForNetworkIdle:\n"
+            "    timeout: 5000\n"
+            "    continueOnNetworkIdleError: false\n",
+            encoding="utf-8",
+        )
+        captured = []
+
+        def factory(content, file_path):
+            captured.append(content)
+            return FakePlayer("ok")
+
+        await BatchRunner(
+            {
+                "files": [str(path)],
+                "web": {
+                    "extraHTTPHeaders": {"X-Token": "t"},
+                    "waitForNetworkIdle": {"timeout": 10000},
+                },
+            },
+            factory,
+        ).run()
+
+        script = yaml.safe_load(captured[0])
+        assert script["web"]["url"] == "http://file.com"
+        assert script["web"]["extraHTTPHeaders"] == {
+            "Accept-Language": "en-US",
+            "X-Token": "t",
+        }
+        assert script["web"]["waitForNetworkIdle"] == {
+            "timeout": 10000,
+            "continueOnNetworkIdleError": False,
+        }
+
+    @pytest.mark.asyncio
     async def test_should_merge_android_config_from_global_config(self, scripts):
         path = scripts / "file1.yml"
         path.write_text(
@@ -835,3 +877,32 @@ class TestBatchRunnerGlobalConfig:
     @pytest.mark.skip(reason="Python does not launch Puppeteer for web tasks")
     def test_should_not_launch_puppeteer_if_no_web_tasks_are_present(self):
         pass
+
+
+class TestBatchRunnerPlayerCreationErrors:
+    @pytest.mark.asyncio
+    async def test_records_failed_file_and_continues_after_factory_error(self, scripts):
+        seen = []
+
+        def factory(content, file_path):
+            name = Path(file_path).name
+            seen.append(name)
+            if name == "file1.yml":
+                raise ValueError("bad yaml")
+            return FakePlayer("ok")
+
+        runner = BatchRunner(
+            {
+                "files": [
+                    str(scripts / "file1.yml"),
+                    str(scripts / "file2.yml"),
+                ]
+            },
+            factory,
+        )
+        results = await runner.run()
+
+        assert [result["success"] for result in results] == [False, True]
+        assert results[0]["resultType"] == "failed"
+        assert "bad yaml" in results[0]["error"]
+        assert seen == ["file1.yml", "file2.yml"]
