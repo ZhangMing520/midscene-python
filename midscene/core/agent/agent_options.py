@@ -3,7 +3,7 @@
 import copy
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 from midscene.core.agent.common import AGENT_AI_CONTEXT_KEYS
 from midscene.core.dump.report_session import assert_report_generation_options
@@ -101,7 +101,7 @@ def _set_option(options: Any, key: str, value: Any) -> None:
         setattr(options, key, value)
 
 
-def with_agent_defaults(opts: Any = None):
+def with_agent_defaults(opts: Any = None) -> Any:
     """Return options with the Agent defaults applied (upstream helper)."""
     if opts is None:
         options: Any = AgentOptions()
@@ -248,13 +248,14 @@ def coerce_agent_options(options: Any = None) -> AgentOptions:
         return options
     if isinstance(options, dict):
         fields = AgentOptions.__dataclass_fields__
-        kwargs = {}
+        kwargs: dict[str, Any] = {}
         for key, value in options.items():
             target = _AGENT_OPTION_ALIASES.get(key, key)
             if target in fields:
                 kwargs[target] = value
         return AgentOptions(**kwargs)
-    return options
+    # Custom option objects are normalized in place by the platform factories.
+    return cast(AgentOptions, options)
 
 
 __all__ = [

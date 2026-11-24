@@ -11,8 +11,8 @@ Two transports are available:
 import asyncio
 import inspect
 import json
-from collections.abc import Callable
-from typing import Any
+from collections.abc import Awaitable, Callable
+from typing import Any, Protocol, cast
 
 from loguru import logger
 
@@ -20,15 +20,59 @@ from midscene.computer.rdp.address import normalize_rdp_connection_config
 from midscene.computer.rdp.helper_binary import get_rdp_helper_binary_path
 from midscene.computer.rdp.protocol import (
     RDPBackendClient,
+    RDPBackendSize,
     RDPConnectionConfig,
     RDPConnectionInfo,
+    RDPMouseButton,
+    RDPMouseButtonAction,
+    RDPScrollDirection,
 )
 
 HELPER_SHUTDOWN_TIMEOUT_S = 3.0
 HELPER_WRITE_ERROR_DIAGNOSTIC_DELAY_S = 0.05
 MAX_STDERR_CHARS = 16_384
 
-SpawnFn = Callable[[str], Any]
+
+class _ReadablePipe(Protocol):
+    async def readline(self) -> bytes: ...
+
+    async def read(self, size: int = -1) -> bytes: ...
+
+
+class _WritablePipe(Protocol):
+    def write(self, data: bytes) -> object: ...
+
+    async def drain(self) -> None: ...
+
+    def close(self) -> None: ...
+
+
+class _HelperProcess(Protocol):
+    """Subprocess surface shared by asyncio.Process and test transports."""
+
+    @property
+    def stdin(self) -> _WritablePipe: ...
+
+    @property
+    def stdout(self) -> _ReadablePipe: ...
+
+    @property
+    def stderr(self) -> _ReadablePipe: ...
+
+    @property
+    def pid(self) -> int: ...
+
+    @property
+    def returncode(self) -> int | None: ...
+
+    async def wait(self) -> int | None: ...
+
+    def kill(self) -> None: ...
+
+    def terminate(self) -> None: ...
+
+
+SpawnFn = Callable[[str], _HelperProcess | Awaitable[_HelperProcess]]
 
 
 def _not_implemented() -> RuntimeError:
@@ -50,16 +94,24 @@ class UnsupportedRDPBackendClient:
     async def screenshot_base64(self) -> str:
         raise _not_implemented()
 
-    async def size(self):
+    async def size(self) -> RDPBackendSize:
         raise _not_implemented()
 
     async def mouse_move(self, x: int, y: int) -> None:
         raise _not_implemented()
 
-    async def mouse_button(self, button, action) -> None:
+    async def mouse_button(
+        self, button: RDPMouseButton, action: RDPMouseButtonAction
+    ) -> None:
         raise _not_implemented()
 
-    async def wheel(self, direction, amount, x=None, y=None) -> None:
+    async def wheel(
+        self,
+        direction: RDPScrollDirection,
+        amount: int,
+        x: int | None = None,
+        y: int | None = None,
+    ) -> None:
         raise _not_implemented()
 
     async def key_press(self, key_name: str) -> None:
@@ -101,15 +153,20 @@ class HelperProcessRDPBackendClient:
         helper_path: str | None = None,
     ):
         options = options or {}
-        self._spawn_fn: SpawnFn | None = spawn_fn or options.get("spawnFn")
-        override_path = helper_path or options.get("helperPath")
-        self._resolve_helper_path = override_path
-        self._child: Any = None
+        self._spawn_fn: SpawnFn | None = cast(
+            SpawnFn | None, spawn_fn or options.get("spawnFn")
+        )
+        self._resolve_helper_path = cast(
+            str | None, helper_path or options.get("helperPath") or None
+        )
+        self._child: _HelperProcess | None = None
         self._connected = False
         self._fatal_helper_error: BaseException | None = None
-        self._pending: dict[str, tuple[asyncio.Future, Any]] = {}
+        self._pending: dict[
+            str, tuple[asyncio.Future[dict[str, Any]], _HelperProcess]
+        ] = {}
         self._diagnostics: dict[int, _HelperDiagnostics] = {}
-        self._reader_tasks: list = []
+        self._reader_tasks: list[asyncio.Task[None]] = []
         self._next_request_id = 0
         self._spawn_lock: asyncio.Lock | None = None
 
@@ -129,7 +186,7 @@ class HelperProcessRDPBackendClient:
             )
         self._connected = True
         self._fatal_helper_error = None
-        return response.get("info", {})
+        return cast(RDPConnectionInfo, response.get("info", {}))
 
     async def disconnect(self) -> None:
         child = self._child
@@ -157,13 +214,13 @@ class HelperProcessRDPBackendClient:
             raise RuntimeError(
                 f"Expected screenshot response, got {response.get('type')}"
             )
-        return response.get("base64", "")
+        return cast(str, response.get("base64", ""))
 
-    async def size(self):
+    async def size(self) -> RDPBackendSize:
         response = await self._send({"type": "size"})
         if response.get("type") != "size":
             raise RuntimeError(f"Expected size response, got {response.get('type')}")
-        return response.get("size", {})
+        return cast(RDPBackendSize, response.get("size", {}))
 
     async def mouse_move(self, x: int, y: int) -> None:
         self._expect_ok(
@@ -171,7 +228,9 @@ class HelperProcessRDPBackendClient:
             "mouseMove",
         )
 
-    async def mouse_button(self, button, action) -> None:
+    async def mouse_button(
+        self, button: RDPMouseButton, action: RDPMouseButtonAction
+    ) -> None:
         self._expect_ok(
             await self._send(
                 {"type": "mouseButton", "button": button, "action": action}
@@ -179,7 +238,13 @@ class HelperProcessRDPBackendClient:
             "mouseButton",
         )
 
-    async def wheel(self, direction, amount, x=None, y=None) -> None:
+    async def wheel(
+        self,
+        direction: RDPScrollDirection,
+        amount: int,
+        x: int | None = None,
+        y: int | None = None,
+    ) -> None:
         self._expect_ok(
             await self._send(
                 {
@@ -213,7 +278,7 @@ class HelperProcessRDPBackendClient:
 
     # -- helper process ----------------------------------------------------
 
-    async def _ensure_helper_started(self):
+    async def _ensure_helper_started(self) -> _HelperProcess:
         if self._child is not None and self._child.returncode is None:
             return self._child
         if self._spawn_lock is None:
@@ -228,15 +293,17 @@ class HelperProcessRDPBackendClient:
             )
             logger.debug(f"starting rdp helper path={helper_path}")
             if self._spawn_fn is not None:
-                child = self._spawn_fn(helper_path)
-                if inspect.isawaitable(child):
-                    child = await child
+                spawned = self._spawn_fn(helper_path)
+                child = await spawned if inspect.isawaitable(spawned) else spawned
             else:
-                child = await asyncio.create_subprocess_exec(
-                    helper_path,
-                    stdin=asyncio.subprocess.PIPE,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
+                child = cast(
+                    _HelperProcess,
+                    await asyncio.create_subprocess_exec(
+                        helper_path,
+                        stdin=asyncio.subprocess.PIPE,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
+                    ),
                 )
             self._child = child
             diagnostics = _HelperDiagnostics(helper_path, getattr(child, "pid", None))
@@ -249,7 +316,9 @@ class HelperProcessRDPBackendClient:
             ]
             return child
 
-    async def _read_stdout(self, child, diagnostics):
+    async def _read_stdout(
+        self, child: _HelperProcess, diagnostics: _HelperDiagnostics
+    ) -> None:
         stdout = child.stdout
         while True:
             line = await stdout.readline()
@@ -259,7 +328,7 @@ class HelperProcessRDPBackendClient:
             if not text:
                 continue
             try:
-                parsed = json.loads(text)
+                parsed = cast(dict[str, Any], json.loads(text))
             except ValueError:
                 protocol_error = self._create_helper_error(
                     f"RDP helper emitted malformed JSON: {text}",
@@ -272,7 +341,7 @@ class HelperProcessRDPBackendClient:
                 return
 
             request_id = parsed.get("id")
-            pending = self._pending.pop(request_id, None)
+            pending = self._pending.pop(cast(str, request_id), None)
             if pending is None:
                 logger.debug(f"dropping response for unknown request id {parsed}")
                 continue
@@ -280,7 +349,7 @@ class HelperProcessRDPBackendClient:
             if future.done():
                 continue
             if parsed.get("ok"):
-                future.set_result(parsed.get("payload") or {})
+                future.set_result(cast(dict[str, Any], parsed.get("payload") or {}))
             else:
                 error = parsed.get("error") or {}
                 future.set_exception(
@@ -291,7 +360,9 @@ class HelperProcessRDPBackendClient:
                     )
                 )
 
-    async def _read_stderr(self, child, diagnostics):
+    async def _read_stderr(
+        self, child: _HelperProcess, diagnostics: _HelperDiagnostics
+    ) -> None:
         stderr = child.stderr
         while True:
             chunk = await stderr.read(4096)
@@ -299,7 +370,9 @@ class HelperProcessRDPBackendClient:
                 return
             diagnostics.capture_stderr(chunk.decode("utf-8", errors="replace"))
 
-    async def _watch_exit(self, child, diagnostics):
+    async def _watch_exit(
+        self, child: _HelperProcess, diagnostics: _HelperDiagnostics
+    ) -> None:
         code = await child.wait()
         diagnostics.exit_code = code
         diagnostics.exit_signal = None
@@ -336,7 +409,9 @@ class HelperProcessRDPBackendClient:
         diagnostics = self._diagnostics.get(id(child))
         request = {"id": request_id, "payload": payload}
 
-        future = asyncio.get_running_loop().create_future()
+        future: asyncio.Future[dict[str, Any]] = (
+            asyncio.get_running_loop().create_future()
+        )
         self._pending[request_id] = (future, child)
         try:
             child.stdin.write(
@@ -354,9 +429,9 @@ class HelperProcessRDPBackendClient:
 
     async def _reject_write_failure(
         self,
-        child,
+        child: _HelperProcess,
         request_id: str,
-        future: asyncio.Future,
+        future: asyncio.Future[dict[str, Any]],
         payload: dict[str, Any],
         error: BaseException,
         diagnostics: _HelperDiagnostics | None,
@@ -398,7 +473,9 @@ class HelperProcessRDPBackendClient:
                 f"Expected ok response for {action_name}, got {response.get('type')}"
             )
 
-    def _reject_pending_for_child(self, child, error: BaseException) -> None:
+    def _reject_pending_for_child(
+        self, child: _HelperProcess, error: BaseException
+    ) -> None:
         for request_id, (future, pending_child) in list(self._pending.items()):
             if pending_child is not child:
                 continue

@@ -2,12 +2,13 @@
 
 import math
 import re
-from typing import Any
+from typing import Any, cast
 
 from midscene.core.test_runner.parser.types import (
     CollectedCase,
     CollectedWorkflowDocument,
     NormalizedStep,
+    NormalizedStepMeta,
 )
 from midscene.core.yaml.utils import (
     build_detailed_locate_param,
@@ -113,7 +114,7 @@ def compile_legacy_flow_item(
     def step(
         node: str, input_value: dict[str, Any], capture_result: bool = False
     ) -> NormalizedStep:
-        meta: dict[str, Any] = {"continueOnError": False}
+        meta: NormalizedStepMeta = {"continueOnError": False}
         if capture_result:
             meta["captureResult"] = True
             if isinstance(name, str) and name:
@@ -466,12 +467,12 @@ def collect_legacy_yaml_document(
     }
     return {
         **document,
-        "documentId": identity.get("documentId"),
-        "projectId": identity.get("projectId"),
+        "documentId": cast(str, identity.get("documentId")),
+        "projectId": cast(str, identity.get("projectId")),
         "cases": [
             {
                 **item,
-                "projectId": identity.get("projectId"),
+                "projectId": cast(str, identity.get("projectId")),
                 "caseId": by_index[item["caseIndex"]],
             }
             for item in document["cases"]

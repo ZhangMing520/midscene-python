@@ -1,7 +1,7 @@
 """Execution records for the workflow entry adapter (upstream execution-record.ts)."""
 
 import json
-from typing import Any, TypedDict
+from typing import Any, TypedDict, cast
 
 from midscene.core.test_runner.engine.types import (
     WorkflowDocumentExecutionResult,
@@ -40,10 +40,12 @@ class WorkflowExecutionRecord(TypedDict, total=False):
 
 def execution_record_to_result(record: WorkflowExecutionRecord) -> dict[str, Any]:
     """Complete host facts as a kernel result. Report and summary consume this view."""
-    execution = (record.get("execution") or {}).get("document")
-    host_errors: list[WorkflowHostError] = list(
-        (execution or {}).get("hostErrors") or []
-    )
+    execution_result: WorkflowDocumentExecutionResult = record.get("execution") or {
+        "document": {},
+        "cases": [],
+    }
+    execution = execution_result["document"]
+    host_errors: list[WorkflowHostError] = list(execution.get("hostErrors") or [])
 
     def add(phase: str, error: Any) -> None:
         if error is not None:
@@ -60,13 +62,14 @@ def execution_record_to_result(record: WorkflowExecutionRecord) -> dict[str, Any
         add("observer", error)
 
     document = record["document"]
-    project_name = (
+    project_name = cast(
+        str,
         record.get("projectName")
-        or (execution or {}).get("projectName")
-        or record.get("platform")
+        or execution.get("projectName")
+        or record.get("platform"),
     )
     result_document: dict[str, Any] = {
-        "plan": (execution or {}).get("plan") or build_test_run_report_plan(document),
+        "plan": execution.get("plan") or build_test_run_report_plan(document),
         "documentId": document["documentId"],
         "documentRunId": record["runId"],
         "attemptIndex": record["attemptIndex"],
@@ -77,35 +80,35 @@ def execution_record_to_result(record: WorkflowExecutionRecord) -> dict[str, Any
         # successful Cases into retryable action failures.
         "status": (
             "failed"
-            if host_errors or (execution or {}).get("status") == "failed"
+            if host_errors or execution.get("status") == "failed"
             else "success"
         ),
         "startedAt": record["startedAt"],
         "endedAt": record["endedAt"],
         "durationMs": record["durationMs"],
-        "beforeAll": (execution or {}).get("beforeAll") or [],
-        "afterAll": (execution or {}).get("afterAll") or [],
-        "reportScopeId": (execution or {}).get("reportScopeId") or record["runId"],
+        "beforeAll": execution.get("beforeAll") or [],
+        "afterAll": execution.get("afterAll") or [],
+        "reportScopeId": execution.get("reportScopeId") or record["runId"],
         "reportPaths": list(record.get("reportPaths") or []),
     }
     if host_errors:
         result_document["hostErrors"] = host_errors
-    if (execution or {}).get("executionErrors"):
+    if execution.get("executionErrors"):
         result_document["executionErrors"] = execution["executionErrors"]
-    if (execution or {}).get("teardownErrors"):
+    if execution.get("teardownErrors"):
         result_document["teardownErrors"] = execution["teardownErrors"]
     if record.get("reportSources"):
         result_document["reportSources"] = list(record["reportSources"])
 
-    execution_result = record.get("execution")
-    if execution_result and "cases" in execution_result:
-        cases = execution_result["cases"]
+    completed_execution = record.get("execution")
+    if completed_execution and "cases" in completed_execution:
+        cases = completed_execution["cases"]
     else:
         cases = [
             {
                 "caseId": item["caseId"],
                 "projectName": project_name,
-                "name": item["definition"].get("name"),
+                "name": cast(str, item["definition"].get("name")),
                 "sourcePath": item.get("sourcePath"),
                 "caseIndex": item.get("caseIndex"),
                 "status": "not-run",

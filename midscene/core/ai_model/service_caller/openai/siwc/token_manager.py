@@ -2,6 +2,7 @@
 
 import asyncio
 import time
+from typing import Any, cast
 
 from midscene.core.ai_model.service_caller.openai.siwc import (
     credential_storage,
@@ -14,20 +15,20 @@ from midscene.core.ai_model.service_caller.openai.siwc.errors import SiwcError
 class SiwcTokenManager:
     """Read/refresh stored SIWC credentials; refreshes are shared."""
 
-    def __init__(self):
-        self._pending_refresh: asyncio.Task | None = None
+    def __init__(self) -> None:
+        self._pending_refresh: asyncio.Task[str] | None = None
 
     async def get_access_token(self) -> str:
         storage = credential_storage.get_credential_storage()
         record = await asyncio.to_thread(storage.read)
         # Let the server reject expired tokens instead of trusting local clocks.
-        return record["credentials"]["access_token"]
+        return cast(str, record["credentials"]["access_token"])
 
     def refresh_access_token(
         self,
         previous_access_token: str,
         proxy: network.SiwcProxyConfig | None = None,
-    ) -> "asyncio.Task":
+    ) -> "asyncio.Task[str]":
         if self._pending_refresh is None:
             self._pending_refresh = asyncio.create_task(
                 self._refresh_and_save(previous_access_token, proxy)
@@ -44,9 +45,9 @@ class SiwcTokenManager:
     ) -> str:
         storage = credential_storage.get_credential_storage()
         record = await asyncio.to_thread(storage.read)
-        saved = record.get("credentials", {})
+        saved = cast(dict[str, Any], record.get("credentials", {}))
         if saved.get("access_token") != previous_access_token:
-            return saved["access_token"]
+            return cast(str, saved["access_token"])
         try:
             credentials = await refresh.refresh_siwc_credentials(
                 saved, None, {"proxy": proxy}
@@ -64,7 +65,7 @@ class SiwcTokenManager:
                 "credentials": credentials,
             },
         )
-        return credentials["access_token"]
+        return cast(str, credentials["access_token"])
 
 
 siwc_token_manager = SiwcTokenManager()

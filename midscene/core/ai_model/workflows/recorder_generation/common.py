@@ -7,7 +7,7 @@ share one event-processing pipeline.
 import json
 import math
 import re
-from typing import Any
+from typing import Any, cast
 
 DEFAULT_MIDSCENE_RECORDER_MARKDOWN_MAX_SCREENSHOTS = 20
 
@@ -127,7 +127,7 @@ def get_midscene_recorder_event_description(event: dict[str, Any]) -> str:
     for field in ("actionSummary", "elementDescription", "replayInstruction"):
         value = semantic.get(field)
         if value and not _is_pending_description(value):
-            return value
+            return cast(str, value)
 
     if event.get("type") == "navigation" and event.get("url"):
         return f"Navigate to {event['url']}"
@@ -517,7 +517,9 @@ def process_events_for_llm(
             ),
             "pageInfo": event.get("pageInfo"),
             "elementRect": event.get("elementRect"),
-            "screenshotPath": screenshot_path_by_event_hash.get(event.get("hashId")),
+            "screenshotPath": screenshot_path_by_event_hash.get(
+                cast(str, event.get("hashId"))
+            ),
         }
 
         if is_input:

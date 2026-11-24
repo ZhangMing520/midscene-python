@@ -13,6 +13,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import (
     Any,
+    Generic,
     Optional,
     Protocol,
     TypedDict,
@@ -54,7 +55,9 @@ class BrowserAgentAdapter(Protocol[PageT, NewPageEventT]):
 
     def on_new_page(self, handler: Callable[[NewPageEventT], Any]) -> None: ...
 
-    def off_new_page(self, handler: Callable[[NewPageEventT], Any]) -> None: ...
+    def off_new_page(
+        self, handler: Callable[[NewPageEventT], Any]
+    ) -> None | Awaitable[None]: ...
 
     def resolve_new_page(
         self, event: NewPageEventT
@@ -212,13 +215,13 @@ def _describe_selector(selector: dict[str, Any]) -> str:
     return ", ".join(parts)
 
 
-class BrowserPageManager:
+class BrowserPageManager(Generic[PageT, NewPageEventT]):
     """Track and switch browser pages behind an agent adapter."""
 
     def __init__(
         self,
         agent_name: str,
-        adapter: BrowserAgentAdapter,
+        adapter: BrowserAgentAdapter[PageT, NewPageEventT],
         get_active_page: Callable[[], Any],
         set_active_page: Callable[[Any], None],
         auto_follow_new_page: bool = False,

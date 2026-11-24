@@ -23,7 +23,7 @@ import re
 import sys
 import time
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 from urllib.parse import unquote, urlsplit
 
 from loguru import logger
@@ -916,7 +916,7 @@ async def call_ai_with_codex_app_server(
         model_config=model_config,
         resolve_image_detail=options.get("resolve_image_detail")
         or options.get("resolveImageDetail"),
-        stream=options.get("stream"),
+        stream=cast(bool, options.get("stream")),
         on_chunk=options.get("onChunk") or options.get("on_chunk"),
         params=options.get("params"),
         abort_signal=options.get("abort_signal") or options.get("abortSignal"),

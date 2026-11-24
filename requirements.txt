@@ -393,6 +393,8 @@ typer==0.27.3
     # via
     #   midscene-python (pyproject.toml)
     #   dashscope
+types-pyyaml==6.0.12.20261122
+    # via midscene-python (pyproject.toml)
 typing-extensions==4.16.0
     # via
     #   aiohttp

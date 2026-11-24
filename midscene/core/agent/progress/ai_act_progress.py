@@ -5,13 +5,18 @@ progress events. Formatting for display stays with consumers.
 """
 
 import math
-from typing import Any
+from collections.abc import Awaitable, Callable
+from typing import Any, Protocol, TypeGuard
 
 _MAX_COMPACT_STRING_LENGTH = 180
 _LOCATOR_PARAM_KEYS = ("locate", "from", "to", "start", "end")
 
 
-def _is_record(value: Any) -> bool:
+class ProgressEmitter(Protocol):
+    async def __call__(self, event_type: str, data: dict[str, Any]) -> object: ...
+
+
+def _is_record(value: Any) -> TypeGuard[dict[str, Any]]:
     return isinstance(value, dict)
 
 
@@ -78,7 +83,7 @@ def _bbox_from_property(
     if not isinstance(bbox, (list, tuple)) or len(bbox) < 4:
         return None
     left, top, right, bottom = (_number(item) for item in bbox[:4])
-    if None in (left, top, right, bottom):
+    if left is None or top is None or right is None or bottom is None:
         return None
     return (left, top, right, bottom)
 
@@ -106,20 +111,22 @@ def _bbox_from_locate_like(
     top = _number(rect.get("top"))
     width = _number(rect.get("width"))
     height = _number(rect.get("height"))
-    if None in (left, top, width, height):
+    if left is None or top is None or width is None or height is None:
         return None
     return (left, top, left + width, top + height)
 
 
 def _target_text_from_locate_like(value: dict[str, Any]) -> str:
-    if isinstance(value.get("description"), str):
-        return value["description"]
-    if isinstance(value.get("prompt"), str):
-        return value["prompt"]
+    description = value.get("description")
+    if isinstance(description, str):
+        return description
+    prompt = value.get("prompt")
+    if isinstance(prompt, str):
+        return prompt
     return ""
 
 
-def _is_locate_like(value: Any) -> bool:
+def _is_locate_like(value: Any) -> TypeGuard[dict[str, Any]]:
     if not _is_record(value):
         return False
     return any(
@@ -196,7 +203,9 @@ def extract_progress_action(task: dict[str, Any]) -> dict[str, Any] | None:
     return action
 
 
-def create_ai_act_action_reporter(plan_index: int, plan_limit: int, emit):
+def create_ai_act_action_reporter(
+    plan_index: int, plan_limit: int, emit: ProgressEmitter
+) -> Callable[[dict[str, Any]], Awaitable[None]]:
     """Map runner task-lifecycle events to aiAct action progress."""
 
     async def reporter(event: dict[str, Any]) -> None:

@@ -2,7 +2,8 @@
 
 import os
 import time
-from typing import Any, TypedDict
+from collections.abc import Awaitable, Callable
+from typing import Any, Protocol, TypedDict, cast
 
 import httpx
 from loguru import logger
@@ -22,6 +23,18 @@ ISSUER = "https://auth.openai.com"
 class SiwcProxyConfig(TypedDict, total=False):
     httpProxy: str | None
     socksProxy: str | None
+
+
+class _SiwcResponse(Protocol):
+    def json(self) -> Any: ...
+
+
+SiwcRequest = Callable[..., Awaitable[_SiwcResponse]]
+
+
+class _JwksCache(TypedDict):
+    fetched_at: float
+    keys: list[Any]
 
 
 def _siwc_proxy(proxy: SiwcProxyConfig | None = None) -> str | None:
@@ -44,7 +57,7 @@ async def fetch_siwc(
     input: Any,
     init: dict[str, Any] | None = None,
     proxy: SiwcProxyConfig | None = None,
-):
+) -> httpx.Response:
     """Fetch a SIWC URL through the Midscene-configured proxy only.
 
     Generic ``HTTP_PROXY``/``HTTPS_PROXY`` environment variables are ignored,
@@ -81,11 +94,11 @@ async def fetch_siwc(
 def create_siwc_jwk_set(
     issuer: str,
     signal: Any,
-    request: Any = fetch_siwc,
-):
+    request: SiwcRequest = fetch_siwc,
+) -> Callable[[Any, Any], Awaitable[Any]]:
     """Return an async JWKS resolver keyed by the token's ``kid``."""
 
-    async def resolve(header: Any, _token: Any):
+    async def resolve(header: Any, _token: Any) -> Any:
         response = await request(
             f"{issuer}/.well-known/jwks.json",
             {"signal": signal, "redirect": "error"},
@@ -94,6 +107,8 @@ def create_siwc_jwk_set(
         if status is None:
             status = getattr(response, "status", 0)
         ok = getattr(response, "ok", None)
+        if status is None:
+            status = 0
         if ok is None:
             ok = status < 400
         if not ok:
@@ -113,7 +128,7 @@ def create_siwc_jwk_set(
 
 
 _JWKS_TTL_SECONDS = 3600.0
-_jwks_cache: dict[str, Any] | None = None
+_jwks_cache: _JwksCache | None = None
 
 
 def _select_jwk(keys: list[Any], kid: str | None) -> list[Any]:
@@ -134,7 +149,7 @@ async def _fetch_jwks(
         raise SiwcError(
             f"Failed to fetch OpenAI JWKS: HTTP {jwks_response.status_code}"
         )
-    return pyjwt.PyJWKSet.from_dict(jwks_response.json()).keys
+    return cast(list[Any], pyjwt.PyJWKSet.from_dict(jwks_response.json()).keys)
 
 
 async def _load_jwks(
@@ -156,7 +171,7 @@ async def _verify_id_token(
     audience: str,
     required_claims: tuple[str, ...],
     proxy: SiwcProxyConfig | None = None,
-):
+) -> dict[str, Any]:
     if not _HAS_PYJWT:
         logger.warning(
             "PyJWT is not installed; skipping SIWC id-token signature verification"
@@ -173,7 +188,7 @@ async def _verify_id_token(
         if not candidates:
             raise SiwcError("No matching signing key in OpenAI JWKS.")
         # clockTolerance=inf upstream: CI machines may have skewed clocks.
-        payload = pyjwt.decode(
+        payload: dict[str, Any] = pyjwt.decode(
             id_token,
             candidates[0].key,
             algorithms=["RS256"],

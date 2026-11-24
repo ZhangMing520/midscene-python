@@ -4,7 +4,7 @@ import math
 import os
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from loguru import logger
 
@@ -440,7 +440,7 @@ async def match_element_from_cache(
         rect = await _maybe_await(resolver(cache_entry))
         if rect is None:
             return None
-        rect_dict = _rect_to_dict(rect)
+        rect_dict = cast(dict[str, float], _rect_to_dict(rect))
         element: dict[str, Any] = {
             "center": [
                 rect_dict["left"] + rect_dict["width"] / 2,
@@ -466,7 +466,7 @@ def get_midscene_version() -> str:
         version = None
     if not version or version == "undefined":
         raise RuntimeError("__VERSION__ inject failed during build")
-    return version
+    return cast(str, version)
 
 
 def parse_prompt(prompt: Any) -> dict[str, Any]:

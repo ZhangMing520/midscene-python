@@ -6,21 +6,21 @@ Port of upstream cli/verbose-screenshot.ts.
 import json
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeGuard, cast
 
 from midscene.shared.cli.screenshot_file import write_cli_screenshot_file
 
 
-def _is_record(value: Any) -> bool:
+def _is_record(value: Any) -> TypeGuard[dict[str, Any]]:
     return isinstance(value, dict)
 
 
-def _is_screenshot_ref(value: Any) -> bool:
+def _is_screenshot_ref(value: Any) -> TypeGuard[dict[str, Any]]:
     return _is_record(value) and value.get("type") == "midscene_screenshot_ref"
 
 
 def _to_serializable_screenshot(value: Any) -> dict[str, Any] | None:
-    if not isinstance(value, (dict, object)) or value is None:
+    if value is None:
         return None
 
     to_serializable = getattr(value, "to_serializable", None)
@@ -87,8 +87,9 @@ def _export_inline_screenshot_for_verbose(
     serialized: dict[str, Any],
     options: dict[str, Any],
 ) -> str | None:
-    if isinstance(serialized.get("path"), str):
-        return serialized["path"]
+    existing_path = serialized.get("path")
+    if isinstance(existing_path, str):
+        return existing_path
 
     export_mode = options.get("exportMode") or "tmp"
     if export_mode == "none":
@@ -111,7 +112,9 @@ def _export_inline_screenshot_for_verbose(
     )
     cache = options.get("cache")
     if cache is not None:
-        cached_path = cache.get(cache_key)
+        # The CLI context supplies a string-to-path cache for deduplication.
+        path_cache = cast(dict[str, str], cache)
+        cached_path = path_cache.get(cache_key)
         if cached_path:
             return cached_path
 
@@ -131,7 +134,7 @@ def _export_inline_screenshot_for_verbose(
             },
         )
         if cache is not None:
-            cache[cache_key] = path
+            path_cache[cache_key] = path
         return path
     except Exception:  # noqa: BLE001
         return None

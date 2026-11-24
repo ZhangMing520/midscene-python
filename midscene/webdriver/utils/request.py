@@ -112,11 +112,12 @@ def protocol_error_code(body: Any) -> str | None:
     if not isinstance(body, dict):
         return None
     value = body.get("value")
-    if isinstance(value, dict) and isinstance(value.get("error"), str):
-        return value["error"]
-    if isinstance(body.get("error"), str):
-        return body["error"]
-    return None
+    if isinstance(value, dict):
+        error = value.get("error")
+        if isinstance(error, str):
+            return error
+    error = body.get("error")
+    return error if isinstance(error, str) else None
 
 
 def wda_error_code(error: BaseException) -> str | None:

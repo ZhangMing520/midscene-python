@@ -3,7 +3,7 @@
 import asyncio
 import base64
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from loguru import logger
 
@@ -102,7 +102,7 @@ async def prepare_reference_images(images: Any, convert_http: bool) -> list[str]
             )
 
     await asyncio.gather(*(prepare_one(url) for url in unique_urls))
-    return [prepared[url] for url in urls if prepared.get(url)]
+    return cast(list[str], [prepared[url] for url in urls if prepared.get(url)])
 
 
 async def _prepare_reference_image_entries(
@@ -158,7 +158,7 @@ def get_screenshot_base64(context: Any) -> str:
         screenshot = nested.get("base64")
     if not screenshot:
         raise ValueError("UIContext has no screenshot for the AI workflow")
-    return screenshot
+    return cast(str, screenshot)
 
 
 def get_shot_size(context: Any) -> dict[str, int]:

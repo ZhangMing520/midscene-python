@@ -3,7 +3,7 @@
 Synced from upstream packages/core/src/ai-model/workflows/grounding/section-locate.ts.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Any
 
 from loguru import logger
@@ -91,7 +91,7 @@ async def ai_locate_section(
         if parsed_locate_result["kind"] == "not-found":
             return {"response": response, "section_error": section_error}
 
-        locate_result_context = {
+        locate_result_context: Mapping[str, Mapping[str, float]] = {
             "preparedSize": prepared_image["prepared_size"],
             "contentSize": prepared_image["content_size"],
         }
@@ -116,18 +116,23 @@ async def ai_locate_section(
             response.get("usage"),
         )
 
+    async def generate_ai_response(
+        retry_attempt: int, previous_parse_error: Any | None = None
+    ) -> dict[str, Any]:
+        return await generate_ai(
+            with_semantic_retry_feedback(messages, previous_parse_error),
+            model_runtime,
+            {
+                "expectedJsonObjectResponse": search_area_protocol[
+                    "expected_json_object_response"
+                ],
+                "semanticRetryAttempt": retry_attempt,
+            },
+        )
+
     try:
         parsed = await call_ai_and_parse_with_retry(
-            call_ai=lambda retry_attempt, previous_parse_error=None: generate_ai(
-                with_semantic_retry_feedback(messages, previous_parse_error),
-                model_runtime,
-                {
-                    "expectedJsonObjectResponse": search_area_protocol[
-                        "expected_json_object_response"
-                    ],
-                    "semanticRetryAttempt": retry_attempt,
-                },
-            ),
+            call_ai=generate_ai_response,
             parse_response=parse_response,
             to_parse_error=to_parse_error,
             parse_retry_times=model_runtime.config.get("retryCount", 1),

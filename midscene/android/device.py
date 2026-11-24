@@ -9,7 +9,7 @@ import re
 import subprocess
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from loguru import logger
 from pydantic import BaseModel
@@ -23,6 +23,7 @@ from midscene.android.adb_shell import (
     should_use_yadb_for_text,
 )
 from midscene.android.scrcpy_device_adapter import ScrcpyDeviceAdapter
+from midscene.android.scrcpy_manager import ScrcpyStatus
 from midscene.android.ui_tree import parse_ui_automator_xml
 from midscene.android.ui_tree_capture import capture_android_ui_tree
 from midscene.android.utils import (
@@ -51,7 +52,7 @@ from midscene.shared.utils import (
 class AndroidElement(BaseElement):
     """Android UI element wrapper"""
 
-    def __init__(self, device: "AndroidDevice", **kwargs):
+    def __init__(self, device: "AndroidDevice", **kwargs: Any):
         self._device = device
         super().__init__(**kwargs)
 
@@ -364,11 +365,11 @@ class AndroidDevice(AbstractInterface):
             )
         return self._scrcpy_adapter
 
-    def get_scrcpy_status(self):
+    def get_scrcpy_status(self) -> ScrcpyStatus:
         """Current scrcpy configuration, connection and recovery state."""
         return self._get_scrcpy_adapter().get_status()
 
-    async def retry_scrcpy(self):
+    async def retry_scrcpy(self) -> ScrcpyStatus:
         """Retry scrcpy initialization without recreating the device."""
         adapter = self._get_scrcpy_adapter()
         if not adapter.is_configured():
@@ -471,7 +472,7 @@ class AndroidDevice(AbstractInterface):
         """Simplified empty node tree (upstream)."""
         return {"node": None, "children": []}
 
-    async def get_screen_size(self) -> dict[str, int]:
+    async def get_screen_size(self) -> dict[str, float]:
         """Logical screen size as ``{width, height}`` (upstream)."""
         return await self.size()
 
@@ -502,11 +503,12 @@ class AndroidDevice(AbstractInterface):
         if distance is None and start_point is None:
             if not self._screen_size:
                 await self._get_screen_size()
+            screen_size = cast(Size, self._screen_size)
             (from_x, from_y), (to_x, to_y) = resolve_default_mobile_scroll(
                 direction,
                 {
-                    "width": self._screen_size.width,
-                    "height": self._screen_size.height,
+                    "width": screen_size.width,
+                    "height": screen_size.height,
                 },
             )
             await self.swipe(
@@ -662,12 +664,12 @@ class AndroidDevice(AbstractInterface):
 
     async def swipe(
         self,
-        direction_or_start_x,
-        start_y=None,
-        end_x=None,
-        end_y=None,
+        direction_or_start_x: str | float,
+        start_y: float | None = None,
+        end_x: float | None = None,
+        end_y: float | None = None,
         duration: int = 300,
-        distance: int | None = None,
+        distance: int | float | None = None,
     ) -> None:
         """Swipe.
 
@@ -683,8 +685,8 @@ class AndroidDevice(AbstractInterface):
                 )
                 return
             start_x = direction_or_start_x
-            fx, fy = self._to_physical(start_x, start_y)
-            tx, ty = self._to_physical(end_x, end_y)
+            fx, fy = self._to_physical(start_x, cast(float, start_y))
+            tx, ty = self._to_physical(cast(float, end_x), cast(float, end_y))
             await self._run_adb_command(
                 [
                     "-s",
@@ -718,7 +720,7 @@ class AndroidDevice(AbstractInterface):
             duration=int(duration if duration is not None else 300),
         )
 
-    async def size(self) -> dict[str, int]:
+    async def size(self) -> dict[str, float]:
         """Logical screen size (upstream size()); physical / display density.
 
         When scrcpy is opted in and connected, its video resolution is the
@@ -728,10 +730,11 @@ class AndroidDevice(AbstractInterface):
         if adapter is not None and adapter.is_enabled():
             scrcpy_size = adapter.get_size()
             if scrcpy_size is not None:
-                return scrcpy_size
+                return cast(dict[str, float], scrcpy_size)
         if not self._screen_size:
             await self._get_screen_size()
-        return {"width": self._screen_size.width, "height": self._screen_size.height}
+        screen_size = cast(Size, self._screen_size)
+        return {"width": screen_size.width, "height": screen_size.height}
 
     async def pull_gesture(
         self,
@@ -749,7 +752,8 @@ class AndroidDevice(AbstractInterface):
             raise ValueError(f"Unknown pull direction: {direction}")
         if not self._screen_size:
             await self._get_screen_size()
-        width, height = self._screen_size.width, self._screen_size.height
+        screen_size = cast(Size, self._screen_size)
+        width, height = screen_size.width, screen_size.height
         if start_point:
             start_x = _round_half_up(start_point[0])
             start_y = _round_half_up(start_point[1])
@@ -810,7 +814,7 @@ class AndroidDevice(AbstractInterface):
     async def _swipe_direction(
         self,
         direction: str,
-        distance: int | None = None,
+        distance: int | float | None = None,
         point: Sequence[float] | None = None,
         duration: int = DEFAULT_NORMAL_SCROLL_DURATION,
     ) -> None:
@@ -819,13 +823,14 @@ class AndroidDevice(AbstractInterface):
         if direction not in ("up", "down", "left", "right"):
             raise ValueError(f"Invalid swipe direction: {direction}")
 
-        width, height = self._screen_size.width, self._screen_size.height
+        screen_size = cast(Size, self._screen_size)
+        width, height = screen_size.width, screen_size.height
         horizontal = direction in ("left", "right")
         forward = direction in ("down", "right")
         axis_size = width if horizontal else height
         center_x, center_y = width // 2, height // 2
-        start: tuple[int, int]
-        end: tuple[int, int]
+        start: tuple[float, float]
+        end: tuple[float, float]
 
         if distance is None and point is None:
             # Upstream scrollDefault: the finger crosses the central 70% slowly
@@ -862,8 +867,10 @@ class AndroidDevice(AbstractInterface):
             # Upstream scrollRaw: start at a quarter of the axis so a single
             # explicit-distance gesture keeps (n-1)/n of the screen as travel.
             scroll_distance = _round_half_up(distance or axis_size)
-            start_axis = _round_half_up(axis_size / 4 if forward else axis_size * 3 / 4)
-            end_axis = (
+            start_axis: float = _round_half_up(
+                axis_size / 4 if forward else axis_size * 3 / 4
+            )
+            end_axis: float = (
                 start_axis + scroll_distance
                 if forward
                 else start_axis - scroll_distance
@@ -891,7 +898,12 @@ class AndroidDevice(AbstractInterface):
             ]
         )
 
-    async def drag_and_drop(self, from_point, to_point, duration: int = 1000) -> None:
+    async def drag_and_drop(
+        self,
+        from_point: Sequence[float],
+        to_point: Sequence[float],
+        duration: int = 1000,
+    ) -> None:
         """Drag an element from one point to another (upstream dragPoint)."""
         try:
             from_x, from_y = from_point
@@ -1053,6 +1065,7 @@ class AndroidDevice(AbstractInterface):
         distance: int | None = None,
         point: Sequence[float] | None = None,
         scroll_type: str | None = None,
+        **kwargs: Any,
     ) -> None:
         """Scroll in direction.
 
@@ -1077,8 +1090,9 @@ class AndroidDevice(AbstractInterface):
                 # settle window before the next observation.
                 if not self._screen_size:
                     await self._get_screen_size()
-                width = self._screen_size.width
-                height = self._screen_size.height
+                screen_size = cast(Size, self._screen_size)
+                width = screen_size.width
+                height = screen_size.height
                 if point is not None:
                     start = (_round_half_up(point[0]), _round_half_up(point[1]))
                     end = {
@@ -1123,7 +1137,7 @@ class AndroidDevice(AbstractInterface):
             ["-s", self.device_id, "shell", "date", "+%H:%M:%S"],
             capture_output=True,
         )
-        return result.stdout.decode("utf-8").strip()
+        return cast(bytes, result.stdout).decode("utf-8").strip()
 
     async def clear_input(self, element: Any = None) -> None:
         """Clear text in the focused field, optionally focusing ``element`` first."""
@@ -1410,7 +1424,7 @@ class AndroidDevice(AbstractInterface):
         self._connected = False
         logger.info(f"Disconnected from device: {self.device_id}")
 
-    def __del__(self):
+    def __del__(self) -> None:
         """Cleanup on deletion"""
         if self._connected:
             # Note: Can't use async in __del__, this is just for cleanup tracking

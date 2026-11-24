@@ -1,6 +1,10 @@
 """Action output examples (upstream prompt/planning/action-output-example.ts)."""
 
-from typing import Any
+from typing import Any, cast
+
+from midscene.core.ai_model.model_adapter.planning_protocol import (
+    ActionOutputBuilder,
+)
 
 
 def _inject_locate_result_into_sample(
@@ -27,7 +31,7 @@ def _inject_locate_result_into_sample(
 
 def build_action_output_example(
     action: dict[str, Any],
-    build_action_output,
+    build_action_output: ActionOutputBuilder,
     locate_prompt_spec: dict[str, Any] | None = None,
     locate_result_example_index: int = 0,
 ) -> str | None:
@@ -35,7 +39,7 @@ def build_action_output_example(
     if not isinstance(sample, dict):
         return None
 
-    locate_fields = list(action.get("locate_fields", []))
+    locate_fields = cast(list[str], list(action.get("locate_fields", [])))
     sample_with_locate_result = (
         _inject_locate_result_into_sample(
             sample, locate_fields, locate_prompt_spec, locate_result_example_index

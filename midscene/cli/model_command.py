@@ -356,7 +356,7 @@ def run_model_connect(console: Console) -> bool:
     from midscene.core.ai_model.connectivity import run_connectivity_test
     from midscene.shared.env import ModelConfigManager
 
-    async def _run():
+    async def _run() -> dict[str, Any]:
         manager = ModelConfigManager()
         result = await run_connectivity_test(
             {

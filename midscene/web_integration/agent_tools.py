@@ -56,6 +56,7 @@ class WebMidsceneTools(BaseMidsceneTools):
 
     def __init__(self) -> None:
         super().__init__()
+        self.agent: AgentOverChromeBridge | None = None
         self.init_arg_spec = InitArgSpec(
             namespace="web",
             shape=WEB_AGENT_INIT_ARG_SHAPE,

@@ -1,6 +1,6 @@
 """Cache configuration (upstream agent/cache-config.ts)."""
 
-from typing import Any
+from typing import Any, Protocol
 
 from midscene.core.agent.task_cache import TaskCache
 from midscene.core.utils import process_cache_config
@@ -95,7 +95,12 @@ def normalize_agent_cache_config(opts: Any) -> dict[str, Any] | None:
     return None
 
 
-def get_task_cache(agent) -> TaskCache | None:
+class CacheAgent(Protocol):
+    _task_cache: TaskCache | None
+    options: Any
+
+
+def get_task_cache(agent: CacheAgent) -> TaskCache | None:
     if agent._task_cache is not None:
         return agent._task_cache
 
@@ -103,14 +108,15 @@ def get_task_cache(agent) -> TaskCache | None:
     if config is None:
         return None
 
-    agent._task_cache = TaskCache(
+    cache = TaskCache(
         cache_id=config["id"] or "midscene-python",
         enabled=config["enabled"],
         read_only_mode=config["readOnly"],
         write_only_mode=config["writeOnly"],
         cache_dir=config["cacheDir"],
     )
-    return agent._task_cache
+    agent._task_cache = cache
+    return cache
 
 
 __all__ = [

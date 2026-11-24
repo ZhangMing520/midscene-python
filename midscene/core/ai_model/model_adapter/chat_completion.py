@@ -1,7 +1,7 @@
 """Chat-completion request helpers (upstream ai-model/model-adapter/chat-completion.ts)."""
 
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 from midscene.core.ai_model.model_adapter.temperature_with_semantic_retry import (
     get_temperature_with_semantic_retry,
@@ -49,12 +49,9 @@ def _create_default_extract_content_and_reasoning(
             ),
             "",
         )
+        raw_content = message.get("content")
         return {
-            "content": (
-                message.get("content")
-                if isinstance(message.get("content"), str)
-                else ""
-            ),
+            "content": raw_content if isinstance(raw_content, str) else "",
             "reasoning_content": (
                 raw_reasoning if isinstance(raw_reasoning, str) else ""
             ),
@@ -69,7 +66,10 @@ def _resolve_extract_content_and_reasoning(
     chat_completion = chat_completion or {}
     message_extraction = chat_completion.get("message_extraction") or {}
     if message_extraction.get("kind") == "custom":
-        return message_extraction["extract_content_and_reasoning"]
+        return cast(
+            Callable[[dict[str, Any] | None], dict[str, str]],
+            message_extraction["extract_content_and_reasoning"],
+        )
     return _create_default_extract_content_and_reasoning(
         message_extraction.get("reasoning_content_keys") or ["reasoning_content"]
     )

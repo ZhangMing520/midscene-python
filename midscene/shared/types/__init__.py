@@ -6,7 +6,7 @@ type vocabulary without importing core runtime modules.
 """
 
 from abc import ABC, abstractmethod
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import (
@@ -310,7 +310,7 @@ class AbstractInterface(ABC):
             "screenshot_base64 is not supported on this interface"
         )
 
-    async def size(self) -> Size:
+    async def size(self) -> Size | Mapping[str, object]:
         """Current screen size (upstream size()).
 
         Interfaces that can capture a context derive it from there; platforms
@@ -336,7 +336,7 @@ class AbstractInterface(ABC):
 
     @abstractmethod
     async def scroll(
-        self, direction: str, distance: int | None = None, **kwargs
+        self, direction: str, distance: int | None = None, **kwargs: Any
     ) -> None:
         """Scroll in direction"""
         pass
@@ -364,7 +364,7 @@ class AbstractInterface(ABC):
     async def replace_input(self, text: str) -> None:
         raise NotImplementedError("replace_input is not supported on this interface")
 
-    async def swipe(self, direction: str, distance: int | None = None) -> None:
+    async def swipe(self, direction: str, /, *, distance: int | None = None) -> None:
         raise NotImplementedError("swipe is not supported on this interface")
 
     async def swipe_points(
@@ -396,7 +396,9 @@ class AbstractInterface(ABC):
         """Two-finger pinch around `center` (upstream pinch primitive)."""
         raise NotImplementedError("pinch is not supported on this interface")
 
-    async def drag_and_drop(self, from_point, to_point) -> None:
+    async def drag_and_drop(
+        self, from_point: list[float], to_point: list[float]
+    ) -> None:
         raise NotImplementedError("drag_and_drop is not supported on this interface")
 
     async def long_press(self, x: float, y: float, duration: int = 1000) -> None:

@@ -8,7 +8,7 @@ import inspect
 import json
 import sys
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import Any, cast
 
 from midscene.shared.agent_tools.error_formatter import get_error_message
 from midscene.shared.agent_tools.observation_artifact import (
@@ -146,8 +146,10 @@ def _extract_action_schema(
 def _get_prompt_text(prompt: Any) -> str | None:
     if isinstance(prompt, str):
         return prompt
-    if is_record(prompt) and isinstance(prompt.get("prompt"), str):
-        return prompt["prompt"]
+    if is_record(prompt):
+        prompt_text = prompt.get("prompt")
+        if isinstance(prompt_text, str):
+            return prompt_text
     return None
 
 
@@ -326,7 +328,7 @@ async def _screenshot_base64(agent: Any) -> str | None:
     page = getattr(agent, "page", None)
     if page is not None and hasattr(page, "screenshot_base64"):
         value = page.screenshot_base64()
-        return await value if inspect.isawaitable(value) else value
+        return await value if inspect.isawaitable(value) else cast(str | None, value)
     get_context = getattr(agent, "get_ui_context", None)
     if get_context is not None:
         context = get_context("screenshot")
@@ -581,7 +583,7 @@ def generate_common_tools(
                     if args.get(key) is not None:
                         act_options[key] = args[key]
                 user_prompt = compose_user_prompt(
-                    prompt,
+                    cast(str, prompt),  # Required by the generated CLI schema.
                     args.get("image"),
                     args.get("imageName"),
                     args.get("convertHttpImage2Base64"),
@@ -617,7 +619,7 @@ def generate_common_tools(
                     else None
                 )
                 user_prompt = compose_user_prompt(
-                    prompt,
+                    cast(str, prompt),  # Required by the generated CLI schema.
                     args.get("image"),
                     args.get("imageName"),
                     args.get("convertHttpImage2Base64"),

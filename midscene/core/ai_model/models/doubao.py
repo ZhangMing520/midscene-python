@@ -1,5 +1,6 @@
 """Doubao (Seed/Vision) adapter (upstream ai-model/models/doubao.ts)."""
 
+from collections.abc import Sequence
 from typing import Any
 
 from midscene.core.ai_model.model_adapter.chat_completion import (
@@ -72,7 +73,7 @@ def _parse_doubao_raw_locate_value(input_value: Any) -> dict[str, Any]:
     import re as _re
 
     bbox = unwrap_coordinate_list_like_input(input_value)
-    bbox_list: list[float] = []
+    bbox_list: Sequence[float] = []
     if (
         isinstance(bbox, (list, tuple))
         and len(bbox) == 4

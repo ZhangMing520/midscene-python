@@ -5,8 +5,6 @@ Synced from upstream packages/webdriver/src/clients/types.ts.
 
 from typing import Any, TypedDict
 
-from midscene.shared.constants import WEBDRIVER_ELEMENT_ID_KEY
-
 
 class WDASession(TypedDict):
     sessionId: str
@@ -17,7 +15,7 @@ WDAElement = TypedDict(
     "WDAElement",
     {
         "ELEMENT": str,
-        WEBDRIVER_ELEMENT_ID_KEY: str,
+        "element-6066-11e4-a52e-4f735466cecf": str,
     },
 )
 

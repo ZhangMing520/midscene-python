@@ -7,6 +7,9 @@ from typing import Any
 from midscene.core.ai_model.model_adapter.chat_completion import (
     resolve_chat_completion,
 )
+from midscene.core.ai_model.model_adapter.planning_protocol import (
+    StandardPlanningProtocol,
+)
 from midscene.core.ai_model.model_adapter.responses import resolve_responses
 from midscene.core.ai_model.model_adapter.types import (
     ModelRequestUserConfig,
@@ -16,6 +19,7 @@ from midscene.core.ai_model.models.default import (
     _build_default_params,
 )
 from midscene.core.ai_model.shared.model_locate_result import (
+    LocateResultCodec,
     create_locate_result_codec,
 )
 
@@ -155,7 +159,7 @@ class ModelAdapter:
         return config
 
     @property
-    def locate_protocol(self):
+    def locate_protocol(self) -> dict[str, Any]:
         """Standard locate protocols: element + search-area (lazy import)."""
         if self._locate_protocol is None:
             from midscene.core.ai_model.model_adapter.locate import resolve_locate
@@ -168,7 +172,7 @@ class ModelAdapter:
         return self._locate_protocol
 
     @property
-    def planning_protocol(self):
+    def planning_protocol(self) -> StandardPlanningProtocol:
         """Standard Midscene XML planning protocol (lazy import)."""
         if self._planning_protocol is None:
             from midscene.core.ai_model.model_adapter.default_planning_protocol import (
@@ -179,7 +183,7 @@ class ModelAdapter:
         return self._planning_protocol
 
     @property
-    def locate_result_codec(self):
+    def locate_result_codec(self) -> LocateResultCodec:
         if self._locate_codec is None:
             self._locate_codec = create_locate_result_codec(self._locate_element_format)
         return self._locate_codec
@@ -199,7 +203,7 @@ class ModelAdapter:
         return self._locate_prompt_order
 
     @property
-    def search_area_result_codec(self):
+    def search_area_result_codec(self) -> LocateResultCodec:
         if self._search_area_locate_format is None:
             return self.locate_result_codec
         return create_locate_result_codec(self._search_area_locate_format)

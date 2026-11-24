@@ -100,7 +100,7 @@ def _parse_json_with_repair(json_str: str) -> Any:
         pass
 
     try:  # optional dependency providing a robust repair implementation
-        from json_repair import repair_json  # type: ignore
+        from json_repair import repair_json
 
         return json.loads(repair_json(json_str))
     except Exception:

@@ -13,7 +13,7 @@ import shutil
 import string
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, NoReturn, TypeGuard
 
 from midscene.shared.agent_tools.types import UIObservationFrame, UIObservationRecord
 from midscene.shared.env import get_midscene_run_dir
@@ -32,11 +32,11 @@ def _now_ms() -> int:
     return int(time.time() * 1000)
 
 
-def _fail(location: str, message: str) -> None:
+def _fail(location: str, message: str) -> NoReturn:
     raise ValueError(f"Invalid UI observation record at {location}: {message}")
 
 
-def _is_finite_number(value: Any) -> bool:
+def _is_finite_number(value: Any) -> TypeGuard[int | float]:
     return (
         isinstance(value, (int, float))
         and not isinstance(value, bool)
@@ -145,7 +145,14 @@ def clone_ui_observation_record(
     """Return a detached record so callers cannot mutate runtime state."""
     return {
         **record,
-        "frames": [dict(frame) for frame in record["frames"]],
+        "frames": [
+            UIObservationFrame(
+                path=frame["path"],
+                mimeType=frame["mimeType"],
+                capturedAt=frame["capturedAt"],
+            )
+            for frame in record["frames"]
+        ],
         "shotSize": dict(record["shotSize"]),
     }
 

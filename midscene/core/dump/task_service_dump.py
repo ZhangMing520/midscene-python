@@ -1,6 +1,6 @@
 """Access a task's service dump and search area (upstream dump/task-service-dump.ts)."""
 
-from typing import Any
+from typing import Any, cast
 
 
 def _get(value: Any, name: str, snake_name: str | None = None) -> Any:
@@ -33,7 +33,8 @@ def get_task_service_dump(task: Any = None) -> dict[str, Any] | None:
     log = _get(task, "log") if task is not None else None
     dump = _get(log, "dump") if log is not None else None
     if _is_service_dump(dump):
-        return dump
+        # Service dumps cross the SDK boundary as mapping-shaped records.
+        return cast(dict[str, Any], dump)
     return None
 
 
@@ -43,10 +44,14 @@ def get_task_search_area(task: Any = None) -> dict[str, Any] | None:
         return None
     search_area = _get(task, "searchArea", "search_area")
     if search_area is not None:
-        return search_area
+        return cast(dict[str, Any], search_area)
     dump = get_task_service_dump(task)
     task_info = _get(dump, "taskInfo", "task_info") if dump else None
-    return _get(task_info, "searchArea", "search_area") if task_info else None
+    return (
+        cast(dict[str, Any], _get(task_info, "searchArea", "search_area"))
+        if task_info
+        else None
+    )
 
 
 __all__ = ["get_task_search_area", "get_task_service_dump"]

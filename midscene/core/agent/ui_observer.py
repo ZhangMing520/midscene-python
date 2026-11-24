@@ -7,12 +7,24 @@ window; the observation's insight calls evaluate the recorded frame sequence
 (upstream screenshotSequence multi-frame prompt).
 """
 
+from __future__ import annotations
+
 import asyncio
 import base64
 import inspect
 import time
+from collections.abc import Awaitable, Callable, Hashable
 from pathlib import Path
-from typing import Any
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Literal,
+    NotRequired,
+    Protocol,
+    TypedDict,
+    cast,
+    overload,
+)
 
 from loguru import logger
 
@@ -25,7 +37,11 @@ from midscene.shared.agent_tools.observation_record import (
     UIObservationRecordWriter,
     clone_ui_observation_record,
 )
+from midscene.shared.agent_tools.types import UIObservationFrame, UIObservationRecord
 from midscene.shared.img.transform import create_img_base64_by_format
+
+if TYPE_CHECKING:
+    from midscene.core.ai_model.models.registry import ModelRuntime
 
 DEFAULT_INTERVAL_MS = 1000
 MIN_INTERVAL_MS = 200
@@ -36,10 +52,66 @@ FIRST_FRAME_TIMEOUT_MS = 3000
 DECODE_BATCH_SIZE = 4
 
 
+class _ObservationAgent(Protocol):
+    async def get_ui_context(self, action: str = ...) -> UIContext[Any]: ...
+
+    def _resolve_runtime(self, intent: str) -> ModelRuntime: ...
+
+    def _resolve_call_context(
+        self, action: str, options: dict[str, Any] | None
+    ) -> str | None: ...
+
+    def _record_usage_metrics(
+        self, intent: str, usage: dict[str, Any] | None
+    ) -> None: ...
+
+
+class _ObservationInsight(Protocol):
+    async def ai_query(self, demand: Any, options: dict[str, Any] | None) -> Any: ...
+
+    async def ai_boolean(self, prompt: Any, options: dict[str, Any] | None) -> bool: ...
+
+    async def ai_number(self, prompt: Any, options: dict[str, Any] | None) -> float: ...
+
+    async def ai_string(self, prompt: Any, options: dict[str, Any] | None) -> str: ...
+
+    async def ai_ask(self, prompt: Any, options: dict[str, Any] | None) -> str: ...
+
+    async def ai_assert(
+        self,
+        assertion: Any,
+        message: str | None,
+        options: dict[str, Any] | None,
+    ) -> Any: ...
+
+
+class _BufferedFrame(TypedDict):
+    ref: Hashable
+    capturedAt: float
+    persisted: NotRequired[UIObservationFrame]
+
+
+class _FrameHandle(Protocol):
+    ref: Hashable
+    captured_at: float | None
+
+
+class _FrameSource(Protocol):
+    def latest(self) -> dict[str, Any] | _FrameHandle | None: ...
+
+    def decode(
+        self, frames: list[_BufferedFrame]
+    ) -> list[str] | Awaitable[list[str]]: ...
+
+    def stop(self) -> object: ...
+
+
 class UIObservation:
     """Fixed observation window; insight calls evaluate the recorded frames."""
 
-    def __init__(self, agent, frames: list[str], started_at: int):
+    def __init__(
+        self, agent: _ObservationAgent, frames: list[str], started_at: int
+    ) -> None:
         self._agent = agent
         # own the window: the observer keeps sampling into its own buffer.
         # Upstream dedupeRefs drops repeated *frame refs* (one persisted file
@@ -103,7 +175,7 @@ class UIObservation:
         result = await self._typed_query("Boolean", "aiBoolean", prompt, opt)
         return bool(result)
 
-    async def ai_number(self, prompt: str, opt: dict[str, Any] | None = None):
+    async def ai_number(self, prompt: str, opt: dict[str, Any] | None = None) -> float:
         return await self._typed_query("Number", "aiNumber", prompt, opt)
 
     async def ai_string(self, prompt: str, opt: dict[str, Any] | None = None) -> str:
@@ -111,6 +183,33 @@ class UIObservation:
 
     async def ai_ask(self, prompt: str, opt: dict[str, Any] | None = None) -> str:
         return await self._typed_query("String", "aiAsk", prompt, opt)
+
+    @overload
+    async def _typed_query(
+        self,
+        demand_type: Literal["Boolean"],
+        api_name: str,
+        prompt: str,
+        opt: dict[str, Any] | None,
+    ) -> Any: ...
+
+    @overload
+    async def _typed_query(
+        self,
+        demand_type: Literal["Number"],
+        api_name: str,
+        prompt: str,
+        opt: dict[str, Any] | None,
+    ) -> float: ...
+
+    @overload
+    async def _typed_query(
+        self,
+        demand_type: Literal["String"],
+        api_name: str,
+        prompt: str,
+        opt: dict[str, Any] | None,
+    ) -> str: ...
 
     async def _typed_query(
         self,
@@ -152,7 +251,7 @@ class UIObservation:
         assertion: str,
         message: str | None = None,
         opt: dict[str, Any] | None = None,
-    ):
+    ) -> dict[str, Any] | None:
         """aiAssert over the recorded window; keepRawResponse returns dict."""
         self._ensure_usable()
         self._reject_dom_included(opt)
@@ -201,7 +300,9 @@ class UIObservation:
 class UIObserver:
     """Record frames from the agent's interface until stopped."""
 
-    def __init__(self, agent, opt: dict[str, Any] | None = None):
+    def __init__(
+        self, agent: _ObservationAgent, opt: dict[str, Any] | None = None
+    ) -> None:
         opt = opt or {}
         self.interval_ms = max(
             MIN_INTERVAL_MS, int(opt.get("intervalMs", DEFAULT_INTERVAL_MS))
@@ -210,11 +311,11 @@ class UIObserver:
         self.watchdog_ms = int(opt.get("watchdogMs", DEFAULT_WATCHDOG_MS))
         self._agent = agent
         self._frames: list[str] = []
-        self._loop_task: asyncio.Task | None = None
+        self._loop_task: asyncio.Task[None] | None = None
         self._stop_requested = False
         self._observation: UIObservation | None = None
-        self._stop_task: asyncio.Task | None = None
-        self._watchdog_task: asyncio.Task | None = None
+        self._stop_task: asyncio.Task[UIObservation] | None = None
+        self._watchdog_task: asyncio.Task[None] | None = None
         self.started_at = 0
 
     @property
@@ -295,7 +396,7 @@ class UIObserver:
             except Exception as e:
                 logger.warning(f"UIObserver auto-stop failed: {e}")
 
-    def stop(self):
+    def stop(self) -> asyncio.Future[UIObservation]:
         """Stop recording and return the fixed observation window.
 
         Synchronous on purpose: the task is memoized before the first await
@@ -362,14 +463,14 @@ class UIObservationImpl:
 
     def __init__(
         self,
-        record: dict[str, Any],
-        insight: Any,
-        dispose_record: Any | None = None,
-        on_disposed: Any | None = None,
+        record: UIObservationRecord,
+        insight: _ObservationInsight | None,
+        dispose_record: Callable[[], object] | None = None,
+        on_disposed: Callable[[], object] | None = None,
     ) -> None:
         self._disposed = False
         self._record = clone_ui_observation_record(record)
-        self._insight = insight
+        self._insight = cast(_ObservationInsight, insight)
         self._dispose_record = dispose_record
         self._on_disposed = on_disposed
 
@@ -378,11 +479,11 @@ class UIObservationImpl:
         return len(self._record["frames"])
 
     @property
-    def started_at(self) -> int:
+    def started_at(self) -> float:
         return self._record["startedAt"]
 
     @property
-    def ended_at(self) -> int:
+    def ended_at(self) -> float:
         return self._record["endedAt"]
 
     def _ensure_usable(self) -> None:
@@ -452,7 +553,7 @@ class UIObservationImpl:
         self._ensure_fixed_window_options(options)
         return await self._insight.ai_assert(assertion, message, options)
 
-    async def export_record(self) -> dict[str, Any]:
+    async def export_record(self) -> UIObservationRecord:
         self._ensure_usable()
         return clone_ui_observation_record(self._record)
 
@@ -476,18 +577,18 @@ class UIObserverImpl:
     def __init__(self, deps: Any, opt: dict[str, Any] | None = None) -> None:
         opt = opt or {}
         self._deps = deps
-        self._frames: list[dict[str, Any]] = []
-        self._source: Any = None
+        self._frames: list[_BufferedFrame] = []
+        self._source: _FrameSource | None = None
         self._using_fallback = False
         self._stopped = False
         self._disposed = False
-        self._loop_task: asyncio.Future | None = None
-        self._stop_future: asyncio.Future | None = None
-        self._representative: UIContext | None = None
-        self._representative_frame: dict[str, Any] | None = None
-        self._watchdog_task: asyncio.Future | None = None
-        self._persist_future: asyncio.Future | None = None
-        self._persisted_by_ref: dict[Any, dict[str, Any]] = {}
+        self._loop_task: asyncio.Future[None] | None = None
+        self._stop_future: asyncio.Future[UIObservationImpl] | None = None
+        self._representative: UIContext[Any] | None = None
+        self._representative_frame: UIObservationFrame | None = None
+        self._watchdog_task: asyncio.Future[None] | None = None
+        self._persist_future: asyncio.Future[None] | None = None
+        self._persisted_by_ref: dict[Hashable, UIObservationFrame] = {}
         self._observation: UIObservationImpl | None = None
         self._started_at = 0
         self._interval_ms = max(
@@ -506,7 +607,7 @@ class UIObserverImpl:
         writer = _deps_value(
             deps, "observationRecordWriter", "observation_record_writer"
         )
-        self._writer = writer or UIObservationRecordWriter()
+        self._writer: UIObservationRecordWriter = writer or UIObservationRecordWriter()
 
     @property
     def buffered_frame_count(self) -> int:
@@ -546,7 +647,7 @@ class UIObserverImpl:
         if self._watchdog_ms > 0:
             self._watchdog_task = asyncio.ensure_future(self._watchdog())
 
-    def stop(self) -> Any:
+    def stop(self) -> asyncio.Future[UIObservationImpl]:
         if self._stop_future is None:
             self._stop_future = asyncio.ensure_future(self._finalize_stop())
         return asyncio.shield(self._stop_future)
@@ -574,23 +675,21 @@ class UIObserverImpl:
                 representative = await representative_future
 
             last_frame = self._frames[-1] if self._frames else None
-            if (
-                self._source is not None
-                and last_frame is not None
-                and last_frame.get("persisted")
-            ):
-                self._representative_frame = {
-                    **last_frame["persisted"],
-                    "capturedAt": last_frame["capturedAt"],
-                }
-                representative = representative.model_copy(
-                    update={
-                        "screenshot_base64": _frame_path_data_url(
-                            self._writer.resolve_frame_path(last_frame["persisted"]),
-                            last_frame["persisted"]["mimeType"],
-                        )
+            if self._source is not None and last_frame is not None:
+                persisted = last_frame.get("persisted")
+                if persisted:
+                    self._representative_frame = {
+                        **persisted,
+                        "capturedAt": last_frame["capturedAt"],
                     }
-                )
+                    representative = representative.model_copy(
+                        update={
+                            "screenshot_base64": _frame_path_data_url(
+                                self._writer.resolve_frame_path(persisted),
+                                persisted["mimeType"],
+                            )
+                        }
+                    )
             self._representative = representative
             ended_at = int(time.time() * 1000)
             record = await self._finalize_record(ended_at)
@@ -627,12 +726,12 @@ class UIObserverImpl:
         )
         if not callable(capture):
             raise RuntimeError("capturePreparedRepresentative is required")
-        result = capture()
+        result: UIContext[Any] | Awaitable[UIContext[Any]] = capture()
         if inspect.isawaitable(result):
             return await result
         return result
 
-    async def _finalize_record(self, ended_at: int) -> dict[str, Any]:
+    async def _finalize_record(self, ended_at: int) -> UIObservationRecord:
         if not self._stopped or self._representative is None:
             raise RuntimeError(
                 "observation must be stopped before finalizing the observed window"
@@ -642,13 +741,12 @@ class UIObserverImpl:
             self._persist_future = None
         await self._persist_unstored_frames()
 
-        sampled_frames: list[dict[str, Any]] = []
+        sampled_frames: list[UIObservationFrame] = []
         for frame in self._frames:
-            if not frame.get("persisted"):
+            persisted = frame.get("persisted")
+            if not persisted:
                 raise RuntimeError("observation frame was not persisted")
-            sampled_frames.append(
-                {**frame["persisted"], "capturedAt": frame["capturedAt"]}
-            )
+            sampled_frames.append({**persisted, "capturedAt": frame["capturedAt"]})
 
         if self._representative_frame is None:
             representative = self._representative
@@ -721,14 +819,20 @@ class UIObserverImpl:
         ]
         for start in range(0, len(uncached), DECODE_BATCH_SIZE):
             batch = uncached[start : start + DECODE_BATCH_SIZE]
+            decoded: list[str]
             if self._source is not None:
-                decode = getattr(self._source, "decode", None)
-                decoded = decode(batch) if callable(decode) else batch
-                if inspect.isawaitable(decoded):
-                    decoded = await decoded
-                decoded = list(decoded)
+                decode: (
+                    Callable[[list[_BufferedFrame]], list[str] | Awaitable[list[str]]]
+                    | None
+                ) = getattr(self._source, "decode", None)
+                decoded_result = (
+                    decode(batch) if callable(decode) else cast(list[str], batch)
+                )
+                if inspect.isawaitable(decoded_result):
+                    decoded_result = await decoded_result
+                decoded = list(decoded_result)
             else:
-                decoded = [frame["ref"] for frame in batch]
+                decoded = [cast(str, frame["ref"]) for frame in batch]
             if len(decoded) != len(batch):
                 raise RuntimeError(
                     "frame source decode() must return one image per frame handle"
@@ -742,11 +846,15 @@ class UIObserverImpl:
             ]
             for index, frame in enumerate(batch):
                 self._persisted_by_ref[frame["ref"]] = self._writer.persist_frame(
-                    prepared[index], frame["capturedAt"]
+                    prepared[index], cast(int, frame["capturedAt"])
                 )
         for frame in self._frames:
             if not frame.get("persisted"):
-                frame["persisted"] = self._persisted_by_ref.get(frame["ref"])
+                # Every uncached ref was either persisted in the batch above or
+                # deduplicated against a ref that was.
+                frame["persisted"] = cast(
+                    UIObservationFrame, self._persisted_by_ref.get(frame["ref"])
+                )
 
     async def _capture_once(self) -> None:
         try:
@@ -818,7 +926,7 @@ class UIObserverImpl:
             except Exception:  # noqa: BLE001 - watchdog must not crash
                 pass
 
-    def _push_frame(self, frame: dict[str, Any]) -> None:
+    def _push_frame(self, frame: _BufferedFrame) -> None:
         self._frames.append(frame)
         if len(self._frames) > self._max_frames:
             self._frames = self._thin_buffer(self._frames)
@@ -827,7 +935,7 @@ class UIObserverImpl:
             )
             logger.debug(f"frame buffer thinned to {len(self._frames)} frames")
 
-    def _thin_buffer(self, frames: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def _thin_buffer(self, frames: list[_BufferedFrame]) -> list[_BufferedFrame]:
         if len(frames) <= 1:
             return frames
         is_change_point = [
@@ -837,7 +945,7 @@ class UIObserverImpl:
         is_change_point.insert(0, True)
         is_change_point[-1] = True
 
-        result: list[dict[str, Any]] = []
+        result: list[_BufferedFrame] = []
         static_counter = 0
         for index, frame in enumerate(frames):
             if is_change_point[index]:
@@ -856,9 +964,9 @@ class UIObserverImpl:
         return result
 
     @staticmethod
-    def _dedupe_refs(frames: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        seen: list[Any] = []
-        result: list[dict[str, Any]] = []
+    def _dedupe_refs(frames: list[_BufferedFrame]) -> list[_BufferedFrame]:
+        seen: list[Hashable] = []
+        result: list[_BufferedFrame] = []
         for frame in frames:
             if frame["ref"] not in seen:
                 seen.append(frame["ref"])

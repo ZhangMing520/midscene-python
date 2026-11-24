@@ -2,7 +2,8 @@
 
 import asyncio
 import math
-from typing import Any
+from collections.abc import Mapping
+from typing import Any, Protocol, cast
 
 from loguru import logger
 
@@ -17,7 +18,7 @@ from midscene.shared.img.transform import (
 SCREENSHOT_JPEG_QUALITY = 90
 
 
-def _assert_valid_size(size: dict[str, float], label: str) -> None:
+def _assert_valid_size(size: Mapping[str, float], label: str) -> None:
     width = size.get("width")
     height = size.get("height")
     if (
@@ -96,10 +97,33 @@ async def prepare_screenshot_for_persistence(
     if shrink_factor == 1:
         return convert_base64_image_to_jpeg(screenshot_base64, SCREENSHOT_JPEG_QUALITY)
     prepared = await prepare_raw_screenshot(screenshot_base64, options)
-    return prepared["base64"]
+    return cast(str, prepared["base64"])
 
 
-async def get_ui_context(agent, action: str = "locate") -> UIContext:
+class ContextProvider(Protocol):
+    async def get_context(self) -> UIContext: ...
+
+
+class ScreenshotOptions(Protocol):
+    screenshot_shrink_factor: float
+
+
+class ScreenshotAgent(Protocol):
+    _frozen: bool
+    frozen_context: UIContext | None
+
+    @property
+    def options(self) -> ScreenshotOptions: ...
+
+    @property
+    def interface(self) -> ContextProvider: ...
+
+    def is_retryable_context_error(self, error: Exception) -> bool: ...
+
+    def _apply_screenshot_shrink(self, context: UIContext) -> UIContext: ...
+
+
+async def get_ui_context(agent: ScreenshotAgent, action: str = "locate") -> UIContext:
     if agent._frozen and agent.frozen_context is not None:
         return agent.frozen_context
     attempt = 0
@@ -124,7 +148,7 @@ async def get_ui_context(agent, action: str = "locate") -> UIContext:
     return context
 
 
-def apply_screenshot_shrink(agent, context: UIContext) -> UIContext:
+def apply_screenshot_shrink(agent: ScreenshotAgent, context: UIContext) -> UIContext:
     """Record the screenshot-space -> logical-space ratio and downscale the
     screenshot when asked (upstream commonContextParser:
     shrunkShotToLogicalRatio = dpr / screenshotShrinkFactor,

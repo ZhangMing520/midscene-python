@@ -133,7 +133,9 @@ async def ai_extract_element_info(
         {"role": "user", "content": user_content},
     ]
 
-    async def call_ai(retry_attempt: int, previous_parse_error: Any | None = None):
+    async def call_ai(
+        retry_attempt: int, previous_parse_error: Any | None = None
+    ) -> dict[str, Any]:
         return await call_generative_ai(
             with_semantic_retry_feedback(messages, previous_parse_error),
             model_runtime,

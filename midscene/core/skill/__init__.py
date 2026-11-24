@@ -39,7 +39,7 @@ async def run_skill_cli(options: dict[str, Any]) -> None:
         ``run_skill_cli({"DeviceClass": SampleDevice, "scriptName": "my-device"})``
     """
     tools = SkillMidsceneTools(options["DeviceClass"])
-    script_name: str | None = options.get("scriptName") or "midscene-skill"
+    script_name = options.get("scriptName") or "midscene-skill"
     try:
         await run_tools_cli(tools, script_name)
     except SystemExit:

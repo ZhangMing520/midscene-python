@@ -1,10 +1,13 @@
 """Action space description (upstream prompt/planning/action-space-description.ts)."""
 
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, Protocol
 
 import yaml
 
+from midscene.core.ai_model.model_adapter.planning_protocol import (
+    StandardPlanningProtocol,
+)
 from midscene.core.ai_model.prompt.planning.action_output_example import (
     build_action_output_example,
 )
@@ -14,7 +17,13 @@ class _LiteralBlockDumper(yaml.SafeDumper):
     """Dump multiline strings as literal blocks, matching js-yaml output."""
 
 
-def _represent_str_as_literal(dumper, data):
+class _YamlDumper(Protocol):
+    def represent_scalar(
+        self, tag: str, value: str, style: str | None = None
+    ) -> Any: ...
+
+
+def _represent_str_as_literal(dumper: _YamlDumper, data: str) -> Any:
     style = "|" if "\n" in data else None
     return dumper.represent_scalar("tag:yaml.org,2002:str", data, style=style)
 
@@ -62,7 +71,7 @@ def serialize_action_descriptions(
 
 def build_planning_action_space_description(
     action_space: Sequence[Any],
-    planning_protocol,
+    planning_protocol: StandardPlanningProtocol,
     locate_prompt_spec: dict[str, Any] | None = None,
 ) -> str:
     locate_field_description = planning_protocol["action_space_protocol"][

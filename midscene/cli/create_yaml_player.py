@@ -1,19 +1,65 @@
 """Create a ScriptPlayer-compatible agent from YAML (upstream create-yaml-player.ts)."""
 
+from __future__ import annotations
+
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any, NotRequired, Protocol, TypedDict
+
 from rich.console import Console
 
 from midscene.cli.cli_utils import _resolve_served_url
 from midscene.cli.config_factory import _build_agent_options
 from midscene.web_integration.common.viewport import parse_viewport_dimension
 
+if TYPE_CHECKING:
+    from midscene.core.agent.agent_options import AgentOptions
+    from midscene.web_integration import PlaywrightWebPage
+
+
+class NavigablePage(Protocol):
+    """Page surface needed by the CLI after target creation."""
+
+    async def navigate_to(self, url: str) -> None: ...
+
+    async def close(self) -> None: ...
+
+
+class ScriptAgent(Protocol):
+    """Agent surface shared by web and native targets."""
+
+    options: AgentOptions
+
+    async def destroy(self) -> None: ...
+
+
+class BrowserCreateOptions(TypedDict, total=False):
+    """Typed options forwarded to ``PlaywrightWebPage.create``."""
+
+    headless: NotRequired[bool]
+    viewport_size: tuple[int, int]
+    user_agent: str
+    device_scale_factor: float
+    accept_insecure_certs: bool
+    cookie_file: str
+    extra_http_headers: dict[str, str]
+    args: list[str]
+    keyboard_type_delay: float
+    input_strategy: str
+    force_same_tab_navigation: bool
+    auto_follow_new_page: bool
+    force_chrome_select_rendering: bool
+
+
+type CreatedAgent = ScriptAgent | tuple[NavigablePage, AgentOptions]
+
 
 async def create_agent_for_script(
-    script: dict,
+    script: Mapping[str, Any],
     headed: bool,
     device_id: str | None,
-    shared_page=None,
+    shared_page: NavigablePage | None = None,
     console: Console | None = None,
-):
+) -> CreatedAgent:
     """Build an agent from the script's target section (web, android, ios,
     harmony, or computer)."""
 
@@ -26,44 +72,44 @@ async def create_agent_for_script(
 
         android_section = script["android"] or {}
         target_device_id = device_id or android_section.get("deviceId")
-        device = await AndroidDevice.create(target_device_id)
+        android_device = await AndroidDevice.create(target_device_id)
         launch = android_section.get("launch")
         if launch:
             console.print(f"[blue]Launching app: {launch}[/blue]")
-            await device.launch_app(launch)
-        return AndroidAgent(device, _build_agent_options(android_section))
+            await android_device.launch_app(launch)
+        return AndroidAgent(android_device, _build_agent_options(android_section))
 
     if script.get("ios"):
         from midscene.ios import IOSAgent, IOSDevice
 
         ios_section = script["ios"] or {}
-        device = IOSDevice(
+        ios_device = IOSDevice(
             host=ios_section.get("wdaHost", "localhost"),
             port=int(ios_section.get("wdaPort", 8100)),
             base_url=ios_section.get("wdaBaseUrl"),
             session_id=ios_section.get("sessionId"),
         )
-        await device.connect()
+        await ios_device.connect()
         launch = ios_section.get("launch")
         if launch:
             console.print(f"[blue]Launching app: {launch}[/blue]")
-            await device.launch_app(launch)
-        return IOSAgent(device, _build_agent_options(ios_section))
+            await ios_device.launch_app(launch)
+        return IOSAgent(ios_device, _build_agent_options(ios_section))
 
     if script.get("harmony"):
         from midscene.harmony import HarmonyAgent, HarmonyDevice
 
         harmony_section = script["harmony"] or {}
-        device = HarmonyDevice(
+        harmony_device = HarmonyDevice(
             device_id=harmony_section.get("deviceId") or device_id or "",
             hdc_path=harmony_section.get("hdcPath"),
         )
-        await device.connect()
+        await harmony_device.connect()
         launch = harmony_section.get("launch")
         if launch:
             console.print(f"[blue]Launching app: {launch}[/blue]")
-            await device.launch_app(launch)
-        return HarmonyAgent(device, _build_agent_options(harmony_section))
+            await harmony_device.launch_app(launch)
+        return HarmonyAgent(harmony_device, _build_agent_options(harmony_section))
 
     if script.get("computer"):
         from midscene.computer import ComputerAgent
@@ -72,8 +118,8 @@ async def create_agent_for_script(
         computer_section = script["computer"] or {}
         # ComputerDevice only grabs the primary display, so a declared displayId
         # raises instead of being silently dropped.
-        device = ComputerDevice(display_id=computer_section.get("displayId"))
-        return ComputerAgent(device, _build_agent_options(computer_section))
+        computer_device = ComputerDevice(display_id=computer_section.get("displayId"))
+        return ComputerAgent(computer_device, _build_agent_options(computer_section))
 
     web_section = (
         script.get("web")
@@ -92,7 +138,7 @@ async def create_agent_for_script(
     if serve_root:
         url = _resolve_served_url(serve_root, url)
 
-    chrome_options = {}
+    chrome_options: BrowserCreateOptions = {}
     if web_section.get("viewportWidth") and web_section.get("viewportHeight"):
         chrome_options["viewport_size"] = (
             parse_viewport_dimension(web_section["viewportWidth"], "viewportWidth"),
@@ -125,12 +171,12 @@ async def create_agent_for_script(
             web_section["forceChromeSelectRendering"]
         )
 
-    async def _create():
-        headless = not headed and bool(web_section.get("headless", True))
-        page = await PlaywrightWebPage.create(
-            headless=headless,
+    async def _create() -> PlaywrightWebPage:
+        create_options: BrowserCreateOptions = {
+            "headless": not headed and bool(web_section.get("headless", True)),
             **chrome_options,
-        )
+        }
+        page = await PlaywrightWebPage.create(**create_options)
         await page.navigate_to(url)
         return page
 

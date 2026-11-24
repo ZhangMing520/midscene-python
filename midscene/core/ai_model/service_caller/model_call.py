@@ -127,7 +127,7 @@ async def call_ai_with_object_response(
     model_config = model_runtime.config
     json_parser_source = options.get("jsonParserSource") or "generic-object"
 
-    async def call_ai(retry_attempt: int, previous_error: Any | None):
+    async def call_ai(retry_attempt: int, previous_error: Any | None) -> dict[str, Any]:
         return await call_generative_ai(
             with_semantic_retry_feedback(messages, previous_error),
             model_runtime,
@@ -140,7 +140,9 @@ async def call_ai_with_object_response(
     def parse_response(response: dict[str, Any]) -> dict[str, Any]:
         return parse_ai_object_response(response, model_runtime, json_parser_source)
 
-    def to_parse_error(error: Exception, response: dict[str, Any]):
+    def to_parse_error(
+        error: Exception, response: dict[str, Any]
+    ) -> AIResponseParseError:
         return AIResponseParseError(
             str(error),
             response.get("content") or "",

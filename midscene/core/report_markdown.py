@@ -212,20 +212,22 @@ def _sanitize_json_for_markdown(value: Any, seen: set | None = None) -> Any:
     seen.add(id(value))
 
     if isinstance(value, list):
-        sanitized = [_sanitize_json_for_markdown(item, seen) for item in value]
+        sanitized_list = [_sanitize_json_for_markdown(item, seen) for item in value]
+        seen.discard(id(value))
+        return sanitized_list
     else:
-        sanitized = {}
+        sanitized_dict: dict[str, Any] = {}
         for key, entry in value.items():
             if isinstance(entry, str) and re.search(
                 r"(^|_|-)(base64|screenshotBase64|imageBase64)$",
                 key,
                 re.IGNORECASE,
             ):
-                sanitized[key] = f"[omitted base64 string, length={len(entry)}]"
+                sanitized_dict[key] = f"[omitted base64 string, length={len(entry)}]"
                 continue
-            sanitized[key] = _sanitize_json_for_markdown(entry, seen)
+            sanitized_dict[key] = _sanitize_json_for_markdown(entry, seen)
     seen.discard(id(value))
-    return sanitized
+    return sanitized_dict
 
 
 def _append_json_section(lines: list[str], title: str, value: Any) -> None:
@@ -293,15 +295,17 @@ def _locate_param_str(locate: Any) -> str:
     if isinstance(locate, str):
         return locate
     if isinstance(locate, dict):
-        if isinstance(locate.get("promptDisplay"), str):
-            return locate["promptDisplay"]
+        prompt_display = locate.get("promptDisplay")
+        if isinstance(prompt_display, str):
+            return prompt_display
         prompt = locate.get("prompt")
         if isinstance(prompt, dict) and prompt.get("prompt"):
             return str(prompt["prompt"])
         if isinstance(prompt, str):
             return prompt
-        if isinstance(locate.get("description"), str):
-            return locate["description"]
+        description = locate.get("description")
+        if isinstance(description, str):
+            return description
     return ""
 
 
@@ -370,8 +374,9 @@ def _user_prompt_to_string(prompt: Any) -> str:
             for item in prompt
         )
     if isinstance(prompt, dict):
-        if isinstance(prompt.get("prompt"), str):
-            return prompt["prompt"]
+        prompt_text = prompt.get("prompt")
+        if isinstance(prompt_text, str):
+            return prompt_text
         return json.dumps(prompt, ensure_ascii=False)
     return str(prompt)
 
@@ -682,7 +687,7 @@ def _screenshots_markdown_section(
         description_text = (
             f", description={item['description']}" if item.get("description") else ""
         )
-        timing = item.get("timing") or "N/A"
+        recorder_timing = item.get("timing") or "N/A"
         screenshot_index += 1
         image_result = _screenshot_attachment(
             item["screenshot"],
@@ -691,13 +696,15 @@ def _screenshots_markdown_section(
             task_index,
             {
                 "fallbackIdSuffix": f"recorder-{recorder_index + 1}",
-                "label": (f"task-{task_index + 1}-{_image_label_suffix(timing)}"),
+                "label": (
+                    f"task-{task_index + 1}-{_image_label_suffix(recorder_timing)}"
+                ),
                 "resolveScreenshotFileName": resolve_screenshot_file_name,
             },
         )
         lines.append(
             f"- #{screenshot_index} type={item.get('type')}, "
-            f"ts={_format_time(item.get('ts'))}, timing={timing}"
+            f"ts={_format_time(item.get('ts'))}, timing={recorder_timing}"
             f"{description_text}, id={image_result['attachment']['id']}"
         )
         lines.append(image_result["markdown"])

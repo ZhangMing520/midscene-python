@@ -79,7 +79,7 @@ class UIObservationFrame(TypedDict):
 
     path: str
     mimeType: str
-    capturedAt: int
+    capturedAt: float
 
 
 class UIObservationRecord(TypedDict):

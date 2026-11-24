@@ -99,6 +99,8 @@ async def call_generative_ai(
     def _track_chunk(chunk: dict[str, Any]) -> Any:
         nonlocal chunk_delivered
         chunk_delivered = True
+        if on_chunk is None:
+            return None
         return on_chunk(chunk)
 
     chunk_callback = _track_chunk if on_chunk is not None else None
@@ -284,7 +286,7 @@ async def call_system_one_ai(
             else:
                 parsed = await call_system_one(model_runtime, request)
             time_cost = int((time.time() - start_time) * 1000)
-            result = {
+            result: dict[str, Any] = {
                 "content": parsed.get("content"),
                 "answers": parsed.get("answers"),
                 "usage": parsed.get("usage"),

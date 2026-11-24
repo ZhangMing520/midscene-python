@@ -1,5 +1,6 @@
 """Default locate / search-area protocols (upstream ai-model/model-adapter/default-locate-protocol.ts)."""
 
+from collections.abc import Callable
 from typing import Any
 
 from midscene.core.ai_model.model_adapter.locate_protocol import (
@@ -123,8 +124,8 @@ def _build_search_area_user_prompt(section_description: str) -> str:
 def _create_parse_raw_response(
     json_source: str,
     include_references: bool,
-    json_parser=None,
-):
+    json_parser: Callable[..., Any] | None = None,
+) -> Callable[[str, dict[str, Any]], ParsedLocateResponse]:
     def parse_raw_response(
         content: str, prompt_spec: dict[str, Any]
     ) -> ParsedLocateResponse:
@@ -132,8 +133,7 @@ def _create_parse_raw_response(
             lambda raw, source: parse_model_response_json(raw, source=source)
         )
         parsed_response = parser(content, json_source)
-        assert_json_object(parsed_response)
-        record: dict[str, Any] = parsed_response
+        record = assert_json_object(parsed_response)
         target = read_locate_result_field(record, prompt_spec)
         error = record["error"] if isinstance(record.get("error"), str) else None
         if target is None:
@@ -145,13 +145,13 @@ def _create_parse_raw_response(
                 + (f" Model error: {error}" if error else "")
             )
         if isinstance(target, list) and len(target) == 0:
-            result: dict[str, Any] = {"kind": "not-found"}
+            not_found: ParsedLocateResponse = {"kind": "not-found"}
             if error:
-                result["error"] = error
-            return result
+                not_found["error"] = error
+            return not_found
 
         if not include_references:
-            result = {"kind": "located", "target": target}
+            result: ParsedLocateResponse = {"kind": "located", "target": target}
             if error:
                 result["error"] = error
             return result
@@ -172,7 +172,9 @@ def _create_parse_raw_response(
     return parse_raw_response
 
 
-def create_default_element_protocol(json_parser=None) -> StandardLocateProtocol:
+def create_default_element_protocol(
+    json_parser: Callable[..., Any] | None = None,
+) -> StandardLocateProtocol:
     return {
         "system_prompt_introduction": DEFAULT_LOCATE_SYSTEM_PROMPT_INTRODUCTION,
         "build_response_instructions": _build_locate_response_instructions,
@@ -182,7 +184,9 @@ def create_default_element_protocol(json_parser=None) -> StandardLocateProtocol:
     }
 
 
-def create_default_search_area_protocol(json_parser=None) -> StandardLocateProtocol:
+def create_default_search_area_protocol(
+    json_parser: Callable[..., Any] | None = None,
+) -> StandardLocateProtocol:
     return {
         "system_prompt_introduction": DEFAULT_SEARCH_AREA_SYSTEM_PROMPT_INTRODUCTION,
         "build_response_instructions": _build_search_area_response_instructions,

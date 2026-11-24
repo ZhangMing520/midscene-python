@@ -1,7 +1,7 @@
 """Grounding workflow types (upstream workflows/grounding/types.ts)."""
 
-from collections.abc import Awaitable, Callable
-from typing import Any, TypedDict
+from collections.abc import Awaitable
+from typing import Any, Protocol, TypedDict
 
 
 class SearchAreaImageMapping(TypedDict):
@@ -59,7 +59,15 @@ class LocateModelResponse(TypedDict, total=False):
     errors: list[str]
 
 
-LocateFn = Callable[[LocateRequest], Awaitable[LocateModelResponse]]
+class LocateFn(Protocol):
+    def __call__(
+        self,
+        locate_request: LocateRequest | None = None,
+        *,
+        target_element_description: Any = None,
+        locate_image: LocateImage | None = None,
+        model_runtime: Any = None,
+    ) -> Awaitable[LocateModelResponse]: ...
 
 
 __all__ = [

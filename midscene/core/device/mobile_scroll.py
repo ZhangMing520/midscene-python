@@ -6,6 +6,7 @@ adapters own timing, coordinate conversion and gesture execution.
 """
 
 import math
+from collections.abc import Mapping
 
 
 def _round_half_up(value: float) -> int:
@@ -15,7 +16,7 @@ def _round_half_up(value: float) -> int:
 
 def resolve_default_mobile_scroll(
     direction: str,
-    size: dict[str, int],
+    size: Mapping[str, float],
 ) -> tuple[tuple[int, int], tuple[int, int]]:
     """Return (from_point, to_point) for an untargeted scroll."""
     width, height = size["width"], size["height"]

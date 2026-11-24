@@ -8,8 +8,11 @@ import asyncio
 import os
 import signal
 import sys
+from types import ModuleType
 from typing import Any
 
+termios: ModuleType | None
+tty: ModuleType | None
 try:  # POSIX only
     import termios
     import tty
@@ -64,6 +67,7 @@ class _TerminalCtrlCGuard:
             return
         import threading
 
+        assert tty is not None
         self._fd = sys.stdin.fileno()
         try:
             self._was_raw = termios.tcgetattr(self._fd)
@@ -72,9 +76,12 @@ class _TerminalCtrlCGuard:
             return
 
         def read_loop() -> None:
+            fd = self._fd
+            if fd is None:
+                return
             while not self._stop:
                 try:
-                    chunk = os.read(self._fd, 1)
+                    chunk = os.read(fd, 1)
                 except OSError:
                     return
                 if not chunk:
@@ -87,9 +94,10 @@ class _TerminalCtrlCGuard:
 
     def dispose(self) -> None:
         self._stop = True
-        if self._fd is not None:
+        terminal = termios
+        if self._fd is not None and terminal is not None:
             try:
-                termios.tcsetattr(self._fd, termios.TCSADRAIN, self._was_raw)
+                terminal.tcsetattr(self._fd, terminal.TCSADRAIN, self._was_raw)
             except Exception:  # noqa: BLE001
                 pass
 
@@ -106,7 +114,7 @@ class CliInterruptWaiter:
     ) -> None:
         self._source = source
         self._loop = asyncio.get_running_loop()
-        self._future: asyncio.Future = self._loop.create_future()
+        self._future: asyncio.Future[str] = self._loop.create_future()
         self._finished = False
         self._disposed = False
         self._watchdog_handle: asyncio.TimerHandle | None = None
@@ -129,7 +137,7 @@ class CliInterruptWaiter:
             raise
 
     @property
-    def result(self) -> asyncio.Future:
+    def result(self) -> asyncio.Future[str]:
         return self._future
 
     def _bind_signal(self, signal_name: str) -> None:

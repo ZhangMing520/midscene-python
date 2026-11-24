@@ -34,7 +34,9 @@ def report_file_to_markdown(options: dict[str, Any]) -> dict[str, list[str]]:
         raise ValueError("reportFileToMarkdown: htmlPath is required")
     if not output_dir:
         raise ValueError("reportFileToMarkdown: outputDir is required")
-    return _report_file_to_markdown(resolve_report_html_path(html_path), output_dir)
+    return _report_file_to_markdown(
+        str(resolve_report_html_path(html_path)), output_dir
+    )
 
 
 REPORT_TOOL_ACTIONS = ("split", "to-markdown", "merge-html", "export")
@@ -146,7 +148,7 @@ async def _handle_report_tool(args: dict[str, Any]) -> dict[str, Any]:
                 '"merge-html". Repeat --htmlReport for each report '
                 "(e.g. --htmlReport ./a/index.html --htmlReport ./b.html)."
             )
-        result = merge_report_files(
+        merge_result = merge_report_files(
             paths,
             output_dir,
             output_name,
@@ -154,7 +156,7 @@ async def _handle_report_tool(args: dict[str, Any]) -> dict[str, Any]:
             output_format,
         )
         return _tool_result(
-            f"Merged {len(paths)} report(s) into {result['mergedReportPath']}"
+            f"Merged {len(paths)} report(s) into {merge_result['mergedReportPath']}"
         )
 
     if not html_path:
@@ -179,11 +181,11 @@ async def _handle_report_tool(args: dict[str, Any]) -> dict[str, Any]:
         return _tool_result(f"Report exported to {report_path}")
 
     if action == "to-markdown":
-        result = report_file_to_markdown(html_path, output_dir)
+        markdown_result = report_file_to_markdown(html_path, output_dir)
         return _tool_result(
             "Markdown export completed. Generated "
-            f"{len(result['markdownFiles'])} markdown file(s) and "
-            f"{len(result['screenshotFiles'])} screenshot(s). "
+            f"{len(markdown_result['markdownFiles'])} markdown file(s) and "
+            f"{len(markdown_result['screenshotFiles'])} screenshot(s). "
             f"Output path: {output_dir}"
         )
 

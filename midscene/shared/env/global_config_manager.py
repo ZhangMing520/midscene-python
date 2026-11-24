@@ -3,6 +3,7 @@
 import os
 import re
 import sys
+from typing import TypedDict, cast
 
 from midscene.shared.env.constants import (
     ALL_ENV_KEYS,
@@ -34,12 +35,17 @@ def _js_type(value: object) -> str:
     return type(value).__name__
 
 
+class _ConfigOverride(TypedDict):
+    newConfig: dict[str, str]
+    extendMode: bool
+
+
 class GlobalConfigManager:
     """Collect global configs from env and ``overrideAIConfig``."""
 
     def __init__(self, env_provider: dict[str, str | None] | None = None):
         self._env_provider = env_provider
-        self._override: dict[str, object] | None = None
+        self._override: _ConfigOverride | None = None
         self._keys_have_been_read: dict[str, bool] = {}
         self._global_model_config_manager: ModelConfigManager | None = None
 
@@ -131,10 +137,12 @@ class GlobalConfigManager:
                     ",but it has been read."
                 )
 
+        validated_config = cast(dict[str, str], new_config)
+        previous_config = (
+            self._override["newConfig"] if self._override is not None else {}
+        )
         saved_new_config = (
-            {**(self._override or {}).get("newConfig", {}), **new_config}
-            if extend_mode
-            else new_config
+            {**previous_config, **validated_config} if extend_mode else validated_config
         )
 
         self._override = {

@@ -39,7 +39,11 @@ def _read_credentials() -> dict[str, Any]:
         record = json.loads(content)
     except json.JSONDecodeError:
         raise SiwcError(f"Invalid JSON in SIWC credentials at {path}.") from None
+    if not isinstance(record, dict):
+        raise SiwcError(f"Invalid SIWC credentials record at {path}.")
     credentials = record.get("credentials") or {}
+    if not isinstance(credentials, dict):
+        raise SiwcError(f"Invalid SIWC credentials at {path}.")
     access_token = credentials.get("access_token")
     if not isinstance(access_token, str) or not access_token.strip():
         raise SiwcError(f"Missing access token in {path}. {REAUTHORIZATION_HINT}")

@@ -3,8 +3,10 @@
 import os
 import sys
 import time
-from collections.abc import Mapping
-from typing import Any
+from collections.abc import Mapping, Sequence
+from typing import Any, Protocol
+
+from rich.console import Console
 
 indent = "  "
 spinner_interval = 80
@@ -219,7 +221,21 @@ def format_yaml_progress_snapshot(
     return message
 
 
-def print_batch_results(console, results, runner) -> None:
+class ScriptResultPlayer(Protocol):
+    """Player fields consumed by the single-script result printer."""
+
+    @property
+    def output_path(self) -> str | None: ...
+
+    @property
+    def failed_tasks(self) -> Sequence[Mapping[str, object]]: ...
+
+
+def print_batch_results(
+    console: Console,
+    results: Sequence[Mapping[str, object]],
+    runner: object,
+) -> None:
     """Print one line per batch result (upstream printer)."""
     for result in results:
         status = "[green]PASS[/green]" if result["success"] else "[red]FAIL[/red]"
@@ -227,7 +243,7 @@ def print_batch_results(console, results, runner) -> None:
         console.print(f"{status} {result['file']}{extra}")
 
 
-def print_script_result(console, player) -> None:
+def print_script_result(console: Console, player: ScriptResultPlayer) -> None:
     """Print the output path and failed tasks of a single YAML run."""
     if player.output_path:
         console.print(f"[green]Output written to: {player.output_path}[/green]")

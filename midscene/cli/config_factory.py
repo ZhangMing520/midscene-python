@@ -7,8 +7,9 @@ to them here so the CLI keeps a single config module.
 
 import os
 import time
+from collections.abc import Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import yaml
 from loguru import logger
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
     from midscene.core.agent.agent_options import AgentOptions
 
 
-def _build_agent_options(section: dict) -> "AgentOptions":
+def _build_agent_options(section: Mapping[str, Any]) -> "AgentOptions":
     from midscene.core.agent.agent_options import AgentOptions
 
     agent_section = section.get("agent") or {}
@@ -58,7 +59,7 @@ def _extract_cache_id(cache: object) -> str | None:
     if isinstance(cache, str):
         return cache
     if isinstance(cache, dict):
-        return cache.get("id")
+        return cast(str | None, cache.get("id"))
     return None
 
 
@@ -81,9 +82,9 @@ def _timestamp_ms() -> int:
     return int(time.time() * 1000)
 
 
-async def expand_file_patterns(patterns: list, base_path: str) -> list:
+async def expand_file_patterns(patterns: list[str], base_path: str) -> list[str]:
     """Expand each glob, keeping duplicates and their order (upstream)."""
-    all_files = []
+    all_files: list[str] = []
     for pattern in patterns:
         try:
             yaml_files = match_yaml_files(pattern, {"cwd": base_path})

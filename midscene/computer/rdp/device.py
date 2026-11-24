@@ -5,6 +5,8 @@ through an injectable backend. The default backend raises the upstream
 not-implemented error until a real helper transport is provided.
 """
 
+from typing import cast
+
 from loguru import logger
 
 from midscene.computer.rdp.address import format_rdp_server_address
@@ -13,8 +15,10 @@ from midscene.computer.rdp.backend_client import (
 )
 from midscene.computer.rdp.protocol import (
     RDPBackendClient,
+    RDPBackendSize,
     RDPConnectionConfig,
     RDPConnectionInfo,
+    RDPScrollDirection,
 )
 from midscene.core.types import (
     AbstractInterface,
@@ -52,7 +56,10 @@ class RDPDevice(AbstractInterface):
         username = (
             f" as {self.config['username']}" if self.config.get("username") else ""
         )
-        session_id = (self._connection_info or {}).get("sessionId")
+        connection_info = self._connection_info
+        session_id = (
+            connection_info.get("sessionId") if connection_info is not None else None
+        )
         session = f" [session {session_id}]" if session_id else ""
         return f"RDP Device {server}{username}{session}"
 
@@ -67,7 +74,7 @@ class RDPDevice(AbstractInterface):
         self._assert_connected()
         return await self.backend.screenshot_base64()
 
-    async def size(self) -> Size:
+    async def size(self) -> RDPBackendSize:
         """Remote desktop size (upstream size)."""
         self._assert_connected()
         return await self.backend.size()
@@ -135,9 +142,9 @@ class RDPDevice(AbstractInterface):
         await self.backend.key_press(key)
 
     async def scroll(
-        self, direction: str, distance: int | None = None, **kwargs
+        self, direction: str, distance: int | None = None, **kwargs: object
     ) -> None:
-        await self.backend.wheel(direction, distance or 500)
+        await self.backend.wheel(cast(RDPScrollDirection, direction), distance or 500)
 
     async def hover(self, x: float, y: float) -> None:
         await self.backend.mouse_move(int(x), int(y))

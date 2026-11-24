@@ -7,10 +7,10 @@ from midscene.core.ai_model.service_caller.system_one.schema import SystemOneErr
 
 def resolve_system_one_endpoint(config: dict[str, Any]) -> str:
     endpoint = config.get("endpoint")
-    if endpoint:
+    if isinstance(endpoint, str) and endpoint:
         return endpoint
     base_url = config.get("openaiBaseURL")
-    if not base_url:
+    if not isinstance(base_url, str) or not base_url:
         raise SystemOneError(
             "When using the System One API, you must provide "
             "MIDSCENE_*_MODEL_ENDPOINT or MIDSCENE_*_MODEL_BASE_URL."

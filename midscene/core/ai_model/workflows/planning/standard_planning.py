@@ -5,7 +5,7 @@ Synced from upstream packages/core/src/ai-model/workflows/planning/
 locate-normalization.ts, planning-action-log.ts).
 """
 
-from typing import Any
+from typing import Any, cast
 
 from loguru import logger
 
@@ -68,7 +68,10 @@ async def standard_plan(
 ) -> PlanningAIResponse:
     """Run one standard planning turn and return the parsed planning response."""
     adapter = model_runtime.adapter
-    planning_protocol = resolve_planning(adapter)["protocol"]
+    planning_adapter = resolve_planning(adapter)
+    planning_protocol = planning_adapter["protocol"]
+    if planning_protocol is None:
+        raise ValueError("Standard planning requires a planning protocol")
 
     if include_locate_in_planning and not model_runtime.config.get("modelFamily"):
         raise ValueError(
@@ -81,8 +84,10 @@ async def standard_plan(
     include_thought = effort != "fast"
     include_log = effort != "fast"
 
+    # Custom protocol implementations may provide an extension-level codec.
+    protocol_extensions = cast(dict[str, Any], planning_protocol)
     locate_result_codec = (
-        planning_protocol.get("locate_result_codec") or adapter.locate_result_codec
+        protocol_extensions.get("locate_result_codec") or adapter.locate_result_codec
         if include_locate_in_planning
         else None
     )
@@ -203,7 +208,9 @@ async def standard_plan(
 
     action_output_protocol = planning_protocol["action_output_protocol"]
 
-    async def call_ai(retry_attempt: int, previous_parse_error: Any | None = None):
+    async def call_ai(
+        retry_attempt: int, previous_parse_error: Any | None = None
+    ) -> dict[str, Any]:
         return await call_generative_ai(
             with_semantic_retry_feedback(messages, previous_parse_error),
             model_runtime,
@@ -267,7 +274,7 @@ async def standard_plan(
             response.get("usage"),
         )
 
-    result = await call_ai_and_parse_with_retry(
+    parsed_result = await call_ai_and_parse_with_retry(
         call_ai=call_ai,
         parse_response=parse_response,
         to_parse_error=to_parse_error,
@@ -278,9 +285,9 @@ async def standard_plan(
         ),
     )
 
-    response: dict[str, Any] = result["response"]
-    plan_from_ai: dict[str, Any] = result["plan_from_ai"]
-    actions: list[dict[str, Any]] = result["actions"]
+    response: dict[str, Any] = parsed_result["response"]
+    plan_from_ai: dict[str, Any] = parsed_result["plan_from_ai"]
+    actions: list[dict[str, Any]] = parsed_result["actions"]
     raw_response = response["content"]
     usage = response.get("usage")
     reasoning_content = response.get("reasoning_content")
@@ -338,15 +345,21 @@ async def standard_plan(
         getattr(context, "shrunk_shot_to_logical_ratio", 1.0),
     )
 
-    return {
-        **plan_from_ai,
-        "actions": actions,
-        "raw_response": raw_response,
-        "usage": usage,
-        "reasoning_content": reasoning_content,
-        "yaml_flow": yaml_flow,
-        "should_continue_planning": should_continue_planning,
-    }
+    # Start with the open planner record, then apply normalized workflow fields
+    # with the same precedence as the original dictionary expansion.
+    result: PlanningAIResponse = {}
+    result.update(cast(PlanningAIResponse, plan_from_ai))
+    result.update(
+        {
+            "actions": actions,
+            "raw_response": raw_response,
+            "usage": usage,
+            "reasoning_content": reasoning_content,
+            "yaml_flow": yaml_flow,
+            "should_continue_planning": should_continue_planning,
+        }
+    )
+    return result
 
 
 def _merge_sub_goals(

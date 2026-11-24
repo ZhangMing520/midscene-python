@@ -9,10 +9,11 @@ import re
 import shutil
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 from urllib.parse import quote
 
 from loguru import logger
+from rich.console import Console
 
 from midscene.shared.env import get_midscene_run_dir
 
@@ -201,7 +202,18 @@ def _get_results_by_type(
     return get_results_by_type(results, result_type)
 
 
-def get_execution_summary(results: list[dict[str, Any]]) -> dict[str, Any]:
+class ExecutionSummary(TypedDict):
+    """Aggregate counts and duration for a batch execution."""
+
+    total: int
+    successful: int
+    failed: int
+    partialFailed: int
+    notExecuted: int
+    totalDuration: int | float
+
+
+def get_execution_summary(results: list[dict[str, Any]]) -> ExecutionSummary:
     """Aggregate counts for the batch execution summary."""
     return {
         "total": len(results),
@@ -508,12 +520,12 @@ def print_execution_summary(results: list[dict[str, Any]], summary_path: str) ->
 
 
 def run_report_tool(
-    console,
+    console: Console,
     action: str,
-    html_path,
-    html_report,
-    output_dir,
-    output_name,
+    html_path: str | None,
+    html_report: list[str] | None,
+    output_dir: str | None,
+    output_name: str | None,
     overwrite: bool,
 ) -> bool:
     """Transform Midscene report artifacts (upstream `midscene report-tool`)."""
@@ -538,9 +550,12 @@ def run_report_tool(
                     '"merge-html".[/red]'
                 )
                 return False
-            result = merge_report_files(html_report, output_dir, output_name, overwrite)
+            merge_result = merge_report_files(
+                html_report, output_dir, output_name, overwrite
+            )
             console.print(
-                f"Merged {len(html_report)} report(s) into {result['mergedReportPath']}"
+                f"Merged {len(html_report)} report(s) into "
+                f"{merge_result['mergedReportPath']}"
             )
             return True
 
@@ -552,20 +567,20 @@ def run_report_tool(
             return False
 
         if action == "to-markdown":
-            result = report_file_to_markdown(html_path, output_dir)
+            markdown_result = report_file_to_markdown(html_path, output_dir)
             console.print(
                 "Markdown export completed. Generated "
-                f"{len(result['markdownFiles'])} markdown file(s) and "
-                f"{len(result['screenshotFiles'])} screenshot(s). "
+                f"{len(markdown_result['markdownFiles'])} markdown file(s) and "
+                f"{len(markdown_result['screenshotFiles'])} screenshot(s). "
                 f"Output path: {output_dir}"
             )
             return True
 
-        result = split_report_file(html_path, output_dir)
+        split_result = split_report_file(html_path, output_dir)
         console.print(
             "Report split completed. Generated "
-            f"{len(result['executionJsonFiles'])} execution JSON files and "
-            f"{len(result['screenshotFiles'])} screenshots. "
+            f"{len(split_result['executionJsonFiles'])} execution JSON files and "
+            f"{len(split_result['screenshotFiles'])} screenshots. "
             f"Output path: {output_dir}"
         )
         return True

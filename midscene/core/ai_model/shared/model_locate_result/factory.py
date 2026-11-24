@@ -1,5 +1,6 @@
 """Locate result codec factory (upstream shared/model-locate-result/factory.ts)."""
 
+from collections.abc import Callable, Mapping
 from typing import Any
 
 from midscene.core.ai_model.shared.model_locate_result.coordinates import (
@@ -32,8 +33,8 @@ class LocateResultCodec:
         self,
         prompt_spec: dict[str, Any],
         resolved_coordinates: dict[str, Any],
-        parse_raw_locate_value=None,
-    ):
+        parse_raw_locate_value: Callable[[Any], dict[str, Any]] | None = None,
+    ) -> None:
         self.prompt_spec = prompt_spec
         self._resolved_coordinates = resolved_coordinates
         self._parse_raw_locate_value = parse_raw_locate_value or (
@@ -43,7 +44,7 @@ class LocateResultCodec:
     def to_pixel_result(
         self,
         raw_result: Any,
-        context: dict[str, dict[str, float]],
+        context: Mapping[str, Mapping[str, float]],
     ) -> dict[str, Any]:
         """Return {center, rect?}; rect is None for point results."""
         result = self._parse_raw_locate_value(raw_result)

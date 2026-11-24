@@ -6,7 +6,7 @@ image payloads when a dump is externalized.
 """
 
 import re
-from typing import Any
+from typing import Any, cast
 from urllib.parse import quote
 
 _DATA_URI_PATTERN = re.compile(
@@ -106,7 +106,7 @@ def image_ref_file_extension(ref: dict[str, Any]) -> str:
 def report_image_asset_path(ref: dict[str, Any]) -> str:
     """Resolve the report-relative asset path for an image reference."""
     if ref.get("storage") == "file" and ref.get("path"):
-        return ref["path"]
+        return cast(str, ref["path"])
     return f"./screenshots/{quote(str(ref['id']), safe='')}.{image_ref_file_extension(ref)}"
 
 

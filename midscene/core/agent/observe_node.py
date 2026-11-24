@@ -1,13 +1,44 @@
 """Observation window helper (upstream agent/observe-node.ts)."""
 
+from __future__ import annotations
+
 import asyncio
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from midscene.core.test_runner.errors import NodeExecutionError
 
+if TYPE_CHECKING:
+    from midscene.core.agent.ui_observer import UIObservation, UIObserver
+    from midscene.core.ai_model.models import ModelRuntime
+    from midscene.core.types import UIContext
 
-def start_observing(agent, opt: dict[str, Any] | None = None):
+
+class ObserveAgent(Protocol):
+    _frozen: bool
+
+    def start_observing(self, options: dict[str, Any] | None = None) -> UIObserver: ...
+
+    async def ai_act(self, value: Any, options: dict[str, Any]) -> Any: ...
+
+    async def flush_report(self) -> Any: ...
+
+    async def get_ui_context(self, action: str = ...) -> UIContext[Any]: ...
+
+    def _resolve_runtime(self, intent: str) -> ModelRuntime: ...
+
+    def _resolve_call_context(
+        self, action: str, options: dict[str, Any] | None
+    ) -> str | None: ...
+
+    def _record_usage_metrics(
+        self, intent: str, usage: dict[str, Any] | None
+    ) -> None: ...
+
+
+def start_observing(
+    agent: ObserveAgent, opt: dict[str, Any] | None = None
+) -> UIObserver:
     """Record a time window of UI frames (upstream startObserving).
 
     Options: `intervalMs` (default 1000, min 200), `maxFrames` (default 30,
@@ -68,11 +99,11 @@ async def execute_observe(agent: Any, value: dict[str, Any], signal: Any) -> Any
     act = value.get("act")
     assertion = value.get("assert")
     settle_ms = value.get("settleMs") or 0
-    observer = None
-    stop_task: asyncio.Task | None = None
+    observer: UIObserver | None = None
+    stop_task: asyncio.Task[UIObservation | None] | None = None
     has_initial_frame = False
     data: dict[str, Any] | None = None
-    errors = []
+    errors: list[BaseException] = []
 
     def collect(error: BaseException) -> None:
         if not any(error is item for item in errors):
@@ -80,6 +111,8 @@ async def execute_observe(agent: Any, value: dict[str, Any], signal: Any) -> Any
 
     async def _finalize() -> Any:
         nonlocal data
+        if observer is None:
+            return None
         observation = await observer.stop()
         # Also retain facts when the action fails or cancellation interrupts
         # settling. A representative frame captured by stop cannot replace a
@@ -94,7 +127,7 @@ async def execute_observe(agent: Any, value: dict[str, Any], signal: Any) -> Any
             data = {"frameCount": frame_count, "durationMs": duration_ms}
         return observation
 
-    async def stop() -> Any:
+    async def stop() -> UIObservation | None:
         nonlocal stop_task
         if observer is None:
             return None
@@ -120,9 +153,10 @@ async def execute_observe(agent: Any, value: dict[str, Any], signal: Any) -> Any
         signal.throw_if_aborted()
         await _settle(settle_ms, signal)
         observation = await stop()
+        observation_impl = cast("UIObservation", observation)
         signal.throw_if_aborted()
-        result = await observation.ai_assert(
-            assertion,
+        result = await observation_impl.ai_assert(
+            cast(str, assertion),
             None,
             {"keepRawResponse": True, "abortSignal": signal},
         )

@@ -6,7 +6,8 @@ reused by DOM shims and tests.
 """
 
 import re
-from typing import Any
+from importlib import import_module
+from typing import Any, cast
 
 from loguru import logger as _logger
 
@@ -60,7 +61,8 @@ def _is_htmlelement(element: Any, current_window: Any) -> bool:
 
 
 def _node_type(node: Any) -> int | None:
-    return _get(node, "nodeType", "node_type", default=None)
+    # DOM shims expose the integer nodeType from the platform boundary.
+    return cast(int | None, _get(node, "nodeType", "node_type", default=None))
 
 
 def _node_name(node: Any) -> str:
@@ -546,12 +548,12 @@ def _resolve_extract_text_with_position() -> Any | None:
     if existing is not None:
         return existing
     try:
-        from midscene.shared.extractor.web_extractor import (
-            extract_text_with_position,
-        )
+        # Optional integration: keep its untyped implementation behind a dynamic
+        # module boundary rather than importing it eagerly.
+        module = import_module("midscene.shared.extractor.web_extractor")
     except ImportError:
         return None
-    return extract_text_with_position
+    return module.extract_text_with_position
 
 
 def set_generate_hash_on_window() -> None:

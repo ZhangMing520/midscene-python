@@ -2,7 +2,7 @@
 
 from typing import Any
 
-import yaml
+from midscene.core.yaml.utils import yaml
 
 
 def build_yaml(env: dict[str, Any], tasks: list[dict[str, Any]]) -> str:

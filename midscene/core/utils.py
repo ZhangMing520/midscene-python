@@ -82,7 +82,7 @@ def get_tmp_file(file_ext_without_dot: str) -> str | None:
 
 def overlapped(container: dict[str, Any], target: dict[str, Any]) -> bool:
     """Whether two rects overlap (upstream overlapped)."""
-    return (
+    return bool(
         container["left"] < target["left"] + target["width"]
         and container["left"] + container["width"] > target["left"]
         and container["top"] < target["top"] + target["height"]
@@ -105,7 +105,9 @@ def replacer_for_page_object(_key: str, value: Any) -> Any:
 
 
 def stringify_dump_data(data: Any, indents: int | None = None) -> str:
-    return json.dumps(data, default=replacer_for_page_object, indent=indents)
+    return json.dumps(
+        data, default=lambda value: replacer_for_page_object("", value), indent=indents
+    )
 
 
 def get_version() -> str:

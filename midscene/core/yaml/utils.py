@@ -2,9 +2,22 @@
 
 import os
 import re
-from typing import Any
+from importlib import import_module
+from typing import Any, Protocol, cast
 
-import yaml
+
+class _YamlModule(Protocol):
+    """Typed surface of the optional-stub PyYAML dependency."""
+
+    SafeLoader: type[Any]
+    YAMLError: type[Exception]
+
+    def load(self, stream: str, *, Loader: type[Any]) -> Any: ...
+
+    def dump(self, data: Any, *, indent: int, sort_keys: bool) -> str: ...
+
+
+yaml = cast(_YamlModule, import_module("yaml"))
 
 # Legacy scroll-type aliases (upstream normalizeScrollType)
 _SCROLL_TYPE_ALIASES = {
@@ -324,8 +337,8 @@ def build_detailed_locate_param(
         normalized = locate_prompt if rest else inner_prompt
 
     prompt = normalized or (opt or {}).get("prompt") or (opt or {}).get("locate")
-    deep_locate = False
-    cacheable = True
+    deep_locate: object = False
+    cacheable: object = True
     xpath = None
 
     if isinstance(opt, dict):

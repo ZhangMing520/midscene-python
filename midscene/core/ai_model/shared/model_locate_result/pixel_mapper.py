@@ -1,7 +1,7 @@
 """Pixel coordinate mapping (upstream shared/model-locate-result/pixel-mapper.ts)."""
 
 import math
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from midscene.core.ai_model.shared.model_locate_result.coordinates import (
@@ -47,7 +47,7 @@ def round_pixel_coordinate(pixel: float, rounding: CoordinateRounding) -> float:
 
 
 def clamp_pixel_point_to_size(
-    point: Sequence[float], size: dict[str, float]
+    point: Sequence[float], size: Mapping[str, float]
 ) -> tuple[float, float]:
     x, y = point
     return (
@@ -58,7 +58,7 @@ def clamp_pixel_point_to_size(
 
 def clamp_pixel_bbox_to_size(
     pixel_bbox: Sequence[float],
-    size: dict[str, float],
+    size: Mapping[str, float],
     bounds_type: BboxBoundsType = "closed",
 ) -> list[float]:
     left, top, right, bottom = pixel_bbox
@@ -124,7 +124,7 @@ def round_pixel_bbox(
 
 
 def map_locate_result_to_unrounded_pixel_bbox(
-    result: dict[str, Any], size: dict[str, float]
+    result: dict[str, Any], size: Mapping[str, float]
 ) -> list[float]:
     meta = result["coordinatesMeta"]
     normalized_by = meta.get("normalizedBy")
@@ -149,7 +149,7 @@ def map_locate_result_to_unrounded_pixel_bbox(
 
 
 def map_locate_result_to_pixel_bbox(
-    result: dict[str, Any], size: dict[str, float]
+    result: dict[str, Any], size: Mapping[str, float]
 ) -> list[float]:
     rounding = result["coordinatesMeta"]["rounding"]
     return round_pixel_bbox(
@@ -183,7 +183,7 @@ def map_locate_result_to_pixel_rect(
 
 
 def map_locate_result_to_pixel_point(
-    result: dict[str, Any], size: dict[str, float]
+    result: dict[str, Any], size: Mapping[str, float]
 ) -> tuple[float, float]:
     meta = result["coordinatesMeta"]
     order = meta["order"]

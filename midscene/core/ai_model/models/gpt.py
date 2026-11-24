@@ -1,5 +1,6 @@
 """GPT-5 / GPT-6 adapters (upstream ai-model/models/gpt.ts)."""
 
+from collections.abc import Callable
 from typing import Any
 
 from midscene.core.ai_model.model_adapter.chat_completion import (
@@ -119,7 +120,7 @@ def _resolve_gpt_image_detail(input_data: dict[str, Any]) -> str:
 
 def _build_gpt_codex_params(
     disabled_effort: str,
-):
+) -> Callable[[dict[str, Any]], dict[str, Any]]:
     def build(input_data: dict[str, Any]) -> dict[str, Any]:
         effort = (
             _resolve_gpt5_reasoning_effort(input_data.get("userConfig") or {})

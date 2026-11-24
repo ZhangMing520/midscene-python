@@ -89,7 +89,7 @@ async def emit_stream_chunk(
 
 
 def has_usable_text(content: str | None) -> bool:
-    return bool(content) and content.strip() != ""
+    return content is not None and content.strip() != ""
 
 
 def normalize_retry_count(retry_count: Any) -> int:

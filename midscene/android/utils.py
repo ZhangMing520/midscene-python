@@ -2,7 +2,8 @@
 
 import asyncio
 import re
-from typing import Any
+from collections.abc import Awaitable
+from typing import Any, TypeVar
 
 from loguru import logger
 
@@ -11,6 +12,8 @@ from midscene.core.types import Size
 
 DETAIL_LOOKUP_ADB_TIMEOUT_MS = 8000
 DETAIL_LOOKUP_STEP_TIMEOUT_MS = 2000
+
+T = TypeVar("T")
 
 
 def _get_device_option(device_options: dict[str, Any] | None, *keys: str) -> Any:
@@ -101,7 +104,7 @@ async def get_connected_devices(
         ) from error
 
 
-async def _timed_detail_lookup(coro, label: str) -> Any:
+async def _timed_detail_lookup(coro: Awaitable[T], label: str) -> T:
     try:
         return await asyncio.wait_for(
             coro, timeout=DETAIL_LOOKUP_STEP_TIMEOUT_MS / 1000.0

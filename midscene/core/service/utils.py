@@ -155,7 +155,8 @@ def _extract_possibly_malformed_string_field(value: str, field_name: str) -> str
         next_significant_char = _read_next_significant_char(value, index)
         if next_significant_char in (",", "}", "]", None):
             try:
-                return json.loads(f'"{value_for_json_parse}"')
+                decoded = json.loads(f'"{value_for_json_parse}"')
+                return decoded if isinstance(decoded, str) else value_for_json_parse
             except Exception:  # noqa: BLE001 - fall back to the raw text
                 return value_for_json_parse
 
@@ -169,6 +170,7 @@ def recover_describe_response_from_parse_error(
 ) -> dict[str, str] | None:
     """Recover a `description` from a malformed describe response."""
     message = str(error)
+    raw_response: str | None
     if isinstance(error, AIResponseParseError):
         raw_response = error.raw_response
     else:

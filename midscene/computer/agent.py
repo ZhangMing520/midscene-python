@@ -2,10 +2,11 @@
 
 import re
 from dataclasses import fields
-from typing import Any
+from typing import Any, cast
 
 from midscene.computer.device import ComputerDevice
 from midscene.computer.rdp.device import RDPDevice
+from midscene.computer.rdp.protocol import RDPConnectionConfig
 from midscene.core.agent.agent import Agent
 from midscene.core.agent.agent_options import AgentOptions
 
@@ -38,7 +39,9 @@ def _agent_options(opts: Any) -> AgentOptions | None:
     if isinstance(opts, AgentOptions):
         return opts
     if not isinstance(opts, dict):
-        return opts
+        # Legacy callers may pass an AgentOptions-compatible object. The core
+        # agent consumes it structurally, so retain that accepted input shape.
+        return cast(AgentOptions, opts)
     options = AgentOptions()
     known = {field.name for field in fields(AgentOptions)}
     for key, value in opts.items():
@@ -53,7 +56,7 @@ class ComputerAgent(Agent):
 
     def __init__(
         self,
-        device: ComputerDevice | None = None,
+        device: ComputerDevice | RDPDevice | None = None,
         options: AgentOptions | None = None,
     ):
         super().__init__(device or ComputerDevice(), options)
@@ -92,7 +95,7 @@ async def agent_for_rdp_computer(opts: Any) -> ComputerAgent:
             continue
         camel = re.sub(r"_([a-z])", lambda m: m.group(1).upper(), key)
         config[camel] = value
-    device = RDPDevice(config, _option(opts, "backend"))
+    device = RDPDevice(cast(RDPConnectionConfig, config), _option(opts, "backend"))
     await device.connect()
     return ComputerAgent(device, _agent_options(opts))
 

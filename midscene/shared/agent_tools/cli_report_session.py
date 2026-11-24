@@ -5,7 +5,7 @@ import random
 import string
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from midscene.shared.env import get_midscene_run_dir
 
@@ -105,6 +105,9 @@ def read_cli_report_session(session_name: str) -> dict[str, Any] | None:
         parsed = json.loads(Path(session_path).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
+
+    # Session files are JSON objects; retain the existing validation behavior.
+    parsed = cast(dict[str, Any], parsed)
 
     report_file_name = parsed.get("reportFileName")
     if (

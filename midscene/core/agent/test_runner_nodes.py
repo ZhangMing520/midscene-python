@@ -11,9 +11,9 @@ the Python agent methods they call are snake_case.
 
 import inspect
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, NotRequired, TypedDict
 
 from midscene.core.agent.observe_node import execute_observe
 from midscene.core.test_runner.errors import NodeExecutionError
@@ -37,6 +37,19 @@ class AgentTestRunnerNodeDefinition:
     input_schema: dict[str, Any] | None = None
 
 
+class _NodeOptions(TypedDict):
+    method: str
+    to_args: Callable[
+        [dict[str, Any], AgentTestRunnerNodeExecutionContext], Sequence[Any]
+    ]
+    to_result: NotRequired[Callable[[Any, dict[str, Any]], Any] | None]
+    name: NotRequired[str | None]
+    title: NotRequired[str | None]
+    description: NotRequired[str | None]
+    string_input_key: NotRequired[str | bool | None]
+    input_schema: NotRequired[dict[str, Any] | None]
+
+
 async def _maybe_await(value: Any) -> Any:
     if inspect.isawaitable(value):
         return await value
@@ -45,10 +58,10 @@ async def _maybe_await(value: Any) -> Any:
 
 def create_agent_test_runner_node_definition(
     agent_label: str = "an Agent",
-) -> Callable[[dict[str, Any]], AgentTestRunnerNodeDefinition]:
+) -> Callable[[_NodeOptions], AgentTestRunnerNodeDefinition]:
     """Create a Node factory whose adapters are checked against an Agent API."""
 
-    def define(options: dict[str, Any]) -> AgentTestRunnerNodeDefinition:
+    def define(options: _NodeOptions) -> AgentTestRunnerNodeDefinition:
         method = options["method"]
         to_args = options["to_args"]
         to_result = options.get("to_result")
@@ -388,7 +401,9 @@ RECORD_TO_REPORT_INPUT_SCHEMA = _schema(
 )
 
 
-def _define_common_agent_node(agent_label: str = "an Agent"):
+def _define_common_agent_node(
+    agent_label: str = "an Agent",
+) -> Callable[[_NodeOptions], AgentTestRunnerNodeDefinition]:
     return create_agent_test_runner_node_definition(agent_label)
 
 
@@ -820,7 +835,7 @@ async def _execute_observe_node(
 def _sleep_node() -> AgentTestRunnerNodeDefinition:
     def to_args(
         input_value: dict[str, Any], context: AgentTestRunnerNodeExecutionContext
-    ):
+    ) -> list[Any]:
         signal = context.signal
         if signal is not None and getattr(signal, "aborted", False):
             signal.throw_if_aborted()

@@ -4,6 +4,8 @@ import json
 from typing import Any
 
 from midscene.core.ai_model.model_adapter.planning_protocol import (
+    JsonParser,
+    ParsePlanningActionOutput,
     PlanningActionOutputBuildInput,
     StandardPlanningProtocol,
 )
@@ -105,13 +107,15 @@ def _serialize_action_param(
     return serialized
 
 
-def create_planning_action_output_parser(json_parser=None):
+def create_planning_action_output_parser(
+    json_parser: JsonParser | None = None,
+) -> ParsePlanningActionOutput:
     """Parse <action-type>/<action-param-json> content into an action dict."""
 
     parser = json_parser or parse_model_response_json
 
     def parse_action_output(
-        content: str, action_space: list[Any] = None
+        content: str, action_space: list[Any] | None = None
     ) -> dict[str, Any] | None:
         action_type = extract_xml_tag(content, "action-type")
         action_param_str = extract_xml_tag(content, "action-param-json")
@@ -132,7 +136,7 @@ def create_planning_action_output_parser(json_parser=None):
                         ["value"] if action_type.lower() == "input" else None
                     ),
                 )
-                assert_json_object(param)
+                param = assert_json_object(param)
             except Exception as error:
                 raise ValueError(
                     f"Failed to parse action-param-json: {error}"
@@ -146,7 +150,9 @@ def create_planning_action_output_parser(json_parser=None):
     return parse_action_output
 
 
-def create_midscene_planning_action_output_parser(json_parser=None):
+def create_midscene_planning_action_output_parser(
+    json_parser: JsonParser | None = None,
+) -> ParsePlanningActionOutput:
     """Upstream-named factory for the default action-output parser."""
     return create_planning_action_output_parser(json_parser)
 
@@ -203,7 +209,7 @@ def build_action_description(build_input: dict[str, Any]) -> dict[str, Any]:
 
 
 def create_default_midscene_planning_protocol(
-    json_parser=None,
+    json_parser: JsonParser | None = None,
 ) -> StandardPlanningProtocol:
     """The default Midscene XML planning protocol (StandardPlanningProtocol).
 

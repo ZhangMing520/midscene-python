@@ -6,6 +6,7 @@ from midscene.core.ai_model.model_adapter.custom_planning_action import (
     get_tap_located_pixel_result,
     normalize_custom_locate_fields,
 )
+from midscene.core.ai_model.model_adapter.image_preprocess import PreparedModelImage
 from midscene.core.ai_model.models.auto_glm.actions import transform_auto_glm_action
 from midscene.core.ai_model.models.auto_glm.parser import (
     parse_auto_glm_planning_response,
@@ -22,6 +23,7 @@ from midscene.core.ai_model.workflows.grounding.planning_action_locate import (
     PlanningTapLocatorDefinition,
     run_planning_action_locate,
 )
+from midscene.core.ai_model.workflows.grounding.types import LocateImage
 
 
 def create_auto_glm_planning_tap_locator(
@@ -30,9 +32,9 @@ def create_auto_glm_planning_tap_locator(
     def transform_actions(
         parsed: dict[str, Any],
         model_runtime: Any,
-        prepared: dict[str, Any],
+        prepared: PreparedModelImage,
         shot_size: dict[str, int],
-    ):
+    ) -> list[dict[str, Any]]:
         actions = transform_auto_glm_action(
             parsed["action"],
             [],
@@ -65,7 +67,7 @@ def create_auto_glm_planning_tap_locator(
 
 async def auto_glm_locate(
     target_element_description: Any,
-    locate_image: dict[str, Any],
+    locate_image: LocateImage,
     model_runtime: Any,
 ) -> dict[str, Any]:
     """Auto-GLM planning-tap-locator (models/auto-glm/locate.ts)."""

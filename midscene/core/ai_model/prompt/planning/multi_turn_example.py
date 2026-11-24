@@ -2,6 +2,9 @@
 
 from typing import Any
 
+from midscene.core.ai_model.model_adapter.planning_protocol import (
+    PlanningActionOutputProtocol,
+)
 from midscene.core.ai_model.prompt.planning.action_output_example import (
     build_action_output_example,
     create_sample_input_action,
@@ -27,7 +30,7 @@ _SAMPLE_RETURN_EMAIL_SUB_GOAL = {
 
 
 def build_planning_multi_turn_example(
-    action_output_protocol,
+    action_output_protocol: PlanningActionOutputProtocol,
     include_sub_goals: bool,
     include_thought: bool,
     include_log: bool,
@@ -58,7 +61,7 @@ def build_planning_multi_turn_example(
         create_sample_input_action("john@example.com"), build_action_output
     )
 
-    def ex(**kwargs) -> str:
+    def ex(**kwargs: Any) -> str:
         update = kwargs.pop("update_sub_goals", None)
         return build_planning_response_example(
             prefix=prefix, update_sub_goals=update, **kwargs

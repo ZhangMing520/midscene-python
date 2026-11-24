@@ -4,14 +4,17 @@ import glob
 import os
 import sys
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from rich.console import Console
 
 from midscene.cli.config_options import YAML_TARGET_KEYS
 from midscene.cli.workflow_format import is_legacy_yaml_path
 
-_SERVE_SERVERS: dict = {}
+if TYPE_CHECKING:
+    from http.server import ThreadingHTTPServer
+
+_SERVE_SERVERS: dict[str, "ThreadingHTTPServer"] = {}
 
 _STRING_OPTIONS = {"setup", "config", "summary"}
 _NUMBER_OPTIONS = {"concurrent", "retry"}
@@ -136,7 +139,9 @@ async def parse_process_args() -> dict[str, Any]:
     }
 
 
-def match_yaml_files(file_glob: str, options: dict | None = None) -> list:
+def match_yaml_files(
+    file_glob: str, options: dict[str, Any] | None = None
+) -> list[str]:
     """Expand a YAML glob (upstream matchYamlFiles): directories expand to
     ``**/*.yml``/``**/*.yaml``, results are absolute and sorted."""
     base = Path((options or {}).get("cwd") or os.getcwd())
@@ -164,7 +169,7 @@ def match_yaml_files(file_glob: str, options: dict | None = None) -> list:
     )
 
 
-def _read_batch_config(path: str) -> dict:
+def _read_batch_config(path: str) -> dict[str, Any]:
     """Read a batch config as raw camelCase YAML before normalization."""
     import yaml as _yaml
 
@@ -187,7 +192,7 @@ def _is_batch_config(path: Path) -> bool:
         return False
 
 
-def _start_static_server(directory: str):
+def _start_static_server(directory: str) -> "ThreadingHTTPServer":
     """Serve a local directory for YAML `web.serve` (upstream create-server)."""
     import atexit
     import functools

@@ -28,7 +28,10 @@ from midscene.cli.execution_summary import (
     is_batch_successful,
     write_execution_summary_file,
 )
-from midscene.cli.yaml_batch_error import YamlBatchExecutionError
+from midscene.cli.yaml_batch_error import (
+    YamlBatchErrorOccurrence,
+    YamlBatchExecutionError,
+)
 
 RESULT_TYPES = ("success", "failed", "partialFailed", "notExecuted")
 
@@ -273,7 +276,7 @@ async def run_yaml_batch(
     except YamlBatchExecutionError:
         raise
     except Exception as error:
-        occurrences = [
+        occurrences: list[YamlBatchErrorOccurrence] = [
             {"caseId": result.get("file"), "result": result} for result in results
         ]
         raise YamlBatchExecutionError(error, occurrences) from error
@@ -321,14 +324,6 @@ async def _run_file(
     shared_page: Any = None,
 ) -> dict[str, Any]:
     """Run one file with the beforeEach / afterEach lifecycle hooks."""
-    kwargs = {
-        "retries": retries,
-        "overrides": overrides,
-        "native_overrides": native_overrides,
-    }
-    if shared_page is not None:
-        kwargs["shared_page"] = shared_page
-
     if cfg["before_each"]:
         pre = await _run_one(
             cfg,
@@ -341,7 +336,15 @@ async def _run_file(
         if not pre["success"]:
             return _hook_failure(file_path, "beforeEach", pre)
 
-    result = await _run_one(cfg, player_factory, file_path, **kwargs)
+    result = await _run_one(
+        cfg,
+        player_factory,
+        file_path,
+        retries=retries,
+        overrides=overrides,
+        native_overrides=native_overrides,
+        shared_page=shared_page,
+    )
 
     if cfg["after_each"]:
         post = await _run_one(

@@ -10,7 +10,7 @@ import asyncio
 import datetime
 import uuid
 from collections.abc import Callable, Iterable, Iterator
-from typing import Any
+from typing import Any, TypeVar
 
 from loguru import logger
 
@@ -139,7 +139,10 @@ def _lookup(store: dict[int, _SignalEntry], signal: Any) -> Any:
     return entry.value
 
 
-def _remove_signal(store: dict[int, _SignalEntry], signal: Any) -> None:
+_SignalStoreEntry = TypeVar("_SignalStoreEntry", _SignalEntry, _ScopeEntry)
+
+
+def _remove_signal(store: dict[int, _SignalStoreEntry], signal: Any) -> None:
     entry = store.get(id(signal))
     if entry is not None and entry.signal is signal:
         del store[id(signal)]
@@ -321,7 +324,7 @@ def observe_resource_operations(
 ) -> Callable[[], None]:
     """Capture subscribers at registration: late settlement stays with its original run."""
     entry = _signal_entry(_listeners, signal)
-    subscribers: set[Callable[[dict[str, Any]], None]] = entry.value
+    subscribers: set[Callable[[dict[str, Any]], None]] | None = entry.value
     if subscribers is None:
         subscribers = set()
         entry.value = subscribers

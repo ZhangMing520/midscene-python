@@ -12,7 +12,7 @@ import re
 import shutil
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from midscene.core.dump.html_utils import (
     anti_escape_script_tag,
@@ -285,7 +285,9 @@ class ReportImageStore:
             if screenshot.id not in self._written_inline_ids:
                 self.write_inline_image(screenshot.id, screenshot.base64)
                 self._written_inline_ids.add(screenshot.id)
-            return screenshot.mark_persisted_inline(self.report_path)
+            return cast(
+                dict[str, Any], screenshot.mark_persisted_inline(self.report_path)
+            )
 
         if not file_ref:
             raise ValueError(
@@ -371,11 +373,17 @@ class ReportImageStore:
             )
         )
         if mark_as_persisted:
-            return screenshot.mark_persisted_to_path(
-                location["relativePath"], location["absolutePath"]
+            return cast(
+                dict[str, Any],
+                screenshot.mark_persisted_to_path(
+                    location["relativePath"], location["absolutePath"]
+                ),
             )
-        return screenshot.register_persisted_file_copy(
-            location["relativePath"], location["absolutePath"]
+        return cast(
+            dict[str, Any],
+            screenshot.register_persisted_file_copy(
+                location["relativePath"], location["absolutePath"]
+            ),
         )
 
     def _write_image_file_if_needed(

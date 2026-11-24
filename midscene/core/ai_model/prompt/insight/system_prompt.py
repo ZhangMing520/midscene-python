@@ -1,5 +1,6 @@
 """Insight system prompt (upstream prompt/insight/system-prompt.ts)."""
 
+from midscene.core.ai_model.model_adapter.insight_protocol import InsightProtocol
 from midscene.shared.env import get_preferred_language
 
 
@@ -50,7 +51,7 @@ def _build_insight_context_prompt(
 
 
 def build_insight_system_prompt(
-    insight_protocol,
+    insight_protocol: InsightProtocol,
     screenshot_included: bool = True,
     reference_images_included: bool = False,
 ) -> str:

@@ -6,7 +6,7 @@ client drives sessions, screenshots and window size over its HTTP endpoints.
 """
 
 import asyncio
-from typing import Any
+from typing import Any, cast
 
 import httpx
 from loguru import logger
@@ -102,7 +102,8 @@ class WebDriverClient:
                 protocol_error_code(error_body),
             )
         try:
-            return response.json()
+            # A successful W3C response is an object; httpx exposes JSON as Any.
+            return cast(dict[str, Any], response.json())
         except ValueError as e:
             raise RuntimeError(
                 f"invalid JSON from WebDriver {method} {path}: {e}"

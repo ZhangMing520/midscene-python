@@ -1,7 +1,7 @@
 """Report-facing execution plan (upstream test-runner/reporting/test-plan.ts)."""
 
 import copy
-from typing import Any
+from typing import Any, cast
 
 from midscene.core.test_run_report import (
     TestRunReportCasePlan,
@@ -53,7 +53,7 @@ def _build_steps(
             "id": f"{document['documentId']}:{owner}:{phase}:{step_index}",
             "phase": phase,
             "stepIndex": step_index,
-            "node": step.get("node"),
+            "node": cast(str, step.get("node")),
             "input": sanitize_report_value(input_value),
             "inputMode": "template" if template_input is not None else "resolved",
         }
@@ -85,7 +85,7 @@ def build_test_run_report_plan(
         definition = item["definition"]
         case_plan: TestRunReportCasePlan = {
             "caseId": item["caseId"],
-            "name": definition.get("name"),
+            "name": cast(str, definition.get("name")),
             "caseIndex": item["caseIndex"],
             "selected": item["caseId"] in selected,
             "tags": list(definition.get("tags") or []),
@@ -117,7 +117,7 @@ def build_test_run_report_plan(
 
     plan: TestRunReportDocumentPlan = {
         "documentId": document["documentId"],
-        "sourcePath": document.get("sourcePath"),
+        "sourcePath": cast(str, document.get("sourcePath")),
         "retry": options.get("retry") or {"scope": "case", "count": 0},
         "beforeAll": _build_steps(
             document,

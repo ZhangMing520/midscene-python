@@ -7,8 +7,8 @@ a screenshot supplied by the caller (`screenshotBase64`).
 
 import inspect
 import math
-from collections.abc import Callable, Sequence
-from typing import Any
+from collections.abc import Awaitable, Callable, Sequence
+from typing import Any, TypedDict, cast
 
 from midscene.core.ai_model.models.registry import ModelRuntime
 from midscene.core.service import locate_service
@@ -19,7 +19,16 @@ from midscene.shared.img.transform import image_size
 DEFAULT_CENTER_DISTANCE_THRESHOLD = 20
 DEFAULT_RETRY_LIMIT = 3
 
-LocatorVerifyFn = Callable[[dict[str, Any]], dict[str, Any] | bool]
+LocatorVerifyFn = Callable[
+    [dict[str, Any]], dict[str, Any] | bool | Awaitable[dict[str, Any] | bool]
+]
+
+
+class LocatorVerifyPayload(TypedDict):
+    prompt: str
+    expectCenter: list[float]
+    retryCount: int
+    verifyResult: dict[str, Any]
 
 
 def _distance(p1: Sequence[float], p2: Sequence[float]) -> int:
@@ -59,8 +68,11 @@ def build_locate_validator_result(
 
 def _bound_context(screenshot_base64: str, opt: dict[str, Any]) -> UIContext:
     """A frozen UIContext over a caller-supplied screenshot (upstream helper)."""
-    size = image_size(screenshot_base64)
-    size = Size(width=float(size["width"]), height=float(size["height"]))
+    image_dimensions = image_size(screenshot_base64)
+    size = Size(
+        width=float(image_dimensions["width"]),
+        height=float(image_dimensions["height"]),
+    )
     return UIContext(
         screenshot_base64=screenshot_base64,
         size=size,
@@ -110,20 +122,22 @@ async def _resolve_target(
 
 
 def _describe_runtime(agent: Any) -> ModelRuntime:
-    return agent._resolve_runtime("extract")
+    # Agent plugins may provide their own runtime resolver.
+    return cast(ModelRuntime, agent._resolve_runtime("extract"))
 
 
 def _locate_runtime(agent: Any) -> ModelRuntime:
-    return agent._resolve_runtime("locate")
+    return cast(ModelRuntime, agent._resolve_runtime("locate"))
 
 
 async def _apply_locator_verify_fn(
     locator_verify_fn: LocatorVerifyFn | None,
-    payload: dict[str, Any],
+    payload: LocatorVerifyPayload,
 ) -> dict[str, Any]:
     if locator_verify_fn is None:
         return payload["verifyResult"]
-    custom = locator_verify_fn(payload)
+    # Preserve the callback's public mutable-dict contract for TypedDict payloads.
+    custom = locator_verify_fn(cast(dict[str, Any], payload))
     if inspect.isawaitable(custom):
         custom = await custom
     if isinstance(custom, bool):

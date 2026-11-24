@@ -11,9 +11,9 @@ import json
 import os
 import re
 import uuid
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Mapping
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from urllib.parse import quote, unquote
 
 from loguru import logger
@@ -112,7 +112,6 @@ def report_html_content(
         logger.warning("reportTpl is not set, will not write report")
         return ""
 
-    write_to_file = bool(report_path)
     if not report_path or not append_report:
         group_id = _uuid()
     else:
@@ -121,7 +120,7 @@ def report_html_content(
 
     dump_content = _report_script_tag(dump_data, group_id)
 
-    if write_to_file:
+    if report_path:
         if not append_report:
             Path(report_path).write_text(
                 insert_content_before_closing_html(tpl, dump_content),
@@ -169,7 +168,9 @@ def write_log_file(opts: dict[str, Any]) -> str | None:
         path.write_text(json.dumps(file_content, ensure_ascii=False), encoding="utf-8")
 
     if opts.get("generateReport"):
-        return write_dump_report(file_name, file_content, opts.get("appendReport"))
+        return write_dump_report(
+            file_name, file_content, cast(bool, opts.get("appendReport"))
+        )
 
     return str(Path(target_dir) / f"{file_name}.{file_ext}")
 
@@ -235,11 +236,12 @@ def _iter_tag_contents(
 ) -> Iterator[str]:
     """Yield the contents between matching tags while keeping memory bounded."""
     matches: list[str] = []
-    matcher = _StreamingTagMatcher(
-        open_tag,
-        close_tag,
-        lambda content: matches.append(content) or False,
-    )
+
+    def collect(content: str) -> bool:
+        matches.append(content)
+        return False
+
+    matcher = _StreamingTagMatcher(open_tag, close_tag, collect)
     decoder = codecs.getincrementaldecoder("utf-8")()
     with open(file_path, "rb") as handle:
         while True:
@@ -338,10 +340,12 @@ async def stream_dump_scripts_async(
 def extract_all_dump_scripts_sync(file_path: str) -> list[dict[str, str]]:
     """Return every ``midscene_web_dump`` script tag with its open tag."""
     results: list[dict[str, str]] = []
-    stream_dump_scripts_sync(
-        file_path,
-        lambda dump: results.append(dump) or False,
-    )
+
+    def collect(dump: dict[str, str]) -> bool:
+        results.append(dump)
+        return False
+
+    stream_dump_scripts_sync(file_path, collect)
     return results
 
 
@@ -405,7 +409,7 @@ def extract_report_artifact_path_sync(file_path: str) -> str | None:
     """Extract the manifest path declared by a directory report."""
     extractor = _report_artifact_path_extractor(file_path)
     stream_scan_tags(file_path, "<script", "</script>", extractor["visit"])
-    return extractor["state"]["path"]
+    return cast(str | None, extractor["state"]["path"])
 
 
 async def extract_report_artifact_path_async(
@@ -414,7 +418,7 @@ async def extract_report_artifact_path_async(
     """Asynchronously extract the manifest path declared by a directory report."""
     extractor = _report_artifact_path_extractor(file_path)
     await stream_scan_tags_async(file_path, "<script", "</script>", extractor["visit"])
-    return extractor["state"]["path"]
+    return cast(str | None, extractor["state"]["path"])
 
 
 def extract_test_run_report_dump_sync(
@@ -447,7 +451,7 @@ def extract_test_run_report_dump_sync(
     # Consume executable scripts as whole elements: the embedded viewer itself
     # contains report-writer source with data-tag strings that are not payloads.
     stream_scan_tags(file_path, "<script", "</script>", visit)
-    return state["result"]
+    return cast(dict[str, Any] | None, state["result"])
 
 
 def parse_image_scripts(html: str) -> dict[str, str]:
@@ -595,7 +599,7 @@ def generate_report_artifact_script_tag(path: str) -> str:
     )
 
 
-def generate_test_run_report_script_tag(dump: dict[str, Any]) -> str:
+def generate_test_run_report_script_tag(dump: Mapping[str, Any]) -> str:
     return (
         '<script type="'
         + TEST_RUN_REPORT_SCRIPT_TYPE

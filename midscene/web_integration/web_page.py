@@ -122,10 +122,6 @@ def _normalize_key_inputs(value: str | list[str]) -> list[str]:
     result: list[str] = []
 
     for item in inputs:
-        if not isinstance(item, str):
-            result.append(item)
-            continue
-
         trimmed = item.strip()
         if not trimmed:
             result.append(item)

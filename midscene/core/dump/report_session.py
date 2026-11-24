@@ -15,7 +15,7 @@ import time
 import uuid
 from contextvars import ContextVar
 from pathlib import Path
-from typing import Any, Optional, Protocol, TypedDict
+from typing import Any, Optional, Protocol, TypedDict, cast
 
 from midscene.core.dump.execution_recorder import ExecutionRecorder
 from midscene.core.dump.html_utils import (
@@ -38,6 +38,7 @@ from midscene.core.dump.report_artifact_store import (
     write_report_artifact_file,
 )
 from midscene.core.dump.screenshot_store import ReportImageStore
+from midscene.core.test_runner.reporting.types import RunReportInput
 from midscene.shared.env import get_midscene_run_dir
 
 __all__ = [
@@ -85,7 +86,12 @@ class IReportGenerator(Protocol):
 class NullReportGenerator:
     """No-op generator used when report generation is disabled."""
 
-    def on_execution_update(self, execution, report_meta, attributes=None) -> None:
+    def on_execution_update(
+        self,
+        execution: dict[str, Any],
+        report_meta: ReportMeta,
+        attributes: dict[str, Any] | None = None,
+    ) -> None:
         return None
 
     async def flush(self) -> None:
@@ -175,10 +181,10 @@ class _ReportSourceRecorder:
     def __init__(self, directory: str, busy: Any | None = None):
         self.directory = directory
         self.busy = busy
-        self.snapshot_images: set = set()
+        self.snapshot_images: set[str] = set()
         self.recorder = ExecutionRecorder()
         self.id = uuid.uuid4().hex
-        self._collected = set()
+        self._collected: set[str] = set()
         self._source_path: str | None = None
         self._finalization: asyncio.Future | None = None
         self._uncollected_source: dict[str, Any] | None = None
@@ -350,27 +356,30 @@ class ReportSession:
             return self._completion
 
         async with self._lock:
-            if self._completion is not None:
-                return self._completion
-            sources: list[dict[str, Any]] = []
-            for writer in self._writers:
-                source = await writer.capture_uncollected()
-                if source:
-                    sources.append(source)
-                if not writer.is_busy():
-                    await writer.finalize()
-                else:
-                    await writer.flush()
-            os.makedirs(self.directory, exist_ok=True)
-            os.makedirs(os.path.join(self.directory, "screenshots"), exist_ok=True)
-            with open(
-                os.path.join(self.directory, "report.json"),
-                "w",
-                encoding="utf-8",
-            ) as handle:
-                json.dump({"status": "complete"}, handle)
-            self._completion = sources
-            return sources
+            return await self._finish_locked()
+
+    async def _finish_locked(self) -> list[dict[str, Any]]:
+        if self._completion is not None:
+            return self._completion
+        sources: list[dict[str, Any]] = []
+        for writer in self._writers:
+            source = await writer.capture_uncollected()
+            if source:
+                sources.append(source)
+            if not writer.is_busy():
+                await writer.finalize()
+            else:
+                await writer.flush()
+        os.makedirs(self.directory, exist_ok=True)
+        os.makedirs(os.path.join(self.directory, "screenshots"), exist_ok=True)
+        with open(
+            os.path.join(self.directory, "report.json"),
+            "w",
+            encoding="utf-8",
+        ) as handle:
+            json.dump({"status": "complete"}, handle)
+        self._completion = sources
+        return sources
 
     async def prune(self) -> None:
         if self._completion is None:
@@ -543,7 +552,7 @@ class ReportGenerator:
                         compact_report_dumps,
                     )
 
-                    compact_report_dumps(self.report_path)
+                    compact_report_dumps(cast(str, self.report_path))
                 except Exception as error:  # noqa: BLE001 - keep the raw report
                     from loguru import logger
 
@@ -632,7 +641,9 @@ class ReportGenerator:
         if self._recorder is None:
             self._recorder = ExecutionRecorder(self._dump.setdefault("executions", []))
         self._recorder.report_meta = meta
-        report_meta = self._last_report_meta or dict(meta)
+        report_meta = self._last_report_meta
+        if report_meta is None:
+            report_meta = cast(ReportMeta, dict(meta))
         executions = list(self._recorder.executions)
         agent_dump = ReportActionDump({**report_meta, "executions": executions})
         report_id = (
@@ -645,7 +656,7 @@ class ReportGenerator:
         )
 
         dump = build_agent_test_run_report_dump(
-            input,
+            cast(RunReportInput, input),
             agent_dump.to_json(),
             {
                 "reportId": report_id,
@@ -678,7 +689,7 @@ class ReportGenerator:
             self._flush_inline()
             if not self._initialized:
                 self._initialize_inline_report()
-            with open(self.report_path, "a", encoding="utf-8") as handle:
+            with open(cast(str, self.report_path), "a", encoding="utf-8") as handle:
                 handle.write("\n" + generate_test_run_report_script_tag(dump))
 
         self._written = True
@@ -689,14 +700,16 @@ class ReportGenerator:
     # -- publication -------------------------------------------------------
 
     def _initialize_inline_report(self) -> None:
-        Path(self.report_path).parent.mkdir(parents=True, exist_ok=True)
-        Path(self.report_path).write_text(get_report_tpl(), encoding="utf-8")
+        report_path = cast(str, self.report_path)
+        Path(report_path).parent.mkdir(parents=True, exist_ok=True)
+        Path(report_path).write_text(get_report_tpl(), encoding="utf-8")
         self._initialized = True
 
     def _initialize_directory_report(self) -> None:
-        Path(self.report_path).parent.mkdir(parents=True, exist_ok=True)
+        report_path = cast(str, self.report_path)
+        Path(report_path).parent.mkdir(parents=True, exist_ok=True)
         write_report_artifact_file(
-            self.report_path,
+            report_path,
             f"{get_report_tpl()}{get_base_url_fix_script()}\n"
             f"{generate_report_artifact_script_tag('report.json')}",
         )
@@ -734,7 +747,7 @@ class ReportGenerator:
         self._print_report_path()
 
     def _append_inline_image(self, image_id: str, data: str) -> None:
-        with open(self.report_path, "a", encoding="utf-8") as handle:
+        with open(cast(str, self.report_path), "a", encoding="utf-8") as handle:
             handle.write(f"\n{generate_image_script_tag(image_id, data)}")
 
     def _write_execution_inline(self, execution: Any) -> None:
@@ -745,7 +758,7 @@ class ReportGenerator:
             {**(self._last_report_meta or {}), "executions": [dump_execution]}
         )
         serialized = single_dump.serialize_with_reference_images(reference_refs)
-        with open(self.report_path, "a", encoding="utf-8") as handle:
+        with open(cast(str, self.report_path), "a", encoding="utf-8") as handle:
             handle.write(
                 "\n"
                 + generate_dump_script_tag(serialized, self._dump_script_attributes())
@@ -799,7 +812,7 @@ class ReportGenerator:
                 "executions": self._recorder.executions,
             }
         )
-        with open(self.report_path, "a", encoding="utf-8") as handle:
+        with open(cast(str, self.report_path), "a", encoding="utf-8") as handle:
             handle.write("\n" + generate_agent_report_comment(report_dump.to_json()))
 
     def _execution_comment_key(self, execution: Any) -> str:
@@ -825,12 +838,12 @@ class ReportGenerator:
         return f"id:{execution_id}"
 
     def _execution_dump_directory(self) -> str:
-        report_dir = os.path.dirname(self.report_path) or "."
+        report_dir = os.path.dirname(cast(str, self.report_path)) or "."
         if self.screenshot_mode == "inline":
             return os.path.join(
                 report_dir,
                 ".execution-dumps",
-                os.path.basename(self.report_path),
+                os.path.basename(cast(str, self.report_path)),
             )
         return report_dir
 
@@ -918,7 +931,7 @@ class ReportGenerator:
         return ExecutionDump.from_json(execution)
 
     def _merge_report_meta(self, report_meta: ReportMeta) -> None:
-        self._last_report_meta = dict(report_meta)
+        self._last_report_meta = cast(ReportMeta, dict(report_meta))
         if "sdkVersion" not in self._dump and report_meta.get("sdkVersion"):
             self._dump["sdkVersion"] = report_meta["sdkVersion"]
         if report_meta.get("groupName"):

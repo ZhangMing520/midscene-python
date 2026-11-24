@@ -12,8 +12,9 @@ import re
 import shutil
 import tempfile
 import uuid
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from urllib.parse import unquote
 
 from midscene.core.dump.html_utils import (
@@ -128,7 +129,7 @@ class TestReportImages:
     def _write_sync(self, ref: dict[str, Any], data: str) -> None:
         target = self._reference(ref, data)
         if target.get("storage") == "file":
-            path = target.get("path")
+            path = cast(str, target.get("path"))
             if path not in self._files:
                 destination = self.report_path.parent / path
                 destination.parent.mkdir(parents=True, exist_ok=True)
@@ -282,7 +283,7 @@ class ReportArtifactWriter:
     ) -> None:
         self.add_group(group_id, serialized, source_path, attributes, origins)
 
-    def _footer(self, runner: dict[str, Any] | None, comment: str) -> str:
+    def _footer(self, runner: Mapping[str, Any] | None, comment: str) -> str:
         if self.external:
             data = generate_report_artifact_script_tag("report.json")
         elif runner:
@@ -291,7 +292,9 @@ class ReportArtifactWriter:
             data = ""
         return f"{data}{comment}\n</html>\n"
 
-    def finish(self, runner: dict[str, Any] | None = None, comment: str = "") -> None:
+    def finish(
+        self, runner: Mapping[str, Any] | None = None, comment: str = ""
+    ) -> None:
         if self.external:
             if runner:
                 self.manifest["runner"] = "data/runner.json"
@@ -308,7 +311,7 @@ class ReportArtifactWriter:
             handle.write(self._footer(runner, comment))
 
     def finish_sync(
-        self, runner: dict[str, Any] | None = None, comment: str = ""
+        self, runner: Mapping[str, Any] | None = None, comment: str = ""
     ) -> None:
         self.finish(runner, comment)
 
@@ -396,7 +399,9 @@ def _export_streamed_report_artifact(
         kind = hint
     else:
         kind = "test" if runner else "agent"
-    report_id = (manifest or {}).get("reportId") or (runner or {}).get("runId")
+    report_id = cast(
+        str | None, (manifest or {}).get("reportId") or (runner or {}).get("runId")
+    )
 
     output.mkdir(parents=True, exist_ok=True)
     temporary = Path(tempfile.mkdtemp(dir=output, prefix=".report-export-"))

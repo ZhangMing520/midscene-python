@@ -1,9 +1,12 @@
 """Action execution and locate resolution (upstream agent/task-builder.ts)."""
 
+from __future__ import annotations
+
 import asyncio
 import inspect
 import time
-from typing import Any
+from collections.abc import Awaitable, Callable, Mapping
+from typing import Any, Protocol, TypeVar, cast
 
 import yaml as pyyaml
 from loguru import logger
@@ -13,18 +16,106 @@ from midscene.core.agent.task_cache import TaskCache
 from midscene.core.agent.tasks import build_action_report_task
 from midscene.core.agent.ui_utils import to_logical_coords
 from midscene.core.agent.utils import _strip_runtime_locate_result
+from midscene.core.ai_model.models.registry import ModelRuntime
 from midscene.core.ai_model.shared.multimodal_prompt import user_prompt_to_string
 from midscene.core.common import (
     find_all_midscene_locator_field,
     parse_action_param,
 )
 from midscene.core.device import (
+    DeviceAction,
     find_action_in_action_space_or_throw,
     scale_action_distances,
 )
 from midscene.core.errors import LocateFailureError
 from midscene.core.service import locate_service
-from midscene.core.types import TUserPrompt, UIContext, supports_interface_extension
+from midscene.core.types import (
+    AbstractInterface,
+    Rect,
+    TUserPrompt,
+    UIContext,
+    supports_interface_extension,
+)
+
+_ActionDefinition = DeviceAction | dict[str, Any]
+_T = TypeVar("_T")
+
+
+class _CacheFeatureInterface(Protocol):
+    async def cache_feature_for_point(
+        self, center: list[float], options: dict[str, Any] | None = ...
+    ) -> dict[str, Any]: ...
+
+    async def rect_matches_cache_feature(
+        self, feature: dict[str, Any]
+    ) -> Rect | None: ...
+
+
+class _LocateService(Protocol):
+    context_retriever_fn: Callable[..., Awaitable[UIContext[Any]]]
+
+    async def locate(
+        self,
+        query: dict[str, Any],
+        options: dict[str, Any] | None,
+        model_runtime: ModelRuntime | None,
+        abort_signal: None,
+    ) -> dict[str, Any]: ...
+
+
+class _PlanningAgent(Protocol):
+    interface: AbstractInterface
+
+    @property
+    def action_space(self) -> list[Any]: ...
+
+    async def _locate_for_action(self, locate_param: Any) -> dict[str, Any]: ...
+
+
+class _LocateAgent(_PlanningAgent, Protocol):
+    def _get_task_cache(self) -> TaskCache | None: ...
+
+    async def _write_locate_cache(
+        self,
+        prompt_str: str,
+        element: dict[str, Any],
+        cache: TaskCache | None,
+        cacheable: bool | None,
+        replace_index: int | None = ...,
+    ) -> None: ...
+
+    async def _rect_from_cache_feature(
+        self, feature: dict[str, Any]
+    ) -> Rect | None: ...
+
+    async def _get_ui_context(self, action: str) -> UIContext[Any]: ...
+
+    async def _run_locate(
+        self,
+        prompt: TUserPrompt,
+        context: UIContext[Any],
+        deep_locate: bool = ...,
+        plan_located_element: dict[str, Any] | None = ...,
+    ) -> dict[str, Any]: ...
+
+
+class _RuntimeAgent(Protocol):
+    def _resolve_runtime(self, task_type: str) -> ModelRuntime: ...
+
+
+class _CacheWriterAgent(Protocol):
+    interface: AbstractInterface
+
+    def model_runtime(self, intent: str) -> ModelRuntime | None: ...
+
+
+class _ReplayAgent(Protocol):
+    async def _execute_planning_action(
+        self,
+        action: dict[str, Any],
+        distance_ratio: float | None = ...,
+        cacheable: bool | None = ...,
+    ) -> Any: ...
 
 
 def _normalize_locate_param(param: Any) -> dict[str, Any]:
@@ -52,77 +143,103 @@ class _TaskBuilderAgent:
     """Adapter exposing the Agent surface consumed by task_builder helpers."""
 
     def __init__(self, deps: dict[str, Any]) -> None:
-        self.interface = deps.get("interfaceInstance", deps.get("interface_instance"))
-        self.action_space = list(
+        self.interface = cast(
+            AbstractInterface,
+            deps.get("interfaceInstance", deps.get("interface_instance")),
+        )
+        self._action_space = list(
             deps.get("actionSpace", deps.get("action_space")) or []
         )
-        self._task_cache = deps.get("taskCache", deps.get("task_cache"))
-        self._service = deps.get("service")
-        self._get_default_model_runtime = deps.get(
-            "getDefaultModelRuntime", deps.get("get_default_model_runtime")
+        self._task_cache = cast(
+            TaskCache | None, deps.get("taskCache", deps.get("task_cache"))
         )
-        self.wait_after_action = deps.get(
-            "waitAfterAction", deps.get("wait_after_action")
+        self._service = cast(
+            Mapping[str, Any] | _LocateService | None, deps.get("service")
         )
-        self._provided_context = None
+        self._get_default_model_runtime = cast(
+            Callable[[], ModelRuntime | None] | None,
+            deps.get("getDefaultModelRuntime", deps.get("get_default_model_runtime")),
+        )
+        self.wait_after_action = cast(
+            float | None,
+            deps.get("waitAfterAction", deps.get("wait_after_action")),
+        )
+        self._provided_context: UIContext[Any] | None = None
 
-    def _get_task_cache(self):
+    @property
+    def action_space(self) -> list[Any]:
+        return self._action_space
+
+    def _get_task_cache(self) -> TaskCache | None:
         return self._task_cache
 
-    def model_runtime(self, intent: str = "default"):
+    def model_runtime(self, intent: str = "default") -> ModelRuntime | None:
         if callable(self._get_default_model_runtime):
             return self._get_default_model_runtime()
         return None
 
-    async def _get_ui_context(self, action: str = "locate") -> UIContext:
+    async def _get_ui_context(self, action: str = "locate") -> UIContext[Any]:
         if self._provided_context is not None:
             return self._provided_context
-        retriever = getattr(self._service, "contextRetrieverFn", None) or getattr(
-            self._service, "context_retriever_fn", None
+        retriever = cast(
+            Callable[..., Awaitable[UIContext[Any]]] | None,
+            getattr(self._service, "contextRetrieverFn", None)
+            or getattr(self._service, "context_retriever_fn", None),
         )
         if callable(retriever):
             return await retriever(None)
         return await self.interface.get_context()
 
     async def _write_locate_cache(
-        self, prompt_str, element, cache, cacheable, replace_index=None
-    ):
+        self,
+        prompt_str: str,
+        element: dict[str, Any],
+        cache: TaskCache | None,
+        cacheable: bool | None,
+        replace_index: int | None = None,
+    ) -> None:
         return await write_locate_cache(
             self, prompt_str, element, cache, cacheable, replace_index
         )
 
-    async def _locate_for_action(self, locate_param):
+    async def _locate_for_action(self, locate_param: Any) -> dict[str, Any]:
         return await locate_for_action(self, locate_param)
 
-    async def _rect_from_cache_feature(self, feature):
+    async def _rect_from_cache_feature(self, feature: dict[str, Any]) -> Rect | None:
         return await rect_from_cache_feature(self, feature)
 
     async def _run_locate(
         self,
-        prompt,
-        context,
-        deep_locate=False,
-        plan_located_element=None,
-    ):
+        prompt: TUserPrompt,
+        context: UIContext[Any],
+        deep_locate: bool = False,
+        plan_located_element: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         locate_fn = (
             self._service.get("locate")
             if isinstance(self._service, dict)
             else getattr(self._service, "locate", None)
         )
         if callable(locate_fn):
-            response = locate_fn(
-                {"prompt": prompt},
-                {"uiContext": context, "planLocatedElement": plan_located_element},
-                self.model_runtime("locate"),
-                None,
+            locate = cast(
+                Callable[..., dict[str, Any] | Awaitable[dict[str, Any]]], locate_fn
             )
-            if hasattr(response, "__await__"):
-                response = await response
+            response = await _maybe_await(
+                locate(
+                    {"prompt": prompt},
+                    {
+                        "uiContext": context,
+                        "planLocatedElement": plan_located_element,
+                    },
+                    self.model_runtime("locate"),
+                    None,
+                )
+            )
             element = response.get("element") if isinstance(response, dict) else None
             if element:
-                return to_logical_coords(element, context)
+                return to_logical_coords(cast(dict[str, Any], element), context)
         return await run_locate(
-            self,
+            cast(_RuntimeAgent, self),
             prompt,
             context,
             deep_locate=deep_locate,
@@ -140,8 +257,8 @@ class TaskBuilder:
     async def build(
         self,
         plans: list[dict[str, Any]],
-        planning_model: Any,
-        locate_model: Any,
+        planning_model: ModelRuntime | None,
+        locate_model: ModelRuntime | None,
         options: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Convert planning actions into executable task descriptors."""
@@ -152,7 +269,9 @@ class TaskBuilder:
             "Finished": self._handle_finished_plan,
         }
         for plan in plans:
-            handler = handlers.get(plan.get("type"), self._handle_action_plan)
+            handler = handlers.get(
+                cast(str, plan.get("type")), self._handle_action_plan
+            )
             await handler(plan, tasks, options)
         return {"tasks": tasks}
 
@@ -188,9 +307,10 @@ class TaskBuilder:
         tasks: list[dict[str, Any]],
         options: dict[str, Any],
     ) -> None:
-        plan_type = plan.get("type")
-        definition = find_action_in_action_space_or_throw(
-            plan_type, self._agent.action_space
+        plan_type = cast(str, plan.get("type"))
+        definition = cast(
+            _ActionDefinition,
+            find_action_in_action_space_or_throw(plan_type, self._agent.action_space),
         )
         param = plan.get("param")
 
@@ -211,9 +331,9 @@ class TaskBuilder:
 
         async def action_executor(
             task_context: dict[str, Any],
-            _plan=plan,
-            _definition=definition,
-            _plan_type=plan_type,
+            _plan: dict[str, Any] = plan,
+            _definition: _ActionDefinition = definition,
+            _plan_type: str = plan_type,
         ) -> dict[str, Any]:
             delay_before = _definition_field(_definition, "delay_before_runner")
             if delay_before is None:
@@ -261,7 +381,7 @@ class TaskBuilder:
         thought: Any,
         raw_param: Any,
         options: dict[str, Any],
-        on_result: Any | None = None,
+        on_result: Callable[[dict[str, Any]], None] | None = None,
     ) -> dict[str, Any]:
         locate_param = _normalize_locate_param(raw_param)
         if options.get("cacheable") is not None:
@@ -287,8 +407,8 @@ class TaskBuilder:
 
         async def locate_executor(
             task_context: dict[str, Any],
-            _param=locate_param,
-            _on_result=on_result,
+            _param: dict[str, Any] = locate_param,
+            _on_result: Callable[[dict[str, Any]], None] | None = on_result,
         ) -> dict[str, Any]:
             previous = self._agent._provided_context
             if task_context.get("uiContext") is not None:
@@ -314,20 +434,22 @@ async def _noop_executor(task_context: dict[str, Any]) -> None:
     return None
 
 
-def _definition_field(definition: Any, name: str) -> Any:
+def _definition_field(definition: _ActionDefinition, name: str) -> Any:
     if isinstance(definition, dict):
         return definition.get(name)
     return getattr(definition, name, None)
 
 
-def _write_param_result(param: dict[str, Any], field: str):
+def _write_param_result(
+    param: dict[str, Any], field: str
+) -> Callable[[dict[str, Any]], None]:
     def write(result: Any) -> None:
         param[field] = result
 
     return write
 
 
-def _accepts_task_context(execute: Any) -> bool:
+def _accepts_task_context(execute: Callable[..., Any]) -> bool:
     """Check whether an action executor wants the running task context."""
     try:
         parameters = inspect.signature(execute).parameters.values()
@@ -345,14 +467,14 @@ def _accepts_task_context(execute: Any) -> bool:
     return positional >= 4
 
 
-async def _maybe_await(value: Any) -> Any:
+async def _maybe_await(value: _T | Awaitable[_T]) -> _T:
     if hasattr(value, "__await__"):
-        return await value
+        return await cast(Awaitable[_T], value)
     return value
 
 
 async def _run_before_invoke(
-    interface: Any, action_name: str, param: Any, delay_ms: float
+    interface: object, action_name: str, param: Any, delay_ms: float
 ) -> None:
     """Run the before-invoke hook in parallel with the pre-action delay."""
     hook = getattr(interface, "before_invoke_action", None)
@@ -379,7 +501,7 @@ async def _run_before_invoke(
 
 
 async def _run_after_invoke(
-    interface: Any, action_name: str, param: Any, delay_ms: float
+    interface: object, action_name: str, param: Any, delay_ms: float
 ) -> None:
     """Wait the post-action delay, then the default wait and after hook."""
     if delay_ms > 0:
@@ -397,7 +519,9 @@ async def _run_after_invoke(
             ) from error
 
 
-def _with_prompt_display(element: Any, locate_param: dict[str, Any]) -> Any:
+def _with_prompt_display(
+    element: dict[str, Any], locate_param: dict[str, Any]
+) -> dict[str, Any]:
     """Replace the located description with the plan's promptDisplay."""
     prompt_display = locate_param.get("promptDisplay")
     if not prompt_display or not isinstance(element, dict):
@@ -407,14 +531,18 @@ def _with_prompt_display(element: Any, locate_param: dict[str, Any]) -> Any:
 
 
 async def execute_planning_action(
-    agent,
+    agent: _PlanningAgent,
     action: dict[str, Any],
     distance_ratio: float | None = None,
     cacheable: bool | None = None,
     task_context: dict[str, Any] | None = None,
 ) -> Any:
-    action_type = action.get("type")
-    definition = find_action_in_action_space_or_throw(action_type, agent.action_space)
+    action_type = cast(str, action.get("type"))
+    # This execution path already requires the attribute-style executor API.
+    definition = cast(
+        DeviceAction,
+        find_action_in_action_space_or_throw(action_type, agent.action_space),
+    )
     param = action.get("param") or {}
     if distance_ratio is not None:
         param = scale_action_distances(param, definition, distance_ratio)
@@ -449,7 +577,7 @@ async def execute_planning_action(
     )
 
 
-async def locate_for_action(agent, locate_param: Any) -> dict[str, Any]:
+async def locate_for_action(agent: _LocateAgent, locate_param: Any) -> dict[str, Any]:
     """Resolve a planning locate parameter to pixel coordinates.
 
     Locate-cache order mirrors upstream task-builder: plan coordinates win,
@@ -469,7 +597,7 @@ async def locate_for_action(agent, locate_param: Any) -> dict[str, Any]:
         raise ValueError("locate parameter requires a prompt")
 
     prompt_str = user_prompt_to_string(prompt) if prompt else ""
-    cacheable = locate_param.get("cacheable", True)
+    cacheable = cast(bool | None, locate_param.get("cacheable", True))
     cache = agent._get_task_cache()
     deep_locate = bool(locate_param.get("deepLocate"))
 
@@ -486,7 +614,11 @@ async def locate_for_action(agent, locate_param: Any) -> dict[str, Any]:
     # Upstream task-builder: elementFromPlan = locateParam.deepLocate
     # ? undefined : planLocatedElement. With deepLocate the plan
     # coordinates are only a search-area hint for the two-stage locate.
-    if has_plan_coordinates and not deep_locate:
+    if (
+        isinstance(cached_pixel, dict)
+        and cached_pixel.get("center")
+        and not deep_locate
+    ):
         # Fresh plan coordinates take precedence over the cache. Record the
         # feature once for future runs, unless an entry already exists.
         if matched is None:
@@ -514,7 +646,7 @@ async def locate_for_action(agent, locate_param: Any) -> dict[str, Any]:
 
     context = await agent._get_ui_context("locate")
     element = await agent._run_locate(
-        prompt,
+        cast(TUserPrompt, prompt),
         context,
         deep_locate=deep_locate,
         plan_located_element=cached_pixel if deep_locate else None,
@@ -526,7 +658,7 @@ async def locate_for_action(agent, locate_param: Any) -> dict[str, Any]:
 
 
 async def run_locate(
-    agent,
+    agent: _RuntimeAgent,
     prompt: TUserPrompt,
     context: UIContext,
     deep_locate: bool = False,
@@ -541,18 +673,21 @@ async def run_locate(
         plan_located_element=plan_located_element,
     )
     element = response.get("element")
-    if not element or not element.get("center"):
+    if not element or not cast(dict[str, Any], element).get("center"):
         errors = response.get("errors") or ["element not found"]
         raise LocateFailureError(
             f"Element not found : {user_prompt_to_string(prompt)}"
             + (f" ({'; '.join(errors)})" if errors else "")
         )
-    return to_logical_coords(element, context)
+    return to_logical_coords(cast(dict[str, Any], element), context)
 
 
-async def rect_from_cache_feature(agent, feature: dict[str, Any]):
+async def rect_from_cache_feature(
+    agent: _CacheWriterAgent, feature: dict[str, Any]
+) -> Rect | None:
     try:
-        return await agent.interface.rect_matches_cache_feature(feature)
+        interface = cast(_CacheFeatureInterface, agent.interface)
+        return await interface.rect_matches_cache_feature(feature)
     except NotImplementedError:
         return None
     except Exception as e:
@@ -561,11 +696,11 @@ async def rect_from_cache_feature(agent, feature: dict[str, Any]):
 
 
 async def write_locate_cache(
-    agent,
+    agent: _CacheWriterAgent,
     prompt_str: str,
     element: dict[str, Any],
     cache: TaskCache | None,
-    cacheable: Any,
+    cacheable: bool | None,
     replace_index: int | None = None,
 ) -> None:
     if (
@@ -585,7 +720,8 @@ async def write_locate_cache(
         # Without a runtime the interface falls back to order-insensitive paths.
         logger.debug(f"order-sensitive judge unavailable: {e}")
     try:
-        feature = await agent.interface.cache_feature_for_point(
+        interface = cast(_CacheFeatureInterface, agent.interface)
+        feature = await interface.cache_feature_for_point(
             [float(center[0]), float(center[1])], options
         )
     except NotImplementedError:
@@ -598,7 +734,7 @@ async def write_locate_cache(
 
 
 async def replay_cached_plan(
-    agent,
+    agent: _ReplayAgent,
     cached_entry: dict[str, Any],
     reported: list[dict[str, Any]] | None = None,
 ) -> bool:

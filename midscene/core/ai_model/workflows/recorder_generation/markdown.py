@@ -4,7 +4,7 @@ import base64
 import io
 import json
 import re
-from typing import Any
+from typing import Any, cast
 
 from loguru import logger
 from PIL import Image
@@ -26,7 +26,9 @@ MARKDOWN_REPLAY_SCREENSHOT_PAYLOAD_BUDGET = 600_000
 MARKDOWN_REPLAY_SCREENSHOT_MAX_EDGE = 768
 
 
-def limit_screenshot_assets_for_markdown_replay(screenshot_assets):
+def limit_screenshot_assets_for_markdown_replay(
+    screenshot_assets: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
     """Keep assets within the total payload budget (upstream)."""
     used_payload = 0
     kept = []
@@ -42,20 +44,22 @@ def limit_screenshot_assets_for_markdown_replay(screenshot_assets):
     return kept
 
 
-def _decode_data_url(data_url: str):
+def _decode_data_url(data_url: str) -> tuple[str, str]:
     match = re.match(r"^data:(image/[a-zA-Z0-9.+-]+);base64,(.+)$", data_url)
     if match:
         return match.group(1), match.group(2)
     return "image/png", data_url
 
 
-def _image_info_of_base64(data_url: str):
+def _image_info_of_base64(data_url: str) -> tuple[int, int]:
     _, raw = _decode_data_url(data_url)
     with Image.open(io.BytesIO(base64.b64decode(raw))) as image:
-        return image.size
+        return cast(tuple[int, int], image.size)
 
 
-def _compress_screenshot_asset_for_markdown_replay(asset):
+def _compress_screenshot_asset_for_markdown_replay(
+    asset: dict[str, Any],
+) -> dict[str, Any]:
     width, height = _image_info_of_base64(asset.get("dataUrl", ""))
     longest_edge = max(width, height)
     if longest_edge <= MARKDOWN_REPLAY_SCREENSHOT_MAX_EDGE:
@@ -78,7 +82,9 @@ def _compress_screenshot_asset_for_markdown_replay(asset):
     }
 
 
-def prepare_screenshot_assets_for_markdown_replay(screenshot_assets):
+def prepare_screenshot_assets_for_markdown_replay(
+    screenshot_assets: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
     """Shrink oversized assets, then apply the payload budget (upstream)."""
     compressed = []
     for asset in screenshot_assets:
@@ -94,7 +100,9 @@ def prepare_screenshot_assets_for_markdown_replay(screenshot_assets):
     return limit_screenshot_assets_for_markdown_replay(compressed)
 
 
-def _summarize_screenshot_assets(screenshot_assets):
+def _summarize_screenshot_assets(
+    screenshot_assets: list[dict[str, Any]],
+) -> dict[str, int]:
     payload_sizes = [len(asset.get("dataUrl", "")) for asset in screenshot_assets]
     return {
         "count": len(screenshot_assets),
@@ -103,7 +111,7 @@ def _summarize_screenshot_assets(screenshot_assets):
     }
 
 
-def _get_prompt_shape(prompt):
+def _get_prompt_shape(prompt: list[dict[str, Any]]) -> dict[str, int]:
     text_chars = 0
     image_count = 0
     for message in prompt:
@@ -121,7 +129,9 @@ def _get_prompt_shape(prompt):
     return {"textChars": text_chars, "imageCount": image_count}
 
 
-def _remove_omitted_screenshot_paths(summary, screenshot_assets):
+def _remove_omitted_screenshot_paths(
+    summary: dict[str, Any], screenshot_assets: list[dict[str, Any]]
+) -> dict[str, Any]:
     included_paths = {asset.get("relativePath") for asset in screenshot_assets}
     return {
         **summary,

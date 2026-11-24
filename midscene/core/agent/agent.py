@@ -14,15 +14,16 @@ Fully aligned with upstream web-infra-dev/midscene v1.17.4 (packages/core/src/ag
 import asyncio
 import os
 import time
-from pathlib import Path
-from typing import Any
 from collections.abc import Callable
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Protocol, cast
 
 import yaml as pyyaml
 from loguru import logger
 
 from midscene.core.device import (
     DeviceAction,
+    LocateFn,
     _supports,
     build_action_space_for,
     find_action_in_action_space_or_throw,
@@ -44,6 +45,7 @@ from midscene.core.ai_model.workflows import (
 from midscene.core.ai_model.shared.multimodal_prompt import user_prompt_to_string
 from midscene.core.ai_model.models.jev.planning import jev_plan
 from midscene.core.ai_model.model_adapter.planning import resolve_planning
+from midscene.core.ai_model.workflows.planning.types import PlanningAIResponse
 from midscene.core.agent import (
     agent_report_manager,
     cache_config,
@@ -81,6 +83,7 @@ from midscene.core.types import (
     AbstractInterface,
     InterfaceType,
     LocateResult,
+    Rect,
     ScrollParam,
     TUserPrompt,
     UIContext,
@@ -106,6 +109,28 @@ from midscene.core.agent.utils import (
 
 _ABORT_SIGNAL_KEYS = ("abortSignal", "abort_signal")
 
+_DumpUpdateListener = Callable[[str, dict[str, Any] | None], object]
+_ProgressListener = Callable[[dict[str, Any]], object]
+
+if TYPE_CHECKING:
+    from midscene.core.agent.agent_report_manager import _ReportAgent
+    from midscene.core.agent.observe_node import ObserveAgent
+    from midscene.core.agent.ui_observer import UIObserver
+
+
+class _CustomPlanningFn(Protocol):
+    async def __call__(
+        self,
+        instruction: str,
+        context: UIContext,
+        model_runtime: ModelRuntime,
+        action_space: list[DeviceAction],
+        conversation_history: ConversationHistory,
+        include_locate_in_planning: bool = False,
+        action_context: str | None = None,
+        reference_images: list[str] | None = None,
+    ) -> PlanningAIResponse: ...
+
 
 class Agent:
     """Core Agent class that orchestrates AI model and device interactions."""
@@ -119,11 +144,16 @@ class Agent:
         self.options = options or AgentOptions()
 
         model_config_option = self.options.model_config
+        resolved_model_config = cast(
+            dict[str, str | int | float] | None, model_config_option
+        )
         if callable(model_config_option):  # legacy callable form
-            model_config_option = model_config_option()
+            resolved_model_config = cast(
+                dict[str, str | int | float] | None, model_config_option()
+            )
         self._model_config_manager: ModelConfigManager = (
-            ModelConfigManager(model_config_option)
-            if model_config_option
+            ModelConfigManager(resolved_model_config)
+            if resolved_model_config
             else get_global_model_config_manager()
         )
 
@@ -136,12 +166,12 @@ class Agent:
         legacy_action_context = getattr(self.options, "ai_action_context", None)
         if legacy_action_context and "aiAct" not in self.ai_contexts:
             self.ai_contexts["aiAct"] = legacy_action_context
-        self._report_builder = None
+        self._report_builder: ExecutionDumpBuilder | None = None
         self._usage_by_intent: dict[str, dict[str, int]] = {}
         # Report state shared by the upstream-shaped public APIs
         # (resetDump/finalizeReport/dumpDataString/reportHTMLString).
-        self._dump_update_listeners: list[Callable] = []
-        self._progress_listeners: list[Callable] = []
+        self._dump_update_listeners: list[_DumpUpdateListener] = []
+        self._progress_listeners: list[_ProgressListener] = []
         self._progress_sequence = 0
         self._report_finalized: str | None = None
         self._report_file_name: str | None = None
@@ -217,7 +247,11 @@ class Agent:
         """File-chooser action only exposed when the interface implements the
         listener (upstream defineActionRegisterFileChooserAccept)."""
 
-        async def execute(param: dict[str, Any], device: Any, locate_fn) -> None:
+        async def execute(
+            param: dict[str, Any],
+            device: AbstractInterface,
+            locate_fn: LocateFn,
+        ) -> None:
             accepter = self._active_file_chooser_accepter
             if accepter is None:
                 raise RuntimeError(
@@ -268,9 +302,13 @@ class Agent:
         else:
             self.ai_contexts[target] = context
 
-    def _resolve_call_context(self, api_name: str, options: dict | None) -> str | None:
-        if options and options.get("context") is not None:
-            return options["context"]
+    def _resolve_call_context(
+        self, api_name: str, options: dict[str, Any] | None
+    ) -> str | None:
+        if options is not None:
+            context = options.get("context")
+            if context is not None:
+                return cast(str, context)
         if api_name in self.ai_contexts:
             return self.ai_contexts[api_name]
         return self.ai_contexts.get("default")
@@ -342,7 +380,7 @@ class Agent:
     ) -> ExecutionSession:
         """Create a TaskRunner-backed session for one linear execution run."""
 
-        async def ui_context_builder(_signal: Any | None = None) -> Any:
+        async def ui_context_builder(_signal: object | None = None) -> UIContext:
             return await self.get_ui_context("locate")
 
         return ExecutionSession(name, ui_context_builder, options)
@@ -503,7 +541,7 @@ class Agent:
         error_count = 0
         output_string: str | None = None
         planning_advice: str | None = None
-        plan_result: dict[str, Any] | None = None
+        plan_result: PlanningAIResponse | None = None
         executed_actions: list[dict[str, Any]] = []
 
         context = await self._get_ui_context("aiAct")
@@ -754,14 +792,13 @@ class Agent:
         planning_advice: str | None,
         action_context: str | None = None,
         reference_images: list[str] | None = None,
-    ) -> dict[str, Any]:
+    ) -> PlanningAIResponse:
         adapter = planning_runtime.adapter
         planning_adapter = resolve_planning(adapter)
-        if (
-            planning_adapter["kind"] == "custom"
-            and planning_adapter.get("plan_fn") is not None
-        ):
-            return await planning_adapter["plan_fn"](
+        plan_fn = planning_adapter.get("plan_fn")
+        if planning_adapter["kind"] == "custom" and plan_fn is not None:
+            custom_plan = cast(_CustomPlanningFn, plan_fn)
+            return await custom_plan(
                 instruction=prompt_str,
                 context=context,
                 model_runtime=planning_runtime,
@@ -772,15 +809,18 @@ class Agent:
                 reference_images=reference_images,
             )
         if adapter.family == "jev":
-            return await jev_plan(
-                instruction=prompt_str,
-                context=context,
-                model_runtime=planning_runtime,
-                action_space=self.action_space,
-                conversation_history=conversation_history,
-                include_locate_in_planning=include_locate_in_planning,
-                action_context=action_context,
-                reference_images=reference_images,
+            return cast(
+                PlanningAIResponse,
+                await jev_plan(
+                    instruction=prompt_str,
+                    context=context,
+                    model_runtime=planning_runtime,
+                    action_space=self.action_space,
+                    conversation_history=conversation_history,
+                    include_locate_in_planning=include_locate_in_planning,
+                    action_context=action_context,
+                    reference_images=reference_images,
+                ),
             )
         return await standard_plan(
             user_instruction=prompt_str,
@@ -796,11 +836,11 @@ class Agent:
             images_include_count=2 if effort == "deepThink" else 1,
         )
 
-    async def ai(self, *args, **kwargs) -> str | None:
+    async def ai(self, *args: Any, **kwargs: Any) -> str | None:
         """Alias of aiAct (upstream `agent.ai(...)`)."""
         return await self.ai_act(*args, **kwargs)
 
-    async def ai_action(self, prompt: TUserPrompt, **kwargs) -> str | None:
+    async def ai_action(self, prompt: TUserPrompt, **kwargs: Any) -> str | None:
         """Deprecated alias of aiAct (upstream keeps the same alias)."""
         return await self.ai_act(prompt, kwargs or None)
 
@@ -904,8 +944,8 @@ class Agent:
 
     async def ai_input(
         self,
-        locate_prompt: TUserPrompt | str | int | None = None,
-        opt: dict[str, Any] | None = None,
+        locate_prompt: TUserPrompt | int | None = None,
+        opt: dict[str, Any] | str | None = None,
         value: str | int | None = None,
     ) -> None:
         """aiInput.
@@ -914,16 +954,19 @@ class Agent:
         Legacy signature: ai_input(value, locate_prompt).
         """
         self._check_not_destroyed()
-        legacy_form = (
+        input_value: object
+        if (
             opt is not None
             and value is None
             and (not isinstance(opt, dict) or "prompt" in opt or "images" in opt)
-        )
-        if legacy_form:
+        ):
             # legacy form: ai_input(value, locate_prompt)
-            value, locate_prompt, opt = locate_prompt, opt, {}
-        opt = dict(opt or {})
-        input_value = opt.pop("value", value)
+            input_value = locate_prompt
+            locate_prompt = opt
+            opt = {}
+        else:
+            opt = dict(cast(dict[str, Any], opt) or {})
+            input_value = opt.pop("value", value)
         if input_value is None:
             raise ValueError(
                 "input value must be a string or number, use empty string if you "
@@ -939,7 +982,9 @@ class Agent:
             opt["mode"] = "typeOnly"
         param: dict[str, Any] = {"value": input_value}
         if locate_prompt is not None:
-            param["locate"] = self._build_locate_param(locate_prompt, opt, "aiInput")
+            param["locate"] = self._build_locate_param(
+                cast(TUserPrompt, locate_prompt), opt, "aiInput"
+            )
         if opt.get("mode"):
             param["mode"] = opt["mode"]
         await self._call_action_in_action_space("Input", param)
@@ -971,8 +1016,8 @@ class Agent:
 
     async def ai_scroll(
         self,
-        locate_prompt: TUserPrompt | None = None,
-        opt: dict[str, Any] | None = None,
+        locate_prompt: TUserPrompt | ScrollParam | None = None,
+        opt: dict[str, Any] | str | None = None,
         scroll_param: dict[str, Any] | ScrollParam | None = None,
     ) -> None:
         """aiScroll.
@@ -983,7 +1028,13 @@ class Agent:
         self._check_not_destroyed()
         if opt is not None and not isinstance(opt, dict):
             # legacy form: ai_scroll(scroll_param, locate_prompt)
-            locate_prompt, scroll_param, opt = opt, scroll_param or locate_prompt, {}
+            locate_prompt, scroll_param, opt = (
+                opt,
+                cast(
+                    dict[str, Any] | ScrollParam | None, scroll_param or locate_prompt
+                ),
+                {},
+            )
         opt = dict(opt or {})
         if isinstance(locate_prompt, (dict, ScrollParam)):
             scroll_param = locate_prompt
@@ -1093,20 +1144,26 @@ class Agent:
     async def ai_boolean(
         self, prompt: TUserPrompt, opt: dict[str, Any] | None = None
     ) -> bool:
-        return await self._query_primitive("Boolean", "aiBoolean", prompt, opt)
+        result = await self._query_primitive("Boolean", "aiBoolean", prompt, opt)
+        return cast(bool, result)
 
-    async def ai_number(self, prompt: TUserPrompt, opt: dict[str, Any] | None = None):
-        return await self._query_primitive("Number", "aiNumber", prompt, opt)
+    async def ai_number(
+        self, prompt: TUserPrompt, opt: dict[str, Any] | None = None
+    ) -> float:
+        result = await self._query_primitive("Number", "aiNumber", prompt, opt)
+        return cast(float, result)
 
     async def ai_string(
         self, prompt: TUserPrompt, opt: dict[str, Any] | None = None
     ) -> str:
-        return await self._query_primitive("String", "aiString", prompt, opt)
+        result = await self._query_primitive("String", "aiString", prompt, opt)
+        return cast(str, result)
 
     async def ai_ask(
         self, prompt: TUserPrompt, opt: dict[str, Any] | None = None
     ) -> str:
-        return await self._query_primitive("String", "aiAsk", prompt, opt)
+        result = await self._query_primitive("String", "aiAsk", prompt, opt)
+        return cast(str, result)
 
     async def _query_primitive(
         self,
@@ -1489,114 +1546,161 @@ class Agent:
     def interface_type(self) -> InterfaceType:
         return self.interface.interface_type
 
-    def _get_report_builder(self):
-        return agent_report_manager.get_report_builder(self)
+    def _as_report_agent(self) -> "_ReportAgent":
+        # The helper protocol models interface_type as writable, while Agent
+        # intentionally exposes it as a read-only property.
+        return cast("_ReportAgent", self)
 
-    def record_to_report(self, title, opt=None):
+    def _get_report_builder(self) -> ExecutionDumpBuilder:
+        return agent_report_manager.get_report_builder(self._as_report_agent())
+
+    def record_to_report(self, title: str, opt: dict[str, Any] | None = None) -> None:
         return record_to_report_module.record_to_report(self, title, opt)
 
-    async def record_error_to_report(self, title, opt=None):
+    async def record_error_to_report(
+        self, title: str, opt: dict[str, Any] | None = None
+    ) -> None:
         return await record_to_report_module.record_error_to_report(self, title, opt)
 
-    def _report_name(self):
+    def _report_name(self) -> str:
         return report_file_name.report_name(self)
 
-    async def flush_report(self):
-        return await agent_report_manager.flush_report(self)
+    async def flush_report(self) -> str | None:
+        return await agent_report_manager.flush_report(self._as_report_agent())
 
-    def _write_report_artifact(self, name, dump):
-        return agent_report_manager.write_report_artifact(self, name, dump)
+    def _write_report_artifact(self, name: str, dump: dict[str, Any]) -> None:
+        return agent_report_manager.write_report_artifact(
+            self._as_report_agent(), name, dump
+        )
 
-    async def reset_dump(self):
-        return await agent_report_manager.reset_dump(self)
+    async def reset_dump(self) -> dict[str, Any]:
+        return await agent_report_manager.reset_dump(self._as_report_agent())
 
-    async def finalize_report(self):
-        return await agent_report_manager.finalize_report(self)
+    async def finalize_report(self) -> str | None:
+        return await agent_report_manager.finalize_report(self._as_report_agent())
 
-    def append_execution_dump(self, execution, runner=None):
-        return agent_report_manager.append_execution_dump(self, execution, runner)
+    def append_execution_dump(
+        self, execution: dict[str, Any], runner: object | None = None
+    ) -> None:
+        return agent_report_manager.append_execution_dump(
+            self._as_report_agent(), execution, runner
+        )
 
-    def dump_data_string(self, opt=None):
-        return agent_report_manager.dump_data_string(self, opt)
+    def dump_data_string(self, opt: dict[str, Any] | None = None) -> str:
+        return agent_report_manager.dump_data_string(self._as_report_agent(), opt)
 
-    def report_html_string(self, opt=None):
-        return agent_report_manager.report_html_string(self, opt)
+    def report_html_string(self, opt: dict[str, Any] | None = None) -> str:
+        return agent_report_manager.report_html_string(self._as_report_agent(), opt)
 
-    def write_out_action_dumps(self, execution_dump=None):
-        return agent_report_manager.write_out_action_dumps(self, execution_dump)
+    def write_out_action_dumps(
+        self, execution_dump: dict[str, Any] | None = None
+    ) -> str | None:
+        return agent_report_manager.write_out_action_dumps(
+            self._as_report_agent(), execution_dump
+        )
 
-    def add_dump_update_listener(self, listener):
-        return agent_report_manager.add_dump_update_listener(self, listener)
+    def add_dump_update_listener(
+        self, listener: _DumpUpdateListener
+    ) -> Callable[[], None]:
+        return agent_report_manager.add_dump_update_listener(
+            self._as_report_agent(), listener
+        )
 
-    def remove_dump_update_listener(self, listener):
-        return agent_report_manager.remove_dump_update_listener(self, listener)
+    def remove_dump_update_listener(self, listener: _DumpUpdateListener) -> None:
+        return agent_report_manager.remove_dump_update_listener(
+            self._as_report_agent(), listener
+        )
 
-    def clear_dump_update_listeners(self):
-        return agent_report_manager.clear_dump_update_listeners(self)
+    def clear_dump_update_listeners(self) -> None:
+        return agent_report_manager.clear_dump_update_listeners(self._as_report_agent())
 
-    def _notify_dump_update_listeners(self, execution):
-        return agent_report_manager.notify_dump_update_listeners(self, execution)
+    def _notify_dump_update_listeners(self, execution: dict[str, Any]) -> None:
+        return agent_report_manager.notify_dump_update_listeners(
+            self._as_report_agent(), execution
+        )
 
-    def log_screenshot(self, title, opt=None):
+    def log_screenshot(self, title: str, opt: dict[str, Any] | None = None) -> None:
         # deprecated upstream alias for recordToReport
         return record_to_report_module.record_to_report(self, title, opt)
 
     async def _execute_planning_action(
-        self, action, distance_ratio=None, cacheable=None
-    ):
+        self,
+        action: dict[str, Any],
+        distance_ratio: float | None = None,
+        cacheable: bool | None = None,
+    ) -> Any:
         return await task_builder.execute_planning_action(
             self, action, distance_ratio, cacheable
         )
 
-    async def _locate_for_action(self, locate_param):
+    async def _locate_for_action(self, locate_param: dict[str, Any]) -> dict[str, Any]:
         return await task_builder.locate_for_action(self, locate_param)
 
     async def _run_locate(
-        self, prompt, context, deep_locate=False, plan_located_element=None
-    ):
+        self,
+        prompt: TUserPrompt,
+        context: UIContext,
+        deep_locate: bool = False,
+        plan_located_element: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         return await task_builder.run_locate(
             self, prompt, context, deep_locate, plan_located_element
         )
 
-    async def _rect_from_cache_feature(self, feature):
+    async def _rect_from_cache_feature(self, feature: dict[str, Any]) -> Rect | None:
         return await task_builder.rect_from_cache_feature(self, feature)
 
     async def _write_locate_cache(
-        self, prompt_str, element, cache, cacheable, replace_index=None
-    ):
+        self,
+        prompt_str: str,
+        element: dict[str, Any],
+        cache: TaskCache | None,
+        cacheable: bool | None,
+        replace_index: int | None = None,
+    ) -> None:
         return await task_builder.write_locate_cache(
             self, prompt_str, element, cache, cacheable, replace_index
         )
 
-    async def _replay_cached_plan(self, cached_entry, reported=None):
+    async def _replay_cached_plan(
+        self,
+        cached_entry: dict[str, Any],
+        reported: list[dict[str, Any]] | None = None,
+    ) -> bool:
         return await task_builder.replay_cached_plan(self, cached_entry, reported)
 
     async def get_ui_context(self, action: str = "locate") -> UIContext:
         return await screenshot_preparation.get_ui_context(self, action)
 
-    def _apply_screenshot_shrink(self, context):
+    def _apply_screenshot_shrink(self, context: UIContext) -> UIContext:
         return screenshot_preparation.apply_screenshot_shrink(self, context)
 
-    async def _emit_progress(self, scope, phase, data):
+    async def _emit_progress(
+        self, scope: str, phase: str, data: dict[str, Any]
+    ) -> None:
         return await progress.emit_progress(self, scope, phase, data)
 
-    def add_progress_listener(self, listener):
+    def add_progress_listener(self, listener: _ProgressListener) -> Callable[[], None]:
         return progress.add_progress_listener(self, listener)
 
-    def remove_progress_listener(self, listener):
+    def remove_progress_listener(self, listener: _ProgressListener) -> None:
         return progress.remove_progress_listener(self, listener)
 
-    def clear_progress_listeners(self):
+    def clear_progress_listeners(self) -> None:
         return progress.clear_progress_listeners(self)
 
-    async def run_markdown(self, markdown_path, opt=None):
+    async def run_markdown(
+        self, markdown_path: str, opt: dict[str, Any] | None = None
+    ) -> str | None:
         return await run_markdown_module.run_markdown(self, markdown_path, opt)
 
-    def _get_task_cache(self):
+    def _get_task_cache(self) -> TaskCache | None:
         return cache_config.get_task_cache(self)
 
-    def start_observing(self, opt=None):
-        return observe_node.start_observing(self, opt)
+    def start_observing(self, opt: dict[str, Any] | None = None) -> "UIObserver":
+        # ObserveAgent currently declares start_observing as async, but both
+        # the helper and the public observer API are synchronous.
+        return observe_node.start_observing(cast("ObserveAgent", self), opt)
 
     @staticmethod
     def _to_logical_coords(

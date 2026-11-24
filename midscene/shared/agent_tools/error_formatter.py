@@ -2,12 +2,24 @@
 
 import json
 from collections.abc import Iterable
-from typing import Any
+from typing import Any, NotRequired, TypedDict
 
 MAX_SERIALIZED_STRING_LENGTH = 4096
 _TRUNCATED_SUFFIX = "… [truncated]"
 
-SerializedError = dict[str, Any]
+
+class SerializedError(TypedDict):
+    name: str
+    message: str
+    stack: NotRequired[str]
+    code: NotRequired[str | int | float]
+    status: NotRequired[str | int | float]
+    requestId: NotRequired[str | int | float]
+
+
+class SerializedErrorResult(TypedDict):
+    error: SerializedError
+    hasMessage: bool
 
 
 def truncate_serialized_error_string(value: str) -> str:
@@ -76,7 +88,7 @@ def get_error_stack(error: Any) -> str | None:
     return stack if isinstance(stack, str) else None
 
 
-def _serialize_error_value(error: Any) -> dict[str, Any]:
+def _serialize_error_value(error: Any) -> SerializedErrorResult:
     if not _is_object(error):
         message = truncate_serialized_error_string(str(error))
         return {

@@ -5,7 +5,7 @@ import inspect
 import time
 import traceback
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 from midscene.core.ai_model.model_adapter.codex_app_server import (
     build_default_codex_app_server_params,
@@ -37,12 +37,15 @@ def _build_resolve_image_detail(
     if callable(adapter_resolver):
 
         def resolve_from_adapter(input_data: dict[str, Any]) -> str:
-            return adapter_resolver(
-                {
-                    "imageDetail": input_data.get("imageDetail"),
-                    "intent": intent,
-                    "requiresOriginalImageDetail": requires_original,
-                }
+            return cast(
+                str,
+                adapter_resolver(
+                    {
+                        "imageDetail": input_data.get("imageDetail"),
+                        "intent": intent,
+                        "requiresOriginalImageDetail": requires_original,
+                    }
+                ),
             )
 
         return resolve_from_adapter

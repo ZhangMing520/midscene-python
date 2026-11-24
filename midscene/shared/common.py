@@ -20,10 +20,12 @@ _MIDSCENE_RUN_DIR = "MIDSCENE_RUN_DIR"
 _configured_run_dir: str | None = None
 
 # Per-task/async-scope override, so concurrent Test runs stay isolated.
-_run_directory_context = contextvars.ContextVar("midscene_run_dir", default=None)
+_run_directory_context: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "midscene_run_dir", default=None
+)
 
 
-def _validate_run_dir(value: str) -> str:
+def _validate_run_dir(value: object) -> str:
     if not isinstance(value, str) or not value.strip():
         raise TypeError("Midscene run directory must be a non-empty path.")
     return value

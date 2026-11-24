@@ -6,6 +6,7 @@ identity for anonymous executions).
 """
 
 import time
+from collections.abc import Mapping
 from typing import Any
 
 from midscene.core.dump.report_action_dump import ExecutionDump, ReportActionDump
@@ -19,7 +20,7 @@ class ExecutionRecorder:
             executions if executions is not None else []
         )
         self._index_by_key: dict[str, int] = {}
-        self.report_meta: dict[str, Any] | None = None
+        self.report_meta: Mapping[str, Any] | None = None
 
     @property
     def executions(self) -> list[dict[str, Any]]:
@@ -28,7 +29,7 @@ class ExecutionRecorder:
     def record(
         self,
         execution: dict[str, Any],
-        meta: dict[str, Any] | None = None,
+        meta: Mapping[str, Any] | None = None,
     ) -> str:
         """Store an execution, replacing any previous state with the same key."""
         if meta is not None:
@@ -52,7 +53,7 @@ class ExecutionRecorder:
     def capture(
         self,
         execution_ids: list[str] | None = None,
-        meta: dict[str, Any] | None = None,
+        meta: Mapping[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Freeze executions + screenshots (upstream capture)."""
         selected = set(execution_ids) if execution_ids is not None else None

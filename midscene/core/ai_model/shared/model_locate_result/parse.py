@@ -17,6 +17,7 @@ def unwrap_coordinate_list_like_input(
 
 def parse_coordinate_list(input_value: Any, label: str) -> list[float]:
     unwrapped = unwrap_coordinate_list_like_input(input_value)
+    values: list[Any]
     if isinstance(unwrapped, str):
         values = [v for v in unwrapped.strip().split() if v]
         # split on whitespace; also handle comma-separated inside tokens
@@ -26,9 +27,6 @@ def parse_coordinate_list(input_value: Any, label: str) -> list[float]:
         values = expanded
     else:
         values = unwrapped
-
-    if not isinstance(values, (list, tuple)):
-        raise ValueError(f"invalid {label} data: {input_value!r} ")
 
     import re
 

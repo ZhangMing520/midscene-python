@@ -1,6 +1,7 @@
 """Qwen 2.5 / 3-VL / 3 / 4 adapters (upstream ai-model/models/qwen.ts)."""
 
-from typing import Any
+from collections.abc import Sequence
+from typing import Any, cast
 
 from midscene.core.ai_model.model_adapter.chat_completion import (
     _json_object_config,
@@ -102,7 +103,7 @@ def _build_qwen25_params(
 
 
 def _parse_qwen25_raw_locate_value(input_value: Any) -> dict[str, Any]:
-    bbox = unwrap_coordinate_list_like_input(input_value)
+    bbox = cast(Sequence[Any], unwrap_coordinate_list_like_input(input_value))
     if len(bbox) < 2:
         raise ValueError(f"invalid bbox data for qwen-vl mode: {bbox!r} ")
     if (
@@ -177,7 +178,7 @@ _QWEN_NORMALIZED_BBOX_LOCATE = {
 }
 
 
-def _qwen_chat_completion(builder):
+def _qwen_chat_completion(builder: Any) -> dict[str, Any]:
     return {
         "build_chat_completion_params": build_chat_completion_params_from_context(
             builder

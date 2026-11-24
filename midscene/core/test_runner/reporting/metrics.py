@@ -2,12 +2,29 @@
 
 import math
 from collections.abc import Iterable
-from typing import Any
+from typing import Any, Literal, cast
 
 from midscene.core.report_stats import collect_report_summary
-from midscene.core.test_run_report import TestRunReportMetrics
+from midscene.core.test_run_report import ReportModelUsageSummary, TestRunReportMetrics
 
-_NUMERIC_KEYS = (
+_NumericMetricKey = Literal[
+    "modelCallCount",
+    "modelTimeMs",
+    "promptTokens",
+    "cachedInputTokens",
+    "completionTokens",
+    "totalTokens",
+]
+_ModelMetricKey = Literal[
+    "callCount",
+    "modelCallTimeMs",
+    "promptTokens",
+    "cachedInputTokens",
+    "completionTokens",
+    "totalTokens",
+]
+
+_NUMERIC_KEYS: tuple[_NumericMetricKey, ...] = (
     "modelCallCount",
     "modelTimeMs",
     "promptTokens",
@@ -15,7 +32,7 @@ _NUMERIC_KEYS = (
     "completionTokens",
     "totalTokens",
 )
-_MODEL_KEYS = (
+_MODEL_KEYS: tuple[_ModelMetricKey, ...] = (
     "callCount",
     "modelCallTimeMs",
     "promptTokens",
@@ -214,18 +231,20 @@ def sum_test_run_report_metrics(
         "completionTokens": 0,
         "totalTokens": 0,
     }
-    models: dict[str, dict[str, Any]] = {}
+    models: dict[str, ReportModelUsageSummary] = {}
     for value in value_list:
-        for key in _NUMERIC_KEYS:
-            total[key] = total.get(key, 0) + value.get(key, 0)
+        for total_key in _NUMERIC_KEYS:
+            total[total_key] = total.get(total_key, 0) + value.get(total_key, 0)
         for model in value.get("models") or []:
-            name = model.get("modelName")
+            name = cast(str, model.get("modelName"))
             previous = models.get(name)
             if previous is None:
-                models[name] = dict(model)
+                models[name] = cast(ReportModelUsageSummary, dict(model))
             else:
-                for key in _MODEL_KEYS:
-                    previous[key] = previous.get(key, 0) + model.get(key, 0)
+                for model_key in _MODEL_KEYS:
+                    previous[model_key] = previous.get(model_key, 0) + model.get(
+                        model_key, 0
+                    )
     if models:
         total["models"] = list(models.values())
 

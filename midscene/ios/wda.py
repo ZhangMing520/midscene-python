@@ -68,7 +68,7 @@ class WebDriverAgentBackend(WebDriverClient):
 
     async def _request(
         self, method: str, path: str, body: dict[str, Any] | None = None
-    ):
+    ) -> dict[str, Any]:
         self._ensure_session()
         return await self.make_request(
             method, f"/session/{self.session_id}{path}", body
@@ -589,6 +589,6 @@ class WebDriverAgentBackend(WebDriverClient):
 
     async def execute_request(
         self, method: str, endpoint: str, data: dict[str, Any] | None = None
-    ):
+    ) -> dict[str, Any]:
         """Direct WDA API access (iOS equivalent of runAdbShell)."""
         return await self._request(method, endpoint, data)

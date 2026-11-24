@@ -8,6 +8,7 @@ validating the XML envelope.
 import asyncio
 import re
 from collections.abc import Awaitable, Callable
+from typing import Protocol
 
 from loguru import logger
 
@@ -16,7 +17,12 @@ ACCESSIBILITY_DUMP_TIMEOUT_MS = 5_000
 ACCESSIBILITY_DUMP_RETRY_DELAY_MS = 250
 UIAUTOMATOR_LAYOUT_PATH = "/sdcard/midscene_window_dump.xml"
 
-RunAdbCommand = Callable[..., Awaitable[object]]
+
+class AdbCommandResult(Protocol):
+    stdout: bytes
+
+
+RunAdbCommand = Callable[..., Awaitable[AdbCommandResult]]
 
 _HIERARCHY_OPEN = re.compile(r"<hierarchy(?:\s|>)")
 

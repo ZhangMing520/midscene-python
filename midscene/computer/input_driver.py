@@ -5,13 +5,81 @@ keyboard handling here lets ``device.py`` stay focused on capture/context.
 """
 
 import asyncio
+import importlib
 import math
 import subprocess
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable, Collection, Sequence
+from typing import Any, Literal, Protocol, cast
 
 from loguru import logger
+from PIL import Image
 
 from midscene.core.types import Size
+
+
+class _PointerPosition(Protocol):
+    x: int
+    y: int
+
+
+class _ScreenSize(Protocol):
+    width: int
+    height: int
+
+
+class _PyAutoGUI(Protocol):
+    """Subset of the optional, untyped pyautogui module used by the driver."""
+
+    FAILSAFE: bool
+    KEY_NAMES: Collection[str]
+
+    def size(self) -> _ScreenSize: ...
+
+    def position(self) -> _PointerPosition | tuple[int, int]: ...
+
+    def moveTo(self, x: int, y: int) -> object: ...
+
+    def click(
+        self,
+        x: int | None = None,
+        y: int | None = None,
+        *,
+        clicks: int = 1,
+        button: str | None = None,
+    ) -> object: ...
+
+    def mouseDown(self, *, button: str = "left") -> object: ...
+
+    def mouseUp(self, *, button: str = "left") -> object: ...
+
+    def hscroll(
+        self, amount: int, x: int | None = None, y: int | None = None
+    ) -> object: ...
+
+    def scroll(
+        self, amount: int, x: int | None = None, y: int | None = None
+    ) -> object: ...
+
+    def keyDown(self, key: str) -> object: ...
+
+    def keyUp(self, key: str) -> object: ...
+
+    def press(self, key: str) -> object: ...
+
+    def hotkey(self, *keys: str) -> object: ...
+
+    def write(self, text: str) -> object: ...
+
+    def screenshot(self) -> Image.Image: ...
+
+
+class _Pyperclip(Protocol):
+    """Clipboard helper surface (the distribution has no type information)."""
+
+    def paste(self) -> str: ...
+
+    def copy(self, text: str) -> None: ...
+
 
 _PIXELS_PER_DETENT = 100
 _MAX_DETENTS = 200
@@ -94,14 +162,14 @@ def _run_apple_script(script: str) -> None:
     )
 
 
-def _point_xy(point) -> tuple[int, int]:
+def _point_xy(point: _PointerPosition | Sequence[float]) -> tuple[int, int]:
     if hasattr(point, "x") and hasattr(point, "y"):
         return int(point.x), int(point.y)
     return int(point[0]), int(point[1])
 
 
 # (pyautogui function, sign) per upstream EDGE_SCROLL_SPEC.
-_EDGE_SCROLLS = {
+_EDGE_SCROLLS: dict[str, tuple[Literal["scroll", "hscroll"], int]] = {
     "scrollToTop": ("scroll", 1),
     "scrollToBottom": ("scroll", -1),
     "scrollToLeft": ("hscroll", -1),
@@ -109,9 +177,9 @@ _EDGE_SCROLLS = {
 }
 
 
-def import_pyautogui():
+def import_pyautogui() -> _PyAutoGUI:
     try:
-        import pyautogui
+        pyautogui = cast(_PyAutoGUI, importlib.import_module("pyautogui"))
     except ImportError as e:
         raise ImportError(
             "Computer automation needs pyautogui; install the computer extra "
@@ -123,14 +191,14 @@ def import_pyautogui():
     return pyautogui
 
 
-async def load_pyautogui():
+async def load_pyautogui() -> _PyAutoGUI:
     """Import off the event loop: the first import loads the OS backends."""
     return await asyncio.to_thread(import_pyautogui)
 
 
-def load_pyperclip():
+def load_pyperclip() -> _Pyperclip | None:
     try:
-        import pyperclip
+        pyperclip = cast(_Pyperclip, importlib.import_module("pyperclip"))
 
         return pyperclip
     except ImportError:  # pragma: no cover - optional helper
@@ -192,9 +260,9 @@ class ComputerInputDriver:
         self._is_mac = is_mac
         self.keyboard_modifier_delay = keyboard_modifier_delay
         self._destroyed = False
-        self._pending_input_delays: set[asyncio.Future] = set()
+        self._pending_input_delays: set[asyncio.Future[None]] = set()
 
-    async def _pg(self):
+    async def _pg(self) -> _PyAutoGUI:
         return await load_pyautogui()
 
     # --- libnut-shaped primitives (upstream input-driver.ts) -----------------
@@ -255,10 +323,11 @@ class ComputerInputDriver:
     ) -> None:
         self._assert_active("mouseClick")
         pyautogui = await self._pg()
-        kwargs: dict[str, object] = {"clicks": 2 if double else 1}
-        if button is not None:
-            kwargs["button"] = button
-        await asyncio.to_thread(pyautogui.click, **kwargs)
+        clicks = 2 if double else 1
+        if button is None:
+            await asyncio.to_thread(pyautogui.click, clicks=clicks)
+        else:
+            await asyncio.to_thread(pyautogui.click, clicks=clicks, button=button)
 
     async def mouse_toggle(self, state: str, button: str = "left") -> None:
         self._assert_active("mouseToggle")
@@ -416,7 +485,7 @@ class ComputerInputDriver:
         """Sleep, rejecting the wait when the driver is destroyed."""
         self._assert_active("delay")
         loop = asyncio.get_running_loop()
-        wait: asyncio.Future = loop.create_future()
+        wait: asyncio.Future[None] = loop.create_future()
         self._pending_input_delays.add(wait)
 
         def resolve() -> None:
@@ -455,7 +524,9 @@ class ComputerInputDriver:
             await self.move_mouse(step_x, step_y)
             await self.delay(step_delay)
 
-    async def with_mouse_button(self, button: str, run) -> object:
+    async def with_mouse_button(
+        self, button: str, run: Callable[[], Awaitable[object]]
+    ) -> object:
         """Hold ``button`` down while awaiting ``run``, then release it."""
         self._assert_active("withMouseButton")
         await self.mouse_toggle("down", button)
@@ -475,7 +546,7 @@ class ComputerInputDriver:
         )
 
     @staticmethod
-    def _validate_keys(pyautogui, keys: list[str]) -> None:
+    def _validate_keys(pyautogui: _PyAutoGUI, keys: list[str]) -> None:
         for name in keys:
             if name not in pyautogui.KEY_NAMES:
                 raise ValueError(f"Unknown key name: {name!r}")
@@ -583,7 +654,7 @@ class ComputerInputDriver:
 
     async def _press_combo(
         self,
-        pyautogui,
+        pyautogui: _PyAutoGUI,
         keys: list[str],
         delay_ms: int | None = None,
     ) -> None:
@@ -612,7 +683,7 @@ class ComputerInputDriver:
             await asyncio.to_thread(pyautogui.keyUp, modifier)
 
     async def scroll(
-        self, direction: str, distance: int | None = None, **kwargs
+        self, direction: str, distance: int | None = None, **kwargs: Any
     ) -> None:
         pyautogui = await self._pg()
         screen = await asyncio.to_thread(pyautogui.size)
@@ -658,14 +729,14 @@ class ComputerInputDriver:
 
     async def _emit_detents(
         self,
-        pyautogui,
-        wheel: str,
+        pyautogui: _PyAutoGUI,
+        wheel: Literal["scroll", "hscroll"],
         sign: int,
         distance_px: int,
         target: tuple[int, int],
     ) -> None:
         """Send one wheel notch per call: Chromium coalesces bulk deltas."""
-        emit = getattr(pyautogui, wheel)
+        emit = pyautogui.scroll if wheel == "scroll" else pyautogui.hscroll
         for _ in range(detent_count(distance_px)):
             await asyncio.to_thread(emit, sign, *target)
             await asyncio.sleep(_DETENT_DELAY)
@@ -701,7 +772,9 @@ class ComputerInputDriver:
         """Endpoint pointer swipe between two logical points (upstream swipe)."""
         await self.drag_and_drop((start[0], start[1]), (end[0], end[1]))
 
-    async def drag_and_drop(self, from_point, to_point) -> None:
+    async def drag_and_drop(
+        self, from_point: Sequence[float], to_point: Sequence[float]
+    ) -> None:
         pyautogui = await self._pg()
         await asyncio.to_thread(
             pyautogui.moveTo, int(from_point[0]), int(from_point[1])

@@ -17,7 +17,7 @@ import shutil
 import tempfile
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from urllib.parse import unquote
 
 from loguru import logger
@@ -492,7 +492,7 @@ class ReportMergingTool:
                             "reportId": group_id,
                             "sourcePath": report_file_path or "<skipped-agent-report>",
                             "attributes": attributes,
-                            "dump": runner_dumps[index],
+                            "dump": cast(TestRunReportDump | None, runner_dumps[index]),
                             "timing": (
                                 _agent_report_timing(
                                     agent_report,
@@ -964,7 +964,7 @@ class TestRunReportAssembler:
         builder = options.get("buildRunnerDump") or options.get("build_runner_dump")
         if builder is None:
             raise ValueError("buildRunnerDump is required")
-        return builder(_build_source_index(prepared))
+        return cast(TestRunReportDump, builder(_build_source_index(prepared)))
 
     def _write(
         self,

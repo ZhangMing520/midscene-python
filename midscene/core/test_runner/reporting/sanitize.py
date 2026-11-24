@@ -3,7 +3,9 @@
 import datetime
 import json
 import re
-from typing import Any
+from typing import Any, Literal
+
+from midscene.core.test_run_report import TestRunReportError, TestRunReportValue
 
 MAX_DEPTH = 6
 MAX_STRING_LENGTH = 2_000
@@ -31,7 +33,7 @@ def sanitize_report_text(value: str, maximum_length: int = MAX_STRING_LENGTH) ->
     return f"{value[:maximum_length]}… [truncated]"
 
 
-def sanitize_report_value(value: Any) -> dict[str, Any]:
+def sanitize_report_value(value: Any) -> TestRunReportValue:
     """Convert arbitrary node input/output to a bounded, JSON-safe value."""
     truncated_paths: set[str] = set()
     ancestors: set[int] = set()
@@ -128,7 +130,7 @@ def sanitize_report_value(value: Any) -> dict[str, Any]:
     if _byte_length(serialized) > MAX_SERIALIZED_BYTES:
         return {"value": TRUNCATED_VALUE, "truncatedPaths": ["$"]}
 
-    result: dict[str, Any] = {"value": sanitized}
+    result: TestRunReportValue = {"value": sanitized}
     if truncated_paths:
         result["truncatedPaths"] = list(truncated_paths)
     return result
@@ -140,12 +142,12 @@ def _error_attr(error: Any, name: str) -> Any:
     return getattr(error, name, None)
 
 
-def sanitize_report_error(error: Any) -> dict[str, Any]:
+def sanitize_report_error(error: Any) -> TestRunReportError:
     ancestors: set[int] = set()
     remaining = [MAX_SERIALIZED_BYTES - 1024]
     nodes = [0]
 
-    def shortened() -> dict[str, Any]:
+    def shortened() -> TestRunReportError:
         return {
             "format": "midscene-error",
             "name": "Error",
@@ -153,7 +155,7 @@ def sanitize_report_error(error: Any) -> dict[str, Any]:
             "truncated": True,
         }
 
-    def visit(current: Any, depth: int) -> dict[str, Any]:
+    def visit(current: Any, depth: int) -> TestRunReportError:
         if depth >= MAX_DEPTH or nodes[0] >= 25 or remaining[0] < 4096:
             nodes[0] += 1
             return shortened()
@@ -174,7 +176,7 @@ def sanitize_report_error(error: Any) -> dict[str, Any]:
             truncated = _error_attr(current, "truncated") is True
             name_value = _error_attr(current, "name")
             message_value = _error_attr(current, "message")
-            result: dict[str, Any] = {
+            result: TestRunReportError = {
                 "format": "midscene-error",
                 "name": sanitize_report_text(
                     name_value
@@ -207,7 +209,11 @@ def sanitize_report_error(error: Any) -> dict[str, Any]:
                 details = sanitize_report_value(
                     encoded["value"] if encoded is not None else details_value
                 )
-                for field in ("redactedPaths", "truncatedPaths"):
+                path_fields: tuple[Literal["redactedPaths", "truncatedPaths"], ...] = (
+                    "redactedPaths",
+                    "truncatedPaths",
+                )
+                for field in path_fields:
                     paths = encoded.get(field) if encoded is not None else None
                     if isinstance(paths, list):
                         merged = list(details.get(field) or [])
@@ -235,7 +241,7 @@ def sanitize_report_error(error: Any) -> dict[str, Any]:
                 result["cause"] = visit(cause, depth + 1)
             nested_errors = _error_attr(current, "errors")
             if isinstance(nested_errors, (list, tuple)):
-                collected: list[dict[str, Any]] = []
+                collected: list[TestRunReportError] = []
                 for item in list(nested_errors)[:10]:
                     if nodes[0] >= 25 or remaining[0] < 4096:
                         result["truncated"] = True

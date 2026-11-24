@@ -76,9 +76,12 @@ async def _identified_inputs(
     value = response.get("value")
     if not isinstance(value, list):
         raise RuntimeError("Invalid WDA input search response")
-    ids = [element_id_from(item) for item in value]
-    if any(element_id is None for element_id in ids):
-        raise RuntimeError("Missing WDA input element ID")
+    ids: list[str] = []
+    for item in value:
+        element_id = element_id_from(item)
+        if element_id is None:
+            raise RuntimeError("Missing WDA input element ID")
+        ids.append(element_id)
     return ids
 
 

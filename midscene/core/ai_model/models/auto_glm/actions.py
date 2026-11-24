@@ -14,7 +14,7 @@ def _find_action_name(
         return default_name
     for action in action_space:
         name = action["name"] if isinstance(action, dict) else action.name
-        if name in known_names:
+        if isinstance(name, str) and name in known_names:
             return name
     return default_name
 

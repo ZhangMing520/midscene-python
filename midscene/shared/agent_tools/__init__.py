@@ -188,7 +188,12 @@ class AgentTools:
         ]
 
     @staticmethod
-    def _tool(name, description, input_schema, handler) -> dict[str, Any]:
+    def _tool(
+        name: str,
+        description: str,
+        input_schema: dict[str, Any],
+        handler: ToolHandler,
+    ) -> dict[str, Any]:
         return {
             "name": name,
             "description": description,
@@ -244,7 +249,9 @@ class AgentTools:
         return await list_tabs()
 
 
-async def _default_page_factory(browser: str = "playwright", headless: bool = True):
+async def _default_page_factory(
+    browser: str = "playwright", headless: bool = True
+) -> Any:
     if browser != "playwright":
         raise ValueError(
             f"Unsupported browser: {browser} (only playwright is supported)"

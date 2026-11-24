@@ -3,6 +3,9 @@
 from collections.abc import Sequence
 from typing import Any
 
+from midscene.core.ai_model.model_adapter.planning_protocol import (
+    StandardPlanningProtocol,
+)
 from midscene.core.ai_model.prompt.locate import locate_grounding_rules
 from midscene.core.ai_model.prompt.planning.action_output_example import (
     build_action_output_example,
@@ -22,7 +25,7 @@ from midscene.shared.env import (
 
 def build_standard_planning_system_prompt(
     action_space: Sequence[Any],
-    planning_protocol,
+    planning_protocol: StandardPlanningProtocol,
     include_locate_in_planning: bool,
     locate_prompt_spec: dict[str, Any] | None = None,
     include_sub_goals: bool = False,

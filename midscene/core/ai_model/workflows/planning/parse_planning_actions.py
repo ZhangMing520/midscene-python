@@ -1,7 +1,9 @@
 """Planning action validation/normalization (upstream workflows/planning/parse-planning-actions.ts)."""
 
+from collections.abc import Callable
 from typing import Any
 
+from midscene.core.ai_model.shared.model_locate_result import LocateResultCodec
 from midscene.core.ai_model.workflows.planning.locate_normalization import (
     normalize_planning_locate_parameter,
 )
@@ -34,9 +36,9 @@ def _validate_user_prompt(prompt: Any, field: str) -> None:
 def parse_planning_actions(
     actions: list[dict[str, Any]],
     action_space: list[Any],
-    parse_raw_locate_parameter,
+    parse_raw_locate_parameter: Callable[[Any], Any],
     include_locate_in_planning: bool,
-    locate_result_codec: Any | None = None,
+    locate_result_codec: LocateResultCodec | None = None,
     locate_result_context: dict[str, Any] | None = None,
 ) -> None:
     """Validate and normalize planning actions in place."""

@@ -4,15 +4,24 @@ import inspect
 import time
 import traceback
 import uuid
-from typing import Any
+from collections.abc import Iterator
+from typing import Any, TypedDict, cast
 
 from loguru import logger
 
 from midscene.core.task_timing import set_timing_field_once
+from midscene.core.types import UIContext
 
 TASK_RUNNER_UI_CONTEXT_CACHE_TTL_MS = 300
 MAX_SERIALIZED_STRING_LENGTH = 4096
 TRUNCATED_STRING_SUFFIX = "… [truncated]"
+
+TaskUIContext = dict[str, Any] | UIContext
+
+
+class CachedUIContext(TypedDict):
+    uiContext: TaskUIContext
+    capturedAt: int
 
 
 async def _maybe_await(value: Any) -> Any:
@@ -50,17 +59,24 @@ def _error_stack(error: Any) -> str | None:
 def serialize_error(error: Any) -> dict[str, Any]:
     """Bounded diagnostic object for reports and transports."""
     if not isinstance(error, BaseException) and not hasattr(error, "message"):
-        message = truncate_serialized_error_string(str(error))
+        non_error_message = truncate_serialized_error_string(str(error))
         return {
             "name": "NonError",
-            "message": message if message.strip() else "Empty string thrown",
+            "message": (
+                non_error_message
+                if non_error_message.strip()
+                else "Empty string thrown"
+            ),
         }
 
     name = getattr(error, "name", None) or type(error).__name__ or "Error"
-    serialized_name = truncate_serialized_error_string(name)
-    message = getattr(error, "message", None)
-    if not isinstance(message, str) or not message:
-        message = str(error) or None
+    serialized_name = truncate_serialized_error_string(cast(str, name))
+    raw_message = getattr(error, "message", None)
+    message = (
+        raw_message
+        if isinstance(raw_message, str) and raw_message
+        else str(error) or None
+    )
     serialized: dict[str, Any] = {
         "name": serialized_name,
         "message": truncate_serialized_error_string(
@@ -174,7 +190,7 @@ class TaskRunner:
             for image in options.get("referenceImages") or []
         }
         self._reference_image_urls.discard(None)
-        self._last_ui_context: dict[str, Any] | None = None
+        self._last_ui_context: CachedUIContext | None = None
 
     # -- lifecycle helpers -------------------------------------------------
 
@@ -204,7 +220,7 @@ class TaskRunner:
 
     async def _get_ui_context(
         self, force_refresh: bool = False
-    ) -> dict[str, Any] | None:
+    ) -> TaskUIContext | None:
         self._throw_if_aborted()
         now = int(time.time() * 1000)
         if (
@@ -220,13 +236,15 @@ class TaskRunner:
             )
             self._throw_if_aborted()
             if ui_context is not None:
+                context = cast(TaskUIContext, ui_context)
                 self._last_ui_context = {
-                    "uiContext": ui_context,
+                    "uiContext": context,
                     "capturedAt": int(time.time() * 1000),
                 }
             else:
+                context = None
                 self._last_ui_context = None
-            return ui_context
+            return context
         except Exception:
             self._last_ui_context = None
             raise
@@ -429,10 +447,12 @@ class TaskRunner:
                 await self._emit_snapshot_change()
                 await self._emit_task_event("finish", task)
                 task_index += 1
-            except BaseException as error:
-                if isinstance(error, Exception):
+            except BaseException as execution_error:
+                if isinstance(execution_error, Exception):
                     successfully_completed = False
-                    serialized_error = serialize_task_error(error, self._abort_signal)
+                    serialized_error = serialize_task_error(
+                        execution_error, self._abort_signal
+                    )
                     task["error"] = serialized_error
                     task["errorMessage"] = serialized_error["message"]
                     task["errorStack"] = serialized_error.get("stack")
@@ -462,17 +482,20 @@ class TaskRunner:
         if not successfully_completed:
             self.status = "error"
             error_task = self.latest_error_task()
+            final_error: dict[str, Any]
             if error_task is not None and error_task.get("error") is not None:
-                error = error_task["error"]
+                final_error = cast(dict[str, Any], error_task["error"])
             elif self._abort_signal is not None and getattr(
                 self._abort_signal, "aborted", False
             ):
-                error = serialize_task_error(
+                final_error = serialize_task_error(
                     getattr(self._abort_signal, "reason", None), self._abort_signal
                 )
             else:
-                error = {"name": "Error", "message": "Task execution failed"}
-            finalize_error = TaskExecutionError(error, serialize_error_task(error_task))
+                final_error = {"name": "Error", "message": "Task execution failed"}
+            finalize_error = TaskExecutionError(
+                final_error, serialize_error_task(error_task)
+            )
             await self._emit_snapshot_change(finalize_error)
         else:
             self.status = "completed"
@@ -496,7 +519,9 @@ class TaskRunner:
     def latest_error_task(self) -> dict[str, Any] | None:
         if self.status != "error":
             return None
-        for task in reversed(self.tasks):
+        # reversed() loses the element type for dict[str, Any] in typeshed.
+        tasks = cast(Iterator[dict[str, Any]], reversed(self.tasks))
+        for task in tasks:
             if task.get("status") == "failed":
                 return task
         return None

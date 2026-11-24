@@ -15,7 +15,7 @@ import math
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 from loguru import logger
 
@@ -458,7 +458,8 @@ class ScrcpyDeviceAdapter:
             result = fallback()
             if inspect.isawaitable(result):
                 result = await result
-            return result
+            # Injected sync/async fallbacks implement the screenshot contract.
+            return cast(str, result)
 
         if self._backend is None:
             try:
@@ -494,7 +495,8 @@ class ScrcpyDeviceAdapter:
             await self._apply_pending_action_barrier(manager)
             if generation != self._lifecycle_generation:
                 raise RuntimeError("Scrcpy freshness restart was cancelled by cleanup")
-            return await manager.get_screenshot_jpeg()
+            # manager_factory is an extension boundary; its screenshot contract is bytes.
+            return cast(bytes, await manager.get_screenshot_jpeg())
 
         task = asyncio.ensure_future(restart())
         self._freshness_restart_task = task
@@ -538,7 +540,7 @@ class ScrcpyDeviceAdapter:
     def get_latest_raw_keyframe(self) -> RawKeyframe | None:
         if self._manager is None:
             return None
-        return self._manager.get_latest_raw_keyframe()
+        return cast(RawKeyframe | None, self._manager.get_latest_raw_keyframe())
 
     def _attach_keyframe_listener(
         self, manager: Any, listener: Callable[[RawKeyframe], Any], force: bool
@@ -627,7 +629,7 @@ class ScrcpyDeviceAdapter:
     def get_resolution(self) -> dict[str, int] | None:
         if self._manager is None:
             return None
-        return self._manager.get_resolution()
+        return cast(dict[str, int] | None, self._manager.get_resolution())
 
     def get_size(self, device_info: Any = None) -> dict[str, int] | None:
         resolution = self.get_resolution()
@@ -661,7 +663,8 @@ class ScrcpyDeviceAdapter:
         result = screen_size()
         if inspect.isawaitable(result):
             result = await result
-        return result
+        # ADB backends may expose screen_size synchronously or asynchronously.
+        return cast(dict[str, int], result)
 
     # -- teardown ---------------------------------------------------------
 

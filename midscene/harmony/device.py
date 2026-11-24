@@ -241,7 +241,7 @@ class HarmonyDevice(AbstractInterface):
     # -- scroll / swipe -----------------------------------------------------------
 
     async def scroll(
-        self, direction: str, distance: int | None = None, **kwargs
+        self, direction: str, distance: int | None = None, **kwargs: Any
     ) -> None:
         """Scroll in direction (content direction, upstream scrollInDirection).
 
@@ -392,7 +392,9 @@ class HarmonyDevice(AbstractInterface):
         )
         await hdc.swipe(start[0], start[1], end[0], end[1], speed)
 
-    async def drag_and_drop(self, from_point, to_point) -> None:
+    async def drag_and_drop(
+        self, from_point: Sequence[float], to_point: Sequence[float]
+    ) -> None:
         hdc = await self._get_hdc()
         await hdc.drag(
             from_point[0],

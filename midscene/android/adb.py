@@ -11,7 +11,7 @@ import shlex
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, overload
 
 from loguru import logger
 
@@ -50,6 +50,7 @@ async def run_adb_command(
             stdout, stderr = await asyncio.wait_for(
                 result.communicate(), timeout=timeout
             )
+            assert result.returncode is not None  # communicate() reaps the process
             return subprocess.CompletedProcess(
                 args=[executable] + args,
                 returncode=result.returncode,
@@ -164,12 +165,38 @@ class AndroidAdb:
             raise RuntimeError(_decode_output(result.stderr).strip())
         return _parse_devices_with_state(_decode_output(result.stdout))
 
+    @overload
+    async def shell(
+        self,
+        args: Any,
+        options: None = None,
+        *,
+        output_format: Literal["full"],
+        **kwargs: Any,
+    ) -> dict[str, str]: ...
+
+    @overload
+    async def shell(
+        self,
+        args: Any,
+        options: None = None,
+        **kwargs: Any,
+    ) -> str: ...
+
+    @overload
+    async def shell(
+        self,
+        args: Any,
+        options: dict[str, Any],
+        **kwargs: Any,
+    ) -> str | dict[str, str]: ...
+
     async def shell(
         self,
         args: Any,
         options: dict[str, Any] | None = None,
         **kwargs: Any,
-    ) -> Any:
+    ) -> str | dict[str, str]:
         """Run an adb shell command.
 
         ``options`` mirrors the Appium shell options (``timeout`` in
@@ -231,24 +258,24 @@ async def create_android_adb(
     ``-H``/``-P`` settings come from the device options or the
     ``MIDSCENE_ADB_REMOTE_*`` environment keys.
     """
-    device_options = device_options or {}
-    if not isinstance(device_options, dict):
-        device_options = {}
+    raw_device_options: object = device_options or {}
+    if not isinstance(raw_device_options, dict):
+        raw_device_options = {}
     config_manager = get_global_config_manager()
 
     android_adb_path = (
-        device_options.get("androidAdbPath")
-        or device_options.get("android_adb_path")
+        raw_device_options.get("androidAdbPath")
+        or raw_device_options.get("android_adb_path")
         or config_manager.get_env_config_value(MIDSCENE_ADB_PATH)
     )
     remote_adb_host = (
-        device_options.get("remoteAdbHost")
-        or device_options.get("remote_adb_host")
+        raw_device_options.get("remoteAdbHost")
+        or raw_device_options.get("remote_adb_host")
         or config_manager.get_env_config_value(MIDSCENE_ADB_REMOTE_HOST)
     )
     remote_adb_port = (
-        device_options.get("remoteAdbPort")
-        or device_options.get("remote_adb_port")
+        raw_device_options.get("remoteAdbPort")
+        or raw_device_options.get("remote_adb_port")
         or config_manager.get_env_config_value(MIDSCENE_ADB_REMOTE_PORT)
     )
     resolved_port: int | None = None

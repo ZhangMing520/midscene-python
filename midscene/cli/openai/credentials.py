@@ -3,6 +3,7 @@
 import datetime
 import json
 import os
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any
 
@@ -91,7 +92,7 @@ def require_credentials(saved: dict[str, Any] | None) -> dict[str, Any]:
     return saved
 
 
-async def lock_credentials(path: str):
+async def lock_credentials(path: str) -> Callable[[], Awaitable[None]]:
     """Acquire the per-credentials-file lock; returns an async unlock callable."""
     lock_path = f"{path}.lock"
     Path(path).parent.mkdir(parents=True, exist_ok=True)

@@ -5,7 +5,7 @@ import copy
 import datetime
 import inspect
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Protocol, cast
 
 from midscene.core.test_runner.engine._abort import (
     abort_reason,
@@ -28,12 +28,12 @@ from midscene.core.test_runner.errors import (
     NodeInputValidationError,
     StepTimeoutError,
     WorkflowError,
-    is_node_execution_error,
     normalize_node_execution_error,
 )
 from midscene.core.test_runner.node.types import (
     NodeDefinition,
     NodeExecutionContext,
+    NodeReportCollector,
     NodeReportTrace,
     NodeResult,
 )
@@ -41,6 +41,23 @@ from midscene.core.test_runner.parser.types import NormalizedStep
 from midscene.core.types import AbortError
 
 REPORT_SNAPSHOT_TIMEOUT_MS = 5000
+
+
+class _ObjectInputSchema(Protocol):
+    def model_validate(self, input_value: dict[str, Any]) -> Any: ...
+
+
+class _LegacyObjectInputSchema(Protocol):
+    def parse_obj(self, input_value: dict[str, Any]) -> Any: ...
+
+
+_NodeInputSchema = (
+    dict[str, Any]
+    | Callable[[dict[str, Any]], Any]
+    | _ObjectInputSchema
+    | _LegacyObjectInputSchema
+    | None
+)
 
 
 def _now() -> datetime.datetime:
@@ -265,7 +282,9 @@ class _NodeReportCollector:
 
 async def parse_node_input(node: NodeDefinition, input_value: dict[str, Any]) -> Any:
     """Validate the raw YAML input using the node's declared schema."""
-    schema = node.input_schema
+    # NodeDefinition's annotation covers dictionaries, while the runtime API
+    # also accepts callable and object schemas.
+    schema = cast(_NodeInputSchema, node.input_schema)
     if schema is None or isinstance(schema, dict):
         return input_value
 
@@ -313,6 +332,7 @@ async def execute_node(
 ) -> dict[str, Any]:
     started_at = _now()
     meta = step.get("meta") or {}
+    node_name = cast(str, step.get("node"))
     from midscene.core.types import AbortSignal
 
     controller = AbortSignal()
@@ -358,7 +378,7 @@ async def execute_node(
             if is_aborted(controller):
                 timeout_future.set_result(abort_reason(controller))
                 return
-            error = StepTimeoutError(timeout_ms, step.get("node"))
+            error = StepTimeoutError(cast(int, timeout_ms), node_name)
             controller.abort(error)
             timeout_future.set_result(error)
 
@@ -380,11 +400,11 @@ async def execute_node(
                 output = execution.result()
             else:
                 raise _abort_exception(abort_reason(controller))
-            output = validate_node_output(output, step.get("node"))
+            output = validate_node_output(output, node_name)
             returned_status = "success"
             ended_at = _now()
             result: dict[str, Any] = {
-                "node": step.get("node"),
+                "node": node_name,
                 "phase": phase,
                 "stepIndex": step_index,
                 "input": step.get("input"),
@@ -404,7 +424,7 @@ async def execute_node(
             if is_resource_admission_error(error):
                 returned_status = "not-run"
                 not_run: dict[str, Any] = {
-                    "node": step.get("node"),
+                    "node": node_name,
                     "phase": phase,
                     "stepIndex": step_index,
                     "input": step.get("input"),
@@ -421,17 +441,14 @@ async def execute_node(
 
             output = None
             failure: Any = error
-            if (
-                is_node_execution_error(error)
-                and getattr(error, "output", None) is not None
-            ):
+            if isinstance(error, NodeExecutionError) and error.output is not None:
                 try:
-                    output = validate_node_output(error.output, step.get("node"))
+                    output = validate_node_output(error.output, node_name)
                 except Exception as validation_error:
                     failure = validation_error
             ended_at = _now()
             failed: dict[str, Any] = {
-                "node": step.get("node"),
+                "node": node_name,
                 "phase": phase,
                 "stepIndex": step_index,
                 "input": step.get("input"),
@@ -441,7 +458,7 @@ async def execute_node(
                 "durationMs": max(0.0, (ended_at - started_at).total_seconds() * 1000),
                 "status": "failed",
                 "continuedAfterError": bool(meta.get("continueOnError")),
-                "error": normalize_node_execution_error(failure, step.get("node")),
+                "error": normalize_node_execution_error(failure, node_name),
             }
             if output is not None:
                 failed["output"] = output
@@ -483,7 +500,8 @@ async def execute_step(
         scope_id = document.get("documentRunId")
         case = None
 
-    collector = _NodeReportCollector(step.get("node"))
+    node_name = cast(str, step.get("node"))
+    collector = _NodeReportCollector(node_name)
     events: list[dict[str, Any]] = []
     result: dict[str, Any] | None = None
 
@@ -494,20 +512,20 @@ async def execute_step(
         def on_teardown(teardown: Callable[..., Any]) -> None:
             if execution.get("onTeardown") is None:
                 raise NodeExecutionError(
-                    step.get("node"),
+                    node_name,
                     RuntimeError(
                         "The current execution scope cannot register teardown."
                     ),
                 )
-            execution["onTeardown"](step.get("node"), teardown)
+            execution["onTeardown"](node_name, teardown)
 
         execution_context = NodeExecutionContext(
             input=input_value,
-            meta=step.get("meta") or {},
+            meta=cast(dict[str, Any], step.get("meta") or {}),
             signal=signal,
             context=context,
             on_teardown=on_teardown,
-            report=collector,
+            report=cast(NodeReportCollector, collector),
             scope=scope,
             case=case,
             document=document,
@@ -526,7 +544,7 @@ async def execute_step(
                 "identity": {
                     "scopeId": scope_id,
                     "stepId": f"{scope_id}:{phase}:{step_index}",
-                    "node": step.get("node"),
+                    "node": node_name,
                 },
                 "onEvent": events.append,
             },
@@ -547,7 +565,7 @@ async def execute_step(
 
     if result is None:
         raise NodeExecutionError(
-            step.get("node"),
+            node_name,
             RuntimeError("Step execution completed without a result."),
         )
     return result

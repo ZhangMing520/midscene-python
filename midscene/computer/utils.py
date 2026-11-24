@@ -1,5 +1,6 @@
 """Computer helpers (upstream utils.ts)."""
 
+import ctypes
 import platform
 from typing import Any
 
@@ -24,17 +25,13 @@ def _platform_name() -> str:
     return system.lower() or "linux"
 
 
-def _load_application_services():
-    import ctypes
-
+def _load_application_services() -> ctypes.CDLL:
     return ctypes.CDLL(
         "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices"
     )
 
 
-def _load_core_graphics():
-    import ctypes
-
+def _load_core_graphics() -> ctypes.CDLL:
     return ctypes.CDLL("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics")
 
 

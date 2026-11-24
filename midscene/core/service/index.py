@@ -6,7 +6,7 @@ workflows/grounding/section-locate.ts.
 """
 
 import time
-from typing import Any
+from typing import Any, cast
 
 from midscene.core.ai_model.models.registry import ModelRuntime
 from midscene.core.ai_model.service_caller.call_ai import call_generative_ai
@@ -20,6 +20,7 @@ from midscene.core.ai_model.workflows.grounding.search_area import (
 from midscene.core.ai_model.workflows.grounding.section_locate import (
     ai_locate_section as _ai_locate_section,
 )
+from midscene.core.ai_model.workflows.grounding.types import LocateImage
 from midscene.shared.env import model_family_required_for_locate_message
 
 
@@ -117,7 +118,7 @@ async def locate_service(
                 "usage": first_pass.get("usage"),
             }
 
-    locate_image = (
+    locate_image: LocateImage | None = (
         {
             "imageBase64": search_config["image"]["imageBase64"],
             "width": search_config["image"]["width"],
@@ -200,7 +201,7 @@ class Service:
         response = await locate_service(
             query_prompt,
             context,
-            model_runtime,
+            cast(ModelRuntime, model_runtime),
             bool(query.get("deepLocate")),
             opt.get("planLocatedElement"),
         )
@@ -257,7 +258,7 @@ class Service:
             task_type,
             data_demand,
             context,
-            model_runtime,
+            cast(ModelRuntime, model_runtime),
             page_description or "",
             bool(opt.get("screenshotIncluded", True)),
             opt.get("context"),
@@ -306,7 +307,10 @@ class Service:
         opt = opt or {}
         context = await self._resolve_context(opt.get("uiContext"))
         response = await ai_describe_element(
-            context, target, model_runtime, bool(opt.get("deepDescribe"))
+            context,
+            target,
+            cast(ModelRuntime, model_runtime),
+            bool(opt.get("deepDescribe")),
         )
         return response
 

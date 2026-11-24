@@ -262,7 +262,7 @@ class IOSDevice(AbstractInterface):
 
     async def swipe(
         self,
-        from_x: Any,
+        from_x: str | float,
         from_y: float | None = None,
         to_x: float | None = None,
         to_y: float | None = None,
@@ -290,7 +290,7 @@ class IOSDevice(AbstractInterface):
         )
 
     async def _swipe_direction(
-        self, direction: str, distance: int | None = None
+        self, direction: str, distance: int | float | None = None
     ) -> None:
         """Finger-movement convention swipe (content follows the finger)."""
         if direction not in ("up", "down", "left", "right"):
@@ -334,7 +334,7 @@ class IOSDevice(AbstractInterface):
         *,
         point: list[float] | None = None,
         scroll_type: str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         """Scroll `direction` names the content to reveal, so the finger moves
         the opposite way (upstream scrollDown swipes upward from the located

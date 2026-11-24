@@ -88,7 +88,7 @@ class MetricsCollector:
 
     def reset(self) -> None:
         """Clear all accumulated state."""
-        self.__init__()
+        type(self).__init__(self)
 
 
 def record_usage_metrics(

@@ -4,7 +4,7 @@ import asyncio
 import datetime
 import os
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 from loguru import logger
 
@@ -56,7 +56,7 @@ def _teardown_timeout(options: dict[str, Any]) -> float | None:
     value = options.get("teardownTimeoutMs")
     if value is None:
         return None
-    return value() if callable(value) else value
+    return cast(float, value() if callable(value) else value)
 
 
 class ProjectRuntime:
@@ -64,7 +64,7 @@ class ProjectRuntime:
 
     def __init__(self, options: dict[str, Any]) -> None:
         self._options = options
-        self._project = options["project"]
+        self._project: dict[str, Any] = options["project"]
         self._setup = _setup_definition(options.get("setup"))
         self._setup_timeout_ms = options.get("setupTimeoutMs")
         self._started_at = _now()
@@ -86,7 +86,7 @@ class ProjectRuntime:
         self._setup_error: ProjectSetupError | None = None
         self._started = False
         self._accepting_teardowns = self._setup is not None
-        self._finish_task: asyncio.Future[Any] | None = None
+        self._finish_task: asyncio.Task[dict[str, Any]] | None = None
 
     # -- runtime accessors -------------------------------------------------
     @property

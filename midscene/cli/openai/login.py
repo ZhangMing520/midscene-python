@@ -4,12 +4,14 @@ import asyncio
 import inspect
 import uuid
 import webbrowser
-from typing import Any
+from typing import Any, TypeVar
 from urllib.parse import urlsplit
 
 from rich.console import Console
 
 from midscene.cli.openai.errors import SiwcError, with_siwc_stage
+
+_T = TypeVar("_T")
 
 
 def _normalize_options(
@@ -92,7 +94,7 @@ def _reason(status: int) -> str:
     }.get(status, "OK")
 
 
-async def _wait_with_signal(future: asyncio.Future, signal: Any) -> Any:
+async def _wait_with_signal(future: asyncio.Future[_T], signal: Any) -> _T:
     """Await the callback while honouring an AbortSignal-like object."""
     if signal is None:
         return await future
@@ -150,7 +152,9 @@ async def login_with_openai(
 
     state: dict[str, Any] = {"attempt": None}
     consumed = {"value": False}
-    callback_future: asyncio.Future = asyncio.get_running_loop().create_future()
+    callback_future: asyncio.Future[dict[str, str]] = (
+        asyncio.get_running_loop().create_future()
+    )
 
     async def handle_client(
         reader: asyncio.StreamReader, writer: asyncio.StreamWriter

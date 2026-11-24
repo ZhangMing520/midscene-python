@@ -73,7 +73,7 @@ class TaskCache:
         self.cache_original_length = len(self.cache.get("caches", []))
         # Consumed locate entries for this run only; upstream keeps this in
         # memory so a fresh Agent run can reuse the same cache file.
-        self._locate_matched_indices = set()
+        self._locate_matched_indices: set[int] = set()
 
     # -- matching -----------------------------------------------------------
 

@@ -1,8 +1,12 @@
 """Standard planning response parser (upstream workflows/planning/standard-planning-parser.ts)."""
 
 import re
+from collections.abc import Sequence
 from typing import Any
 
+from midscene.core.ai_model.model_adapter.planning_protocol import (
+    PlanningActionOutputProtocol,
+)
 from midscene.core.ai_model.shared.xml import (
     extract_raw_xml_fragment,
     extract_xml_tag,
@@ -45,7 +49,7 @@ def parse_mark_finished_indexes(xml_content: str) -> list[int]:
 
 def parse_xml_planning_response(
     xml_string: str,
-    action_output_tag_names: tuple[str, ...],
+    action_output_tag_names: Sequence[str],
     include_thought: bool,
 ) -> tuple[dict[str, Any], str]:
     """Parse common XML fields and retain the raw action-protocol XML."""
@@ -92,7 +96,7 @@ def parse_xml_planning_response(
 
 def parse_standard_planning_response(
     xml_string: str,
-    action_output_protocol: dict[str, Any],
+    action_output_protocol: PlanningActionOutputProtocol,
     action_space: list[Any],
     include_thought: bool,
     log_source: str = "model",

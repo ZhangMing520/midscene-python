@@ -1,7 +1,7 @@
 """Recorder session metadata generation (upstream recorder-generation/metadata.ts)."""
 
 import json
-from typing import Any
+from typing import Any, cast
 
 from midscene.core.ai_model.service_caller.model_call import (
     call_ai_with_object_response,
@@ -96,8 +96,8 @@ def summarize_recorder_events(
 def _event_description(event: dict[str, Any]) -> str:
     semantic = event.get("semantic") or {}
     if semantic.get("status") == "ready" and semantic.get("elementDescription"):
-        return semantic["elementDescription"]
-    return event.get("description") or ""
+        return cast(str, semantic["elementDescription"])
+    return cast(str, event.get("description") or "")
 
 
 def normalize_metadata_value(value: Any) -> str:

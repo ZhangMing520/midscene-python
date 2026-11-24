@@ -1,6 +1,6 @@
 """HarmonyOS agent (upstream HarmonyAgent extends the core Agent)."""
 
-from typing import Any
+from typing import Any, cast
 
 from loguru import logger
 
@@ -56,8 +56,12 @@ class HarmonyAgent(Agent):
 
     async def run_hdc_shell(self, command: str) -> str:
         """Execute an HDC shell command through the RunHdcShell action."""
-        return await self._call_action_in_action_space(
-            "RunHdcShell", {"command": command}
+        # RunHdcShell's action executor returns the command's stdout string.
+        return cast(
+            str,
+            await self._call_action_in_action_space(
+                "RunHdcShell", {"command": command}
+            ),
         )
 
 
@@ -89,7 +93,8 @@ async def agent_from_hdc_device(
             f"deviceId not specified, will use the first device (id = {device_id})"
         )
 
-    device = HarmonyDevice(device_id, device_options)
+    # Device discovery is an external boundary; the selected entry supplies the id.
+    device = HarmonyDevice(cast(str, device_id), device_options)
     await device.connect()
     return HarmonyAgent(device, options)
 

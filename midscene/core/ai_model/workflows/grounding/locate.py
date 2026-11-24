@@ -3,7 +3,7 @@
 Synced from upstream packages/core/src/ai-model/workflows/grounding/locate.ts.
 """
 
-from typing import Any
+from typing import Any, cast
 
 from loguru import logger
 
@@ -99,8 +99,10 @@ async def ai_locate_element(
             },
             "raw_response": response.get("raw_response"),
             "usage": response.get("usage"),
-            "reasoning_content": response.get("reasoningContent")
-            or response.get("reasoning_content"),
+            "reasoning_content": cast(
+                str | None,
+                response.get("reasoningContent") or response.get("reasoning_content"),
+            ),
         }
 
     locate_response = await generic_locate(
@@ -115,13 +117,17 @@ async def ai_locate_element(
     )
     errors = locate_response.get("errors") or []
     located = locate_response.get("locatedPixelResult")
-    base = {
+    base: LocateResult = {
         "raw_response": locate_response.get("raw_response"),
         "usage": locate_response.get("usage"),
         "reasoning_content": locate_response.get("reasoning_content"),
     }
     if not located:
-        return {"parse_result": {"element": None, "errors": errors}, **base}
+        not_found_result: LocateResult = {
+            "parse_result": {"element": None, "errors": errors}
+        }
+        not_found_result.update(base)
+        return not_found_result
 
     try:
         mapping = (search_config or {}).get("mapping")
@@ -131,22 +137,24 @@ async def ai_locate_element(
             mapped = {"center": located["center"]}
             if located.get("rect"):
                 mapped["rect"] = located["rect"]
-        return {
+        result: LocateResult = {
             "parse_result": {
                 "element": {**mapped, "description": description_text},
                 "errors": [],
             },
-            **base,
         }
+        result.update(base)
+        return result
     except Exception as error:
         message = f"Failed to parse locate result: {error}"
-        return {
+        error_result: LocateResult = {
             "parse_result": {
                 "element": None,
                 "errors": [*errors, message] if errors else [message],
             },
-            **base,
         }
+        error_result.update(base)
+        return error_result
 
 
 async def generic_locate(locate_request: dict[str, Any]) -> dict[str, Any]:
@@ -204,7 +212,9 @@ async def generic_locate(locate_request: dict[str, Any]) -> dict[str, Any]:
             "reasoning_content": reasoning_content,
         }
 
-    async def call_ai(retry_attempt: int, previous_parse_error: Any | None = None):
+    async def call_ai(
+        retry_attempt: int, previous_parse_error: Any | None = None
+    ) -> dict[str, Any]:
         return await call_generative_ai(
             with_semantic_retry_feedback(messages, previous_parse_error),
             model_runtime,

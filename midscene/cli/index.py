@@ -10,7 +10,7 @@ connectivity test.
 
 import asyncio
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Any, Optional, Protocol, cast
 
 import typer
 from rich.console import Console
@@ -32,6 +32,9 @@ from midscene.cli.cli_utils import (
 )
 from midscene.cli.config_factory import _build_agent_options, _extract_cache_id
 from midscene.cli.create_yaml_player import (
+    NavigablePage,
+)
+from midscene.cli.create_yaml_player import (
     create_agent_for_script as _create_agent_for_script,
 )
 from midscene.cli.dotenv_loader import _load_dotenv
@@ -39,6 +42,19 @@ from midscene.cli.execution_summary import run_report_tool
 from midscene.cli.model_command import run_model_connect, run_model_verify
 from midscene.cli.printer import print_batch_results, print_script_result
 from midscene.cli.siwc_command import run_siwc_login, run_siwc_refresh
+
+if TYPE_CHECKING:
+    from midscene.cli.batch_runner import BatchRunner
+    from midscene.core.agent.agent import Agent
+    from midscene.core.yaml import ScriptPlayer
+    from midscene.shared.types import AbstractInterface
+
+
+class _BatchScriptPlayer(Protocol):
+    """Optional page attachment consumed by the batch executor."""
+
+    shared_page: NavigablePage | None
+
 
 __all__ = [
     "app",
@@ -144,7 +160,7 @@ def run(
     dotenv_debug: bool = typer.Option(
         False, "--dotenv-debug", help="Log .env loading decisions"
     ),
-):
+) -> None:
     """Run a YAML script, a directory of scripts, or a batch config
     (upstream `midscene run`)."""
     from midscene.core.agent.agent import Agent
@@ -158,7 +174,7 @@ def run(
     _load_dotenv(dotenv_override, dotenv_debug)
     target_overrides = _parse_cli_target_overrides(list(ctx.args))
 
-    def _apply_batch_flags(batch_config: dict) -> dict:
+    def _apply_batch_flags(batch_config: dict[str, Any]) -> dict[str, Any]:
         for key, value in (
             ("setup", setup),
             ("summary", summary),
@@ -181,7 +197,7 @@ def run(
             )
         return batch_config
 
-    def _run_batch_config(batch_config: dict, script_dir: Path) -> None:
+    def _run_batch_config(batch_config: dict[str, Any], script_dir: Path) -> None:
         from midscene.cli.batch_runner import BatchRunner
         from midscene.cli.yaml_batch_executor import parse_batch_config
 
@@ -197,11 +213,11 @@ def run(
                 console.print(f"[red]Script not found: {item}[/red]")
             raise typer.Exit(1)
 
-        async def _run_batch():
+        async def _run_batch() -> tuple["BatchRunner", list[dict[str, Any]]]:
 
-            shared_page_holder: dict = {}
+            shared_page_holder: dict[str, Any] = {}
 
-            async def factory(content: str, file_path: str):
+            async def factory(content: str, file_path: str) -> "ScriptPlayer":
                 script = parse_yaml_script(content)
                 created = await _create_agent_for_script(
                     script,
@@ -213,11 +229,14 @@ def run(
                     page, options = created
                     if batch_config["share_browser_context"]:
                         shared_page_holder["page"] = page
-                    agent = Agent(page, options)
+                    agent = Agent(cast("AbstractInterface", page), options)
                 else:
-                    agent = created
+                    agent = cast("Agent", created)
                 player = ScriptPlayer(script, agent)
-                player.shared_page = shared_page_holder.get("page")
+                # The factory returns a full page; only its navigation surface is
+                # exposed by the CLI protocol. Batch execution owns this attachment.
+                batch_player = cast(_BatchScriptPlayer, player)
+                batch_player.shared_page = shared_page_holder.get("page")
                 return player
 
             runner = BatchRunner(batch_config, factory)
@@ -236,6 +255,7 @@ def run(
             batch_config = _read_batch_config(config_file)
             script_dir = Path(config_file).parent
         else:
+            assert files is not None
             batch_config = {"files": list(files)}
             script_dir = Path.cwd()
         _run_batch_config(_apply_batch_flags(batch_config), script_dir)
@@ -269,14 +289,14 @@ def run(
             parse_yaml_script(path.read_text(encoding="utf-8")), target_overrides
         )
 
-        async def _run():
+        async def _run() -> "ScriptPlayer":
             created = await _create_agent_for_script(script, headed, device_id)
             page = None
             if isinstance(created, tuple):
                 page, options = created
-                agent = Agent(page, options)
+                agent = Agent(cast("AbstractInterface", page), options)
             else:
-                agent = created
+                agent = cast("Agent", created)
             if artifact_dir:
                 agent.options.report_artifact_dir = artifact_dir
             player = ScriptPlayer(script, agent)
@@ -308,28 +328,28 @@ def siwc_login(
     client_id: Optional[str] = typer.Option(
         None, "--client-id", help="OAuth client ID"
     ),
-):
+) -> None:
     """Sign in with your ChatGPT plan (SIWC) and store credentials."""
     if not run_siwc_login(console, port, client_id):
         raise typer.Exit(1)
 
 
 @siwc_app.command("refresh")
-def siwc_refresh():
+def siwc_refresh() -> None:
     """Refresh the stored ChatGPT (SIWC) credentials without signing in again."""
     if not run_siwc_refresh(console):
         raise typer.Exit(1)
 
 
 @model_app.command("connect")
-def model_connect():
+def model_connect() -> None:
     """Run the model connectivity test (text / vision / aiLocate)."""
     if not run_model_connect(console):
         raise typer.Exit(1)
 
 
 @model_app.command("verify")
-def model_verify():
+def model_verify() -> None:
     """Alias of `model connect` (upstream `midscene model verify`)."""
     if not run_model_verify(console):
         raise typer.Exit(1)
@@ -357,7 +377,7 @@ def report_tool(
     overwrite: bool = typer.Option(
         False, "--overwrite", help="Overwrite an existing merged report"
     ),
-):
+) -> None:
     """Transform Midscene report artifacts (upstream `midscene report-tool`)."""
     if not run_report_tool(
         console,
@@ -372,7 +392,7 @@ def report_tool(
 
 
 @app.command()
-def version():
+def version() -> None:
     """Show version information"""
     import midscene
 
@@ -382,7 +402,7 @@ def version():
         console.print(f"❌ Error getting version: {e}", style="red")
 
 
-def main():
+def main() -> None:
     """CLI entry point"""
     app()
 

@@ -179,7 +179,7 @@ def parse_ui_automator_xml(xml_content: str) -> list[dict[str, Any]]:
     root = ET.fromstring(xml_content)
     elements: list[dict[str, Any]] = []
 
-    def parse_node(node) -> None:
+    def parse_node(node: ET.Element) -> None:
         if node.tag == "node":
             rect = parse_bounds(node.get("bounds", ""))
             if rect is not None:

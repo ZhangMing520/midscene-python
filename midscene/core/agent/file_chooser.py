@@ -1,9 +1,9 @@
 """File chooser handling (upstream agent/file-chooser.ts)."""
 
 import inspect
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 from midscene.core.agent.utils import normalize_file_paths
 from midscene.core.device import _supports
@@ -54,7 +54,15 @@ _normalize_file_chooser_accept_in_allowed_dir = (
 )
 
 
-async def _read_registration_error(registration: Any) -> BaseException | None:
+class FileChooserRegistrationLike(Protocol):
+    def get_error(self) -> BaseException | None | Awaitable[BaseException | None]: ...
+
+    def dispose(self) -> None: ...
+
+
+async def _read_registration_error(
+    registration: FileChooserRegistrationLike,
+) -> BaseException | None:
     error = registration.get_error()
     if inspect.isawaitable(error):
         error = await error
@@ -67,7 +75,7 @@ class FileChooserAccepter:
 
     def __init__(self, interface: AbstractInterface):
         self._interface = interface
-        self._registration = None
+        self._registration: FileChooserRegistrationLike | None = None
 
     async def register(self, files: Any) -> None:
         await self._replace(normalize_file_chooser_accept(files))

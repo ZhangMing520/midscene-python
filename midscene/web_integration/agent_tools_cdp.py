@@ -11,12 +11,12 @@ import inspect
 import json
 import re
 import urllib.request
-from typing import Any
+from typing import Any, cast
 from urllib.parse import urlparse
 
 from loguru import logger
+from playwright.async_api import Browser
 
-from midscene.core.agent.agent import Agent
 from midscene.core.agent.agent_options import AgentOptions, coerce_agent_options
 from midscene.shared.agent_tools.agent_behavior_init_args import (
     extract_agent_behavior_init_args,
@@ -56,7 +56,7 @@ async def _maybe_await(value: Any) -> Any:
 
 def _http_get_json(url: str) -> dict[str, Any]:
     with urllib.request.urlopen(url, timeout=5) as response:
-        return json.loads(response.read().decode("utf-8"))
+        return cast(dict[str, Any], json.loads(response.read().decode("utf-8")))
 
 
 async def _get_proxy_endpoint(chrome_endpoint: str) -> str:
@@ -85,7 +85,7 @@ async def _get_proxy_endpoint(chrome_endpoint: str) -> str:
         ) from error
 
     endpoint = info.get("webSocketDebuggerUrl")
-    if not endpoint:
+    if not isinstance(endpoint, str) or not endpoint:
         raise RuntimeError("webSocketDebuggerUrl not found in /json/version response")
     return endpoint
 
@@ -125,9 +125,9 @@ class _PlaywrightCdpBrowser:
         finally:
             await session.detach()
         target = (info or {}).get("targetInfo", {}).get("targetId")
-        if target:
+        if isinstance(target, str) and target:
             self._target_ids[id(page)] = target
-        return target
+        return target if isinstance(target, str) and target else None
 
     async def disconnect(self) -> None:
         try:
@@ -172,7 +172,7 @@ async def _page_screenshot(page: Any) -> str | None:
         return None
     value = screenshot()
     value = await _maybe_await(value)
-    return value or None
+    return cast(str | None, value or None)
 
 
 class CdpBrowserAgent(WebAgentCore):
@@ -222,6 +222,7 @@ class WebCdpMidsceneTools(BaseMidsceneTools):
 
     def __init__(self, cdp_endpoint: str) -> None:
         super().__init__()
+        self.agent: CdpBrowserAgent | None = None
         self.cdp_endpoint = cdp_endpoint
         self.init_arg_spec = InitArgSpec(
             namespace="web",
@@ -229,7 +230,7 @@ class WebCdpMidsceneTools(BaseMidsceneTools):
             cli={"preferBareKeys": True},
             adapt=adapt_web_cdp_agent_init_args,
         )
-        self.active_browser: Any = None
+        self.active_browser: _PlaywrightCdpBrowser | None = None
         self.last_init_args_signature: str | None = None
 
     def get_cli_report_session_name(self) -> str:
@@ -239,17 +240,18 @@ class WebCdpMidsceneTools(BaseMidsceneTools):
         return _StaticWebPage()
 
     def _create_page_interface(self, page: Any) -> Any:
+        browser = self.active_browser
         underlying_browser = (
-            self.active_browser.underlying_browser()
-            if hasattr(self.active_browser, "underlying_browser")
-            else self.active_browser
+            browser.underlying_browser()
+            if browser is not None and hasattr(browser, "underlying_browser")
+            else browser
         )
         context = getattr(page, "context", None)
         if context is None or not hasattr(page, "goto"):
             return page
         from midscene.web_integration.playwright.page import PlaywrightWebPage
 
-        return PlaywrightWebPage(page, context, underlying_browser)
+        return PlaywrightWebPage(page, context, cast(Browser, underlying_browser))
 
     async def _target_id_for(self, page: Any) -> str | None:
         resolver = (
@@ -259,11 +261,11 @@ class WebCdpMidsceneTools(BaseMidsceneTools):
         )
         if callable(resolver):
             value = await _maybe_await(resolver(page))
-            if value:
+            if isinstance(value, str) and value:
                 return value
         return get_target_id(page)
 
-    async def ensure_agent(self, init_param: Any = None) -> Agent:
+    async def ensure_agent(self, init_param: Any = None) -> CdpBrowserAgent:
         init_args = init_param or {}
         navigate_to_url = init_args.get("url")
         next_signature = get_agent_init_args_signature(init_args)
@@ -323,7 +325,7 @@ class WebCdpMidsceneTools(BaseMidsceneTools):
         if headers:
             await _page_set_extra_http_headers(page, headers)
 
-        if should_navigate:
+        if should_navigate and isinstance(navigate_to_url, str):
             await _page_goto(page, navigate_to_url)
 
         target_id = await self._target_id_for(page)

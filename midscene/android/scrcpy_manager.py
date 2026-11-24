@@ -38,6 +38,7 @@ import math
 import os
 import re
 import struct
+import subprocess
 import time
 import urllib.request
 import uuid
@@ -46,7 +47,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import (
     Any,
+    Protocol,
     TypedDict,
+    cast,
+    overload,
 )
 
 from loguru import logger
@@ -398,9 +402,22 @@ def get_scrcpy_server_download_url(
     )
 
 
-def _default_http_get(url: str, timeout: float) -> bytes:
+class ScrcpyHttpGetter(Protocol):
+    @overload
+    def __call__(self, url: str) -> bytes: ...
+
+    @overload
+    def __call__(self, url: str, timeout: float) -> bytes: ...
+
+
+class ByteReader(Protocol):
+    async def readexactly(self, n: int) -> bytes: ...
+
+
+def _default_http_get(url: str, timeout: float = 120.0) -> bytes:
     with urllib.request.urlopen(url, timeout=timeout) as response:  # noqa: S310
-        return response.read()
+        # urllib's response stubs expose an untyped read() boundary.
+        return cast(bytes, response.read())
 
 
 def _read_existing_server(path: Path) -> str | None:
@@ -418,7 +435,7 @@ def ensure_scrcpy_server(
     version: str = SCRCPY_SERVER_VERSION_TAG,
     download: bool = True,
     url: str | None = None,
-    http_get: Callable[[str, float], bytes] | None = None,
+    http_get: ScrcpyHttpGetter | None = None,
     timeout: float = 120.0,
 ) -> str:
     """Resolve the local scrcpy-server jar, downloading it to a cache dir.
@@ -536,7 +553,7 @@ class AdbCommandBackend:
         *,
         capture_output: bool = True,
         timeout: float = 30,
-    ):
+    ) -> subprocess.CompletedProcess[bytes]:
         return await run_adb_command(
             ["-s", self.device_id, *args],
             capture_output=capture_output,
@@ -2129,7 +2146,7 @@ class ScrcpyScreenshotManager:
         await self.dispose()
 
 
-async def _read_exactly(reader: Any, size: int) -> bytes:
+async def _read_exactly(reader: ByteReader, size: int) -> bytes:
     """Read exactly ``size`` bytes from a StreamReader-like object."""
     if size < 0:
         raise RuntimeError(f"Invalid scrcpy packet size: {size}")

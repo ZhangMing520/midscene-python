@@ -2,24 +2,31 @@
 Logging configuration for Midscene Python
 """
 
+from __future__ import annotations
+
 import contextvars
 import inspect
 import sys
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable, Iterable
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any, TypeVar, cast, overload
 
 from loguru import logger
 
 from midscene.shared.common import get_midscene_run_sub_dir
 
+if TYPE_CHECKING:
+    from loguru import Logger
+
 # Console handler/scope context (upstream runWithConsoleLogHandler / Scope).
-_console_handler: contextvars.ContextVar = contextvars.ContextVar(
-    "midscene_console_handler", default=None
+_console_handler: contextvars.ContextVar[Callable[[dict[str, Any]], None] | None] = (
+    contextvars.ContextVar("midscene_console_handler", default=None)
 )
-_console_scope: contextvars.ContextVar = contextvars.ContextVar(
+_console_scope: contextvars.ContextVar[dict[str, Any] | None] = contextvars.ContextVar(
     "midscene_console_scope", default=None
 )
+
+_T = TypeVar("_T")
 
 
 _log_directory_resolver: Callable[[], str] | None = None
@@ -61,8 +68,20 @@ def _format_value(value: Any) -> str:
     return str(value)
 
 
-def _format_args(args: Any) -> str:
+def _format_args(args: Iterable[Any]) -> str:
     return " ".join(_format_value(value) for value in args)
+
+
+@overload
+def run_with_console_log_handler(
+    handler: Callable[[dict[str, Any]], None], run: Callable[[], Awaitable[_T]]
+) -> Awaitable[_T]: ...
+
+
+@overload
+def run_with_console_log_handler(
+    handler: Callable[[dict[str, Any]], None], run: Callable[[], _T]
+) -> _T: ...
 
 
 def run_with_console_log_handler(
@@ -70,11 +89,12 @@ def run_with_console_log_handler(
 ) -> Any:
     """Route SDK console messages within one run (upstream runWithConsoleLogHandler)."""
     if inspect.iscoroutinefunction(run):
+        async_run = cast(Callable[[], Awaitable[_T]], run)
 
-        async def _run_async():
+        async def _run_async() -> _T:
             token = _console_handler.set(handler)
             try:
-                return await run()
+                return await async_run()
             finally:
                 _console_handler.reset(token)
 
@@ -87,10 +107,22 @@ def run_with_console_log_handler(
         _console_handler.reset(token)
 
 
+@overload
+def run_with_console_log_scope(
+    scope: dict[str, Any], run: Callable[[], Awaitable[_T]]
+) -> Awaitable[_T]: ...
+
+
+@overload
+def run_with_console_log_scope(scope: dict[str, Any], run: Callable[[], _T]) -> _T: ...
+
+
 def run_with_console_log_scope(scope: dict[str, Any], run: Callable[[], Any]) -> Any:
     """Capture the actual async execution scope, including late logs."""
 
-    def wrap(base_handler):
+    def wrap(
+        base_handler: Callable[[dict[str, Any]], None],
+    ) -> Callable[[dict[str, Any]], None]:
         def _wrapped(entry: dict[str, Any]) -> None:
             merged = dict(scope)
             merged.update(entry.get("scope") or {})
@@ -99,14 +131,15 @@ def run_with_console_log_scope(scope: dict[str, Any], run: Callable[[], Any]) ->
         return _wrapped
 
     if inspect.iscoroutinefunction(run):
+        async_run = cast(Callable[[], Awaitable[_T]], run)
 
-        async def _run_async():
+        async def _run_async() -> _T:
             handler = _console_handler.get()
             if handler is None:
-                return await run()
+                return await async_run()
             token = _console_handler.set(wrap(handler))
             try:
-                return await run()
+                return await async_run()
             finally:
                 _console_handler.reset(token)
 
@@ -165,11 +198,11 @@ def get_debug(
 
     if with_console:
 
-        def debug_log(*args: Any) -> None:
+        def debug_log_console(*args: Any) -> None:
             _debug_fn(*args)
             _print_console_warning(full_topic, args, warning)
 
-        return debug_log
+        return debug_log_console
 
     def debug_log(*args: Any) -> None:
         _debug_fn(*args)
@@ -233,7 +266,7 @@ def setup_logger(
     logger.info(f"Logger configured with level: {level}")
 
 
-def get_logger(name: str):
+def get_logger(name: str) -> Logger:
     """Get logger instance
 
     Args:
@@ -245,7 +278,7 @@ def get_logger(name: str):
     return logger.bind(name=name)
 
 
-_debug_namespaces: set = set()
+_debug_namespaces: set[str] = set()
 
 
 def enable_debug(namespace: str) -> None:

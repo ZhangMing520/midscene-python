@@ -6,7 +6,7 @@ upstream module becomes simple field-list lookups here.
 """
 
 import math
-from typing import Any
+from typing import Any, cast
 
 from midscene.core.ai_model.shared.multimodal_prompt import user_prompt_to_string
 from midscene.core.device import find_action_in_action_space_or_throw
@@ -104,7 +104,7 @@ def _format_prompt_with_images(prompt_obj: dict[str, Any]) -> str:
     return prompt_string
 
 
-def dump_action_param(json_object: dict[str, Any], schema: Any) -> dict[str, Any]:
+def dump_action_param(json_object: object, schema: Any) -> dict[str, Any]:
     """Flatten locator fields to strings for YAML output (upstream dumpActionParam)."""
     if not isinstance(json_object, dict):
         return {}
@@ -229,9 +229,9 @@ def build_yaml_flow_from_plans(
     flow: list[dict[str, Any]] = []
 
     for plan in plans:
-        verb = plan.get("type")
+        verb = cast(str, plan.get("type"))
         action = find_action_in_action_space_or_throw(verb, action_space)
-        flow_key = _field(action, "interface_alias") or verb
+        flow_key = cast(str, _field(action, "interface_alias") or verb)
 
         if _field(action, "param_schema"):
             raw_param = plan.get("param") or {}
@@ -253,7 +253,7 @@ def build_yaml_flow_from_plans(
             and isinstance(flow_param[shortcut_field], str)
         )
         if can_inline:
-            flow.append({flow_key: flow_param[shortcut_field]})
+            flow.append({flow_key: flow_param[cast(str, shortcut_field)]})
         else:
             flow.append({flow_key: "", **flow_param})
 

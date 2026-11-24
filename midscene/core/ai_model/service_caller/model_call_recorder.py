@@ -26,7 +26,7 @@ def is_model_call_recording_enabled() -> bool:
 class ModelCallRecorder:
     """Serialize JSONL writes so concurrent calls never interleave lines."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._process_start_time = (
             datetime.now(UTC).isoformat().replace(":", "-").replace(".", "-")
         )

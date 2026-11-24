@@ -9,7 +9,7 @@ import asyncio
 import inspect
 import math
 import re
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
@@ -20,6 +20,8 @@ from midscene.core.device.device_options import (
 )
 from midscene.core.device.input_strategy import input_options
 from midscene.core.types import supports_interface_extension
+
+LocateFn = Callable[[dict[str, Any]], Awaitable[dict[str, Any]]]
 
 LOCATE_PARAM = {
     "type": "{ prompt: string }",
@@ -38,7 +40,7 @@ class DeviceAction:
 
     name: str
     description: str
-    param_schema: dict[str, dict[str, Any]] = field(default_factory=dict)
+    param_schema: dict[str, dict[str, Any]] | None = field(default_factory=dict)
     locate_fields: list[str] = field(default_factory=list)
     distance_fields: list[str] = field(default_factory=list)
     sample: dict[str, Any] | None = None
@@ -612,7 +614,7 @@ def _define_action(
     async def execute(
         param: dict[str, Any] | None = None,
         device: Any = None,
-        locate_fn: Any = None,
+        locate_fn: LocateFn | None = None,
     ) -> Any:
         resolved = dict(param or {})
         for field_name in locate_field_names:
@@ -1192,7 +1194,7 @@ def _define_system_input_action(config: Any, primitive: Any) -> DeviceAction:
     async def execute(
         param: dict[str, Any] | None = None,
         device: Any = None,
-        locate_fn: Any = None,
+        locate_fn: LocateFn | None = None,
     ) -> None:
         await _invoke(primitive)
 
@@ -1302,7 +1304,7 @@ def create_default_mobile_actions(context: Any) -> list[DeviceAction]:
 
 
 async def _resolve_locate_point(
-    locate_param: dict[str, Any], locate_fn
+    locate_param: dict[str, Any], locate_fn: LocateFn
 ) -> dict[str, Any]:
     if not isinstance(locate_param, dict) or not locate_param.get("prompt"):
         raise ValueError("locate parameter requires a prompt")
@@ -1310,7 +1312,7 @@ async def _resolve_locate_point(
 
 
 def _make_tap(executor: str) -> Callable[..., Any]:
-    async def execute(param: dict[str, Any], device: Any, locate_fn) -> None:
+    async def execute(param: dict[str, Any], device: Any, locate_fn: LocateFn) -> None:
         locate = param.get("locate")
         if locate is None:
             raise ValueError(f"{executor} requires a locate parameter")
@@ -1325,7 +1327,9 @@ def _make_tap(executor: str) -> Callable[..., Any]:
     return execute
 
 
-async def _execute_input(param: dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_input(
+    param: dict[str, Any], device: Any, locate_fn: LocateFn
+) -> None:
     mode = param.get("mode") or "replace"
     # Backward compat: upstream converts the deprecated 'append' to 'typeOnly'.
     if mode == "append":
@@ -1365,7 +1369,7 @@ async def _execute_input(param: dict[str, Any], device: Any, locate_fn) -> None:
 
 
 async def _execute_keyboard_press(
-    param: dict[str, Any], device: Any, locate_fn
+    param: dict[str, Any], device: Any, locate_fn: LocateFn
 ) -> None:
     key_name = param.get("keyName")
     if not key_name:
@@ -1379,7 +1383,9 @@ async def _execute_keyboard_press(
     await device.keyboard_press(str(key_name))
 
 
-async def _execute_scroll(param: dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_scroll(
+    param: dict[str, Any], device: Any, locate_fn: LocateFn
+) -> None:
     direction = param.get("direction") or "down"
     distance = param.get("distance")
     scroll_type = param.get("scrollType") or "singleAction"
@@ -1393,7 +1399,9 @@ async def _execute_scroll(param: dict[str, Any], device: Any, locate_fn) -> None
     await device.scroll(direction, **_scroll_supported_kwargs(device, kwargs))
 
 
-async def _execute_clear_input(param: dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_clear_input(
+    param: dict[str, Any], device: Any, locate_fn: LocateFn
+) -> None:
     locate = param.get("locate")
     if locate is not None:
         point = await _resolve_locate_point(locate, locate_fn)
@@ -1407,7 +1415,9 @@ async def _execute_clear_input(param: dict[str, Any], device: Any, locate_fn) ->
         await device.keyboard_press("Delete")
 
 
-async def _execute_sleep(param: dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_sleep(
+    param: dict[str, Any], device: Any, locate_fn: LocateFn
+) -> None:
     time_ms = param.get("timeMs") or 1000
     try:
         time_ms = max(0, min(int(time_ms), 5 * 60 * 1000))
@@ -1416,7 +1426,9 @@ async def _execute_sleep(param: dict[str, Any], device: Any, locate_fn) -> None:
     await asyncio.sleep(time_ms / 1000)
 
 
-async def _execute_cursor_move(param: dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_cursor_move(
+    param: dict[str, Any], device: Any, locate_fn: LocateFn
+) -> None:
     direction = param.get("direction")
     if direction not in ("left", "right"):
         raise ValueError('CursorMove direction must be "left" or "right"')
@@ -1434,7 +1446,9 @@ async def _execute_cursor_move(param: dict[str, Any], device: Any, locate_fn) ->
         await asyncio.sleep(0.1)
 
 
-async def _execute_navigate(param: dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_navigate(
+    param: dict[str, Any], device: Any, locate_fn: LocateFn
+) -> None:
     url = param.get("url")
     if not url or not str(url).strip():
         raise ValueError("Navigate requires a non-empty url parameter")
@@ -1443,19 +1457,25 @@ async def _execute_navigate(param: dict[str, Any], device: Any, locate_fn) -> No
     await device.navigate_to(str(url))
 
 
-async def _execute_reload(param: dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_reload(
+    param: dict[str, Any], device: Any, locate_fn: LocateFn
+) -> None:
     if not _supports(device, "reload"):
         raise NotImplementedError("Reload is not supported on this interface")
     await device.reload()
 
 
-async def _execute_go_back(param: dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_go_back(
+    param: dict[str, Any], device: Any, locate_fn: LocateFn
+) -> None:
     if not _supports(device, "go_back"):
         raise NotImplementedError("GoBack is not supported on this interface")
     await device.go_back()
 
 
-async def _execute_go_forward(param: dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_go_forward(
+    param: dict[str, Any], device: Any, locate_fn: LocateFn
+) -> None:
     if not _supports(device, "go_forward"):
         raise NotImplementedError("GoForward is not supported on this interface")
     await device.go_forward()
@@ -1476,7 +1496,9 @@ async def _resolve_screen_size(device: Any) -> dict[str, float]:
     }
 
 
-async def _execute_swipe(param: dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_swipe(
+    param: dict[str, Any], device: Any, locate_fn: LocateFn
+) -> None:
     resolved = dict(param)
     if resolved.get("start"):
         point = await _resolve_locate_point(resolved["start"], locate_fn)
@@ -1533,7 +1555,9 @@ async def _execute_swipe(param: dict[str, Any], device: Any, locate_fn) -> None:
     raise NotImplementedError("Swipe endpoint form is not supported on this interface")
 
 
-async def _execute_pull_gesture(param: dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_pull_gesture(
+    param: dict[str, Any], device: Any, locate_fn: LocateFn
+) -> None:
     if not _supports(device, "pull_gesture"):
         raise NotImplementedError("PullGesture is not supported on this interface")
     direction = param.get("direction")
@@ -1552,7 +1576,9 @@ async def _execute_pull_gesture(param: dict[str, Any], device: Any, locate_fn) -
     )
 
 
-async def _execute_drag_and_drop(param: dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_drag_and_drop(
+    param: dict[str, Any], device: Any, locate_fn: LocateFn
+) -> None:
     from_locate = param.get("from")
     to_locate = param.get("to")
     if not from_locate:
@@ -1566,7 +1592,9 @@ async def _execute_drag_and_drop(param: dict[str, Any], device: Any, locate_fn) 
     await device.drag_and_drop(from_point["center"], to_point["center"])
 
 
-async def _execute_long_press(param: dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_long_press(
+    param: dict[str, Any], device: Any, locate_fn: LocateFn
+) -> None:
     if not _supports(device, "long_press"):
         raise NotImplementedError("LongPress is not supported on this interface")
     locate = param.get("locate")
@@ -2021,7 +2049,9 @@ def build_web_action_space() -> list[DeviceAction]:
     ]
 
 
-async def _execute_run_adb_shell(param: dict[str, Any], device: Any, locate_fn) -> Any:
+async def _execute_run_adb_shell(
+    param: dict[str, Any], device: Any, locate_fn: LocateFn
+) -> Any:
     command = param.get("command")
     if not command:
         raise ValueError("RunAdbShell requires a command parameter")
@@ -2033,21 +2063,27 @@ async def _execute_run_adb_shell(param: dict[str, Any], device: Any, locate_fn) 
     return await device.run_adb_shell(str(command))
 
 
-async def _execute_launch(param: dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_launch(
+    param: dict[str, Any], device: Any, locate_fn: LocateFn
+) -> None:
     uri = param.get("uri")
     if not uri or not str(uri).strip():
         raise ValueError("Launch requires a non-empty uri parameter")
     await device.launch_app(str(uri))
 
 
-async def _execute_terminate(param: dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_terminate(
+    param: dict[str, Any], device: Any, locate_fn: LocateFn
+) -> None:
     uri = param.get("uri")
     if not uri or not str(uri).strip():
         raise ValueError("Terminate requires a non-empty uri parameter")
     await device.stop_app(str(uri))
 
 
-async def _execute_pinch(param: dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_pinch(
+    param: dict[str, Any], device: Any, locate_fn: LocateFn
+) -> None:
     if not _supports(device, "pinch"):
         raise NotImplementedError("Pinch is not supported on this interface")
     resolved = dict(param)
@@ -2063,7 +2099,9 @@ async def _execute_pinch(param: dict[str, Any], device: Any, locate_fn) -> None:
     )
 
 
-async def _execute_run_hdc_shell(param: dict[str, Any], device: Any, locate_fn) -> Any:
+async def _execute_run_hdc_shell(
+    param: dict[str, Any], device: Any, locate_fn: LocateFn
+) -> Any:
     command = param.get("command")
     if not command or not str(command).strip():
         raise RuntimeError("RunHdcShell requires a non-empty command")
@@ -2076,7 +2114,7 @@ _WDA_HTTP_METHODS = ("GET", "POST", "DELETE", "PUT")
 
 
 async def _execute_run_wda_request(
-    param: dict[str, Any], device: Any, locate_fn
+    param: dict[str, Any], device: Any, locate_fn: LocateFn
 ) -> Any:
     method = str(param.get("method") or "").upper()
     if method not in _WDA_HTTP_METHODS:
@@ -2092,14 +2130,14 @@ async def _execute_run_wda_request(
 
 
 def _make_harmony_system_action(method_name: str) -> Callable[..., Any]:
-    async def execute(param: dict[str, Any], device: Any, locate_fn) -> None:
+    async def execute(param: dict[str, Any], device: Any, locate_fn: LocateFn) -> None:
         await getattr(device, method_name)()
 
     return execute
 
 
 def _make_system_action(method_name: str) -> Callable[..., Any]:
-    async def execute(param: dict[str, Any], device: Any, locate_fn) -> None:
+    async def execute(param: dict[str, Any], device: Any, locate_fn: LocateFn) -> None:
         await getattr(device, method_name)()
 
     return execute

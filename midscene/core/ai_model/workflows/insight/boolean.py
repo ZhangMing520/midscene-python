@@ -37,6 +37,8 @@ async def extract_boolean(
     if len(keys) != 1:
         raise ValueError("Boolean insight tasks require exactly one result field.")
 
+    if isinstance(data_query, str):
+        raise ValueError("Boolean insight tasks require exactly one result field.")
     statement = _boolean_statement(data_query[keys[0]])
     result = await boolean_fn(
         statement,

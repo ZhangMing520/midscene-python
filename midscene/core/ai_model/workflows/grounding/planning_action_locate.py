@@ -1,13 +1,17 @@
 """Planning-based tap locator (upstream workflows/grounding/planning-action-locate.ts)."""
 
 from collections.abc import Callable
-from typing import Any, TypedDict
+from typing import Any, TypedDict, cast
 
 from midscene.core.ai_model.model_adapter.image_preprocess import (
+    PreparedModelImage,
     prepare_model_image,
 )
 from midscene.core.ai_model.model_adapter.locate_prompt_order import (
     multimodal_prompt_to_messages,
+)
+from midscene.core.ai_model.model_adapter.planning import (
+    ResolvedCustomPlanningDefinition,
 )
 from midscene.core.ai_model.service_caller.call_ai import (
     call_ai_with_string_response,
@@ -17,6 +21,11 @@ from midscene.core.ai_model.shared.multimodal_prompt import (
     ensure_data_url,
     user_prompt_to_string,
 )
+from midscene.core.ai_model.workflows.grounding.types import (
+    LocateFn,
+    LocateImage,
+    LocateModelResponse,
+)
 
 
 class PlanningTapLocatorDefinition(TypedDict, total=False):
@@ -25,7 +34,7 @@ class PlanningTapLocatorDefinition(TypedDict, total=False):
     build_system_prompt: Callable[[], str]
     parse_response: Callable[[str], dict[str, Any]]
     transform_actions: Callable[
-        [dict[str, Any], Any, dict[str, Any], dict[str, int]],
+        [dict[str, Any], Any, PreparedModelImage, dict[str, int]],
         list[dict[str, Any]],
     ]
     get_located_pixel_result: Callable[[list[dict[str, Any]]], dict[str, Any] | None]
@@ -35,7 +44,7 @@ class PlanningTapLocatorDefinition(TypedDict, total=False):
 async def run_planning_action_locate(
     definition: PlanningTapLocatorDefinition,
     target_element_description: Any,
-    locate_image: dict[str, Any],
+    locate_image: LocateImage,
     model_runtime: Any,
 ) -> dict[str, Any]:
     """Run one planning pass and turn its actions into a pixel locate result."""
@@ -51,7 +60,7 @@ async def run_planning_action_locate(
     )
     # Auto-GLM places its prompt in a system message and the screenshot in a
     # history entry, matching upstream buildCustomPlanningMessages.
-    messages = [
+    messages: list[dict[str, Any]] = [
         {
             "role": "system",
             "content": definition["build_system_prompt"](),
@@ -111,8 +120,8 @@ async def run_planning_action_locate(
 
 async def resolve_planning_tap_locator(
     definition: PlanningTapLocatorDefinition,
-    planner: dict[str, Any],
-):
+    planner: dict[str, Any] | ResolvedCustomPlanningDefinition,
+) -> LocateFn:
     """Build a locate function from a planning tap locator definition.
 
     Mirrors upstream ``resolvePlanningTapLocator``: the planner runs once with
@@ -124,9 +133,9 @@ async def resolve_planning_tap_locator(
         locate_request: Any = None,
         *,
         target_element_description: Any = None,
-        locate_image: dict[str, Any] | None = None,
+        locate_image: LocateImage | None = None,
         model_runtime: Any = None,
-    ) -> dict[str, Any]:
+    ) -> LocateModelResponse:
         from types import SimpleNamespace
 
         from midscene.core.ai_model.model_adapter.planning import (
@@ -158,17 +167,22 @@ async def resolve_planning_tap_locator(
                 width=locate_image["width"], height=locate_image["height"]
             ),
         )
-        planner_config = planner
-        if "coordinate_normalizer" not in planner_config:
-            planner_config = resolve_custom_planning_definition(planner_config)
-        planner_config = {
-            **planner_config,
-            "messages": {
-                **(planner_config.get("messages") or {}),
-                "build_system_prompt": definition["build_system_prompt"],
-                "build_user_instruction": lambda instruction: f"Tap: {instruction}",
-            },
-        }
+        resolved_planner = (
+            planner
+            if "coordinate_normalizer" in planner
+            else resolve_custom_planning_definition(planner)
+        )
+        resolved_planner = cast(ResolvedCustomPlanningDefinition, resolved_planner)
+        planner_with_locator: ResolvedCustomPlanningDefinition = {**resolved_planner}
+        planner_with_locator.update(
+            {
+                "messages": {
+                    **(resolved_planner.get("messages") or {}),
+                    "build_system_prompt": definition["build_system_prompt"],
+                    "build_user_instruction": lambda instruction: f"Tap: {instruction}",
+                }
+            }
+        )
 
         try:
             planning_response = await run_custom_planning(
@@ -177,7 +191,7 @@ async def resolve_planning_tap_locator(
                 model_runtime,
                 [{"name": "Tap", "locate_fields": ["locate"]}],
                 ConversationHistory(),
-                planner_config,
+                planner_with_locator,
                 include_locate_in_planning=True,
             )
             located_pixel_result = definition["get_located_pixel_result"](

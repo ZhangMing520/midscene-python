@@ -75,6 +75,7 @@ class ActionReadiness:
 
         import inspect
 
+        completion: asyncio.Future[Any]
         try:
             callback_result = self._callback({"action": action, "signal": signal})
             if inspect.isawaitable(callback_result):

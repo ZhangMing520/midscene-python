@@ -33,7 +33,7 @@ class ReportArtifactError(ValueError):
     """Raised for an invalid or inconsistent report artifact."""
 
 
-def validate_report_id(report_id: str) -> str:
+def validate_report_id(report_id: object) -> str:
     if not isinstance(report_id, str) or not REPORT_ID_PATTERN.match(report_id):
         raise ReportArtifactError("Invalid report artifact ID")
     return report_id

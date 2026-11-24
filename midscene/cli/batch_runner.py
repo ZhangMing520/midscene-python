@@ -4,6 +4,7 @@ from collections.abc import Callable
 from typing import Any
 
 from midscene.cli.execution_summary import (
+    ExecutionSummary,
     get_execution_summary,
     get_result_files_by_type,
     get_summary_absolute_path,
@@ -52,7 +53,7 @@ class BatchRunner:
         finally:
             self.hook_error = state.get("hook_error")
 
-    def get_execution_summary(self) -> dict[str, Any]:
+    def get_execution_summary(self) -> ExecutionSummary:
         return get_execution_summary(self.results)
 
     def get_results(self) -> list[dict[str, Any]]:

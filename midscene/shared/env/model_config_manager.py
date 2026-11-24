@@ -1,7 +1,7 @@
 """Per-intent model config manager (upstream packages/shared/src/env/model-config-manager.ts)."""
 
 import os
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from midscene.shared.env.constants import (
     MODEL_CONFIG_DOC_URL,
@@ -13,6 +13,9 @@ from midscene.shared.env.parse_model_config import (
 from midscene.shared.env.types import (
     TIntent,
 )
+
+if TYPE_CHECKING:
+    from midscene.shared.env.global_config_manager import GlobalConfigManager
 
 
 class ModelConfigManager:
@@ -31,7 +34,7 @@ class ModelConfigManager:
         self.env_provider = env_provider
         self._model_config_map: dict[TIntent, dict] | None = None
         self._isolated = model_config is not None
-        self.global_config_manager: Any | None = None
+        self.global_config_manager: GlobalConfigManager | None = None
 
     @property
     def isolated_mode(self) -> bool:

@@ -12,17 +12,35 @@ import io
 import math
 import os
 import re
-from typing import Any
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, Protocol, cast
 
 import httpx
 
 from midscene.shared.img.info import encoded_image_info_of_buffer
 
+if TYPE_CHECKING:
+    from PIL.Image import Image as PILImage
+    from PIL.Image import Resampling
+    from PIL.ImageFile import ImageFile
 
-def _pil():
-    from PIL import Image, ImageDraw
 
-    return Image, ImageDraw
+class _ImageModule(Protocol):
+    """Typed facade over Pillow's dynamically imported image module."""
+
+    LANCZOS: Resampling
+    NEAREST: Resampling
+    open: Callable[..., ImageFile]
+    new: Callable[..., PILImage]
+
+    def alpha_composite(self, im1: PILImage, im2: PILImage, /) -> PILImage: ...
+
+
+def _pil() -> _ImageModule:
+    import PIL.Image as image_module
+
+    # Pillow defines resampling constants dynamically during module import.
+    return cast(_ImageModule, image_module)
 
 
 def _js_round(value: float) -> int:
@@ -93,14 +111,14 @@ def _parse_base64(full_base64_string: str) -> dict[str, str]:
         ) from error
 
 
-def _encode_jpeg_bytes(image: Any, quality: int) -> bytes:
+def _encode_jpeg_bytes(image: PILImage, quality: int) -> bytes:
     buffer = io.BytesIO()
     image.convert("RGB").save(buffer, format="JPEG", quality=quality, subsampling=0)
     return buffer.getvalue()
 
 
-def decode_base64_image(image_base64: str):
-    Image, _ = _pil()
+def decode_base64_image(image_base64: str) -> PILImage:
+    Image = _pil()
     raw = (
         image_base64.split(",", 1)[1]
         if image_base64.startswith("data:")
@@ -110,7 +128,7 @@ def decode_base64_image(image_base64: str):
     return image.convert("RGB")
 
 
-def encode_base64_image(image, quality: int = 90) -> str:
+def encode_base64_image(image: PILImage, quality: int = 90) -> str:
     return "data:image/jpeg;base64," + base64.b64encode(
         _encode_jpeg_bytes(image, quality)
     ).decode("ascii")
@@ -131,7 +149,7 @@ def save_base64_image(options: dict[str, str]) -> None:
 
 def _resize_image_buffer(
     input_format: str,
-    input_data: bytes,
+    input_data: bytes | str,
     target_size: dict[str, int],
     *,
     source_size: dict[str, int] | None = None,
@@ -150,7 +168,7 @@ def _resize_image_buffer(
     ):
         raise AssertionError("newSize must be positive")
 
-    Image, _ = _pil()
+    Image = _pil()
     original_width = (source_size or {}).get("width")
     original_height = (source_size or {}).get("height")
     image = Image.open(io.BytesIO(input_data))
@@ -166,10 +184,11 @@ def _resize_image_buffer(
     if preserve_original_when_unchanged and dimensions_unchanged:
         return {"buffer": input_data, "format": input_format}
 
-    if dimensions_unchanged:
-        resized = image
-    else:
-        resized = image.resize((target_width, target_height), Image.LANCZOS)
+    resized: PILImage = (
+        image
+        if dimensions_unchanged
+        else image.resize((target_width, target_height), Image.LANCZOS)
+    )
     return {
         "buffer": _encode_jpeg_bytes(resized, jpeg_quality),
         # by the JPEG encoder
@@ -197,7 +216,7 @@ def convert_img_buffer_to_jpeg(
     quality: int = 90,
 ) -> bytes:
     """Convert an image buffer to JPEG without changing its dimensions."""
-    Image, _ = _pil()
+    Image = _pil()
     try:
         with Image.open(io.BytesIO(input_data)) as image:
             image.load()
@@ -367,7 +386,7 @@ def resize_base64_image_to_jpeg(input_base64: str, options: dict[str, Any]) -> s
         target_size,
         source_size=source_size,
         preserve_original_when_unchanged=False,
-        jpeg_quality=jpeg_quality,
+        jpeg_quality=cast(int, jpeg_quality),
     )
     return create_img_base64_by_format(
         "jpeg", base64.b64encode(result["buffer"]).decode("ascii")
@@ -391,11 +410,12 @@ def constrain_base64_image_to_max_size(
     body, mime_type = parsed["body"], parsed["mimeType"]
     image_buffer = base64.b64decode(body)
     source_size = encoded_image_info_of_buffer(image_buffer)
+    max_size_value = cast(int, max_size)  # Validated as a positive integer above.
     largest_dimension = max(source_size["width"], source_size["height"])
-    if largest_dimension <= max_size:
+    if largest_dimension <= max_size_value:
         return input_base64
 
-    scale = max_size / largest_dimension
+    scale = max_size_value / largest_dimension
     target_size = {
         "width": max(1, _js_round(source_size["width"] * scale)),
         "height": max(1, _js_round(source_size["height"] * scale)),
@@ -412,7 +432,7 @@ def constrain_base64_image_to_max_size(
         target_size,
         source_size=source_size,
         preserve_original_when_unchanged=False,
-        jpeg_quality=jpeg_quality,
+        jpeg_quality=cast(int, jpeg_quality),
     )
     return create_img_base64_by_format(
         "jpeg", base64.b64encode(result["buffer"]).decode("ascii")
@@ -452,23 +472,23 @@ def zoom_for_gpt4o(original_width: float, original_height: float) -> dict[str, i
     }
 
 
-def photon_from_base64(base64_data: str):
+def photon_from_base64(base64_data: str) -> PILImage:
     """Decode an image into an RGBA pixel buffer (Pillow stand-in for Photon)."""
-    Image, _ = _pil()
+    Image = _pil()
     body = _parse_base64(base64_data)["body"]
     image = Image.open(io.BytesIO(base64.b64decode(body)))
     image.load()
     return image.convert("RGBA")
 
 
-def photon_to_base64(image, quality: int = 90) -> str:
+def photon_to_base64(image: PILImage, quality: int = 90) -> str:
     """Encode an RGBA pixel buffer as a JPEG data URL."""
     return encode_base64_image(image, quality)
 
 
-def padding_to_match_block(image, block_size: int = 28) -> dict[str, Any]:
+def padding_to_match_block(image: PILImage, block_size: int = 28) -> dict[str, Any]:
     """Pad the right/bottom edges with white so both are multiples of a block."""
-    Image, _ = _pil()
+    Image = _pil()
     width, height = image.size
     target_width = math.ceil(width / block_size) * block_size
     target_height = math.ceil(height / block_size) * block_size
@@ -530,7 +550,7 @@ def resize_long_edge(
     image_base64: str, max_long_edge: int = 1000, max_upscale: float = 2.0
 ) -> str | None:
     """Upscale a small crop to at most ``max_upscale`` (upstream resize rule)."""
-    Image, _ = _pil()
+    Image = _pil()
     image = decode_base64_image(image_base64)
     long_edge = max(image.width, image.height)
     if not long_edge:
@@ -550,7 +570,7 @@ def scale_image(image_base64: str, scale: float) -> dict[str, Any]:
     if scale <= 0:
         raise ValueError("Scale factor must be positive")
 
-    Image, _ = _pil()
+    Image = _pil()
     parsed = _parse_base64(image_base64)
     image = Image.open(io.BytesIO(base64.b64decode(parsed["body"])))
     image.load()
@@ -572,7 +592,7 @@ def pad_base64_image_to_minimum_size(image_base64: str, minimum: int) -> dict[st
     """Pad the right and bottom edges with white to a minimum size."""
     if not _is_positive_integer(minimum):
         raise AssertionError("minimum must be a positive integer")
-    Image, _ = _pil()
+    Image = _pil()
     body = _parse_base64(image_base64)["body"]
     buffer = base64.b64decode(body)
     size = encoded_image_info_of_buffer(buffer)

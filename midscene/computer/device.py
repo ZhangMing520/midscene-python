@@ -15,6 +15,7 @@ import math
 import os
 import platform
 import subprocess
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -61,8 +62,8 @@ LIBNUT_FALLBACK_EDGE_DETENTS = min(
     ),
 )
 
-_phased_scroll_binary_path: Any = None
-_display_info_binary_path: Any = None
+_phased_scroll_binary_path: str | None = None
+_display_info_binary_path: str | None = None
 _phased_scroll_exec_warned = False
 
 
@@ -452,7 +453,7 @@ class ComputerDevice(AbstractInterface):
         await self._input.cursor_move(direction, times)
 
     async def scroll(
-        self, direction: str, distance: int | None = None, **kwargs
+        self, direction: str, distance: int | None = None, **kwargs: Any
     ) -> None:
         await self._input.scroll(direction, distance, **kwargs)
 
@@ -473,7 +474,9 @@ class ComputerDevice(AbstractInterface):
         screen = await asyncio.to_thread(pyautogui.size)
         return {"width": int(screen.width), "height": int(screen.height)}
 
-    async def drag_and_drop(self, from_point, to_point) -> None:
+    async def drag_and_drop(
+        self, from_point: Sequence[float], to_point: Sequence[float]
+    ) -> None:
         await self._input.drag_and_drop(from_point, to_point)
 
     async def long_press(self, x: float, y: float, duration: int = 1000) -> None:

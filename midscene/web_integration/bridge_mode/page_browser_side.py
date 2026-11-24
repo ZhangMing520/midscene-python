@@ -7,7 +7,8 @@ operations (mouse.*/keyboard.*/screenshotBase64/...) on the active tab.
 """
 
 import asyncio
-from typing import Any
+from collections.abc import Sequence
+from typing import Any, cast
 
 from loguru import logger
 
@@ -94,7 +95,7 @@ class ExtensionBridgePageBrowserSide(AbstractInterface):
     async def connect_current_tab(self, options: dict[str, Any] | None = None) -> None:
         """Attach the bridge to the current (or selected) browser tab."""
         await self.listen()
-        await self._server.call(
+        await cast(BridgeServer, self._server).call(
             BRIDGE_EVENT_CONNECT_CURRENT_TAB,
             [{**self.connect_options, **(options or {})}],
         )
@@ -105,7 +106,7 @@ class ExtensionBridgePageBrowserSide(AbstractInterface):
     ) -> None:
         """Open a new tab and attach the bridge to it."""
         await self.listen()
-        await self._server.call(
+        await cast(BridgeServer, self._server).call(
             BRIDGE_EVENT_CONNECT_NEW_TAB_WITH_URL,
             [url, {**self.connect_options, **(options or {})}],
         )
@@ -192,7 +193,9 @@ class ExtensionBridgePageBrowserSide(AbstractInterface):
     async def long_press(self, x: float, y: float, duration: int = 1000) -> None:
         await self._require_server().call("longPress", [x, y, duration])
 
-    async def drag_and_drop(self, from_point, to_point) -> None:
+    async def drag_and_drop(
+        self, from_point: Sequence[float], to_point: Sequence[float]
+    ) -> None:
         await self._require_server().call(
             "mouse.drag",
             [
@@ -256,7 +259,7 @@ class ExtensionBridgePageBrowserSide(AbstractInterface):
         )
 
     async def scroll(
-        self, direction: str, distance: int | None = None, **kwargs
+        self, direction: str, distance: int | None = None, **kwargs: Any
     ) -> None:
         if direction not in ("up", "down", "left", "right"):
             raise ValueError(f"Invalid scroll direction: {direction}")
@@ -308,9 +311,9 @@ class ExtensionBridgePageBrowserSide(AbstractInterface):
 
     async def screenshot_base64(self) -> str:
         """Screenshot of the tab that the extension is driving."""
-        return await self._require_server().call("screenshotBase64", [])
+        return cast(str, await self._require_server().call("screenshotBase64", []))
 
-    async def set_active_tab_id(self, tab_id: str) -> None:
+    async def set_active_tab_id(self, tab_id: str | int) -> None:
         await self._require_server().call(BRIDGE_EVENT_SET_ACTIVE_TAB_ID, [tab_id])
 
     async def list_tabs(self) -> Any:

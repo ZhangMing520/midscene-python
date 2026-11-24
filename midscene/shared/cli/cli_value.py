@@ -7,7 +7,7 @@ runtime does not depend on Zod. Only the value-shape semantics are ported.
 
 import json
 import re
-from typing import Any
+from typing import Any, cast
 
 _CLI_NUMBER_PATTERN = re.compile(r"^-?\d+(\.\d+)?$")
 
@@ -75,7 +75,8 @@ def _accepts_type(type_name: str, field: Field, value: Any) -> bool | None:
     if name in ("null", "none"):
         return value is None
     if name == "literal":
-        return value == field.get("value")
+        # Schema values come from JSON-compatible descriptors, so equality is bool.
+        return cast(bool, value == field.get("value"))
     if name == "enum":
         values = field.get("enum", field.get("values"))
         return value in (values or [])

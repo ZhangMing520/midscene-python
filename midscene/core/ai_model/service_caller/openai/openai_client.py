@@ -123,7 +123,7 @@ async def post_json(
     stream: bool = False,
     on_chunk: Any | None = None,
     record_event: Any | None = None,
-):
+) -> Any:
     """POST a JSON body and return parsed JSON (or an aggregated stream)."""
     if stream:
         # Legacy unified entry; the protocol modules consume SSE frames directly.

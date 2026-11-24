@@ -5,7 +5,7 @@ Not re-exported from the package entry point - keep consumers within
 """
 
 import re
-from typing import Any
+from typing import Any, TypeGuard
 
 _KEBAB_TO_CAMEL = re.compile(r"-([a-z])")
 _CAMEL_TO_KEBAB = re.compile(r"[A-Z]")
@@ -25,7 +25,7 @@ def get_key_aliases(key: str) -> list[str]:
     return list(dict.fromkeys(aliases))
 
 
-def is_record(value: Any) -> bool:
+def is_record(value: Any) -> TypeGuard[dict[str, Any]]:
     return isinstance(value, dict)
 
 

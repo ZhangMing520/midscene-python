@@ -7,7 +7,7 @@ merge that back into one in-memory dump for export.
 import json
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from midscene.core.dump.html_utils import (
     extract_report_artifact_path_sync,
@@ -54,7 +54,7 @@ def _load_report_dump_for_export(input_path: Path) -> dict[str, Any]:
         dump = read_report_dump(str(input_path))
     except ValueError as error:
         raise ReportArtifactError(str(error)) from error
-    return _inline_file_images(dump, [input_path.parent])
+    return cast(dict[str, Any], _inline_file_images(dump, [input_path.parent]))
 
 
 def read_report_artifact(root: str | Path) -> dict[str, Any]:
@@ -139,7 +139,12 @@ def read_report_dump_scripts(
     report_path: str | Path,
 ) -> list[dict[str, str]]:
     dumps: list[dict[str, str]] = []
-    stream_report_dump_scripts(report_path, lambda dump: dumps.append(dump) or False)
+
+    def collect(dump: dict[str, str]) -> bool:
+        dumps.append(dump)
+        return False
+
+    stream_report_dump_scripts(report_path, collect)
     return dumps
 
 
@@ -170,7 +175,7 @@ def read_report_runner_dump(
                 raise ReportArtifactError(
                     f"Invalid Midscene Test report dump: {entry_path}"
                 )
-            return parsed
+            return cast(dict[str, Any], parsed)
         return None
     runner_path = manifest.get("runner")
     if not runner_path:
@@ -178,7 +183,7 @@ def read_report_runner_dump(
     runner_file = entry_path.parent / runner_path
     if not runner_file.exists():
         return None
-    return json.loads(runner_file.read_text(encoding="utf-8"))
+    return cast(dict[str, Any], json.loads(runner_file.read_text(encoding="utf-8")))
 
 
 def _iter_script_contents(entry_path: Path) -> list[str]:
@@ -221,10 +226,11 @@ def read_report_action_dump(report_path: str | Path) -> dict[str, Any]:
     else:
         from midscene.core.dump.html_utils import anti_escape_script_tag
 
-        stream_dump_scripts_sync(
-            str(entry_path),
-            lambda dump: collect(anti_escape_script_tag(dump["content"])) or False,
-        )
+        def visit(dump: dict[str, str]) -> bool:
+            collect(anti_escape_script_tag(dump["content"]))
+            return False
+
+        stream_dump_scripts_sync(str(entry_path), visit)
     if base is None:
         raise ReportArtifactError(f"No replay dump found in report: {entry_path}")
     return {**base, "executions": list(executions.values())}

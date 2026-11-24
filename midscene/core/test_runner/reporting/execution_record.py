@@ -1,7 +1,7 @@
 """Project execution records into report input (upstream reporting/execution-record.ts)."""
 
 import datetime
-from typing import Any
+from typing import Any, cast
 
 from midscene.core.test_runner.execution_record import (
     WorkflowExecutionRecord,
@@ -56,8 +56,9 @@ def execution_records_to_report_input(
             latest[current_invocation[document_id]] = record
 
         for record in latest.values():
-            execution = record.get("execution") or {}
-            outcomes = execution.get("cases")
+            execution = record.get("execution")
+            outcomes = execution.get("cases") if execution is not None else None
+            document = execution.get("document") if execution is not None else None
             summary["total"] += len(record["document"]["cases"])
             if outcomes is not None:
                 summary["passed"] += sum(
@@ -78,7 +79,7 @@ def execution_records_to_report_input(
                 or record.get("publicationErrors")
                 or record.get("observerErrors")
                 or record.get("cleanupErrors")
-                or (execution.get("document") or {}).get("status") == "failed"
+                or (document or {}).get("status") == "failed"
             ):
                 summary["documentFailures"] += 1
 
@@ -87,8 +88,8 @@ def execution_records_to_report_input(
         projects.append(
             {
                 "projectId": project_id,
-                "name": name,
-                "platform": platform,
+                "name": cast(str, name),
+                "platform": cast(str, platform),
                 "status": (
                     "failed"
                     if any(

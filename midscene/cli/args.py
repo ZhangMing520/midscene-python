@@ -1,5 +1,6 @@
 """CLI argument helpers (upstream packages/cli/src/args.ts)."""
 
+from collections.abc import Mapping
 from typing import Any
 
 from midscene.cli.config_options import YAML_TARGET_KEYS as _TARGET_KEYS
@@ -42,7 +43,7 @@ def _kebab_to_camel(value: str) -> str:
     return parts[0] + "".join(part[:1].upper() + part[1:] for part in parts[1:])
 
 
-def _normalize_cli_value(value: str):
+def _normalize_cli_value(value: str) -> str | bool | int:
     lowered = value.lower()
     if lowered in ("true", "false"):
         return lowered == "true"
@@ -51,10 +52,10 @@ def _normalize_cli_value(value: str):
     return value
 
 
-def _parse_cli_target_overrides(raw: list) -> dict:
+def _parse_cli_target_overrides(raw: list[str]) -> dict[str, dict[str, Any]]:
     """Parse unknown `--web.user-agent x`, `--android.device-id id` options
     (upstream yargs dot-notation). Only known target sections are kept."""
-    overrides: dict = {}
+    overrides: dict[str, dict[str, Any]] = {}
     index = 0
     while index < len(raw):
         token = raw[index]
@@ -73,14 +74,16 @@ def _parse_cli_target_overrides(raw: list) -> dict:
         if not path:
             continue
         section = overrides.setdefault(target, {})
-        cursor = section
+        cursor: dict[str, Any] = section
         for part in path[:-1]:
             cursor = cursor.setdefault(part, {})
         cursor[path[-1]] = value
     return overrides
 
 
-def _merge_cli_target_overrides(script: dict, overrides: dict) -> dict:
+def _merge_cli_target_overrides(
+    script: dict[str, Any], overrides: Mapping[str, Mapping[str, Any]]
+) -> dict[str, Any]:
     """CLI target options are defaults; keys already in the script win
     (matching the batch runner's merge order)."""
     if not overrides:

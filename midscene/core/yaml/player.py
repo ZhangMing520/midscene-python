@@ -33,7 +33,7 @@ class ScriptPlayer:
         self.script = script
         self.agent = agent
         self.status = "init"
-        self.result: dict[str, Any] = {}
+        self.result: dict[str | int, Any] = {}
         self.failed_tasks: list[dict[str, Any]] = []
         self.output_path: str | None = None
         self.current_task_index: int | None = None

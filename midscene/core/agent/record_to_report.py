@@ -1,11 +1,27 @@
 """Record log/screenshot entries (upstream agent/record-to-report.ts)."""
 
+from __future__ import annotations
+
 import traceback
-from typing import Any
+from typing import TYPE_CHECKING, Any, Protocol
 
 from loguru import logger
 
+from midscene.core.types import UIContext
 from midscene.shared.img.transform import normalize_screenshot_base64
+
+if TYPE_CHECKING:
+    from midscene.core.dump.report_action_dump import ExecutionDumpBuilder
+
+
+class ReportAgent(Protocol):
+    _last_execution: dict[str, Any] | None
+
+    def _get_report_builder(self) -> ExecutionDumpBuilder: ...
+
+    def _notify_dump_update_listeners(self, execution: dict[str, Any]) -> None: ...
+
+    async def get_context(self) -> UIContext: ...
 
 
 def normalize_record_to_report_screenshot(
@@ -32,7 +48,7 @@ def normalize_record_to_report_screenshot(
 
 
 def record_to_report(
-    agent,
+    agent: ReportAgent,
     title: str,
     opt: dict[str, Any] | None = None,
 ) -> None:
@@ -58,7 +74,7 @@ def record_to_report(
 
 
 async def record_error_to_report(
-    agent,
+    agent: ReportAgent,
     title: str,
     opt: dict[str, Any] | None = None,
 ) -> None:

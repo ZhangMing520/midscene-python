@@ -5,12 +5,15 @@ Synced from upstream packages/core/src/ai-model/service-caller/semantic-retry.ts
 
 import inspect
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import Any, TypeVar
 
 from loguru import logger
 
 from midscene.core.ai_model.service_caller.request_timeout import wait_for_retry
 from midscene.shared.types import AbortError
+
+ResponseT = TypeVar("ResponseT")
+ParseResultT = TypeVar("ParseResultT")
 
 
 def _is_aborted(abort_signal: Any) -> bool:
@@ -69,14 +72,14 @@ def with_semantic_retry_feedback(
 
 
 async def call_ai_and_parse_with_retry(
-    call_ai: Callable[[int, Any | None], Awaitable[Any]],
-    parse_response: Callable[[Any], Any],
-    to_parse_error: Callable[[Any, Any], Exception],
+    call_ai: Callable[[int, Any | None], Awaitable[ResponseT]],
+    parse_response: Callable[[ResponseT], ParseResultT | Awaitable[ParseResultT]],
+    to_parse_error: Callable[[Exception, ResponseT], Exception],
     parse_retry_times: int = 0,
     parse_retry_interval: int = 0,
     abort_signal: Any | None = None,
-    on_parse_retry: Callable[[Any, Any], None] | None = None,
-) -> Any:
+    on_parse_retry: Callable[[Exception, ResponseT], None] | None = None,
+) -> ParseResultT:
     """Call AI and parse its response, retrying only on structural parse failures.
 
     Errors raised by call_ai() propagate as-is; only parse_response() failures
@@ -97,7 +100,7 @@ async def call_ai_and_parse_with_retry(
         remaining_retries: int,
         retry_attempt: int,
         previous_parse_error: Any | None = None,
-    ) -> Any:
+    ) -> ParseResultT:
         _throw_if_aborted(abort_signal)
         response = await call_ai(retry_attempt, previous_parse_error)
         try:
@@ -122,7 +125,7 @@ async def call_ai_and_parse_with_retry(
     return await call_and_parse_once(normalized_retry_times, 0)
 
 
-def _noop(*args, **kwargs):  # pragma: no cover
+def _noop(*args: Any, **kwargs: Any) -> None:  # pragma: no cover
     return None
 
 

@@ -6,6 +6,7 @@ from midscene.core.test_runner.engine.registry import NodeRegistry
 from midscene.core.test_runner.engine.run_collected_case import run_collected_case
 from midscene.core.test_runner.node.types import NodeDefinition
 from midscene.core.test_runner.parser.normalize import normalize_steps
+from midscene.core.test_runner.parser.types import CollectedCase
 
 
 class CaseRunner:
@@ -25,7 +26,7 @@ class CaseRunner:
                 return None
             return {"stringInputKey": node.string_input_key}
 
-        collected_case = {
+        collected_case: CollectedCase = {
             "caseId": "standalone-case",
             "projectId": "standalone-project",
             "sourcePath": "",

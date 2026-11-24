@@ -7,7 +7,7 @@ tab.  ``BridgeWebPage`` is the Python page proxy, so this module only adds the
 
 import asyncio
 import inspect
-from typing import Any
+from typing import Any, cast
 
 from loguru import logger
 
@@ -87,18 +87,28 @@ class AgentOverChromeBridge(Agent):
         self.destroy_after_disconnect_flag = close_new_tabs_after_disconnect
         self.enable_water_flow_animation = enable_water_flow_animation
 
+    @property
+    def _bridge_page(self) -> BridgeWebPage:
+        """The core Agent stores the common AbstractInterface base type."""
+        return cast(BridgeWebPage, self.interface)
+
+    @property
+    def page(self) -> BridgeWebPage:
+        """Expose the bound page like the shared browser-agent wrappers."""
+        return self._bridge_page
+
     async def _configure_water_flow_animation(self) -> None:
         if not self.enable_water_flow_animation:
-            await self.interface.set_water_flow_animation_enabled(False)
+            await self._bridge_page.set_water_flow_animation_enabled(False)
 
     async def set_destroy_options_after_connect(self) -> None:
         if self.destroy_after_disconnect_flag:
-            await self.interface.set_destroy_options({"closeTab": True})
+            await self._bridge_page.set_destroy_options({"closeTab": True})
 
     async def connect_new_tab_with_url(
         self, url: str, options: dict[str, Any] | None = None
     ) -> None:
-        await self.interface.connect_new_tab_with_url(
+        await self._bridge_page.connect_new_tab_with_url(
             url,
             {
                 **(options or {}),
@@ -110,7 +120,7 @@ class AgentOverChromeBridge(Agent):
         await self.set_destroy_options_after_connect()
 
     async def connect_current_tab(self, options: dict[str, Any] | None = None) -> None:
-        await self.interface.connect_current_tab(
+        await self._bridge_page.connect_current_tab(
             {
                 **(options or {}),
                 "enableWaterFlowAnimation": self.enable_water_flow_animation,
@@ -121,19 +131,19 @@ class AgentOverChromeBridge(Agent):
         await self.set_destroy_options_after_connect()
 
     async def get_browser_tab_list(self) -> Any:
-        return await self.interface.get_browser_tab_list()
+        return await self._bridge_page.get_browser_tab_list()
 
     async def set_active_tab_id(self, tab_id: str) -> None:
-        await self.interface.set_active_tab_id(int(tab_id))
+        await self._bridge_page.set_active_tab_id(int(tab_id))
 
     async def show_status_message(self, message: str) -> None:
-        await self.interface.show_status_message(message)
+        await self._bridge_page.show_status_message(message)
 
     async def destroy(
         self, close_new_tabs_after_disconnect: bool | None = None
     ) -> None:
         if close_new_tabs_after_disconnect is not None:
-            await self.interface.set_destroy_options(
+            await self._bridge_page.set_destroy_options(
                 {"closeTab": bool(close_new_tabs_after_disconnect)}
             )
         await super().destroy()

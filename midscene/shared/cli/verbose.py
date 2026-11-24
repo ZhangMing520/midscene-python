@@ -2,7 +2,7 @@
 
 import json
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, TypeGuard, cast
 
 from midscene.shared.cli.verbose_ai_act import (
     AI_ACT_CLI_PROGRESS_RENDERER,
@@ -22,10 +22,10 @@ _PROGRESS_RENDERERS: dict[str, CliProgressRenderer] = {
     CLI_AI_ACT_PROGRESS_SCOPE: AI_ACT_CLI_PROGRESS_RENDERER,
 }
 
-_context: dict[str, Any] = {"current": {"enabled": False}}
+_context: dict[str, dict[str, Any]] = {"current": {"enabled": False}}
 
 
-def _is_record(value: Any) -> bool:
+def _is_record(value: Any) -> TypeGuard[dict[str, Any]]:
     return isinstance(value, dict)
 
 
@@ -385,11 +385,13 @@ def _render_lines_once(
     if rendered_line_keys is None:
         rendered_line_keys = set()
         context["renderedLineKeys"] = rendered_line_keys
+    # The context owns this set; callers only read or replace it through helpers.
+    rendered_keys = cast(set[str], rendered_line_keys)
     pending = []
     for line in lines:
-        if line["key"] in rendered_line_keys:
+        if line["key"] in rendered_keys:
             continue
-        rendered_line_keys.add(line["key"])
+        rendered_keys.add(line["key"])
         pending.append(line["text"])
     return "\n".join(pending) if pending else None
 
@@ -443,9 +445,10 @@ def _render_cli_verbose_event_text(
         if _is_act_verbose_event(command, tool):
             return None
         task = event.get("task") if _is_record(event.get("task")) else None
+        raw_steps = event.get("steps")
         steps = (
-            [step for step in event.get("steps") if _is_record(step)]
-            if isinstance(event.get("steps"), list)
+            [step for step in raw_steps if _is_record(step)]
+            if isinstance(raw_steps, list)
             else []
         )
         execution = (

@@ -61,6 +61,7 @@ class WebElementInfoImpl(BaseElement):
         if not isinstance(node_type, NodeType):
             node_type = NodeType.OTHER
 
+        extra_fields: dict[str, Any] = {"index_id": index_id}
         super().__init__(
             id=id,
             content=content,
@@ -73,14 +74,14 @@ class WebElementInfoImpl(BaseElement):
             attributes=attributes,
             is_visible=is_visible,
             xpaths=xpaths,
-            index_id=index_id,
+            **extra_fields,
         )
 
 
 class PlaywrightElement(BaseElement):
     """Playwright element wrapper."""
 
-    def __init__(self, page: Page, selector: str, **kwargs):
+    def __init__(self, page: Page, selector: str, **kwargs: Any) -> None:
         self._page = page
         self._selector = selector
         super().__init__(**kwargs)

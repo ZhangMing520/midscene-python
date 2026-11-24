@@ -3,6 +3,9 @@
 from collections.abc import Callable
 from typing import Any
 
+from midscene.core.ai_model.model_adapter.insight_protocol import (
+    InsightDataOutputProtocol,
+)
 from midscene.core.ai_model.shared.xml import (
     extract_raw_xml_fragment,
     extract_xml_tag,
@@ -11,7 +14,7 @@ from midscene.core.ai_model.shared.xml import (
 
 def parse_insight_response(
     content: str,
-    data_output_protocol: dict[str, Any],
+    data_output_protocol: InsightDataOutputProtocol,
     json_parser: Callable[..., Any] | None = None,
 ) -> dict[str, Any]:
     """Parse an insight XML response into {thought?, data, errors?}."""

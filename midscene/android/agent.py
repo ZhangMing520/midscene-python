@@ -1,6 +1,6 @@
 """Android Agent implementation (upstream android/src/agent.ts)."""
 
-from typing import Any
+from typing import Any, cast
 
 from loguru import logger
 
@@ -47,6 +47,7 @@ class AndroidAgent(Agent):
             options, "appNameMapping", "app_name_mapping"
         )
         super().__init__(device, coerce_agent_options(options))
+        self.interface: AndroidDevice = device
         device.set_app_name_mapping(
             merge_and_normalize_app_name_mapping(
                 default_app_name_mapping, app_name_mapping
@@ -87,7 +88,8 @@ class AndroidAgent(Agent):
         """Execute an ADB shell command through the RunAdbShell action."""
         param: dict[str, Any] = {"command": command}
         param.update(opt or {})
-        return await self._call_action_in_action_space("RunAdbShell", param)
+        # RunAdbShell's action executor returns the command's stdout string.
+        return cast(str, await self._call_action_in_action_space("RunAdbShell", param))
 
     async def launch_app(self, package_name: str, activity: str | None = None) -> None:
         """Launch Android app
@@ -182,7 +184,8 @@ async def agent_from_adb_device(
             f"deviceId not specified, will use the first device (id = {device_id})"
         )
 
-    device = AndroidDevice(device_id, device_options)
+    # Device discovery is an external boundary; the selected entry supplies the id.
+    device = AndroidDevice(cast(str, device_id), device_options)
     await device.connect()
     return AndroidAgent(device, options)
 

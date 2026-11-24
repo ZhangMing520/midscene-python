@@ -18,10 +18,14 @@ from midscene.core.ai_model.model_adapter.custom_planning_action import (
     get_tap_located_pixel_result,
     normalize_custom_locate_fields,
 )
+from midscene.core.ai_model.model_adapter.custom_planning_types import (
+    CustomPlanningMessageConfig,
+)
 from midscene.core.ai_model.model_adapter.image_preprocess import (
     prepare_model_image,
 )
 from midscene.core.ai_model.model_adapter.planning import (
+    ResolvedCustomPlanningDefinition,
     resolve_custom_planning_definition,
 )
 from midscene.core.ai_model.models.auto_glm.actions import transform_auto_glm_action
@@ -67,7 +71,7 @@ def build_custom_planning_messages(
     system_prompt: str,
     user_instruction_text: str,
     conversation_history: Any,
-    messages_config: dict[str, Any],
+    messages_config: CustomPlanningMessageConfig,
     screenshot_url: str,
     action_context: str | None = None,
     include_screenshot: bool = True,
@@ -129,7 +133,7 @@ async def run_custom_planning(
     model_runtime: ModelRuntime,
     action_space: list[Any],
     conversation_history: Any,
-    config: dict[str, Any],
+    config: ResolvedCustomPlanningDefinition,
     include_locate_in_planning: bool = False,
     action_context: str | None = None,
 ) -> dict[str, Any]:
@@ -233,7 +237,9 @@ def register_custom_planners() -> None:
         adapter.planning_plan_fn = _make_ui_tars_plan_fn()
 
 
-def _make_auto_glm_plan_fn(is_multilingual: bool) -> Callable:
+def _make_auto_glm_plan_fn(
+    is_multilingual: bool,
+) -> Callable[..., Any]:
     async def plan(
         instruction: str,
         context: Any,
@@ -242,7 +248,7 @@ def _make_auto_glm_plan_fn(is_multilingual: bool) -> Callable:
         conversation_history: Any,
         include_locate_in_planning: bool = False,
         action_context: str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> dict[str, Any]:
         result = await run_custom_planning(
             instruction,
@@ -262,7 +268,7 @@ def _make_auto_glm_plan_fn(is_multilingual: bool) -> Callable:
     return plan
 
 
-def _make_ui_tars_plan_fn() -> Callable:
+def _make_ui_tars_plan_fn() -> Callable[..., Any]:
     async def plan(
         instruction: str,
         context: Any,
@@ -271,7 +277,7 @@ def _make_ui_tars_plan_fn() -> Callable:
         conversation_history: Any,
         include_locate_in_planning: bool = False,
         action_context: str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> dict[str, Any]:
         result = await run_custom_planning(
             instruction,

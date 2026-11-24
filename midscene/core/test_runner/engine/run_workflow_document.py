@@ -1,8 +1,8 @@
 """Run a whole workflow document (upstream engine/run-workflow-document.ts)."""
 
 import inspect
-from collections.abc import Callable
-from typing import Any
+from collections.abc import Awaitable, Callable
+from typing import Any, cast
 
 from midscene.core.test_runner.engine.document_runtime import (
     create_document_runtime,
@@ -79,10 +79,14 @@ async def run_workflow_document(
     options: dict[str, Any],
 ) -> dict[str, Any]:
     signal = options.get("signal") or AbortSignal()
-    create_document_run_id = options.get("createDocumentRunId")
-    create_case_run_id = options.get("createCaseRunId")
+    create_document_run_id: Callable[[CollectedWorkflowDocument], str] | None = (
+        options.get("createDocumentRunId")
+    )
+    create_case_run_id: Callable[[CollectedCase, int], str] | None = options.get(
+        "createCaseRunId"
+    )
     project = options.get("project") or {}
-    project_name = project.get("name") or document.get("projectId")
+    project_name = cast(str, project.get("name") or document.get("projectId"))
     retry = options.get("retry", project.get("retry", 0))
     if not isinstance(retry, int) or isinstance(retry, bool) or retry < 0:
         raise TypeError("Workflow document retry must be a non-negative integer.")
@@ -132,9 +136,12 @@ async def run_workflow_document(
     document_stop_reason: str | None = None
 
     def stop_reason() -> str:
-        return (
-            options.get("stopReason")() if options.get("stopReason") else "interrupted"
-        )
+        callback: Callable[[], str] | None = options.get("stopReason")
+        return callback() if callback else "interrupted"
+
+    def should_stop() -> bool:
+        callback: Callable[[], bool] | None = options.get("shouldStop")
+        return callback() if callback else False
 
     try:
         runtime_started = True
@@ -146,12 +153,11 @@ async def run_workflow_document(
                 cases.append(_as_not_run(collected_case, project_name, reason))
         else:
             for collected_case in document["cases"]:
-                should_stop = options.get("shouldStop")
                 if (
                     document_stop_reason
                     or fatal_error
                     or signal.aborted
-                    or (should_stop() if should_stop else False)
+                    or should_stop()
                 ):
                     if signal.aborted:
                         reason = stop_reason()
@@ -170,7 +176,9 @@ async def run_workflow_document(
                     attempt_fatal_error = False
                     attempt_failure: WorkflowExecutionFailure | None = None
 
-                    def make_on_result(index: int):
+                    def make_on_result(
+                        index: int,
+                    ) -> Callable[[dict[str, Any]], Awaitable[None]]:
                         async def on_result(result: dict[str, Any]) -> None:
                             nonlocal attempt_fatal_error
                             is_fatal = options.get("isFatalError")
@@ -197,11 +205,7 @@ async def run_workflow_document(
                                     ),
                                     "fatalError": attempt_fatal_error,
                                     "interrupted": signal.aborted,
-                                    "shouldStop": (
-                                        options.get("shouldStop")()
-                                        if options.get("shouldStop")
-                                        else False
-                                    ),
+                                    "shouldStop": should_stop(),
                                 }
                             )
                             await _call(options.get("onCaseResult"), result)
@@ -294,11 +298,7 @@ async def run_workflow_document(
                                 for error in run.get("executionErrors") or []
                             ),
                             "interrupted": signal.aborted,
-                            "shouldStop": (
-                                options.get("shouldStop")()
-                                if options.get("shouldStop")
-                                else False
-                            ),
+                            "shouldStop": should_stop(),
                         }
                     )
                     if (run.get("retryDecision") or {}).get("decision") != "retry":
@@ -308,7 +308,7 @@ async def run_workflow_document(
                 outcome = _case_outcome(
                     collected_case,
                     project_name,
-                    run.get("status"),
+                    cast(str, run.get("status")),
                     run,
                     attempts,
                 )

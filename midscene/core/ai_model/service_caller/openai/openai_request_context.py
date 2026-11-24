@@ -1,6 +1,7 @@
 """OpenAI request diagnostics (upstream openai/openai-request-context.ts)."""
 
 import json
+from collections.abc import Awaitable, Callable, Mapping
 from typing import Any, TypedDict
 
 import httpx
@@ -83,8 +84,9 @@ def format_open_aiapi_error_details(
 format_openai_api_error_details = format_open_aiapi_error_details
 
 
-def request_id_from_headers(headers: Any) -> str | None:
-    return headers.get("x-request-id") or headers.get("x-model-request-id")
+def request_id_from_headers(headers: Mapping[str, str]) -> str | None:
+    request_id = headers.get("x-request-id") or headers.get("x-model-request-id")
+    return request_id if isinstance(request_id, str) else None
 
 
 def _request_body(init: dict[str, Any]) -> str | None:
@@ -97,7 +99,12 @@ def _request_body(init: dict[str, Any]) -> str | None:
     return None
 
 
-async def _default_fetch(input: Any, init: dict[str, Any] | None = None):
+Fetch = Callable[[str, dict[str, Any] | None], Awaitable[httpx.Response]]
+
+
+async def _default_fetch(
+    input: Any, init: dict[str, Any] | None = None
+) -> httpx.Response:
     """Python transport used when no base fetch is injected."""
     init = dict(init or {})
     method = (init.get("method") or "GET").upper()
@@ -113,13 +120,15 @@ async def _default_fetch(input: Any, init: dict[str, Any] | None = None):
 
 # Tests and advanced callers can replace the transport without changing the
 # single-argument wrapper contract.
-_base_fetch = _default_fetch
+_base_fetch: Fetch = _default_fetch
 
 
-def wrap_open_ai_compatible_fetch(context: OpenAIRequestContext):
+def wrap_open_ai_compatible_fetch(
+    context: OpenAIRequestContext,
+) -> Callable[..., Awaitable[httpx.Response]]:
     """Return a fetch-analog that records request/response diagnostics."""
 
-    async def wrapped(input: Any, init: dict[str, Any] | None = None):
+    async def wrapped(input: Any, init: dict[str, Any] | None = None) -> httpx.Response:
         init = dict(init or {})
         url = input if isinstance(input, str) else str(input)
         method = init.get("method") or "GET"

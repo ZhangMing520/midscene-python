@@ -1,22 +1,26 @@
 """Standard planning protocol types (upstream model-adapter/planning-protocol.ts)."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Any, TypedDict
+
+JsonParser = Callable[..., Any]
+ParsePlanningActionOutput = Callable[[str, list[Any] | None], dict[str, Any] | None]
+ActionOutputBuilder = Callable[["PlanningActionOutputBuildInput"], str]
 
 
 class PlanningActionOutputBuildInput(TypedDict, total=False):
     actionName: str
     param: dict[str, Any]
     locateFields: list[str]
-    locateResultKey: str
+    locateResultKey: str | None
 
 
 class PlanningActionOutputProtocol(TypedDict):
-    action_output_tag_names: list[str]
+    action_output_tag_names: Sequence[str]
     action_output_rules: str
     action_output_placeholder: str
     build_action_output: Callable[[PlanningActionOutputBuildInput], str]
-    parse_action_output: Callable[[str, list[Any]], dict[str, Any] | None]
+    parse_action_output: ParsePlanningActionOutput
     parse_raw_locate_parameter: Callable[[Any], Any]
 
 

@@ -6,8 +6,8 @@ with the locate and insight model slots. The public API is kept compatible
 with the previous Python SDK release.
 """
 
-from collections.abc import Awaitable, Callable
-from typing import Any
+from collections.abc import Callable, Coroutine
+from typing import Any, cast
 
 from loguru import logger
 
@@ -36,7 +36,7 @@ class Insight:
     def __init__(
         self,
         context_provider: UIContext
-        | Callable[[InsightAction], UIContext | Awaitable[UIContext]],
+        | Callable[[InsightAction], UIContext | Coroutine[Any, Any, UIContext]],
         ai_service: Any | None = None,
         model_config: dict[str, str] | Any | None = None,
     ):
@@ -48,6 +48,9 @@ class Insight:
             model_config: env-style model configuration dict
                 (MIDSCENE_MODEL_NAME / MIDSCENE_MODEL_API_KEY / ... )
         """
+        self.context_provider: Callable[
+            [InsightAction], UIContext | Coroutine[Any, Any, UIContext]
+        ]
         if callable(context_provider):
             self.context_provider = context_provider
         else:
@@ -64,7 +67,7 @@ class Insight:
             model_config = {k: v for k, v in model_config.items() if v}
 
         self._model_config_manager: ModelConfigManager = (
-            ModelConfigManager(model_config)
+            ModelConfigManager(cast(dict[str, str | int | float], model_config))
             if model_config
             else get_global_model_config_manager()
         )
@@ -251,21 +254,24 @@ class Insight:
         prompt: TUserPrompt,
         options: Any | None = None,
     ) -> float:
-        return await self._query_primitive("Number", "aiNumber", prompt, options)
+        result = await self._query_primitive("Number", "aiNumber", prompt, options)
+        return cast(float, result)
 
     async def ai_string(
         self,
         prompt: TUserPrompt,
         options: Any | None = None,
     ) -> str:
-        return await self._query_primitive("String", "aiString", prompt, options)
+        result = await self._query_primitive("String", "aiString", prompt, options)
+        return cast(str, result)
 
     async def ai_ask(
         self,
         prompt: TUserPrompt,
         options: Any | None = None,
     ) -> str:
-        return await self._query_primitive("String", "aiAsk", prompt, options)
+        result = await self._query_primitive("String", "aiAsk", prompt, options)
+        return cast(str, result)
 
     async def ai_assert(
         self,
@@ -337,7 +343,7 @@ class Insight:
         import asyncio
 
         if asyncio.iscoroutinefunction(self.context_provider):
-            return await self.context_provider(action)
+            return cast(UIContext, await self.context_provider(action))
         result = self.context_provider(action)
         if asyncio.iscoroutine(result):
             return await result

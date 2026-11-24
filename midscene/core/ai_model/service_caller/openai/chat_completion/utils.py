@@ -1,5 +1,7 @@
 """Chat-completion message helpers (upstream chat-completion/utils.ts)."""
 
+from typing import Any, cast
+
 from loguru import logger
 
 from midscene.core.ai_model.service_caller.utils import has_usable_text
@@ -40,7 +42,7 @@ def to_chat_messages(messages: list[dict], image_detail: str) -> list[dict]:
                 raise ValueError(
                     "Cannot replay Responses output in a Chat Completions conversation"
                 )
-            wire_messages.append(output.get("rawValue"))
+            wire_messages.append(cast(dict[str, Any], output.get("rawValue")))
             continue
         message = entry["message"] if entry.get("type") == "input-message" else entry
         raw_assistant = message.get("raw_assistant_message")

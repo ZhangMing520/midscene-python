@@ -3,7 +3,7 @@
 import os
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 from midscene.core.ai_model.shared.multimodal_prompt import prepare_reference_images
 
@@ -68,7 +68,17 @@ def _markdown_to_ai_act_prompt(
     }
 
 
-async def _reference_images_from_prompt(task_prompt, force_base64=False):
+class MarkdownAgent(Protocol):
+    def _check_not_destroyed(self) -> None: ...
+
+    async def ai_act(
+        self, prompt: str | dict[str, Any], options: dict[str, Any]
+    ) -> str | None: ...
+
+
+async def _reference_images_from_prompt(
+    task_prompt: Any, force_base64: bool = False
+) -> list[str] | None:
     """Pull reference images out of a markdown-style prompt dict.
 
     Resolution happens once per aiAct and deduplicates URLs; System One (jev)
@@ -83,7 +93,7 @@ async def _reference_images_from_prompt(task_prompt, force_base64=False):
 
 
 async def run_markdown(
-    agent,
+    agent: MarkdownAgent,
     markdown_path: str,
     opt: dict[str, Any] | None = None,
 ) -> str | None:

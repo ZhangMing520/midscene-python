@@ -12,14 +12,28 @@ Pillow replaces sharp/Photon here but the Pillow JPEG encoder is configured for
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
-from typing import Any
+from collections.abc import Callable, Sequence
+from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from midscene.shared.img.transform import (
+    _ImageModule,
     decode_base64_image,
     encode_base64_image,
 )
 from midscene.shared.types import NodeType
+
+if TYPE_CHECKING:
+    from PIL import ImageDraw
+    from PIL._imaging import PixelAccess
+    from PIL.Image import Image as PILImage
+    from PIL.PyAccess import PyAccess
+
+    type PixelBuffer = PixelAccess | PyAccess
+
+
+class _ImageDrawModule(Protocol):
+    Draw: Callable[[PILImage], ImageDraw.ImageDraw]
+
 
 # Simple 5x7 bitmap font for digits 0-9
 DIGIT_FONT: dict[str, list[list[int]]] = {
@@ -141,10 +155,11 @@ _POINT_MARKER_COLORS = [
 ]
 
 
-def _pil():
-    from PIL import Image, ImageDraw
+def _pil() -> tuple[_ImageModule, _ImageDrawModule]:
+    import PIL.Image as image_module
+    import PIL.ImageDraw as image_draw_module
 
-    return Image, ImageDraw
+    return cast(_ImageModule, image_module), cast(_ImageDrawModule, image_draw_module)
 
 
 def _js_round(value: float) -> int:
@@ -159,13 +174,13 @@ def _element_value(element: Any, key: str, default: Any = None) -> Any:
 
 
 def _draw_digit(
-    pixels,
+    pixels: PixelBuffer,
     width: int,
     height: int,
     digit: str,
     start_x: int,
     start_y: int,
-    color: Sequence[int],
+    color: tuple[int, ...],
 ) -> None:
     bitmap = DIGIT_FONT.get(digit)
     if not bitmap:
@@ -184,13 +199,13 @@ def _draw_digit(
 
 
 def _draw_number(
-    pixels,
+    pixels: PixelBuffer,
     width: int,
     height: int,
     num: int,
     start_x: int,
     start_y: int,
-    color: Sequence[int],
+    color: tuple[int, ...],
 ) -> None:
     x = start_x
     for digit in str(num):
@@ -203,11 +218,11 @@ def _get_number_width(num: int) -> int:
 
 
 def _draw_rect(
-    pixels,
+    pixels: PixelBuffer,
     width: int,
     height: int,
     rect: dict[str, float],
-    color: Sequence[int],
+    color: tuple[int, ...],
     thickness: int,
 ) -> None:
     x = math.floor(rect["x"])
@@ -228,11 +243,11 @@ def _draw_rect(
 
 
 def _fill_rect(
-    pixels,
+    pixels: PixelBuffer,
     width: int,
     height: int,
     rect: dict[str, float],
-    color: Sequence[int],
+    color: tuple[int, ...],
 ) -> None:
     x = math.floor(rect["x"])
     y = math.floor(rect["y"])
@@ -247,12 +262,12 @@ def _fill_rect(
 
 
 def _draw_circle(
-    pixels,
+    pixels: PixelBuffer,
     width: int,
     height: int,
     center: dict[str, float],
     radius: float,
-    color: Sequence[int],
+    color: tuple[int, ...],
     thickness: int = 2,
     fill: bool = False,
 ) -> None:
@@ -277,12 +292,12 @@ def _draw_circle(
 
 
 def _draw_line(
-    pixels,
+    pixels: PixelBuffer,
     width: int,
     height: int,
     start: dict[str, float],
     end: dict[str, float],
-    color: Sequence[int],
+    color: tuple[int, ...],
     thickness: int = 2,
 ) -> None:
     x0 = _js_round(start["x"])
@@ -305,7 +320,7 @@ def _draw_line(
 
 
 def _draw_point_marker(
-    pixels,
+    pixels: PixelBuffer,
     width: int,
     height: int,
     point: dict[str, float],
@@ -364,7 +379,7 @@ def _create_svg_overlay(
     border_thickness: int | None = None,
     prompt: str | None = None,
     center_point: bool | None = None,
-):
+) -> PILImage:
     Image, _ = _pil()
     box_padding = 5 if box_padding is None else box_padding
     border_thickness = 2 if border_thickness is None else border_thickness
@@ -372,6 +387,7 @@ def _create_svg_overlay(
 
     overlay = Image.new("RGBA", (image_width, image_height), (0, 0, 0, 0))
     pixels = overlay.load()
+    assert pixels is not None
 
     if prompt:
         prompt_margin = 20
@@ -524,8 +540,9 @@ def _create_svg_overlay(
             color["rect"],
         )
 
-        text_x = rect_x + math.floor((label_width - text_width) / 2)
-        text_y = rect_y + math.floor((label_height - text_height) / 2)
+        # floor() is already integral; the surrounding offset may be fractional.
+        text_x = cast(int, rect_x + math.floor((label_width - text_width) / 2))
+        text_y = cast(int, rect_y + math.floor((label_height - text_height) / 2))
         _draw_number(
             pixels,
             image_width,
@@ -542,7 +559,7 @@ def _create_svg_overlay(
 def _decode_base_image(
     input_img_base64: str,
     size: dict[str, int] | None = None,
-):
+) -> PILImage:
     Image, _ = _pil()
     image = decode_base64_image(input_img_base64).convert("RGBA")
     if size:
@@ -583,6 +600,7 @@ def composite_point_marker_img(options: dict[str, Any]) -> str:
     image = _decode_base_image(input_img_base64, options.get("size"))
     overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
     pixels = overlay.load()
+    assert pixels is not None
     radius = options.get("radius")
     index_id = options.get("indexId")
     _draw_point_marker(

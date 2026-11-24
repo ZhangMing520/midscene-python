@@ -15,6 +15,7 @@ class AIResponseParseError(Exception):
         reasoning_content: str | None = None,
     ):
         super().__init__(message)
+        self.message = message
         self.raw_response = raw_response
         self.usage = usage
         self.raw_assistant_output = raw_assistant_output

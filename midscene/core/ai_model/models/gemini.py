@@ -65,12 +65,12 @@ def extract_gemini_content_and_reasoning(
     if not message:
         return {"content": "", "reasoning_content": ""}
 
-    content = message.get("content") if isinstance(message.get("content"), str) else ""
+    raw_content = message.get("content")
+    content = raw_content if isinstance(raw_content, str) else ""
     gemini_reasoning_content = _extract_inline_thought(content) or ""
+    raw_provider_reasoning = message.get("reasoning_content")
     provider_reasoning_content = (
-        message.get("reasoning_content")
-        if isinstance(message.get("reasoning_content"), str)
-        else ""
+        raw_provider_reasoning if isinstance(raw_provider_reasoning, str) else ""
     )
 
     return {

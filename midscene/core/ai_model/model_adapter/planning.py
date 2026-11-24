@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict, cast
 
+from midscene.core.ai_model.model_adapter.custom_planning_types import (
+    CustomPlanningDefinition,
+)
 from midscene.core.ai_model.model_adapter.planning_protocol import (
     StandardPlanningProtocol,
 )
@@ -20,15 +22,9 @@ if TYPE_CHECKING:
 DEFAULT_REPLANNING_CYCLE_LIMIT = 20
 
 
-class ResolvedCustomPlanningDefinition(TypedDict, total=False):
-    messages: dict[str, Any]
-    coordinates: dict[str, Any]
+class ResolvedCustomPlanningDefinition(CustomPlanningDefinition, total=False):
     coordinate_system: dict[str, Any]
     coordinate_normalizer: LocateResultCodec
-    parse_response: Callable[..., dict[str, Any]]
-    transform_actions: Callable[..., Any]
-    should_continue_planning: Callable[..., bool]
-    build_response_log: Callable[..., Any]
 
 
 class PlanningAdapter(TypedDict, total=False):
@@ -42,17 +38,22 @@ class PlanningAdapter(TypedDict, total=False):
 
 
 def resolve_custom_planning_definition(
-    config: dict[str, Any],
+    config: CustomPlanningDefinition | dict[str, Any],
 ) -> ResolvedCustomPlanningDefinition:
     """Attach the resolved coordinate system and normalizer to a config."""
     coordinates = config.get("coordinates") or {}
-    return {
-        **config,
-        "coordinate_system": resolve_locate_result_coordinates(coordinates),
-        "coordinate_normalizer": create_locate_result_codec(
-            {"coordinates": coordinates}
-        ),
-    }
+    # Custom definitions intentionally retain extension keys; the known fields
+    # are checked here while the definition remains an open runtime mapping.
+    return cast(
+        ResolvedCustomPlanningDefinition,
+        {
+            **config,
+            "coordinate_system": resolve_locate_result_coordinates(coordinates),
+            "coordinate_normalizer": create_locate_result_codec(
+                {"coordinates": coordinates}
+            ),
+        },
+    )
 
 
 def resolve_planning(

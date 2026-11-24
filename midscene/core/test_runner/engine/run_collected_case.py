@@ -4,7 +4,7 @@ import datetime
 import inspect
 import uuid
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 from loguru import logger
 
@@ -332,7 +332,7 @@ def _teardown_timeout(options: dict[str, Any]) -> float | None:
     value = options.get("teardownTimeoutMs")
     if value is None:
         return None
-    return value() if callable(value) else value
+    return cast(float, value() if callable(value) else value)
 
 
 async def _maybe_await(value: Any) -> Any:

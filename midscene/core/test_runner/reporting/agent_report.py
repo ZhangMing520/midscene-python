@@ -1,8 +1,8 @@
 """Agent report to test-run dump (upstream reporting/agent-report.ts)."""
 
-from typing import Any
+from typing import Any, cast
 
-from midscene.core.test_run_report import TestRunReportDump
+from midscene.core.test_run_report import IndexedTestRunReportSource, TestRunReportDump
 from midscene.core.test_runner.reporting.metrics import (
     collect_test_run_report_metrics,
 )
@@ -18,16 +18,17 @@ def build_agent_test_run_report_dump(
     source: dict[str, str],
 ) -> TestRunReportDump:
     executions = agent_dump.get("executions") or []
-    sources = []
+    sources: list[IndexedTestRunReportSource] = []
     if executions:
-        sources.append(
-            {
-                **source,
-                "executionIds": [
-                    execution["id"] for execution in executions if execution.get("id")
-                ],
-            }
-        )
+        indexed_source: IndexedTestRunReportSource = {
+            **cast(IndexedTestRunReportSource, source),
+            "executionIds": [
+                cast(str, execution["id"])
+                for execution in executions
+                if execution.get("id")
+            ],
+        }
+        sources.append(indexed_source)
     return build_test_run_report_dump(
         input_value,
         {

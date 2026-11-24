@@ -9,6 +9,7 @@ Playwright ``Page`` API that every web page interface exposes.
 
 import asyncio
 import math
+from collections.abc import Sequence
 from typing import Any
 
 from loguru import logger
@@ -171,7 +172,7 @@ def _resolve_text_input_options(
 ) -> "tuple[str, float | None]":
     """Validate the text typing options (upstream resolveInputStrategy)."""
     if keyboard_type_delay is not None:
-        delay: float | None = float(keyboard_type_delay)
+        delay = float(keyboard_type_delay)
         if not math.isfinite(delay) or delay < 0:
             raise ValueError("keyboardTypeDelay must be a finite non-negative number")
     else:
@@ -363,7 +364,9 @@ class BrowserPageActionsMixin:
                 except Exception:
                     pass
 
-    async def drag_and_drop(self, from_point, to_point) -> None:
+    async def drag_and_drop(
+        self, from_point: Sequence[float], to_point: Sequence[float]
+    ) -> None:
         """Drag from one point to another (upstream page.mouse.drag)."""
         try:
             from_x, from_y = from_point
@@ -486,7 +489,7 @@ class BrowserPageActionsMixin:
             raise
 
     async def scroll(
-        self, direction: str, distance: int | None = None, **kwargs
+        self, direction: str, distance: int | None = None, **kwargs: Any
     ) -> None:
         """Scroll in direction."""
         try:

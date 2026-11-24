@@ -9,7 +9,8 @@ owns only the Playwright-specific lifecycle and DOM extraction.
 
 import asyncio  # noqa: F401 - callers patch this module's asyncio.sleep
 from pathlib import Path
-from typing import Any
+from types import TracebackType
+from typing import Any, Self
 
 from loguru import logger
 from playwright.async_api import Browser, BrowserContext, Page, async_playwright
@@ -111,7 +112,7 @@ class WebPage(BrowserPageActionsMixin, AbstractInterface):
         force_same_tab_navigation: bool = True,
         auto_follow_new_page: bool = False,
         force_chrome_select_rendering: bool = True,
-        **browser_options,
+        **browser_options: Any,
     ) -> "WebPage":
         """Create new Playwright page instance
 
@@ -325,7 +326,7 @@ class WebPage(BrowserPageActionsMixin, AbstractInterface):
         """Navigate forward in browser history."""
         await self.page.go_forward()
 
-    async def execute_script(self, script: str, *args) -> Any:
+    async def execute_script(self, script: str, *args: Any) -> Any:
         """Evaluate JavaScript in the page and return its value."""
         if args:
             argument = args[0] if len(args) == 1 else list(args)
@@ -339,7 +340,7 @@ class WebPage(BrowserPageActionsMixin, AbstractInterface):
         except Exception as error:
             raise TimeoutError(f"Element not found: {selector}") from error
 
-    async def evaluate_script(self, script: str, *args) -> Any:
+    async def evaluate_script(self, script: str, *args: Any) -> Any:
         """Evaluate JavaScript"""
         return await self.page.evaluate(script, *args)
 
@@ -347,13 +348,13 @@ class WebPage(BrowserPageActionsMixin, AbstractInterface):
         """Close the browser and the Playwright driver started by create()."""
         if self._popup_handler is not None:
             try:
-                await self._initial_page.remove_listener("popup", self._popup_handler)
+                self._initial_page.remove_listener("popup", self._popup_handler)
             except Exception:
                 pass
             self._popup_handler = None
         if self._new_page_handler is not None:
             try:
-                await self.context.remove_listener("page", self._new_page_handler)
+                self.context.remove_listener("page", self._new_page_handler)
             except Exception:
                 pass
             self._new_page_handler = None
@@ -517,8 +518,7 @@ class WebPage(BrowserPageActionsMixin, AbstractInterface):
             return NodeType.CONTAINER
         elif tag_name in ["p", "h1", "h2", "h3", "h4", "h5", "h6", "label", "td", "th"]:
             return NodeType.TEXT
-        else:
-            return NodeType.OTHER
+        return NodeType.OTHER
 
     async def _build_ui_tree(self) -> UITree:
         """Build UI tree structure"""
@@ -553,10 +553,15 @@ class WebPage(BrowserPageActionsMixin, AbstractInterface):
             )
             return UITree(node=root_node, children=[])
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> Self:
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         await self.close()
 
 

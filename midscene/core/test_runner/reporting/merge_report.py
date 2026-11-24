@@ -1,12 +1,16 @@
 """Merge multiple report dumps (upstream reporting/merge-report.ts)."""
 
 import datetime
-from collections.abc import Callable
-from typing import Any, TypedDict
+from collections.abc import Callable, Mapping
+from typing import Any, Literal, TypedDict, cast
 
 from midscene.core.test_run_report import (
+    TestRunReportDiagnostic,
+    TestRunReportDocument,
     TestRunReportDump,
     TestRunReportMetrics,
+    TestRunReportProject,
+    TestRunReportSummary,
 )
 from midscene.core.test_runner.reporting.metrics import (
     sum_test_run_report_metrics,
@@ -17,8 +21,8 @@ class MergeTestRunReportSource(TypedDict, total=False):
     reportId: str
     sourcePath: str
     attributes: dict[str, Any]
-    dump: TestRunReportDump
-    timing: dict[str, Any]
+    dump: TestRunReportDump | None
+    timing: dict[str, Any] | None
 
 
 _REFERENCE_KEYS = (
@@ -39,6 +43,27 @@ _FRAMEWORK_DETAIL_CODES = {
     "CASE_EXECUTION_FAILED",
     "WORKFLOW_DOCUMENT_EXECUTION_FAILED",
 }
+
+_SummaryKey = Literal[
+    "total",
+    "passed",
+    "failed",
+    "notRun",
+    "filtered",
+    "collectionErrors",
+    "documentFailures",
+    "projectFailures",
+]
+_SUMMARY_KEYS: tuple[_SummaryKey, ...] = (
+    "total",
+    "passed",
+    "failed",
+    "notRun",
+    "filtered",
+    "collectionErrors",
+    "documentFailures",
+    "projectFailures",
+)
 
 _METRIC_FIELDS = (
     "modelCallCount",
@@ -199,7 +224,7 @@ def _retain_host_failure(
     document_index = len(documents) - 1
     document = documents[document_index] if document_index >= 0 else None
 
-    def after_host(value: dict[str, Any]) -> dict[str, Any]:
+    def after_host(value: Mapping[str, Any]) -> dict[str, Any]:
         ended_at = value.get("endedAt") or dump.get("endedAt")
         after_all = list(value.get("afterAll") or [])
         after_all.append(
@@ -221,23 +246,23 @@ def _retain_host_failure(
         )
         return {**value, "status": "failed", "afterAll": after_all}
 
-    summary = dict(dump.get("summary") or {})
+    summary = cast(TestRunReportSummary, dict(dump.get("summary") or {}))
     if document is not None:
         summary["documentFailures"] = summary.get("documentFailures", 0) + 1
     else:
         summary["projectFailures"] = summary.get("projectFailures", 0) + 1
 
-    merged_projects: list[dict[str, Any]] = []
+    merged_projects: list[TestRunReportProject] = []
     for index, item in enumerate(projects):
         if index != project_index:
             merged_projects.append(item)
             continue
-        merged_documents: list[dict[str, Any]] = []
+        merged_documents: list[TestRunReportDocument] = []
         for document_index_, value in enumerate(item.get("documents") or []):
             if document_index_ != document_index:
                 merged_documents.append(value)
                 continue
-            replaced = after_host(value)
+            replaced = cast(TestRunReportDocument, after_host(value))
             if value.get("attempts") is not None:
                 attempts = list(value["attempts"])
                 if attempts:
@@ -245,12 +270,15 @@ def _retain_host_failure(
                 replaced["attempts"] = attempts
             merged_documents.append(replaced)
         merged_projects.append(
-            {**item, "status": "failed", "documents": merged_documents}
+            cast(
+                TestRunReportProject,
+                {**item, "status": "failed", "documents": merged_documents},
+            )
         )
 
     # The enclosing test can fail after YAML succeeds. Record that outcome at
     # the file boundary instead of changing successful actions or Case attempts.
-    diagnostics = list(dump.get("diagnostics") or [])
+    diagnostics: list[TestRunReportDiagnostic] = list(dump.get("diagnostics") or [])
     diagnostics.append(
         {
             "level": "error",
@@ -285,7 +313,9 @@ def merge_test_run_report_dumps(
                     f"{source.get('sourcePath')}"
                 )
         retained = _retain_host_failure(source)
-        dump = retained if retained is not None else _agent_report_as_test_run(source)
+        dump: dict[str, Any] = dict(
+            retained if retained is not None else _agent_report_as_test_run(source)
+        )
 
         def id_for(value: str, source: MergeTestRunReportSource = source) -> str:
             return f"{source.get('reportId')}:{value}"
@@ -333,14 +363,14 @@ def merge_test_run_report_dumps(
             source: MergeTestRunReportSource = source,
         ) -> list[str] | None:
             if report_ids:
-                return [source.get("reportId")]
+                return [cast(str, source.get("reportId"))]
             return report_ids
 
         def step(
             value: dict[str, Any],
             source: MergeTestRunReportSource = source,
         ) -> dict[str, Any]:
-            result = {**value, "id": id_for(value.get("id"))}
+            result = {**value, "id": id_for(cast(str, value.get("id")))}
             if value.get("error") is not None:
                 result["error"] = error(value["error"])
             if value.get("evidenceCollection") is not None:
@@ -383,7 +413,7 @@ def merge_test_run_report_dumps(
                 result["pendingOperations"] = [
                     reference(item) for item in value["pendingOperations"]
                 ]
-            result["documentId"] = id_for(value.get("documentId"))
+            result["documentId"] = id_for(cast(str, value.get("documentId")))
             if value.get("logicalDocumentId"):
                 result["logicalDocumentId"] = id_for(value["logicalDocumentId"])
             if value.get("documentRunId"):
@@ -493,7 +523,7 @@ def merge_test_run_report_dumps(
     started_at = _iso_ms(min(item["start"] for item in recorded_times))
     ended_at = _iso_ms(max(item["end"] for item in recorded_times))
 
-    summary = {
+    summary: TestRunReportSummary = {
         "total": 0,
         "passed": 0,
         "failed": 0,
@@ -505,10 +535,10 @@ def merge_test_run_report_dumps(
     }
     for dump in dumps:
         dump_summary = dump.get("summary") or {}
-        for key in summary:
-            summary[key] += dump_summary.get(key, 0)
+        for key in _SUMMARY_KEYS:
+            summary[key] += cast(int, dump_summary.get(key, 0))
 
-    diagnostics: list[dict[str, Any]] = []
+    diagnostics: list[TestRunReportDiagnostic] = []
     for dump in dumps:
         diagnostics.extend(dump.get("diagnostics") or [])
 
@@ -528,8 +558,8 @@ def merge_test_run_report_dumps(
         ]
         metrics = sum_test_run_report_metrics([metrics] + additional)
     elif all(
-        source.get("dump") is not None
-        and source["dump"].get("executionMetrics") is not None
+        (source_dump := source.get("dump")) is not None
+        and source_dump.get("executionMetrics") is not None
         for source in sources
     ):
         metrics = sum_test_run_report_metrics(list(execution_metrics.values()))

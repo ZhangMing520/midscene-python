@@ -7,7 +7,7 @@ model to describe "the element indicated by the marker".
 
 import math
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, cast
 
 from midscene.core.ai_model.models.registry import ModelRuntime
 from midscene.core.ai_model.prompt.describe import element_describer_instruction
@@ -107,7 +107,7 @@ def build_describe_messages(
 ) -> list[dict[str, Any]]:
     """Messages for one describe call (upstream service.describe)."""
     is_point = not isinstance(target, dict)
-    if is_point:
+    if not isinstance(target, dict):
         point = {"x": float(target[0]), "y": float(target[1])}
         rect = _rect_from_point(target)
     else:
@@ -174,7 +174,9 @@ async def ai_describe_element(
     shot_size = get_shot_size(context)
     messages = build_describe_messages(screenshot, target, shot_size, deep_describe)
 
-    async def call_ai(retry_attempt: int, previous_parse_error: Any | None = None):
+    async def call_ai(
+        retry_attempt: int, previous_parse_error: Any | None = None
+    ) -> dict[str, Any]:
         try:
             return await call_generative_ai(
                 with_semantic_retry_feedback(messages, previous_parse_error),
@@ -194,7 +196,8 @@ async def ai_describe_element(
 
     def parse_response(response: dict[str, Any]) -> dict[str, Any]:
         if "_recovered" in response:
-            return response["_recovered"]
+            # Only call_ai creates this marker, using the typed recovery helper.
+            return cast(dict[str, Any], response["_recovered"])
         raw_response = response["content"]
         parsed = parse_model_response_json(raw_response, source="generic-object")
         if not isinstance(parsed, dict):
@@ -213,7 +216,9 @@ async def ai_describe_element(
             result["reasoning_content"] = response["reasoning_content"]
         return result
 
-    def to_parse_error(error: Any, response: dict[str, Any]) -> AIResponseParseError:
+    def to_parse_error(
+        error: Exception, response: dict[str, Any]
+    ) -> AIResponseParseError:
         return AIResponseParseError(
             f"Failed to parse describe result: {error}",
             response.get("content", ""),

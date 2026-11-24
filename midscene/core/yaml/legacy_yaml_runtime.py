@@ -8,7 +8,7 @@ result publication.
 import inspect
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 from loguru import logger
 
@@ -24,6 +24,7 @@ from midscene.core.test_runner.engine.run_workflow_document import (
 )
 from midscene.core.test_runner.node.define_node import define_node
 from midscene.core.test_runner.node.types import NodeResult
+from midscene.core.test_runner.parser.types import CollectedWorkflowDocument
 from midscene.core.yaml.execution_session import (
     enter_yaml_action,
     run_in_yaml_execution_context,
@@ -225,7 +226,7 @@ def _create_legacy_yaml_node_resolver(
 
 
 async def _run_legacy_yaml_document(
-    document: dict[str, Any],
+    document: CollectedWorkflowDocument,
     options: LegacyYamlRuntimeOptions,
     resolve_task: Callable[[int], dict[str, Any] | None],
     record_task_errors: bool,
@@ -260,7 +261,7 @@ async def _run_legacy_yaml_document(
             await _maybe_await(
                 options.set_result(
                     meta.get("resultName"),
-                    get_legacy_yaml_result_data(result.get("node"), output),
+                    get_legacy_yaml_result_data(cast(str, result.get("node")), output),
                 )
             )
         if provided_on_step_result is not None:
@@ -302,8 +303,12 @@ class LegacyYamlRuntime:
         run_options: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         run_options = dict(run_options or {})
-        document = run_options.get("document") or collect_legacy_yaml_document(
-            script, self.options.source_path, self.options.action_space
+        document = cast(
+            CollectedWorkflowDocument,
+            run_options.get("document")
+            or collect_legacy_yaml_document(
+                script, self.options.source_path, self.options.action_space
+            ),
         )
         tasks = script.get("tasks") or []
         return await _run_legacy_yaml_document(
@@ -368,9 +373,9 @@ def legacy_yaml_outcome_error(outcome: dict[str, Any]) -> BaseException:
     error = failed_step.get("error") if failed_step else None
     cause = getattr(error, "cause", None)
     if getattr(error, "code", None) == "NODE_EXECUTION_ERROR" and cause is not None:
-        return cause
+        return cast(BaseException, cause)
     if error is not None:
-        return error
+        return cast(BaseException, error)
     return RuntimeError(f'Task "{outcome.get("name")}" failed')
 
 

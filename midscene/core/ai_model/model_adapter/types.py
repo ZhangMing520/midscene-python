@@ -1,5 +1,6 @@
 """Type aliases shared by model adapters (upstream ai-model/model-adapter/types.ts)."""
 
+from collections.abc import Callable
 from typing import Any
 
 ModelRequestUserConfig = dict[str, Any]
@@ -10,14 +11,14 @@ ReasoningInput = dict[str, Any]
 class ModelRuntime:
     """A model config bound to its family adapter (upstream ModelRuntime)."""
 
-    def __init__(self, config: dict[str, Any], adapter: Any | None = None):
+    def __init__(self, config: dict[str, Any], adapter: Any | None = None) -> None:
         self.config = config
         if adapter is None:
             from midscene.core.ai_model.models.registry import get_model_adapter
 
             adapter = get_model_adapter(config.get("modelFamily"))
         self.adapter = adapter
-        self.on_usage = None  # optional callback(AIUsageInfo)
+        self.on_usage: Callable[[dict[str, Any]], Any] | None = None
         self.model_fallback: dict[str, Any] | None = None
         self._execution_id: str | None = None
 

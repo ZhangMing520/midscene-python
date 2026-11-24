@@ -2,8 +2,6 @@
 
 from typing import Any, Literal, Protocol, TypedDict
 
-from midscene.core.types import Size
-
 RDPMouseButton = Literal["left", "right", "middle"]
 RDPMouseButtonAction = Literal["down", "up", "click", "doubleClick"]
 RDPScrollDirection = Literal["up", "down", "left", "right"]
@@ -24,6 +22,13 @@ class RDPConnectionConfig(TypedDict, total=False):
     securityProtocol: RDPSecurityProtocol
     desktopWidth: int
     desktopHeight: int
+
+
+class RDPBackendSize(TypedDict):
+    """Logical desktop dimensions returned by the helper protocol."""
+
+    width: int
+    height: int
 
 
 class RDPConnectionInfo(TypedDict):
@@ -54,7 +59,7 @@ class RDPBackendClient(Protocol):
 
     async def screenshot_base64(self) -> str: ...
 
-    async def size(self) -> Size: ...
+    async def size(self) -> RDPBackendSize: ...
 
     async def mouse_move(self, x: int, y: int) -> None: ...
 
@@ -82,6 +87,7 @@ __all__ = [
     "RDPMouseButtonAction",
     "RDPScrollDirection",
     "RDPSecurityProtocol",
+    "RDPBackendSize",
     "RDPConnectionConfig",
     "RDPConnectionInfo",
     "RDPHelperEnvelope",

@@ -5,7 +5,7 @@ import datetime
 import inspect
 import uuid
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Literal, cast
 
 from loguru import logger
 
@@ -61,7 +61,7 @@ def _teardown_timeout(options: dict[str, Any]) -> float | None:
     value = options.get("teardownTimeoutMs")
     if value is None:
         return None
-    return value() if callable(value) else value
+    return cast(float, value() if callable(value) else value)
 
 
 def _document_setup_parts(definition: Any) -> dict[str, Any] | None:
@@ -129,7 +129,7 @@ class DocumentRuntime:
         self._node_teardown_stack: list[dict[str, Any]] = []
         self._accepting_node_teardowns = True
         self._started = False
-        self._finish_task: asyncio.Future[Any] | None = None
+        self._finish_task: asyncio.Task[dict[str, Any]] | None = None
         self._report_paths: list[str] = []
         self._report_sources: list[dict[str, Any]] = []
         self._captured_sources: dict[str, dict[str, Any]] = {}
@@ -255,7 +255,7 @@ class DocumentRuntime:
 
     async def _run_phase(
         self,
-        phase: str,
+        phase: Literal["beforeAll", "afterAll"],
         results: list[dict[str, Any]],
         execution_signal: Any = None,
     ) -> None:
