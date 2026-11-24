@@ -5,10 +5,9 @@ The upstream suite targets ``parse-model-config.ts``; the Python counterpart is
 no model-config parsing API).
 """
 
-import midscene
-
 import pytest
 
+import midscene
 from midscene.shared.env import (
     DEFAULT_MODEL_CONFIG_KEYS,
     INSIGHT_MODEL_CONFIG_KEYS,
@@ -52,9 +51,7 @@ def test_leaves_an_unset_timeout_undefined(keys):
 @pytest.mark.parametrize("value", ["0", "1", "180000", "0.5", " 100 "])
 def test_accepts_the_finite_non_negative_value(keys, value):
     """accepts the finite non-negative value %s"""
-    result = parse_openai_sdk_config(
-        keys=keys, provider={keys["timeout"]: value}
-    )
+    result = parse_openai_sdk_config(keys=keys, provider={keys["timeout"]: value})
     assert result["timeout"] == float(value)
 
 
@@ -102,13 +99,9 @@ def test_legacy_default_keys_use_openai_compatible_environment_names():
     assert DEFAULT_MODEL_CONFIG_KEYS_LEGACY["openaiApiKey"] == "OPENAI_API_KEY"
     assert DEFAULT_MODEL_CONFIG_KEYS_LEGACY["openaiBaseURL"] == "OPENAI_BASE_URL"
     assert (
-        DEFAULT_MODEL_CONFIG_KEYS_LEGACY["socksProxy"]
-        == "MIDSCENE_OPENAI_SOCKS_PROXY"
+        DEFAULT_MODEL_CONFIG_KEYS_LEGACY["socksProxy"] == "MIDSCENE_OPENAI_SOCKS_PROXY"
     )
-    assert (
-        DEFAULT_MODEL_CONFIG_KEYS_LEGACY["httpProxy"]
-        == "MIDSCENE_OPENAI_HTTP_PROXY"
-    )
+    assert DEFAULT_MODEL_CONFIG_KEYS_LEGACY["httpProxy"] == "MIDSCENE_OPENAI_HTTP_PROXY"
     assert (
         DEFAULT_MODEL_CONFIG_KEYS_LEGACY["openaiExtraConfig"]
         == "MIDSCENE_OPENAI_INIT_CONFIG_JSON"
@@ -151,7 +144,9 @@ def test_should_not_throw_on_valid_model_families():
 
 def test_should_throw_on_invalid_value():
     """should throw on invalid value"""
-    with pytest.raises(ValueError, match="Invalid MIDSCENE_MODEL_FAMILY value: invalid"):
+    with pytest.raises(
+        ValueError, match="Invalid MIDSCENE_MODEL_FAMILY value: invalid"
+    ):
         validate_model_family("invalid")
     with pytest.raises(ValueError, match=f"Current version v{midscene.__version__}"):
         validate_model_family("invalid")
@@ -193,7 +188,9 @@ def test_should_handle_ui_tars_legacy_flags():
 
 def test_should_throw_when_multiple_legacy_flags_enabled():
     """should throw when multiple legacy flags enabled"""
-    with pytest.raises(ValueError, match="Only one vision mode can be enabled at a time."):
+    with pytest.raises(
+        ValueError, match="Only one vision mode can be enabled at a time."
+    ):
         legacy_config_to_model_family(
             {"MIDSCENE_USE_QWEN3_VL": "1", "MIDSCENE_USE_QWEN_VL": "1"}
         )

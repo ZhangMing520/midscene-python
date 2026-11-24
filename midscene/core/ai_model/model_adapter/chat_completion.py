@@ -1,6 +1,7 @@
 """Chat-completion request helpers (upstream ai-model/model-adapter/chat-completion.ts)."""
 
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 from midscene.core.ai_model.model_adapter.temperature_with_semantic_retry import (
     get_temperature_with_semantic_retry,
@@ -11,29 +12,33 @@ from midscene.core.ai_model.model_adapter.types import (
 
 MIDSCENE_DEFAULT_TEMPERATURE = 0.0
 
-MIDSCENE_CHAT_COMPLETION_DEFAULTS: Dict[str, Any] = {"temperature": 0}
+MIDSCENE_CHAT_COMPLETION_DEFAULTS: dict[str, Any] = {"temperature": 0}
 
 
 def _json_object_config(
     user_config: ModelRequestUserConfig, expected_json_object_response: bool
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     if user_config.get("responseFormat") != "none" and expected_json_object_response:
         return {"response_format": {"type": "json_object"}}
     return {}
 
 
-def _default_chat_completion_params(context: Dict[str, Any]) -> Dict[str, Any]:
+def _default_chat_completion_params(context: dict[str, Any]) -> dict[str, Any]:
     user_config = context.get("userConfig") or {}
     defaults = context.get("midsceneDefaults") or MIDSCENE_CHAT_COMPLETION_DEFAULTS
-    return {"config": {"temperature": user_config.get("temperature", defaults.get("temperature"))}}
+    return {
+        "config": {
+            "temperature": user_config.get("temperature", defaults.get("temperature"))
+        }
+    }
 
 
 def _create_default_extract_content_and_reasoning(
-    reasoning_content_keys: List[str],
-) -> Callable[[Optional[Dict[str, Any]]], Dict[str, str]]:
+    reasoning_content_keys: list[str],
+) -> Callable[[dict[str, Any] | None], dict[str, str]]:
     """Port of upstream createDefaultExtractContentAndReasoning."""
 
-    def extract(message: Optional[Dict[str, Any]]) -> Dict[str, str]:
+    def extract(message: dict[str, Any] | None) -> dict[str, str]:
         if not message:
             return {"content": "", "reasoning_content": ""}
         raw_reasoning = next(
@@ -59,8 +64,8 @@ def _create_default_extract_content_and_reasoning(
 
 
 def _resolve_extract_content_and_reasoning(
-    chat_completion: Optional[Dict[str, Any]],
-) -> Callable[[Optional[Dict[str, Any]]], Dict[str, str]]:
+    chat_completion: dict[str, Any] | None,
+) -> Callable[[dict[str, Any] | None], dict[str, str]]:
     chat_completion = chat_completion or {}
     message_extraction = chat_completion.get("message_extraction") or {}
     if message_extraction.get("kind") == "custom":
@@ -71,8 +76,8 @@ def _resolve_extract_content_and_reasoning(
 
 
 def resolve_chat_completion(
-    chat_completion: Optional[Dict[str, Any]],
-) -> Dict[str, Any]:
+    chat_completion: dict[str, Any] | None,
+) -> dict[str, Any]:
     """Resolve a chat-completion definition into a runtime adapter.
 
     Mirrors upstream ``resolveChatCompletion``: the returned mapping exposes
@@ -94,7 +99,7 @@ def resolve_chat_completion(
         chat_completion.get("replay_raw_assistant_message", False)
     )
 
-    def build_chat_completion_params(input_context: Dict[str, Any]) -> Dict[str, Any]:
+    def build_chat_completion_params(input_context: dict[str, Any]) -> dict[str, Any]:
         context = {
             **input_context,
             "userConfig": input_context.get("userConfig") or {},

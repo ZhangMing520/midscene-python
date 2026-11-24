@@ -5,21 +5,22 @@ Synced from upstream packages/core/src/ai-model/workflows/planning/
 locate-normalization.ts, planning-action-log.ts).
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
-from midscene.core.ai_model.service_caller.types import AIResponseParseError
-from midscene.core.ai_model.service_caller.call_ai import call_generative_ai
-from midscene.core.ai_model.prompt.planning import build_standard_planning_system_prompt
-from midscene.core.ai_model.service_caller.semantic_retry import call_ai_and_parse_with_retry, with_semantic_retry_feedback
-from midscene.core.ai_model.models.registry import ModelRuntime
-from midscene.core.ai_model.model_adapter.planning import resolve_planning
-from midscene.core.ai_model.workflows.planning.types import PlanningAIResponse
-from midscene.shared.env import planning_model_family_required_for_locate_message
 from midscene.core.ai_model.model_adapter.image_preprocess import (
     prepare_model_image,
 )
+from midscene.core.ai_model.model_adapter.planning import resolve_planning
+from midscene.core.ai_model.models.registry import ModelRuntime
+from midscene.core.ai_model.prompt.planning import build_standard_planning_system_prompt
+from midscene.core.ai_model.service_caller.call_ai import call_generative_ai
+from midscene.core.ai_model.service_caller.semantic_retry import (
+    call_ai_and_parse_with_retry,
+    with_semantic_retry_feedback,
+)
+from midscene.core.ai_model.service_caller.types import AIResponseParseError
 from midscene.core.ai_model.shared.multimodal_prompt import (
     ensure_data_url,
     get_screenshot_base64,
@@ -43,6 +44,8 @@ from midscene.core.ai_model.workflows.planning.standard_planning_parser import (
     parse_sub_goals_from_xml,
     parse_xml_planning_response,
 )
+from midscene.core.ai_model.workflows.planning.types import PlanningAIResponse
+from midscene.shared.env import planning_model_family_required_for_locate_message
 
 NO_PREVIOUS_ACTIONS_TEXT = (
     "No previous actions have been executed in this aiAct execution yet. If the "
@@ -54,13 +57,13 @@ async def standard_plan(
     user_instruction: str,
     context: Any,
     model_runtime: ModelRuntime,
-    action_space: List[Any],
+    action_space: list[Any],
     conversation_history: ConversationHistory,
     include_locate_in_planning: bool = False,
     effort: str = "normal",  # 'normal' | 'fast' | 'deepThink'
-    action_context: Optional[str] = None,
-    planning_advice: Optional[str] = None,
-    reference_images: Optional[List[str]] = None,
+    action_context: str | None = None,
+    planning_advice: str | None = None,
+    reference_images: list[str] | None = None,
     images_include_count: int = 2,
 ) -> PlanningAIResponse:
     """Run one standard planning turn and return the parsed planning response."""
@@ -89,7 +92,9 @@ async def standard_plan(
         planning_protocol=planning_protocol,
         include_locate_in_planning=include_locate_in_planning,
         locate_prompt_spec=(
-            locate_result_codec.prompt_spec if include_locate_in_planning and locate_result_codec else None
+            locate_result_codec.prompt_spec
+            if include_locate_in_planning and locate_result_codec
+            else None
         ),
         include_sub_goals=include_sub_goals,
         include_thought=include_thought,
@@ -119,7 +124,7 @@ async def standard_plan(
         else ""
     )
 
-    instruction: List[Dict[str, Any]] = [
+    instruction: list[dict[str, Any]] = [
         {
             "role": "user",
             "content": [
@@ -190,7 +195,7 @@ async def standard_plan(
 
     history_log = conversation_history.snapshot(images_include_count)
 
-    messages: List[Dict[str, Any]] = [
+    messages: list[dict[str, Any]] = [
         {"role": "system", "content": system_prompt},
         *instruction,
         *history_log,
@@ -198,7 +203,7 @@ async def standard_plan(
 
     action_output_protocol = planning_protocol["action_output_protocol"]
 
-    async def call_ai(retry_attempt: int, previous_parse_error: Optional[Any] = None):
+    async def call_ai(retry_attempt: int, previous_parse_error: Any | None = None):
         return await call_generative_ai(
             with_semantic_retry_feedback(messages, previous_parse_error),
             model_runtime,
@@ -208,7 +213,7 @@ async def standard_plan(
             },
         )
 
-    def parse_response(response: Dict[str, Any]) -> Dict[str, Any]:
+    def parse_response(response: dict[str, Any]) -> dict[str, Any]:
         raw_response = response["content"]
         plan_from_ai = parse_standard_planning_response(
             raw_response,
@@ -226,7 +231,10 @@ async def standard_plan(
                 "Incomplete planning response: provide an action, <complete>, or "
                 "<error>. A <planning> explanation alone is not sufficient."
             )
-        if plan_from_ai.get("action") and plan_from_ai.get("finalize_success") is not None:
+        if (
+            plan_from_ai.get("action")
+            and plan_from_ai.get("finalize_success") is not None
+        ):
             logger.warning(
                 "Planning response included both an action and <complete>; "
                 "ignoring <complete> output."
@@ -250,7 +258,9 @@ async def standard_plan(
         )
         return {"response": response, "plan_from_ai": plan_from_ai, "actions": actions}
 
-    def to_parse_error(parse_error: Any, response: Dict[str, Any]) -> AIResponseParseError:
+    def to_parse_error(
+        parse_error: Any, response: dict[str, Any]
+    ) -> AIResponseParseError:
         return AIResponseParseError(
             f"XML parse error: {parse_error}",
             response.get("content", ""),
@@ -268,9 +278,9 @@ async def standard_plan(
         ),
     )
 
-    response: Dict[str, Any] = result["response"]
-    plan_from_ai: Dict[str, Any] = result["plan_from_ai"]
-    actions: List[Dict[str, Any]] = result["actions"]
+    response: dict[str, Any] = result["response"]
+    plan_from_ai: dict[str, Any] = result["plan_from_ai"]
+    actions: list[dict[str, Any]] = result["actions"]
     raw_response = response["content"]
     usage = response.get("usage")
     reasoning_content = response.get("reasoning_content")
@@ -339,7 +349,9 @@ async def standard_plan(
     }
 
 
-def _merge_sub_goals(history: ConversationHistory, update_sub_goals: List[Dict[str, Any]]) -> None:
+def _merge_sub_goals(
+    history: ConversationHistory, update_sub_goals: list[dict[str, Any]]
+) -> None:
     for goal in update_sub_goals:
         existing = next(
             (g for g in history.sub_goals if g["index"] == goal["index"]), None
@@ -352,9 +364,9 @@ def _merge_sub_goals(history: ConversationHistory, update_sub_goals: List[Dict[s
 
 
 def build_yaml_flow_from_plans(
-    actions: List[Dict[str, Any]],
-    action_space: Optional[List[Any]] = None,
-    distance_ratio: Optional[float] = None,
+    actions: list[dict[str, Any]],
+    action_space: list[Any] | None = None,
+    distance_ratio: float | None = None,
 ) -> str:
     """Serialize planned actions as a YAML workflow string (for cache/dump).
 

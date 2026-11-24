@@ -6,7 +6,6 @@ resource lifecycle that the former suite did not cover.
 """
 
 import asyncio
-from typing import List
 
 import pytest
 
@@ -15,7 +14,7 @@ from midscene.core.test_runner.engine.project_runtime import create_project_runt
 
 @pytest.mark.asyncio
 async def test_concurrent_finish_calls_share_one_document_and_project_cleanup():
-    order: List[str] = []
+    order: list[str] = []
 
     async def setup(ctx):
         order.append("setup")

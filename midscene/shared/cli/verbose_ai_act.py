@@ -2,7 +2,8 @@
 
 import json
 import math
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 from midscene.shared.cli.verbose_screenshot import (
     collect_screenshot_refs,
@@ -11,7 +12,7 @@ from midscene.shared.cli.verbose_screenshot import (
 
 CLI_AI_ACT_PROGRESS_SCOPE = "aiAct"
 
-CliVerboseLine = Dict[str, str]
+CliVerboseLine = dict[str, str]
 
 
 def _is_record(value: Any) -> bool:
@@ -34,7 +35,7 @@ def _compact_text(value: Any) -> str:
         return str(value)
 
 
-def _numeric_value(value: Any) -> Optional[float]:
+def _numeric_value(value: Any) -> float | None:
     return (
         float(value)
         if isinstance(value, (int, float))
@@ -44,7 +45,7 @@ def _numeric_value(value: Any) -> Optional[float]:
     )
 
 
-def _first_text(values: List[Any]) -> str:
+def _first_text(values: list[Any]) -> str:
     for value in values:
         text = _compact_text(value)
         if text:
@@ -52,7 +53,7 @@ def _first_text(values: List[Any]) -> str:
     return ""
 
 
-def _plan_prefix(event: Dict[str, Any]) -> str:
+def _plan_prefix(event: dict[str, Any]) -> str:
     plan_index = _numeric_value(event.get("planIndex"))
     if not plan_index:
         return "[Midscene][aiAct]"
@@ -61,7 +62,7 @@ def _plan_prefix(event: Dict[str, Any]) -> str:
     return f"[Midscene][aiAct][Plan {round(plan_index)}{suffix}]"
 
 
-def _event_key(event: Dict[str, Any], suffix: str) -> str:
+def _event_key(event: dict[str, Any], suffix: str) -> str:
     sequence = _numeric_value(event.get("sequence"))
     if sequence:
         return f"aiAct:{int(sequence)}:{suffix}"
@@ -81,7 +82,7 @@ def _integer_text(value: float) -> str:
     return str(round(value))
 
 
-def _number_tuple(value: Any, size: int) -> Optional[List[float]]:
+def _number_tuple(value: Any, size: int) -> list[float] | None:
     if (
         isinstance(value, list)
         and len(value) >= size
@@ -94,7 +95,7 @@ def _number_tuple(value: Any, size: int) -> Optional[List[float]]:
     return None
 
 
-def _parse_action(value: Any) -> Optional[Dict[str, Any]]:
+def _parse_action(value: Any) -> dict[str, Any] | None:
     if not _is_record(value) or not isinstance(value.get("name"), str):
         return None
     return {
@@ -106,15 +107,15 @@ def _parse_action(value: Any) -> Optional[Dict[str, Any]]:
     }
 
 
-def _format_point(point: List[float]) -> str:
+def _format_point(point: list[float]) -> str:
     return f"({_integer_text(point[0])}, {_integer_text(point[1])})"
 
 
-def _format_bbox(bbox: List[float]) -> str:
+def _format_bbox(bbox: list[float]) -> str:
     return "(" + ",".join(_integer_text(item) for item in bbox) + ")"
 
 
-def _sleep_action_text(action: Dict[str, Any]) -> Optional[str]:
+def _sleep_action_text(action: dict[str, Any]) -> str | None:
     if action["name"] != "Sleep" or not _is_record(action.get("param")):
         return None
     param = action["param"]
@@ -126,10 +127,12 @@ def _sleep_action_text(action: Dict[str, Any]) -> Optional[str]:
     return f"Sleep {_integer_text(time_ms)}ms" if time_ms is not None else None
 
 
-def _planned_action_text(action: Dict[str, Any]) -> str:
+def _planned_action_text(action: dict[str, Any]) -> str:
     if action.get("point"):
         target_segment = f' "{action["target"]}"' if action.get("target") else ""
-        bbox_segment = f", bbox={_format_bbox(action['bbox'])}" if action.get("bbox") else ""
+        bbox_segment = (
+            f", bbox={_format_bbox(action['bbox'])}" if action.get("bbox") else ""
+        )
         return (
             f"{action['name']}{target_segment} at "
             f"{_format_point(action['point'])}{bbox_segment}"
@@ -141,15 +144,15 @@ def _planned_action_text(action: Dict[str, Any]) -> str:
     return f"{action['name']}: {param_text}" if param_text else action["name"]
 
 
-def _running_action_text(action: Dict[str, Any]) -> str:
+def _running_action_text(action: dict[str, Any]) -> str:
     if action.get("point"):
         return f"{action['name']} at {_format_point(action['point'])}"
     return _planned_action_text(action)
 
 
 def normalize_ai_act_progress_event_for_cli(
-    event: Any, screenshot_options: Optional[Dict[str, Any]] = None
-) -> Optional[Dict[str, Any]]:
+    event: Any, screenshot_options: dict[str, Any] | None = None
+) -> dict[str, Any] | None:
     options = screenshot_options or {}
     if not _is_record(event) or event.get("scope") != CLI_AI_ACT_PROGRESS_SCOPE:
         return None
@@ -170,7 +173,7 @@ def normalize_ai_act_progress_event_for_cli(
         else None
     )
 
-    payload: Dict[str, Any] = {
+    payload: dict[str, Any] = {
         "phase": event.get("phase"),
         "sequence": event.get("sequence"),
         "prompt": data.get("prompt"),
@@ -191,8 +194,8 @@ def normalize_ai_act_progress_event_for_cli(
 
 
 def build_ai_act_progress_event_lines(
-    event: Dict[str, Any],
-) -> List[CliVerboseLine]:
+    event: dict[str, Any],
+) -> list[CliVerboseLine]:
     phase = event.get("phase") if isinstance(event.get("phase"), str) else ""
     prefix = _plan_prefix(event)
     error = _compact_text(event.get("error"))
@@ -321,8 +324,8 @@ class CliProgressRenderer:
 
     def __init__(
         self,
-        normalize: Callable[..., Optional[Dict[str, Any]]],
-        build_lines: Callable[[Dict[str, Any]], List[CliVerboseLine]],
+        normalize: Callable[..., dict[str, Any] | None],
+        build_lines: Callable[[dict[str, Any]], list[CliVerboseLine]],
     ) -> None:
         self.normalize = normalize
         self.build_lines = build_lines

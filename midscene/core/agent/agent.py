@@ -15,7 +15,8 @@ import asyncio
 import os
 import time
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any
+from collections.abc import Callable
 
 import yaml as pyyaml
 from loguru import logger
@@ -26,7 +27,11 @@ from midscene.core.device import (
     build_action_space_for,
     find_action_in_action_space_or_throw,
 )
-from midscene.core.ai_model.models import ModelRuntime, get_model_runtime, resolve_model_for_task_type
+from midscene.core.ai_model.models import (
+    ModelRuntime,
+    get_model_runtime,
+    resolve_model_for_task_type,
+)
 from midscene.shared.env import (
     ModelConfigManager,
     get_global_model_config_manager,
@@ -40,12 +45,12 @@ from midscene.core.ai_model.shared.multimodal_prompt import user_prompt_to_strin
 from midscene.core.ai_model.models.jev.planning import jev_plan
 from midscene.core.ai_model.model_adapter.planning import resolve_planning
 from midscene.core.agent import (
+    agent_report_manager,
     cache_config,
     observe_node,
     progress,
     record_to_report as record_to_report_module,
     report_file_name,
-    agent_report_manager,
     screenshot_preparation,
     task_builder,
     ui_utils,
@@ -67,7 +72,11 @@ from midscene.core.agent.tasks import (
     build_action_report_task,
 )
 from midscene.core.agent.task_cache import TaskCache
-from midscene.core.dump import ExecutionDumpBuilder, build_execution_task, get_report_file_name
+from midscene.core.dump import (
+    ExecutionDumpBuilder,
+    build_execution_task,
+    get_report_file_name,
+)
 from midscene.core.types import (
     AbstractInterface,
     InterfaceType,
@@ -95,7 +104,6 @@ from midscene.core.agent.utils import (
     _truncate,
 )
 
-
 _ABORT_SIGNAL_KEYS = ("abortSignal", "abort_signal")
 
 
@@ -105,7 +113,7 @@ class Agent:
     def __init__(
         self,
         interface: AbstractInterface,
-        options: Optional[AgentOptions] = None,
+        options: AgentOptions | None = None,
     ):
         self.interface = interface
         self.options = options or AgentOptions()
@@ -119,35 +127,35 @@ class Agent:
             else get_global_model_config_manager()
         )
 
-        self._runtime_cache: Dict[str, ModelRuntime] = {}
-        self._action_space: Optional[List[DeviceAction]] = None
-        self._task_cache: Optional[TaskCache] = None
-        self.ai_contexts: Dict[str, str] = dict(
+        self._runtime_cache: dict[str, ModelRuntime] = {}
+        self._action_space: list[DeviceAction] | None = None
+        self._task_cache: TaskCache | None = None
+        self.ai_contexts: dict[str, str] = dict(
             getattr(self.options, "ai_contexts", None) or {}
         )
         legacy_action_context = getattr(self.options, "ai_action_context", None)
         if legacy_action_context and "aiAct" not in self.ai_contexts:
             self.ai_contexts["aiAct"] = legacy_action_context
         self._report_builder = None
-        self._usage_by_intent: Dict[str, Dict[str, int]] = {}
+        self._usage_by_intent: dict[str, dict[str, int]] = {}
         # Report state shared by the upstream-shaped public APIs
         # (resetDump/finalizeReport/dumpDataString/reportHTMLString).
-        self._dump_update_listeners: List[Callable] = []
-        self._progress_listeners: List[Callable] = []
+        self._dump_update_listeners: list[Callable] = []
+        self._progress_listeners: list[Callable] = []
         self._progress_sequence = 0
-        self._report_finalized: Optional[str] = None
-        self._report_file_name: Optional[str] = None
-        self._report_artifact_store: Optional[Any] = None
-        self._last_execution: Optional[Dict[str, Any]] = None
-        self._execution_index_by_runner: Dict[int, int] = {}
+        self._report_finalized: str | None = None
+        self._report_file_name: str | None = None
+        self._report_artifact_store: Any | None = None
+        self._last_execution: dict[str, Any] | None = None
+        self._execution_index_by_runner: dict[int, int] = {}
         # File chooser state for the running aiAct (upstream
         # activeFileChooserAccepter / activeFileChooserAllowedDir).
-        self._active_file_chooser_accepter: Optional[_FileChooserAccepter] = None
-        self._active_file_chooser_allowed_dir: Optional[str] = None
+        self._active_file_chooser_accepter: _FileChooserAccepter | None = None
+        self._active_file_chooser_allowed_dir: str | None = None
 
         # Execution state
         self.destroyed = False
-        self.frozen_context: Optional[UIContext] = None
+        self.frozen_context: UIContext | None = None
         self._frozen = False
 
         logger.info(f"Agent initialized for {self.interface.interface_type}")
@@ -156,7 +164,7 @@ class Agent:
     # Model runtimes
     # ------------------------------------------------------------------
 
-    def _model_config(self, intent: str) -> Dict[str, Any]:
+    def _model_config(self, intent: str) -> dict[str, Any]:
         return self._model_config_manager.get_model_config(intent)
 
     def model_runtime(self, intent: str) -> ModelRuntime:
@@ -169,11 +177,11 @@ class Agent:
         return self._runtime_cache[intent]
 
     @property
-    def metrics(self) -> Dict[str, Dict[str, int]]:
+    def metrics(self) -> dict[str, dict[str, int]]:
         """Accumulated token usage per model-config intent (upstream metrics)."""
         return self._usage_by_intent
 
-    def _record_usage_metrics(self, intent: str, usage: Optional[Dict[str, Any]]) -> None:
+    def _record_usage_metrics(self, intent: str, usage: dict[str, Any] | None) -> None:
         record_usage_metrics(self._usage_by_intent, intent, usage)
 
     def _resolve_runtime(self, task_type: str) -> ModelRuntime:
@@ -183,7 +191,7 @@ class Agent:
         )
 
     @property
-    def action_space(self) -> List[DeviceAction]:
+    def action_space(self) -> list[DeviceAction]:
         if self._action_space is None:
             actions = list(build_action_space_for(self.interface.interface_type))
             if _supports(self.interface, "register_file_chooser_listener"):
@@ -196,7 +204,7 @@ class Agent:
             ]
         return self._action_space
 
-    async def get_action_space(self) -> List[DeviceAction]:
+    async def get_action_space(self) -> list[DeviceAction]:
         """Return the full device action space for this agent
         (upstream `agent.getActionSpace()`).
 
@@ -209,12 +217,11 @@ class Agent:
         """File-chooser action only exposed when the interface implements the
         listener (upstream defineActionRegisterFileChooserAccept)."""
 
-        async def execute(param: Dict[str, Any], device: Any, locate_fn) -> None:
+        async def execute(param: dict[str, Any], device: Any, locate_fn) -> None:
             accepter = self._active_file_chooser_accepter
             if accepter is None:
                 raise RuntimeError(
-                    "RegisterFileChooserAccept can only be used while aiAct "
-                    "is running"
+                    "RegisterFileChooserAccept can only be used while aiAct is running"
                 )
             allowed_dir = self._active_file_chooser_allowed_dir
             if not allowed_dir:
@@ -252,7 +259,7 @@ class Agent:
     # Context helpers
     # ------------------------------------------------------------------
 
-    def set_ai_context(self, target: str, context: Optional[str]) -> None:
+    def set_ai_context(self, target: str, context: str | None) -> None:
         """Set default context text for one API (upstream setAIContext)."""
         if target not in AGENT_AI_CONTEXT_KEYS:
             raise TypeError(f"Unknown Agent context key: {target}")
@@ -261,7 +268,7 @@ class Agent:
         else:
             self.ai_contexts[target] = context
 
-    def _resolve_call_context(self, api_name: str, options: Optional[dict]) -> Optional[str]:
+    def _resolve_call_context(self, api_name: str, options: dict | None) -> str | None:
         if options and options.get("context") is not None:
             return options["context"]
         if api_name in self.ai_contexts:
@@ -275,11 +282,8 @@ class Agent:
         interfaces (upstream WebAgentCore subclass override).
         """
         if self.interface_type == InterfaceType.WEB:
-            return bool(
-                BROWSER_NAVIGATION_ERROR_PATTERN.search(str(error) or "")
-            )
+            return bool(BROWSER_NAVIGATION_ERROR_PATTERN.search(str(error) or ""))
         return False
-
 
     async def _get_ui_context(self, action: str) -> UIContext:
         return await self.get_ui_context(action)
@@ -301,10 +305,10 @@ class Agent:
     def _merge_call_context(
         self,
         api_name: str,
-        opt: Optional[Dict[str, Any]],
+        opt: dict[str, Any] | None,
         context: UIContext,
-        dom_included: Union[bool, str] = False,
-    ) -> Optional[str]:
+        dom_included: bool | str = False,
+    ) -> str | None:
         """Combine the per-API context text with the rendered DOM context
         (upstream renderAIContext, enabled by domIncluded)."""
         parts = []
@@ -321,11 +325,11 @@ class Agent:
                 parts.append(rendered)
         return "\n\n".join(parts) if parts else None
 
-    async def _wait_for_action_ready(self, action: Dict[str, Any]) -> None:
+    async def _wait_for_action_ready(self, action: dict[str, Any]) -> None:
         await wait_for_action_ready(self.options, action)
 
     def _notify_task_start(self, tip: str) -> None:
-        callback: Optional[Callable] = getattr(self.options, "on_task_start_tip", None)
+        callback: Callable | None = getattr(self.options, "on_task_start_tip", None)
         if callback:
             result = callback(tip)
             if asyncio.iscoroutine(result):
@@ -334,11 +338,11 @@ class Agent:
     def create_execution_session(
         self,
         name: str,
-        options: Optional[Dict[str, Any]] = None,
+        options: dict[str, Any] | None = None,
     ) -> ExecutionSession:
         """Create a TaskRunner-backed session for one linear execution run."""
 
-        async def ui_context_builder(_signal: Optional[Any] = None) -> Any:
+        async def ui_context_builder(_signal: Any | None = None) -> Any:
             return await self.get_ui_context("locate")
 
         return ExecutionSession(name, ui_context_builder, options)
@@ -347,7 +351,6 @@ class Agent:
     # Progress bus (upstream addProgressListener / AgentProgressEvent)
     # ------------------------------------------------------------------
 
-
     # ------------------------------------------------------------------
     # aiAct: the planning loop
     # ------------------------------------------------------------------
@@ -355,8 +358,8 @@ class Agent:
     async def ai_act(
         self,
         task_prompt: TUserPrompt,
-        opt: Optional[Dict[str, Any]] = None,
-    ) -> Optional[str]:
+        opt: dict[str, Any] | None = None,
+    ) -> str | None:
         """Execute a task via the planning loop within a file-chooser scope
         (upstream executeAiAct + FileChooserAccepter lifecycle)."""
         self._check_not_destroyed()
@@ -365,9 +368,7 @@ class Agent:
 
         file_chooser_files = _get_opt(opt, _FILE_CHOOSER_ACCEPT_KEYS, None)
         normalized_files = (
-            _normalize_file_paths(file_chooser_files)
-            if file_chooser_files
-            else None
+            _normalize_file_paths(file_chooser_files) if file_chooser_files else None
         )
         allowed_dir = _get_opt(opt, _FILE_CHOOSER_ALLOWED_DIR_KEYS, None)
 
@@ -379,9 +380,9 @@ class Agent:
             str(Path(allowed_dir).expanduser().resolve()) if allowed_dir else None
         )
 
-        ai_act_error: Optional[BaseException] = None
-        file_chooser_error: Optional[BaseException] = None
-        result: Optional[str] = None
+        ai_act_error: BaseException | None = None
+        file_chooser_error: BaseException | None = None
+        result: str | None = None
         try:
             if normalized_files:
                 if accepter is None:
@@ -400,9 +401,7 @@ class Agent:
                 try:
                     file_chooser_error = await accepter.clear()
                 except BaseException as e:
-                    logger.warning(
-                        f"Failed to clear file chooser registration: {e}"
-                    )
+                    logger.warning(f"Failed to clear file chooser registration: {e}")
 
         if ai_act_error is not None:
             raise ai_act_error
@@ -413,8 +412,8 @@ class Agent:
     async def _ai_act_impl(
         self,
         task_prompt: TUserPrompt,
-        opt: Optional[Dict[str, Any]] = None,
-    ) -> Optional[str]:
+        opt: dict[str, Any] | None = None,
+    ) -> str | None:
         """Execute a task via the planning loop; returns the finalize message."""
         self._check_not_destroyed()
         opt = opt or {}
@@ -475,7 +474,7 @@ class Agent:
         ai_act_cacheable = cacheable if planning_adapter.cache_enabled else False
         cache = self._get_task_cache()
         cached_entry = None
-        report_tasks: List[Dict[str, Any]] = []
+        report_tasks: list[dict[str, Any]] = []
         if cache is not None and ai_act_cacheable:
             cached_entry = cache.match_plan_cache(prompt_str)
             if cached_entry:
@@ -486,11 +485,13 @@ class Agent:
                     )
                 except Exception as e:
                     _throw_if_aborted(abort_signal)
-                    logger.warning(f"cached plan replay failed, falling back to AI: {e}")
+                    logger.warning(
+                        f"cached plan replay failed, falling back to AI: {e}"
+                    )
                 if replayed:
-                    cache_yaml = cached_entry.get(
-                        "yamlWorkflow"
-                    ) or cached_entry.get("yaml_workflow")
+                    cache_yaml = cached_entry.get("yamlWorkflow") or cached_entry.get(
+                        "yaml_workflow"
+                    )
                     self._write_execution_report(
                         prompt_str, report_tasks, None, cache_yaml=cache_yaml
                     )
@@ -500,14 +501,14 @@ class Agent:
 
         conversation_history = ConversationHistory()
         error_count = 0
-        output_string: Optional[str] = None
-        planning_advice: Optional[str] = None
-        plan_result: Optional[Dict[str, Any]] = None
-        executed_actions: List[Dict[str, Any]] = []
+        output_string: str | None = None
+        planning_advice: str | None = None
+        plan_result: dict[str, Any] | None = None
+        executed_actions: list[dict[str, Any]] = []
 
         context = await self._get_ui_context("aiAct")
         replan_count = 0
-        report_error: Optional[BaseException] = None
+        report_error: BaseException | None = None
         try:
             while True:
                 _throw_if_aborted(abort_signal)
@@ -520,8 +521,8 @@ class Agent:
                     )
 
                 # Delegation forces the default planning model for this round.
-                use_delegation_runtime = (
-                    plan_result is not None and plan_result.get("delegation")
+                use_delegation_runtime = plan_result is not None and plan_result.get(
+                    "delegation"
                 )
                 planning_runtime = (
                     self.model_runtime("default")
@@ -617,9 +618,8 @@ class Agent:
                             and "deepLocate" not in param_value
                         ):
                             param_value["deepLocate"] = True
-                        elif (
-                            isinstance(param_value, dict)
-                            and isinstance(param_value.get("locate"), dict)
+                        elif isinstance(param_value, dict) and isinstance(
+                            param_value.get("locate"), dict
                         ):
                             param_value["locate"].setdefault("deepLocate", True)
 
@@ -645,9 +645,7 @@ class Agent:
                         cacheable=ai_act_cacheable,
                     )
                     report_tasks.append(
-                        build_action_report_task(
-                            action, started_at, time.time()
-                        )
+                        build_action_report_task(action, started_at, time.time())
                     )
                     executed_actions.append(
                         {
@@ -727,7 +725,12 @@ class Agent:
             {"prompt": prompt_str, "output": output_string},
         )
 
-        if cache is not None and not cache.read_only_mode and executed_actions and ai_act_cacheable:
+        if (
+            cache is not None
+            and not cache.read_only_mode
+            and executed_actions
+            and ai_act_cacheable
+        ):
             cache.append_plan_cache(
                 prompt_str,
                 pyyaml.dump(
@@ -748,10 +751,10 @@ class Agent:
         conversation_history: ConversationHistory,
         effort: str,
         include_locate_in_planning: bool,
-        planning_advice: Optional[str],
-        action_context: Optional[str] = None,
-        reference_images: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        planning_advice: str | None,
+        action_context: str | None = None,
+        reference_images: list[str] | None = None,
+    ) -> dict[str, Any]:
         adapter = planning_runtime.adapter
         planning_adapter = resolve_planning(adapter)
         if (
@@ -793,11 +796,11 @@ class Agent:
             images_include_count=2 if effort == "deepThink" else 1,
         )
 
-    async def ai(self, *args, **kwargs) -> Optional[str]:
+    async def ai(self, *args, **kwargs) -> str | None:
         """Alias of aiAct (upstream `agent.ai(...)`)."""
         return await self.ai_act(*args, **kwargs)
 
-    async def ai_action(self, prompt: TUserPrompt, **kwargs) -> Optional[str]:
+    async def ai_action(self, prompt: TUserPrompt, **kwargs) -> str | None:
         """Deprecated alias of aiAct (upstream keeps the same alias)."""
         return await self.ai_act(prompt, kwargs or None)
 
@@ -808,9 +811,11 @@ class Agent:
     async def _call_action_in_action_space(
         self,
         action_type: str,
-        param: Optional[Dict[str, Any]] = None,
+        param: dict[str, Any] | None = None,
     ) -> Any:
-        definition = find_action_in_action_space_or_throw(action_type, self.action_space)
+        definition = find_action_in_action_space_or_throw(
+            action_type, self.action_space
+        )
         param = dict(param or {})
         tip = definition.interface_alias or action_type
         locate = param.get("locate") or param.get("from")
@@ -822,9 +827,9 @@ class Agent:
         return await definition.execute(param, self.interface, self._locate_for_action)
 
     def _build_locate_param(
-        self, prompt: TUserPrompt, opt: Dict[str, Any], api_name: str
-    ) -> Dict[str, Any]:
-        locate: Dict[str, Any] = {"prompt": prompt}
+        self, prompt: TUserPrompt, opt: dict[str, Any], api_name: str
+    ) -> dict[str, Any]:
+        locate: dict[str, Any] = {"prompt": prompt}
         deep_locate = opt.get("deepLocate", opt.get("deepThink", False))
         if deep_locate:
             locate["deepLocate"] = True
@@ -832,14 +837,14 @@ class Agent:
             locate["cacheable"] = opt["cacheable"]
         return locate
 
-    async def ai_tap(self, locate_prompt: TUserPrompt, opt: Optional[Dict[str, Any]] = None) -> None:
+    async def ai_tap(
+        self, locate_prompt: TUserPrompt, opt: dict[str, Any] | None = None
+    ) -> None:
         opt = opt or {}
         self._check_not_destroyed()
         file_chooser_files = _get_opt(opt, _FILE_CHOOSER_ACCEPT_KEYS, None)
         normalized_files = (
-            _normalize_file_paths(file_chooser_files)
-            if file_chooser_files
-            else None
+            _normalize_file_paths(file_chooser_files) if file_chooser_files else None
         )
         locate_param = self._build_locate_param(locate_prompt, opt, "aiTap")
 
@@ -848,46 +853,60 @@ class Agent:
 
         await _with_file_chooser(self.interface, normalized_files, action)
 
-    async def ai_right_click(self, locate_prompt: TUserPrompt, opt: Optional[Dict[str, Any]] = None) -> None:
+    async def ai_right_click(
+        self, locate_prompt: TUserPrompt, opt: dict[str, Any] | None = None
+    ) -> None:
         opt = opt or {}
         self._check_not_destroyed()
         await self._call_action_in_action_space(
-            "RightClick", {"locate": self._build_locate_param(locate_prompt, opt, "aiRightClick")}
+            "RightClick",
+            {"locate": self._build_locate_param(locate_prompt, opt, "aiRightClick")},
         )
 
-    async def ai_middle_click(self, locate_prompt: TUserPrompt, opt: Optional[Dict[str, Any]] = None) -> None:
+    async def ai_middle_click(
+        self, locate_prompt: TUserPrompt, opt: dict[str, Any] | None = None
+    ) -> None:
         opt = opt or {}
         self._check_not_destroyed()
         await self._call_action_in_action_space(
-            "MiddleClick", {"locate": self._build_locate_param(locate_prompt, opt, "aiMiddleClick")}
+            "MiddleClick",
+            {"locate": self._build_locate_param(locate_prompt, opt, "aiMiddleClick")},
         )
 
-    async def ai_double_click(self, locate_prompt: TUserPrompt, opt: Optional[Dict[str, Any]] = None) -> None:
+    async def ai_double_click(
+        self, locate_prompt: TUserPrompt, opt: dict[str, Any] | None = None
+    ) -> None:
         opt = opt or {}
         self._check_not_destroyed()
         await self._call_action_in_action_space(
-            "DoubleClick", {"locate": self._build_locate_param(locate_prompt, opt, "aiDoubleClick")}
+            "DoubleClick",
+            {"locate": self._build_locate_param(locate_prompt, opt, "aiDoubleClick")},
         )
 
-    async def ai_hover(self, locate_prompt: TUserPrompt, opt: Optional[Dict[str, Any]] = None) -> None:
+    async def ai_hover(
+        self, locate_prompt: TUserPrompt, opt: dict[str, Any] | None = None
+    ) -> None:
         opt = opt or {}
         self._check_not_destroyed()
         await self._call_action_in_action_space(
             "Hover", {"locate": self._build_locate_param(locate_prompt, opt, "aiHover")}
         )
 
-    async def ai_clear_input(self, locate_prompt: TUserPrompt, opt: Optional[Dict[str, Any]] = None) -> None:
+    async def ai_clear_input(
+        self, locate_prompt: TUserPrompt, opt: dict[str, Any] | None = None
+    ) -> None:
         opt = opt or {}
         self._check_not_destroyed()
         await self._call_action_in_action_space(
-            "ClearInput", {"locate": self._build_locate_param(locate_prompt, opt, "aiClearInput")}
+            "ClearInput",
+            {"locate": self._build_locate_param(locate_prompt, opt, "aiClearInput")},
         )
 
     async def ai_input(
         self,
-        locate_prompt: Optional[Union[TUserPrompt, str, int]] = None,
-        opt: Optional[Dict[str, Any]] = None,
-        value: Optional[Union[str, int]] = None,
+        locate_prompt: TUserPrompt | str | int | None = None,
+        opt: dict[str, Any] | None = None,
+        value: str | int | None = None,
     ) -> None:
         """aiInput.
 
@@ -895,8 +914,10 @@ class Agent:
         Legacy signature: ai_input(value, locate_prompt).
         """
         self._check_not_destroyed()
-        legacy_form = opt is not None and value is None and (
-            not isinstance(opt, dict) or "prompt" in opt or "images" in opt
+        legacy_form = (
+            opt is not None
+            and value is None
+            and (not isinstance(opt, dict) or "prompt" in opt or "images" in opt)
         )
         if legacy_form:
             # legacy form: ai_input(value, locate_prompt)
@@ -916,7 +937,7 @@ class Agent:
         input_value = str(input_value)
         if opt.get("mode") == "append":  # backward compat
             opt["mode"] = "typeOnly"
-        param: Dict[str, Any] = {"value": input_value}
+        param: dict[str, Any] = {"value": input_value}
         if locate_prompt is not None:
             param["locate"] = self._build_locate_param(locate_prompt, opt, "aiInput")
         if opt.get("mode"):
@@ -925,9 +946,9 @@ class Agent:
 
     async def ai_keyboard_press(
         self,
-        locate_prompt: Optional[TUserPrompt] = None,
-        opt: Optional[Dict[str, Any]] = None,
-        key_name: Optional[str] = None,
+        locate_prompt: TUserPrompt | None = None,
+        opt: dict[str, Any] | None = None,
+        key_name: str | None = None,
     ) -> None:
         """aiKeyboardPress.
 
@@ -935,26 +956,24 @@ class Agent:
         """
         self._check_not_destroyed()
         opt = dict(opt or {})
-        if (
-            isinstance(locate_prompt, str)
-            and "keyName" not in opt
-            and key_name is None
-        ):
+        if isinstance(locate_prompt, str) and "keyName" not in opt and key_name is None:
             key_name = locate_prompt
             locate_prompt = None
         key = opt.pop("keyName", key_name)
         if not key:
             raise ValueError("missing keyName for keyboard press")
-        param: Dict[str, Any] = {"keyName": key}
+        param: dict[str, Any] = {"keyName": key}
         if locate_prompt is not None:
-            param["locate"] = self._build_locate_param(locate_prompt, opt, "aiKeyboardPress")
+            param["locate"] = self._build_locate_param(
+                locate_prompt, opt, "aiKeyboardPress"
+            )
         await self._call_action_in_action_space("KeyboardPress", param)
 
     async def ai_scroll(
         self,
-        locate_prompt: Optional[TUserPrompt] = None,
-        opt: Optional[Dict[str, Any]] = None,
-        scroll_param: Optional[Union[Dict[str, Any], ScrollParam]] = None,
+        locate_prompt: TUserPrompt | None = None,
+        opt: dict[str, Any] | None = None,
+        scroll_param: dict[str, Any] | ScrollParam | None = None,
     ) -> None:
         """aiScroll.
 
@@ -977,7 +996,7 @@ class Agent:
                     "distance": scroll_param.distance,
                 }
             opt.update({k: v for k, v in scroll_param.items() if v is not None})
-        param: Dict[str, Any] = {
+        param: dict[str, Any] = {
             "direction": opt.get("direction") or "down",
             "scrollType": opt.get("scrollType") or "singleAction",
         }
@@ -989,13 +1008,13 @@ class Agent:
 
     async def ai_pinch(
         self,
-        locate_prompt: Optional[TUserPrompt],
-        opt: Optional[Dict[str, Any]] = None,
+        locate_prompt: TUserPrompt | None,
+        opt: dict[str, Any] | None = None,
     ) -> None:
         """aiPinch: two-finger zoom ('in' | 'out') around the element."""
         self._check_not_destroyed()
         opt = dict(opt or {})
-        param: Dict[str, Any] = {"direction": opt.get("direction") or "in"}
+        param: dict[str, Any] = {"direction": opt.get("direction") or "in"}
         if locate_prompt is not None:
             param["locate"] = self._build_locate_param(locate_prompt, opt, "aiPinch")
         if opt.get("distance") is not None:
@@ -1005,11 +1024,11 @@ class Agent:
         await self._call_action_in_action_space("Pinch", param)
 
     async def ai_long_press(
-        self, locate_prompt: TUserPrompt, opt: Optional[Dict[str, Any]] = None
+        self, locate_prompt: TUserPrompt, opt: dict[str, Any] | None = None
     ) -> None:
         self._check_not_destroyed()
         opt = dict(opt or {})
-        param: Dict[str, Any] = {
+        param: dict[str, Any] = {
             "locate": self._build_locate_param(locate_prompt, opt, "aiLongPress")
         }
         if opt.get("duration") is not None:
@@ -1020,17 +1039,17 @@ class Agent:
         self,
         from_prompt: TUserPrompt,
         to_prompt: TUserPrompt,
-        opt: Optional[Dict[str, Any]] = None,
+        opt: dict[str, Any] | None = None,
     ) -> None:
         self._check_not_destroyed()
         opt = dict(opt or {})
-        param: Dict[str, Any] = {
+        param: dict[str, Any] = {
             "from": self._build_locate_param(from_prompt, opt, "aiDragAndDrop"),
             "to": self._build_locate_param(to_prompt, opt, "aiDragAndDrop"),
         }
         await self._call_action_in_action_space("DragAndDrop", param)
 
-    async def sleep(self, ms: int, options: Optional[Dict[str, Any]] = None) -> None:
+    async def sleep(self, ms: int, options: dict[str, Any] | None = None) -> None:
         """Wait for ms milliseconds; no model call (upstream agent.sleep)."""
         if not isinstance(ms, (int, float)) or ms <= 0:
             raise ValueError("ms for sleep must be a finite number greater than 0")
@@ -1043,8 +1062,8 @@ class Agent:
 
     async def ai_query(
         self,
-        demand: Union[str, Dict[str, str]],
-        opt: Optional[Dict[str, Any]] = None,
+        demand: str | dict[str, str],
+        opt: dict[str, Any] | None = None,
     ) -> Any:
         self._check_not_destroyed()
         opt = opt or {}
@@ -1065,22 +1084,28 @@ class Agent:
 
     async def ai_extract(
         self,
-        prompt: Union[str, Dict[str, Any]],
-        options: Optional[Dict[str, Any]] = None,
+        prompt: str | dict[str, Any],
+        options: dict[str, Any] | None = None,
     ) -> Any:
         """Deprecated alias of ai_query (previous Python SDK name)."""
         return await self.ai_query(prompt, options)
 
-    async def ai_boolean(self, prompt: TUserPrompt, opt: Optional[Dict[str, Any]] = None) -> bool:
+    async def ai_boolean(
+        self, prompt: TUserPrompt, opt: dict[str, Any] | None = None
+    ) -> bool:
         return await self._query_primitive("Boolean", "aiBoolean", prompt, opt)
 
-    async def ai_number(self, prompt: TUserPrompt, opt: Optional[Dict[str, Any]] = None):
+    async def ai_number(self, prompt: TUserPrompt, opt: dict[str, Any] | None = None):
         return await self._query_primitive("Number", "aiNumber", prompt, opt)
 
-    async def ai_string(self, prompt: TUserPrompt, opt: Optional[Dict[str, Any]] = None) -> str:
+    async def ai_string(
+        self, prompt: TUserPrompt, opt: dict[str, Any] | None = None
+    ) -> str:
         return await self._query_primitive("String", "aiString", prompt, opt)
 
-    async def ai_ask(self, prompt: TUserPrompt, opt: Optional[Dict[str, Any]] = None) -> str:
+    async def ai_ask(
+        self, prompt: TUserPrompt, opt: dict[str, Any] | None = None
+    ) -> str:
         return await self._query_primitive("String", "aiAsk", prompt, opt)
 
     async def _query_primitive(
@@ -1088,7 +1113,7 @@ class Agent:
         demand_type: str,
         api_name: str,
         prompt: TUserPrompt,
-        opt: Optional[Dict[str, Any]] = None,
+        opt: dict[str, Any] | None = None,
     ) -> Any:
         opt = opt or {}
         context = await self._get_ui_context(api_name)
@@ -1119,9 +1144,9 @@ class Agent:
     async def ai_assert(
         self,
         assertion: TUserPrompt,
-        message: Optional[str] = None,
-        opt: Optional[Dict[str, Any]] = None,
-    ) -> Optional[Dict[str, Any]]:
+        message: str | None = None,
+        opt: dict[str, Any] | None = None,
+    ) -> dict[str, Any] | None:
         """aiAssert; with keepRawResponse returns {pass, thought, message}."""
         self._check_not_destroyed()
         opt = dict(opt or {})
@@ -1170,7 +1195,7 @@ class Agent:
     async def ai_wait_for(
         self,
         assertion: TUserPrompt,
-        opt: Optional[Dict[str, Any]] = None,
+        opt: dict[str, Any] | None = None,
     ) -> None:
         self._check_not_destroyed()
         opt = opt or {}
@@ -1185,7 +1210,9 @@ class Agent:
         while True:
             context = await self._get_ui_context("aiWaitFor")
             runtime = self._resolve_runtime(TASK_TYPE_BOOLEAN)
-            from midscene.core.ai_model.prompt.insight import build_type_query_demand_value
+            from midscene.core.ai_model.prompt.insight import (
+                build_type_query_demand_value,
+            )
 
             response = await ai_extract_element_info(
                 task_type="boolean",
@@ -1203,20 +1230,20 @@ class Agent:
             data = response.get("parse_result", {}).get("data")
             # A missing key or null means "not true yet" for waitFor.
             passed = bool(
-                data.get("StatementIsTruthy")
-                if isinstance(data, dict)
-                else data
+                data.get("StatementIsTruthy") if isinstance(data, dict) else data
             )
             if passed:
                 return
             if (time.time() - start) * 1000 >= timeout_ms:
-                raise TimeoutError(f"waitFor timeout: {user_prompt_to_string(assertion)}")
+                raise TimeoutError(
+                    f"waitFor timeout: {user_prompt_to_string(assertion)}"
+                )
             await asyncio.sleep(check_interval_ms / 1000)
 
     async def ai_locate(
         self,
         prompt: TUserPrompt,
-        opt: Optional[Dict[str, Any]] = None,
+        opt: dict[str, Any] | None = None,
     ) -> LocateResult:
         """aiLocate; returns {center, rect, description}."""
         self._check_not_destroyed()
@@ -1250,7 +1277,7 @@ class Agent:
         await self.interface.keyboard_press(key)
 
     async def scroll(
-        self, params: Union[ScrollParam, str], distance: Optional[int] = None
+        self, params: ScrollParam | str, distance: int | None = None
     ) -> None:
         self._check_not_destroyed()
         if isinstance(params, ScrollParam):
@@ -1280,9 +1307,7 @@ class Agent:
             if asyncio.iscoroutinefunction(interface_destroy):
                 await interface_destroy()
 
-
     # deprecated alias (upstream logScreenshot)
-
 
     async def set_ai_action_context(self, prompt: str) -> None:
         """Deprecated upstream alias for setAIContext('aiAct', ...)."""
@@ -1292,11 +1317,9 @@ class Agent:
         """Deprecated upstream alias for setAIContext('aiAct', ...)."""
         self.set_ai_context("aiAct", prompt)
 
-
     # ------------------------------------------------------------------
     # Report APIs (upstream resetDump / finalizeReport / dumpDataString ...)
     # ------------------------------------------------------------------
-
 
     async def evaluate_javascript(self, script: str) -> Any:
         """Evaluate JavaScript through the interface (upstream evaluateJavaScript)."""
@@ -1316,26 +1339,26 @@ class Agent:
             "evaluateJavaScript is not supported in current agent"
         )
 
-
-    def flush_cache(self, options: Optional[Dict[str, Any]] = None) -> None:
+    def flush_cache(self, options: dict[str, Any] | None = None) -> None:
         if self._task_cache is None:
             raise RuntimeError("Cache is not configured")
         self._task_cache.flush()
 
-
     async def run_gherkin_scenario(
         self,
         scenario_text: str,
-        opt: Optional[Dict[str, Any]] = None,
+        opt: dict[str, Any] | None = None,
     ) -> None:
         """Run a Gherkin scenario: Given/When -> aiAct, Then -> aiAssert."""
-        from midscene.core.agent.run_gherkin_scenario import run_gherkin_scenario as run_scenario
+        from midscene.core.agent.run_gherkin_scenario import (
+            run_gherkin_scenario as run_scenario,
+        )
 
         await run_scenario(self, scenario_text, opt)
 
     async def run_yaml(
-        self, yaml_script_content: str, options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, yaml_script_content: str, options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Run a YAML automation script (upstream agent.runYaml)."""
         from midscene.core.yaml import ScriptPlayer, parse_yaml_script
 
@@ -1345,7 +1368,9 @@ class Agent:
         player = ScriptPlayer(script, agent=self)
         await player.run()
         if player.status == "error":
-            errors = [f"task - {t['name']}: {t.get('error')}" for t in player.failed_tasks]
+            errors = [
+                f"task - {t['name']}: {t.get('error')}" for t in player.failed_tasks
+            ]
             raise RuntimeError("Error(s) in running yaml script:\n" + "\n".join(errors))
         return {"result": player.result}
 
@@ -1353,23 +1378,20 @@ class Agent:
     # Planning action execution + locate
     # ------------------------------------------------------------------
 
-
     # -- execution report ---------------------------------------------------
-
 
     def _write_execution_report(
         self,
         prompt_str: str,
-        action_tasks: List[Dict[str, Any]],
-        output: Optional[str],
-        error: Optional[BaseException] = None,
-        cache_yaml: Optional[str] = None,
-    ) -> Optional[str]:
+        action_tasks: list[dict[str, Any]],
+        output: str | None,
+        error: BaseException | None = None,
+        cache_yaml: str | None = None,
+    ) -> str | None:
         """Persist the upstream-shaped execution dump for one aiAct run."""
         generate_report = bool(getattr(self.options, "generate_report", True))
         persist_json = bool(
-            generate_report
-            and getattr(self.options, "persist_execution_dump", False)
+            generate_report and getattr(self.options, "persist_execution_dump", False)
         )
         try:
             if cache_yaml is not None:
@@ -1419,9 +1441,7 @@ class Agent:
             if persist_json:
                 builder = ExecutionDumpBuilder(
                     group_name=getattr(self.options, "group_name", "Midscene Report"),
-                    group_description=getattr(
-                        self.options, "group_description", ""
-                    ),
+                    group_description=getattr(self.options, "group_description", ""),
                     device_type=tag,
                 )
                 attributes = getattr(self.options, "report_attributes", None)
@@ -1447,7 +1467,6 @@ class Agent:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-
 
     def _check_not_destroyed(self) -> None:
         if self.destroyed:
@@ -1518,12 +1537,13 @@ class Agent:
     def _notify_dump_update_listeners(self, execution):
         return agent_report_manager.notify_dump_update_listeners(self, execution)
 
-
     def log_screenshot(self, title, opt=None):
         # deprecated upstream alias for recordToReport
         return record_to_report_module.record_to_report(self, title, opt)
 
-    async def _execute_planning_action(self, action, distance_ratio=None, cacheable=None):
+    async def _execute_planning_action(
+        self, action, distance_ratio=None, cacheable=None
+    ):
         return await task_builder.execute_planning_action(
             self, action, distance_ratio, cacheable
         )
@@ -1531,7 +1551,9 @@ class Agent:
     async def _locate_for_action(self, locate_param):
         return await task_builder.locate_for_action(self, locate_param)
 
-    async def _run_locate(self, prompt, context, deep_locate=False, plan_located_element=None):
+    async def _run_locate(
+        self, prompt, context, deep_locate=False, plan_located_element=None
+    ):
         return await task_builder.run_locate(
             self, prompt, context, deep_locate, plan_located_element
         )
@@ -1539,7 +1561,9 @@ class Agent:
     async def _rect_from_cache_feature(self, feature):
         return await task_builder.rect_from_cache_feature(self, feature)
 
-    async def _write_locate_cache(self, prompt_str, element, cache, cacheable, replace_index=None):
+    async def _write_locate_cache(
+        self, prompt_str, element, cache, cacheable, replace_index=None
+    ):
         return await task_builder.write_locate_cache(
             self, prompt_str, element, cache, cacheable, replace_index
         )
@@ -1568,20 +1592,20 @@ class Agent:
     async def run_markdown(self, markdown_path, opt=None):
         return await run_markdown_module.run_markdown(self, markdown_path, opt)
 
-
     def _get_task_cache(self):
         return cache_config.get_task_cache(self)
 
     def start_observing(self, opt=None):
         return observe_node.start_observing(self, opt)
 
-
     @staticmethod
-    def _to_logical_coords(element: Dict[str, Any], context: UIContext) -> Dict[str, Any]:
+    def _to_logical_coords(
+        element: dict[str, Any], context: UIContext
+    ) -> dict[str, Any]:
         return ui_utils.to_logical_coords(element, context)
 
     @staticmethod
-    def get_test_runner_node_definitions() -> List[Any]:
+    def get_test_runner_node_definitions() -> list[Any]:
         """Common Agent Nodes consumed by the Test Runner adapters."""
         from midscene.core.agent.test_runner_nodes import (
             COMMON_AGENT_TEST_RUNNER_NODE_DEFINITIONS,

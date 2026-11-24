@@ -7,7 +7,8 @@ field descriptors instead of Zod objects.
 import inspect
 import json
 import sys
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from midscene.shared.agent_tools.error_formatter import get_error_message
 from midscene.shared.agent_tools.observation_artifact import (
@@ -36,7 +37,7 @@ from midscene.shared.cli.verbose import (
 from midscene.shared.img import parse_base64
 from midscene.shared.key_alias_utils import is_record
 
-GetAgent = Callable[[Dict[str, Any]], Awaitable[Any]]
+GetAgent = Callable[[dict[str, Any]], Awaitable[Any]]
 
 
 def _action_attr(action: Any, name: str, default: Any = None) -> Any:
@@ -45,14 +46,14 @@ def _action_attr(action: Any, name: str, default: Any = None) -> Any:
     return getattr(action, name, default)
 
 
-def _field_types(field: Dict[str, Any]) -> List[str]:
+def _field_types(field: dict[str, Any]) -> list[str]:
     raw = field.get("type", "any")
     if isinstance(raw, (list, tuple)):
         return [str(item) for item in raw]
     return [part.strip() for part in str(raw).split("|")]
 
 
-def _get_field_shape(field: Any) -> Optional[Dict[str, Any]]:
+def _get_field_shape(field: Any) -> dict[str, Any] | None:
     if not isinstance(field, dict):
         return None
     fields = field.get("fields")
@@ -75,11 +76,11 @@ def _is_midscene_locator_field(field: Any) -> bool:
     return bool(shape and "prompt" in shape)
 
 
-def _is_optional(field: Dict[str, Any]) -> bool:
+def _is_optional(field: dict[str, Any]) -> bool:
     return bool(field.get("optional", False))
 
 
-def _type_name_for_display(field: Dict[str, Any]) -> str:
+def _type_name_for_display(field: dict[str, Any]) -> str:
     if _is_midscene_locator_field(field):
         return "object"
     return " | ".join(_field_types(field))
@@ -88,12 +89,12 @@ def _type_name_for_display(field: Dict[str, Any]) -> str:
 def _describe_action_for_tool(action: Any) -> str:
     name = _action_attr(action, "name", "")
     description = _action_attr(action, "description") or f"Execute {name} action"
-    param_schema: Dict[str, Any] = _action_attr(action, "param_schema", None) or {}
+    param_schema: dict[str, Any] = _action_attr(action, "param_schema", None) or {}
 
     if not param_schema:
         return f"{name} action, {description}"
 
-    param_descriptions: List[str] = []
+    param_descriptions: list[str] = []
     for key, field in param_schema.items():
         if not isinstance(field, dict):
             continue
@@ -108,15 +109,10 @@ def _describe_action_for_tool(action: Any) -> str:
 
     if not param_descriptions:
         return f"{name} action, {description}"
-    return (
-        f"{name} action, {description}. Parameters: "
-        f"{'; '.join(param_descriptions)}"
-    )
+    return f"{name} action, {description}. Parameters: {'; '.join(param_descriptions)}"
 
 
-def _transform_schema_field(
-    key: str, value: Dict[str, Any]
-) -> Dict[str, Any]:
+def _transform_schema_field(key: str, value: dict[str, Any]) -> dict[str, Any]:
     if not _is_midscene_locator_field(value):
         return value
     shape = _get_field_shape(value)
@@ -130,8 +126,8 @@ def _transform_schema_field(
 
 
 def _extract_action_schema(
-    param_schema: Optional[Dict[str, Any]], action_name: str
-) -> Dict[str, Any]:
+    param_schema: dict[str, Any] | None, action_name: str
+) -> dict[str, Any]:
     if not param_schema:
         return {}
     if not isinstance(param_schema, dict):
@@ -147,7 +143,7 @@ def _extract_action_schema(
     }
 
 
-def _get_prompt_text(prompt: Any) -> Optional[str]:
+def _get_prompt_text(prompt: Any) -> str | None:
     if isinstance(prompt, str):
         return prompt
     if is_record(prompt) and isinstance(prompt.get("prompt"), str):
@@ -156,16 +152,18 @@ def _get_prompt_text(prompt: Any) -> Optional[str]:
 
 
 def _move_locate_extras_into_prompt(
-    value: Dict[str, Any], locate_field_keys: set
-) -> Dict[str, Any]:
+    value: dict[str, Any], locate_field_keys: set
+) -> dict[str, Any]:
     prompt_text = _get_prompt_text(value.get("prompt"))
     if not prompt_text:
         return value
 
-    normalized_prompt: Dict[str, Any] = (
-        dict(value["prompt"]) if is_record(value.get("prompt")) else {"prompt": prompt_text}
+    normalized_prompt: dict[str, Any] = (
+        dict(value["prompt"])
+        if is_record(value.get("prompt"))
+        else {"prompt": prompt_text}
     )
-    normalized_locate: Dict[str, Any] = {}
+    normalized_locate: dict[str, Any] = {}
     moved_extra_field = False
 
     for key, field_value in value.items():
@@ -195,15 +193,14 @@ def _normalize_locate_like_arg(value: Any, field_schema: Any) -> Any:
 
 
 def _normalize_action_args(
-    args: Dict[str, Any], param_schema: Optional[Dict[str, Any]]
-) -> Dict[str, Any]:
+    args: dict[str, Any], param_schema: dict[str, Any] | None
+) -> dict[str, Any]:
     if not param_schema:
         return args
     return {
         key: (
             _normalize_locate_like_arg(value, param_schema.get(key))
-            if key in param_schema
-            and _is_midscene_locator_field(param_schema.get(key))
+            if key in param_schema and _is_midscene_locator_field(param_schema.get(key))
             else value
         )
         for key, value in args.items()
@@ -211,9 +208,9 @@ def _normalize_action_args(
 
 
 def _merge_locate_defaults(
-    locate: Dict[str, Any], defaults: Dict[str, Any]
-) -> Dict[str, Any]:
-    merged: Optional[Dict[str, Any]] = None
+    locate: dict[str, Any], defaults: dict[str, Any]
+) -> dict[str, Any]:
+    merged: dict[str, Any] | None = None
     for key, value in defaults.items():
         if locate.get(key) is not None:
             continue
@@ -225,10 +222,10 @@ def _merge_locate_defaults(
 
 
 def _apply_locate_defaults(
-    args: Dict[str, Any],
-    param_schema: Optional[Dict[str, Any]],
-    locate_defaults: Dict[str, Any],
-) -> Dict[str, Any]:
+    args: dict[str, Any],
+    param_schema: dict[str, Any] | None,
+    locate_defaults: dict[str, Any],
+) -> dict[str, Any]:
     if not param_schema or not locate_defaults:
         return args
     result = dict(args)
@@ -243,7 +240,7 @@ def _apply_locate_defaults(
     return result
 
 
-def _serialize_args_to_description(args: Dict[str, Any]) -> str:
+def _serialize_args_to_description(args: dict[str, Any]) -> str:
     try:
         parts = []
         for key, value in args.items():
@@ -260,9 +257,7 @@ def _serialize_args_to_description(args: Dict[str, Any]) -> str:
         return f"[args serialization failed: {get_error_message(error)}]"
 
 
-def _build_action_instruction(
-    action_name: str, args: Dict[str, Any]
-) -> str:
+def _build_action_instruction(action_name: str, args: dict[str, Any]) -> str:
     locate_prompt = (
         _get_prompt_text(args["locate"].get("prompt"))
         if is_record(args.get("locate"))
@@ -296,7 +291,7 @@ def _build_action_instruction(
 
 
 async def _call_ai_action(
-    agent: Any, prompt: Any, options: Optional[Dict[str, Any]] = None
+    agent: Any, prompt: Any, options: dict[str, Any] | None = None
 ) -> Any:
     options = options or {}
     method = getattr(agent, "ai_action", None) or getattr(agent, "aiAction", None)
@@ -312,9 +307,7 @@ async def _call_ai_action(
     return await method(prompt, options)
 
 
-async def _execute_action(
-    agent: Any, action_name: str, args: Dict[str, Any]
-) -> Any:
+async def _execute_action(agent: Any, action_name: str, args: dict[str, Any]) -> Any:
     call = (
         getattr(agent, "call_action_in_action_space", None)
         or getattr(agent, "callActionInActionSpace", None)
@@ -323,11 +316,13 @@ async def _execute_action(
     if call is not None:
         return await call(action_name, args)
     if getattr(agent, "ai_action", None) is not None:
-        return await _call_ai_action(agent, _build_action_instruction(action_name, args))
+        return await _call_ai_action(
+            agent, _build_action_instruction(action_name, args)
+        )
     raise RuntimeError(f'Action "{action_name}" is not supported by this agent')
 
 
-async def _screenshot_base64(agent: Any) -> Optional[str]:
+async def _screenshot_base64(agent: Any) -> str | None:
     page = getattr(agent, "page", None)
     if page is not None and hasattr(page, "screenshot_base64"):
         value = page.screenshot_base64()
@@ -362,7 +357,7 @@ def _serialize_action_result(action_result: Any) -> str:
 async def _capture_screenshot_result(
     agent: Any, action_name: str, action_result: Any = None
 ) -> ToolResult:
-    content: List[Dict[str, Any]] = [
+    content: list[dict[str, Any]] = [
         {"type": "text", "text": f'Action "{action_name}" completed.'}
     ]
     if action_result is not None:
@@ -392,8 +387,7 @@ async def _capture_screenshot_result(
         content[0] = {
             "type": "text",
             "text": (
-                f'Action "{action_name}" completed '
-                f"(screenshot unavailable: {message})"
+                f'Action "{action_name}" completed (screenshot unavailable: {message})'
             ),
         }
         return ToolResult(content)
@@ -430,8 +424,8 @@ async def _capture_failure_result(
 
 
 def _merge_tool_cli_metadata(
-    base: Optional[ToolCliMetadata], extra: Optional[ToolCliMetadata]
-) -> Optional[ToolCliMetadata]:
+    base: ToolCliMetadata | None, extra: ToolCliMetadata | None
+) -> ToolCliMetadata | None:
     options = {**(base or {}).get("options", {}), **(extra or {}).get("options", {})}
     positionals = (base or {}).get("positionals") or (extra or {}).get("positionals")
     if options or positionals:
@@ -443,19 +437,19 @@ def _merge_tool_cli_metadata(
 
 
 def generate_tools_from_action_space(
-    action_space: List[ActionSpaceItem],
+    action_space: list[ActionSpaceItem],
     get_agent: GetAgent,
-    sanitize_args: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None,
-    init_arg_schema: Optional[ToolSchema] = None,
-    init_arg_cli_metadata: Optional[ToolCliMetadata] = None,
-    tool_defaults: Optional[ToolDefaults] = None,
-) -> List[ToolDefinition]:
+    sanitize_args: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
+    init_arg_schema: ToolSchema | None = None,
+    init_arg_cli_metadata: ToolCliMetadata | None = None,
+    tool_defaults: ToolDefaults | None = None,
+) -> list[ToolDefinition]:
     """Convert DeviceActions from an action space into tool definitions."""
     sanitize = sanitize_args or (lambda args: args)
     init_schema = init_arg_schema or {}
     defaults = tool_defaults or {}
 
-    definitions: List[ToolDefinition] = []
+    definitions: list[ToolDefinition] = []
     for action in action_space:
         name = _action_attr(action, "name", "")
         param_schema = _action_attr(action, "param_schema", None) or {}
@@ -465,15 +459,13 @@ def generate_tools_from_action_space(
         }
 
         async def handler(
-            args: Dict[str, Any],
+            args: dict[str, Any],
             action_name: str = name,
-            action_param_schema: Dict[str, Any] = param_schema,
+            action_param_schema: dict[str, Any] = param_schema,
         ) -> ToolResult:
             try:
                 agent = await get_agent(args)
-                emit_cli_verbose_event(
-                    {"event": "agent_ready", "tool": action_name}
-                )
+                emit_cli_verbose_event({"event": "agent_ready", "tool": action_name})
                 unsubscribe = attach_cli_verbose_dump_listener(
                     agent, {"toolName": action_name}
                 )
@@ -512,8 +504,7 @@ def generate_tools_from_action_space(
                     file=sys.stderr,
                 )
                 return _create_error_result(
-                    f'Failed to get agent or execute action "{action_name}": '
-                    f"{message}"
+                    f'Failed to get agent or execute action "{action_name}": {message}'
                 )
 
         definitions.append(
@@ -530,19 +521,17 @@ def generate_tools_from_action_space(
 
 def generate_common_tools(
     get_agent: GetAgent,
-    init_arg_schema: Optional[ToolSchema] = None,
-    init_arg_cli_metadata: Optional[ToolCliMetadata] = None,
-    tool_defaults: Optional[ToolDefaults] = None,
-) -> List[ToolDefinition]:
+    init_arg_schema: ToolSchema | None = None,
+    init_arg_cli_metadata: ToolCliMetadata | None = None,
+    tool_defaults: ToolDefaults | None = None,
+) -> list[ToolDefinition]:
     init_schema = init_arg_schema or {}
     defaults = tool_defaults or {}
 
-    async def take_screenshot(args: Dict[str, Any]) -> ToolResult:
+    async def take_screenshot(args: dict[str, Any]) -> ToolResult:
         try:
             agent = await get_agent(args)
-            emit_cli_verbose_event(
-                {"event": "agent_ready", "tool": "take_screenshot"}
-            )
+            emit_cli_verbose_event({"event": "agent_ready", "tool": "take_screenshot"})
             unsubscribe = attach_cli_verbose_dump_listener(
                 agent, {"toolName": "take_screenshot"}
             )
@@ -566,24 +555,21 @@ def generate_common_tools(
         except Exception as error:  # noqa: BLE001
             message = get_error_message(error)
             print(f"Error taking screenshot: {message}", file=sys.stderr)
-            return _create_error_result(
-                f"Failed to capture screenshot: {message}"
-            )
+            return _create_error_result(f"Failed to capture screenshot: {message}")
 
-    async def act(args: Dict[str, Any]) -> ToolResult:
+    async def act(args: dict[str, Any]) -> ToolResult:
         prompt = args.get("prompt")
         try:
             agent = await get_agent(args)
             emit_cli_verbose_event({"event": "agent_ready", "tool": "act"})
-            if getattr(agent, "ai_action", None) is None and getattr(
-                agent, "aiAction", None
-            ) is None:
+            if (
+                getattr(agent, "ai_action", None) is None
+                and getattr(agent, "aiAction", None) is None
+            ):
                 return _create_error_result("act is not supported by this agent")
-            unsubscribe = attach_cli_verbose_dump_listener(
-                agent, {"toolName": "act"}
-            )
+            unsubscribe = attach_cli_verbose_dump_listener(agent, {"toolName": "act"})
             try:
-                act_options: Dict[str, Any] = {
+                act_options: dict[str, Any] = {
                     "deepThink": False,
                     **(defaults.get("act") or {}),
                 }
@@ -609,18 +595,17 @@ def generate_common_tools(
             print(f"Error executing act: {message}", file=sys.stderr)
             return _create_error_result(f"Failed to execute act: {message}")
 
-    async def assert_statement(args: Dict[str, Any]) -> ToolResult:
+    async def assert_statement(args: dict[str, Any]) -> ToolResult:
         prompt = args.get("prompt")
         message = args.get("message")
         try:
             agent = await get_agent(args)
             emit_cli_verbose_event({"event": "agent_ready", "tool": "assert"})
-            if getattr(agent, "ai_assert", None) is None and getattr(
-                agent, "aiAssert", None
-            ) is None:
-                return _create_error_result(
-                    "assert is not supported by this agent"
-                )
+            if (
+                getattr(agent, "ai_assert", None) is None
+                and getattr(agent, "aiAssert", None) is None
+            ):
+                return _create_error_result("assert is not supported by this agent")
             unsubscribe = attach_cli_verbose_dump_listener(
                 agent, {"toolName": "assert"}
             )
@@ -656,23 +641,17 @@ def generate_common_tools(
                             if inspect.isawaitable(disposed):
                                 await disposed
                 else:
-                    ai_assert = getattr(agent, "ai_assert", None) or getattr(
-                        agent, "aiAssert"
-                    )
+                    ai_assert = getattr(agent, "ai_assert", None) or agent.aiAssert
                     result = ai_assert(user_prompt, message)
                     if inspect.isawaitable(result):
                         await result
-                return ToolResult(
-                    [{"type": "text", "text": "Assertion passed."}]
-                )
+                return ToolResult([{"type": "text", "text": "Assertion passed."}])
             finally:
                 unsubscribe()
         except Exception as error:  # noqa: BLE001
             error_message = get_error_message(error)
             print(f"Error executing assert: {error_message}", file=sys.stderr)
-            return _create_error_result(
-                f"Failed to execute assert: {error_message}"
-            )
+            return _create_error_result(f"Failed to execute assert: {error_message}")
 
     return [
         ToolDefinition(
@@ -693,7 +672,7 @@ def generate_common_tools(
             schema={
                 "prompt": schema_field(
                     "string",
-                    'Natural language description of the action to perform, '
+                    "Natural language description of the action to perform, "
                     'e.g. "press Command+Space, type Safari, press Enter"',
                 ),
                 "deepLocate": schema_field(

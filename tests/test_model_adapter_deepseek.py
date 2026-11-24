@@ -75,9 +75,7 @@ def test_maps_reasoning_with_endpoint_specific_effort_and_budget(
         }
     )
     config = {
-        key: value
-        for key, value in result["config"].items()
-        if value is not None
+        key: value for key, value in result["config"].items() if value is not None
     }
     expected = {
         "response_format": {"type": "json_object"},
@@ -105,9 +103,9 @@ def test_uses_point_tokens_for_final_element_locate():
     response_instructions = protocol["build_response_instructions"](
         element["result_codec"].prompt_spec
     )
-    assert "You are a GUI click grounding agent." in protocol[
-        "system_prompt_introduction"
-    ]
+    assert (
+        "You are a GUI click grounding agent." in protocol["system_prompt_introduction"]
+    )
     assert "<｜｜point｜｜>[[number, number]]<｜｜/point｜｜>" in response_instructions
     assert "<｜｜point｜｜>[[150, 150]]<｜｜/point｜｜>" in response_instructions
     assert (
@@ -167,10 +165,13 @@ def test_uses_ref_box_tokens_and_bbox_coordinates_for_search_area():
     response_instructions = search_area["protocol"]["build_response_instructions"](
         search_area["result_codec"].prompt_spec
     )
-    assert "You are a GUI grounding agent." in search_area["protocol"][
-        "system_prompt_introduction"
-    ]
-    assert "you MUST return that visible element as a reference" in response_instructions
+    assert (
+        "You are a GUI grounding agent."
+        in search_area["protocol"]["system_prompt_introduction"]
+    )
+    assert (
+        "you MUST return that visible element as a reference" in response_instructions
+    )
     assert (
         "<｜｜ref｜｜>target: concise target description<｜｜/ref｜｜>"
         "<｜｜box｜｜>[[number, number, number, number]]<｜｜/box｜｜>"
@@ -200,9 +201,9 @@ def test_uses_ref_box_tokens_and_bbox_coordinates_for_search_area():
         "references": ["[[150,390,230,430]]"],
     }
     context = {"preparedSize": {"width": 1000, "height": 1000}}
-    assert search_area["result_codec"].to_pixel_result(
-        raw_result["target"], context
-    )["rect"] == {"left": 845, "top": 390, "width": 31, "height": 41}
+    assert search_area["result_codec"].to_pixel_result(raw_result["target"], context)[
+        "rect"
+    ] == {"left": 845, "top": 390, "width": 31, "height": 41}
     assert [
         search_area["result_codec"].to_pixel_result(reference, context)["rect"]
         for reference in raw_result["references"]
@@ -301,9 +302,16 @@ def test_maps_deepseek_reasoning_controls_and_provider_defaults():
         "thinking": {"type": "enabled"},
         "reasoning_effort": "max",
     }
-    assert build(
-        {"reasoningEnabled": "default", "reasoningEffort": "max", "temperature": 0.7}
-    ) == {}
+    assert (
+        build(
+            {
+                "reasoningEnabled": "default",
+                "reasoningEffort": "max",
+                "temperature": 0.7,
+            }
+        )
+        == {}
+    )
     assert build({"reasoningEnabled": False, "temperature": 0.7}) == {
         "temperature": 0.7,
         "thinking": {"type": "disabled"},

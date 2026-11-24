@@ -2,7 +2,8 @@
 
 import inspect
 import json
-from typing import Any, Awaitable, Callable, Dict, List, Optional, TypedDict
+from collections.abc import Awaitable, Callable
+from typing import Any, TypedDict
 
 from midscene.shared.agent_tools.types import (
     ToolDefinition,
@@ -32,7 +33,7 @@ def _page_member(page: Any, *names: str) -> Any:
     return None
 
 
-def get_target_id(page: Any) -> Optional[str]:
+def get_target_id(page: Any) -> str | None:
     """Return the Chrome target id exposed by a page, or None.
 
     Puppeteer pages expose ``target()._targetId``.  Python drivers without that
@@ -85,29 +86,26 @@ def is_page_closed(page: Any) -> bool:
 
 
 def create_tab_tools(
-    adapter: Dict[str, Callable[..., Awaitable[Any]]]
-) -> List[ToolDefinition]:
+    adapter: dict[str, Callable[..., Awaitable[Any]]],
+) -> list[ToolDefinition]:
     """Build the ``web_tabs`` / ``web_switch-tab`` tools over a tab adapter."""
 
-    async def list_tabs(_args: Dict[str, Any]) -> ToolResult:
+    async def list_tabs(_args: dict[str, Any]) -> ToolResult:
         tabs = await adapter["list"]()
         return ToolResult(
             [{"type": "text", "text": json.dumps(tabs, ensure_ascii=False)}]
         )
 
-    async def switch_tab(args: Dict[str, Any]) -> ToolResult:
+    async def switch_tab(args: dict[str, Any]) -> ToolResult:
         tab_id = args.get("id")
         await adapter["select"](tab_id)
-        return ToolResult(
-            [{"type": "text", "text": f"Switched to tab: {tab_id}"}]
-        )
+        return ToolResult([{"type": "text", "text": f"Switched to tab: {tab_id}"}])
 
     return [
         ToolDefinition(
             name="web_tabs",
             description=(
-                "List browser tabs with stable IDs, titles, URLs and the "
-                "active tab."
+                "List browser tabs with stable IDs, titles, URLs and the active tab."
             ),
             schema={},
             handler=list_tabs,
@@ -129,17 +127,17 @@ def create_tab_tools(
 def create_puppeteer_tab_tools(
     ensure_agent: Callable[[], Awaitable[Any]],
     save_target: Callable[[str], Any],
-) -> List[ToolDefinition]:
+) -> list[ToolDefinition]:
     """Build tab tools for a puppeteer-style agent and its target store."""
 
-    async def list_tabs() -> List[BrowserTabSummary]:
+    async def list_tabs() -> list[BrowserTabSummary]:
         agent = await ensure_agent()
         pages = [
             page
             for page in await _maybe_await(agent.pages())
             if not is_page_closed(page)
         ]
-        summaries: List[BrowserTabSummary] = []
+        summaries: list[BrowserTabSummary] = []
         for page in pages:
             summaries.append(
                 {
@@ -158,9 +156,7 @@ def create_puppeteer_tab_tools(
             for page in await _maybe_await(agent.pages())
             if not is_page_closed(page)
         ]
-        page = next(
-            (item for item in pages if get_target_id(item) == tab_id), None
-        )
+        page = next((item for item in pages if get_target_id(item) == tab_id), None)
         if page is None:
             raise ValueError(
                 f"Tab {tab_id} does not exist or has closed. Run tabs again."

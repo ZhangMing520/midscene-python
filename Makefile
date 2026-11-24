@@ -59,13 +59,13 @@ test-integration:
 # Linting
 lint:
 	ruff check midscene/ tests/
+	ruff format --check midscene/ tests/ examples/
 	mypy midscene/
 
 # Format code
 format:
-	black midscene/ tests/ examples/
-	isort midscene/ tests/ examples/
-	ruff check --fix midscene/ tests/
+	ruff check --fix midscene/ tests/ examples/
+	ruff format midscene/ tests/ examples/
 
 # Clean build artifacts
 clean:

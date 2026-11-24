@@ -1,7 +1,7 @@
 """Synced from upstream packages/core/tests/unit-test/bbox-locate-cache.test.ts."""
 
 import base64
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import pytest
 
@@ -18,8 +18,9 @@ from midscene.core.types import (
 
 
 def make_png_base64(width: int = 320, height: int = 240) -> str:
-    from PIL import Image
     import io
+
+    from PIL import Image
 
     image = Image.new("RGB", (width, height), (200, 200, 200))
     buffer = io.BytesIO()
@@ -43,10 +44,10 @@ class MockInterface:
     def __init__(self):
         self.interface_type = "web"
         self._context = None
-        self.tapped: List[tuple] = []
-        self.typed: List[str] = []
-        self.keys: List[str] = []
-        self.scrolled: List[tuple] = []
+        self.tapped: list[tuple] = []
+        self.typed: list[str] = []
+        self.keys: list[str] = []
+        self.scrolled: list[tuple] = []
 
     async def get_context(self) -> UIContext:
         return UIContext(
@@ -91,12 +92,10 @@ class _CacheInterface(MockInterface):
 
     def __init__(self):
         super().__init__()
-        self.features: List[list] = []
-        self.feature_options: List[Any] = []
-        self.resolved: List[Dict[str, Any]] = []
-        self.rect_to_return: Optional[Rect] = Rect(
-            left=10, top=20, width=30, height=40
-        )
+        self.features: list[list] = []
+        self.feature_options: list[Any] = []
+        self.resolved: list[dict[str, Any]] = []
+        self.rect_to_return: Rect | None = Rect(left=10, top=20, width=30, height=40)
 
     async def cache_feature_for_point(self, center, options=None):
         self.features.append(list(center))
@@ -117,9 +116,7 @@ async def test_should_hit_locate_cache_on_second_execution_without_bbox(
     monkeypatch.setenv("MIDSCENE_RUN_DIR", str(tmp_path))
     interface = _CacheInterface()
     agent = Agent(interface, AgentOptions(cache_id="locate-hit"))
-    agent._get_task_cache().append_locate_cache(
-        "the button", {"xpaths": ["/cached"]}
-    )
+    agent._get_task_cache().append_locate_cache("the button", {"xpaths": ["/cached"]})
 
     async def fail_locate(*args, **kwargs):
         raise AssertionError("AI locate must not run on a cache hit")
@@ -189,9 +186,7 @@ async def test_should_update_cache_when_cached_xpath_becomes_invalid(
     interface = _CacheInterface()
     interface.rect_to_return = None
     agent = Agent(interface, AgentOptions(cache_id="locate-stale"))
-    agent._get_task_cache().append_locate_cache(
-        "the button", {"xpaths": ["/stale"]}
-    )
+    agent._get_task_cache().append_locate_cache("the button", {"xpaths": ["/stale"]})
 
     async def fake_locate(*args, **kwargs):
         return {"center": [5, 6], "rect": None}
@@ -281,9 +276,7 @@ async def test_should_not_call_ai_locate_when_bbox_is_available(tmp_path, monkey
     monkeypatch.setenv("MIDSCENE_RUN_DIR", str(tmp_path))
     interface = _CacheInterface()
     agent = Agent(interface, AgentOptions(cache_id="locate-plan-priority"))
-    agent._get_task_cache().append_locate_cache(
-        "the button", {"xpaths": ["/cached"]}
-    )
+    agent._get_task_cache().append_locate_cache("the button", {"xpaths": ["/cached"]})
 
     async def fail_locate(*args, **kwargs):
         raise AssertionError("AI locate must not run on a plan hit")

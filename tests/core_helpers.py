@@ -2,7 +2,7 @@
 
 import base64
 import json
-from typing import Any, Dict, List
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 from midscene.core.types import (
@@ -18,8 +18,9 @@ from midscene.core.types import (
 
 def make_png_base64(width: int = 320, height: int = 240) -> str:
     """A tiny valid PNG screenshot (solid color)."""
-    from PIL import Image
     import io
+
+    from PIL import Image
 
     image = Image.new("RGB", (width, height), (200, 200, 200))
     buffer = io.BytesIO()
@@ -45,10 +46,10 @@ class MockInterface:
     def __init__(self):
         self.interface_type = "web"
         self._context = None
-        self.tapped: List[tuple] = []
-        self.typed: List[str] = []
-        self.keys: List[str] = []
-        self.scrolled: List[tuple] = []
+        self.tapped: list[tuple] = []
+        self.typed: list[str] = []
+        self.keys: list[str] = []
+        self.scrolled: list[tuple] = []
 
     async def get_context(self) -> UIContext:
         if self._context:
@@ -91,7 +92,7 @@ class MockInterface:
 
 
 class FakeResponse:
-    def __init__(self, payload: Dict[str, Any], status_code: int = 200):
+    def __init__(self, payload: dict[str, Any], status_code: int = 200):
         self._payload = payload
         self.status_code = status_code
         self.headers = {"x-request-id": "req-1"}

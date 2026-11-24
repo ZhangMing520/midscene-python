@@ -1,6 +1,7 @@
 """Prompt-facing describe helpers (upstream shared/model-locate-result/prompt-spec.ts)."""
 
-from typing import Any, Dict, List, Optional, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 
 def format_locate_example_value(value: Any) -> str:
@@ -11,7 +12,7 @@ def format_locate_example_value(value: Any) -> str:
     return _json.dumps(value)
 
 
-def describe_locate_result_coordinates(resolved: Dict[str, Any]) -> str:
+def describe_locate_result_coordinates(resolved: dict[str, Any]) -> str:
     shape = resolved["shape"]
     order = resolved["order"]
     normalized_by = resolved.get("normalizedBy")
@@ -34,7 +35,7 @@ def describe_locate_result_coordinates(resolved: Dict[str, Any]) -> str:
     return f"{descriptor}, should be {order_description} {coordinate_description}."
 
 
-def describe_locate_result_value_schema(resolved: Dict[str, Any]) -> str:
+def describe_locate_result_value_schema(resolved: dict[str, Any]) -> str:
     return (
         "[number, number]"
         if resolved["shape"] == "point"
@@ -43,8 +44,8 @@ def describe_locate_result_value_schema(resolved: Dict[str, Any]) -> str:
 
 
 def locate_result_example_value(
-    resolved_coordinates: Dict[str, Any], region: Sequence[float]
-) -> List[float]:
+    resolved_coordinates: dict[str, Any], region: Sequence[float]
+) -> list[float]:
     left, top, right, bottom = region
     if resolved_coordinates["shape"] == "point":
         x = round((left + right) / 2)
@@ -56,7 +57,7 @@ def locate_result_example_value(
 
 
 # Internal xy regions used only for prompt examples: [xmin, ymin, xmax, ymax]
-LOCATE_RESULT_EXAMPLE_REGIONS: List[List[float]] = [
+LOCATE_RESULT_EXAMPLE_REGIONS: list[list[float]] = [
     [100, 100, 200, 200],
     [345, 442, 458, 483],
     [120, 180, 380, 210],
@@ -68,21 +69,21 @@ LOCATE_RESULT_EXAMPLE_REGIONS: List[List[float]] = [
 ]
 
 
-def locate_result_key(resolved: Dict[str, Any]) -> str:
+def locate_result_key(resolved: dict[str, Any]) -> str:
     return "point" if resolved["shape"] == "point" else "bbox"
 
 
-def locate_result_name(resolved: Dict[str, Any], plural: bool = False) -> str:
+def locate_result_name(resolved: dict[str, Any], plural: bool = False) -> str:
     if resolved["shape"] == "bbox":
         return "bounding boxes" if plural else "bounding box"
     return "points" if plural else "point"
 
 
 def create_locate_result_prompt_spec(
-    resolved_coordinates: Dict[str, Any],
-    result_key: Optional[str] = None,
-    result_key_aliases: Optional[List[str]] = None,
-) -> Dict[str, Any]:
+    resolved_coordinates: dict[str, Any],
+    result_key: str | None = None,
+    result_key_aliases: list[str] | None = None,
+) -> dict[str, Any]:
     return {
         "resultKey": result_key or locate_result_key(resolved_coordinates),
         "resultKeyAliases": result_key_aliases or [],

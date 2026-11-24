@@ -7,7 +7,7 @@ entries, YAML file format `<cacheId>.cache.yaml` under midscene_run/cache).
 import os
 import re
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import yaml
 from loguru import logger
@@ -34,7 +34,7 @@ class TaskCache:
         enabled: bool,
         read_only_mode: bool = False,
         write_only_mode: bool = False,
-        cache_dir: Optional[str] = None,
+        cache_dir: str | None = None,
     ):
         if not cache_id:
             raise ValueError("cacheId is required")
@@ -48,12 +48,14 @@ class TaskCache:
         safe_cache_id = _replace_illegal_path_chars_and_space(cache_id)
         self.cache_id = safe_cache_id
 
-        cache_dir = cache_dir or os.environ.get(MIDSCENE_RUN_DIR) or get_midscene_run_dir()
+        cache_dir = (
+            cache_dir or os.environ.get(MIDSCENE_RUN_DIR) or get_midscene_run_dir()
+        )
         cache_file_dir = Path(cache_dir) / "cache"
         cache_file_dir.mkdir(parents=True, exist_ok=True)
         self.cache_file_path = str(cache_file_dir / f"{safe_cache_id}{CACHE_FILE_EXT}")
 
-        self.cache: Dict[str, Any] = {
+        self.cache: dict[str, Any] = {
             "midscene_version": __import__("midscene").__version__,
             "cache_id": safe_cache_id,
             "caches": [],
@@ -61,7 +63,7 @@ class TaskCache:
 
         if enabled and Path(self.cache_file_path).exists():
             try:
-                with open(self.cache_file_path, "r", encoding="utf-8") as f:
+                with open(self.cache_file_path, encoding="utf-8") as f:
                     content = yaml.safe_load(f) or {}
                 if isinstance(content, dict) and content.get("caches"):
                     self.cache = content
@@ -75,12 +77,12 @@ class TaskCache:
 
     # -- matching -----------------------------------------------------------
 
-    def match_plan_cache(self, prompt: Any) -> Optional[Dict[str, Any]]:
+    def match_plan_cache(self, prompt: Any) -> dict[str, Any] | None:
         """Match the first unconsumed plan cache entry for the prompt."""
         if not self.enabled or self.write_only_mode:
             return None
         prompt_str = prompt if isinstance(prompt, str) else str(prompt)
-        for index, entry in enumerate(self.cache.get("caches", [])):
+        for _index, entry in enumerate(self.cache.get("caches", [])):
             if (
                 entry.get("type") == "plan"
                 and not entry.get("consumed")
@@ -133,7 +135,7 @@ class TaskCache:
 
     # -- locate entries ------------------------------------------------------
 
-    def match_locate_cache(self, prompt: Any) -> Optional[Dict[str, Any]]:
+    def match_locate_cache(self, prompt: Any) -> dict[str, Any] | None:
         """Match the next unconsumed locate entry for the prompt.
 
         Returns ``{"cache": feature, "index": index, "prompt": prompt_str}``.
@@ -177,8 +179,8 @@ class TaskCache:
     def append_locate_cache(
         self,
         prompt: Any,
-        feature: Dict[str, Any],
-        replace_index: Optional[int] = None,
+        feature: dict[str, Any],
+        replace_index: int | None = None,
     ) -> None:
         """Append a locate entry, or replace a stale matched entry in place."""
         if not self.enabled or self.read_only_mode:
@@ -207,4 +209,3 @@ class TaskCache:
                 yaml.safe_dump(self.cache, f, allow_unicode=True, sort_keys=False)
         except Exception as e:
             logger.warning(f"Failed to write cache file: {e}")
-

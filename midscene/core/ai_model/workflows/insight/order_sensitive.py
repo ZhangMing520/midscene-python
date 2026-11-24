@@ -3,17 +3,17 @@
 Synced from upstream packages/core/src/ai-model/workflows/insight/order-sensitive.ts.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from loguru import logger
 
 from midscene.core.ai_model.models.registry import ModelRuntime
-from midscene.core.ai_model.service_caller.call_ai import call_generative_ai
-from midscene.core.ai_model.shared.json import parse_model_response_json
 from midscene.core.ai_model.prompt.order_sensitive_judge import (
     order_sensitive_judge_prompt,
     system_prompt_to_judge_order_sensitive,
 )
+from midscene.core.ai_model.service_caller.call_ai import call_generative_ai
+from midscene.core.ai_model.shared.json import parse_model_response_json
 
 
 async def ai_judge_order_sensitive(
@@ -37,7 +37,7 @@ async def ai_judge_order_sensitive(
     return bool(parsed.get("isOrderSensitive"))
 
 
-async def resolve_order_sensitive(options: Optional[Dict[str, Any]]) -> bool:
+async def resolve_order_sensitive(options: dict[str, Any] | None) -> bool:
     """Judge order sensitivity from cache-feature options.
 
     Options follow upstream `CacheFeatureOptions`: target_description (or the

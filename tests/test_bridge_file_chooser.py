@@ -5,7 +5,7 @@ The Python Playwright page exposes the same accept/getError registration
 contract used by the bridge file chooser adapter.
 """
 
-from typing import Any, Dict, List
+from typing import Any
 from unittest.mock import Mock
 
 import pytest
@@ -13,7 +13,7 @@ import pytest
 
 class _FakeChooser:
     def __init__(self):
-        self.files: List[str] = []
+        self.files: list[str] = []
 
     async def set_files(self, files):
         self.files = list(files)
@@ -21,7 +21,7 @@ class _FakeChooser:
 
 class _FakeBrowserPage:
     def __init__(self):
-        self.handlers: Dict[str, List[Any]] = {}
+        self.handlers: dict[str, list[Any]] = {}
 
     def on(self, event, handler):
         self.handlers.setdefault(event, []).append(handler)

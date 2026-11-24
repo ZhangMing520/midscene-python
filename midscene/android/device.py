@@ -7,12 +7,14 @@ import base64
 import math
 import re
 import subprocess
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any
 
 from loguru import logger
 from pydantic import BaseModel
 
+from midscene.android.adb import create_android_adb, run_adb_command
 from midscene.android.adb_shell import (
     YADB_DEVICE_PATH,
     YADB_VERSION,
@@ -20,19 +22,25 @@ from midscene.android.adb_shell import (
     shell_escape_arg,
     should_use_yadb_for_text,
 )
+from midscene.android.scrcpy_device_adapter import ScrcpyDeviceAdapter
 from midscene.android.ui_tree import parse_ui_automator_xml
+from midscene.android.ui_tree_capture import capture_android_ui_tree
 from midscene.android.utils import (
     parse_adb_devices_output,
     parse_screen_density,
     parse_screen_size_output,
 )
 from midscene.core.device.mobile_scroll import resolve_default_mobile_scroll
-from midscene.android.adb import create_android_adb, run_adb_command
-from midscene.android.scrcpy_device_adapter import ScrcpyDeviceAdapter
-from midscene.android.ui_tree_capture import capture_android_ui_tree
 from midscene.core.types import (
-    AbstractInterface, InterfaceType, UIContext, BaseElement, UINode, UITree,
-    Size, Rect, NodeType
+    AbstractInterface,
+    BaseElement,
+    InterfaceType,
+    NodeType,
+    Rect,
+    Size,
+    UIContext,
+    UINode,
+    UITree,
 )
 from midscene.shared.utils import (
     merge_and_normalize_app_name_mapping,
@@ -42,11 +50,11 @@ from midscene.shared.utils import (
 
 class AndroidElement(BaseElement):
     """Android UI element wrapper"""
-    
-    def __init__(self, device: 'AndroidDevice', **kwargs):
+
+    def __init__(self, device: "AndroidDevice", **kwargs):
         self._device = device
         super().__init__(**kwargs)
-    
+
     async def tap(self) -> None:
         """Tap this element"""
         try:
@@ -55,17 +63,17 @@ class AndroidElement(BaseElement):
         except Exception as e:
             logger.error(f"Failed to tap element: {e}")
             raise
-    
+
     async def input_text(self, text: str) -> None:
         """Input text to this element"""
         try:
             # First tap to focus
             await self.tap()
             await asyncio.sleep(0.5)
-            
+
             # Clear existing text
             await self._device.clear_text()
-            
+
             # Input new text
             await self._device.input_text(text)
         except Exception as e:
@@ -105,7 +113,7 @@ def calculate_scroll_end_point(
     delta_y: float,
     width: float,
     height: float,
-) -> Tuple[int, int]:
+) -> tuple[int, int]:
     """Clamp an anchored scroll gesture to the viewport (upstream).
 
     The start point must stay inside the viewport and the requested travel is
@@ -115,9 +123,7 @@ def calculate_scroll_end_point(
     if not all(
         _is_finite_number(value)
         for value in (start_x, start_y, delta_x, delta_y, width, height)
-    ) or not (
-        0 <= start_x <= width and 0 <= start_y <= height
-    ):
+    ) or not (0 <= start_x <= width and 0 <= start_y <= height):
         raise ValueError(
             "Scroll origin and distance must be finite and inside the viewport"
         )
@@ -200,6 +206,7 @@ def warn_scroll_distance_clamped(
 
 class AndroidDeviceConfig(BaseModel):
     """Android device configuration"""
+
     device_id: str
     adb_path: str = "adb"
     auto_dismiss_keyboard: bool = True
@@ -208,11 +215,11 @@ class AndroidDeviceConfig(BaseModel):
     timeout: int = 30
     # Opt-in scrcpy screenshots (upstream scrcpyConfig). Default off so the
     # existing ADB screencap path is unchanged.
-    scrcpy_config: Optional[Dict[str, Any]] = None
+    scrcpy_config: dict[str, Any] | None = None
 
 
 def _config_from_options(
-    device_id: str, options: Dict[str, Any]
+    device_id: str, options: dict[str, Any]
 ) -> AndroidDeviceConfig:
     """Map upstream AndroidDeviceOpt camelCase keys onto the config."""
     return AndroidDeviceConfig(
@@ -230,22 +237,20 @@ def _config_from_options(
         use_ime=options.get("useIme", options.get("use_ime", True)),
         display_id=options.get("displayId", options.get("display_id", 0)),
         timeout=options.get("timeout", 30),
-        scrcpy_config=options.get(
-            "scrcpyConfig", options.get("scrcpy_config")
-        ),
+        scrcpy_config=options.get("scrcpyConfig", options.get("scrcpy_config")),
     )
 
 
 class AndroidDevice(AbstractInterface):
     """Android device interface using ADB"""
-    
+
     def __init__(
         self,
         device_id: str,
-        config: Optional[Any] = None,
+        config: Any | None = None,
     ):
         """Initialize Android device
-        
+
         Args:
             device_id: Android device ID
             config: Device configuration (AndroidDeviceConfig or an upstream
@@ -256,23 +261,23 @@ class AndroidDevice(AbstractInterface):
             config = _config_from_options(device_id, config)
         self.config = config or AndroidDeviceConfig(device_id=device_id)
         self._connected = False
-        self._screen_size: Optional[Size] = None
-        self._physical_size: Optional[Size] = None
+        self._screen_size: Size | None = None
+        self._physical_size: Size | None = None
         self._device_pixel_ratio: float = 1.0
         self._yadb_pushed = False
-        self._yadb_bin_path: Optional[str] = None
-        self._app_name_mapping: Dict[str, str] = {}
-        self._scrcpy_adapter: Optional[ScrcpyDeviceAdapter] = None
-        self._adb: Optional[Any] = None
-        self._description: Optional[str] = None
-    
+        self._yadb_bin_path: str | None = None
+        self._app_name_mapping: dict[str, str] = {}
+        self._scrcpy_adapter: ScrcpyDeviceAdapter | None = None
+        self._adb: Any | None = None
+        self._description: str | None = None
+
     @classmethod
-    async def create(cls, device_id: Optional[str] = None) -> 'AndroidDevice':
+    async def create(cls, device_id: str | None = None) -> "AndroidDevice":
         """Create Android device instance
-        
+
         Args:
             device_id: Device ID, if None will use first available device
-            
+
         Returns:
             AndroidDevice instance
         """
@@ -281,22 +286,22 @@ class AndroidDevice(AbstractInterface):
             if not devices:
                 raise RuntimeError("No Android devices found")
             device_id = devices[0]
-        
+
         device = cls(device_id)
         await device.connect()
         return device
-    
+
     @classmethod
-    async def list_devices(cls) -> List[str]:
+    async def list_devices(cls) -> list[str]:
         """List available Android devices"""
         try:
             result = await cls._run_adb_command(["devices"])
             return parse_adb_devices_output(result.stdout.strip())
-            
+
         except Exception as e:
             logger.error(f"Failed to list devices: {e}")
             return []
-    
+
     async def connect(self) -> None:
         """Connect to Android device"""
         try:
@@ -304,7 +309,7 @@ class AndroidDevice(AbstractInterface):
             devices = await self.list_devices()
             if self.device_id not in devices:
                 raise RuntimeError(f"Device {self.device_id} not found")
-            
+
             # Get screen size
             await self._get_screen_size()
             if self._screen_size is not None:
@@ -313,7 +318,7 @@ class AndroidDevice(AbstractInterface):
                     f"  width size: {self._screen_size.width}\n"
                     f"  height size: {self._screen_size.height}\n"
                 )
-            
+
             # Setup IME if needed
             if self.config.use_ime:
                 await self._setup_ime()
@@ -324,8 +329,7 @@ class AndroidDevice(AbstractInterface):
                 try:
                     await self._get_scrcpy_adapter().initialize()
                     logger.info(
-                        f"Using scrcpy for screenshots (device: "
-                        f"{self.device_id})"
+                        f"Using scrcpy for screenshots (device: {self.device_id})"
                     )
                 except Exception as e:
                     logger.warning(
@@ -336,11 +340,11 @@ class AndroidDevice(AbstractInterface):
 
             self._connected = True
             logger.info(f"Connected to Android device: {self.device_id}")
-            
+
         except Exception as e:
             logger.error(f"Failed to connect to device: {e}")
             raise
-    
+
     @property
     def interface_type(self) -> InterfaceType:
         """Get interface type"""
@@ -406,15 +410,19 @@ class AndroidDevice(AbstractInterface):
     async def force_screenshot(self, path: str) -> None:
         """Capture a screenshot that ignores FLAG_SECURE via Yadb."""
         await self._ensure_yadb()
-        await self._run_adb_command([
-            "-s", self.device_id, "shell",
-            "app_process",
-            f"-Djava.class.path={YADB_DEVICE_PATH}",
-            YADB_DEVICE_PATH,
-            "com.ysbing.yadb.Main",
-            "-screenshot",
-            path,
-        ])
+        await self._run_adb_command(
+            [
+                "-s",
+                self.device_id,
+                "shell",
+                "app_process",
+                f"-Djava.class.path={YADB_DEVICE_PATH}",
+                YADB_DEVICE_PATH,
+                "com.ysbing.yadb.Main",
+                "-screenshot",
+                path,
+            ]
+        )
 
     async def screenshot_base64(self) -> str:
         """Capture the current frame as base64 (upstream screenshotBase64)."""
@@ -455,15 +463,15 @@ class AndroidDevice(AbstractInterface):
             logger.debug(f"Failed to get orientation from display: {e}")
         return 0
 
-    async def get_elements_info(self) -> List[Any]:
+    async def get_elements_info(self) -> list[Any]:
         """Element list is not extracted on Android (upstream returns [])."""
         return []
 
-    async def get_elements_node_tree(self) -> Dict[str, Any]:
+    async def get_elements_node_tree(self) -> dict[str, Any]:
         """Simplified empty node tree (upstream)."""
         return {"node": None, "children": []}
 
-    async def get_screen_size(self) -> Dict[str, int]:
+    async def get_screen_size(self) -> dict[str, int]:
         """Logical screen size as ``{width, height}`` (upstream)."""
         return await self.size()
 
@@ -471,7 +479,7 @@ class AndroidDevice(AbstractInterface):
         """Current UI tree snapshot (upstream getUITree)."""
         return await self._build_ui_tree()
 
-    async def launch(self, uri: str) -> 'AndroidDevice':
+    async def launch(self, uri: str) -> "AndroidDevice":
         """Launch a URI, app name or package and return this device."""
         await self.launch_app(uri)
         return self
@@ -487,8 +495,8 @@ class AndroidDevice(AbstractInterface):
     async def _scroll_in_content_direction(
         self,
         direction: str,
-        distance: Optional[int] = None,
-        start_point: Optional[Sequence[float]] = None,
+        distance: int | None = None,
+        start_point: Sequence[float] | None = None,
     ) -> None:
         """Scroll `direction` (content direction) with upstream defaults."""
         if distance is None and start_point is None:
@@ -502,7 +510,10 @@ class AndroidDevice(AbstractInterface):
                 },
             )
             await self.swipe(
-                from_x, from_y, to_x, to_y,
+                from_x,
+                from_y,
+                to_x,
+                to_y,
                 duration=DEFAULT_NORMAL_SCROLL_DURATION,
             )
             return
@@ -515,49 +526,49 @@ class AndroidDevice(AbstractInterface):
 
     async def scroll_up(
         self,
-        distance: Optional[int] = None,
-        start_point: Optional[Sequence[float]] = None,
+        distance: int | None = None,
+        start_point: Sequence[float] | None = None,
     ) -> None:
         await self._scroll_in_content_direction("up", distance, start_point)
 
     async def scroll_down(
         self,
-        distance: Optional[int] = None,
-        start_point: Optional[Sequence[float]] = None,
+        distance: int | None = None,
+        start_point: Sequence[float] | None = None,
     ) -> None:
         await self._scroll_in_content_direction("down", distance, start_point)
 
     async def scroll_left(
         self,
-        distance: Optional[int] = None,
-        start_point: Optional[Sequence[float]] = None,
+        distance: int | None = None,
+        start_point: Sequence[float] | None = None,
     ) -> None:
         await self._scroll_in_content_direction("left", distance, start_point)
 
     async def scroll_right(
         self,
-        distance: Optional[int] = None,
-        start_point: Optional[Sequence[float]] = None,
+        distance: int | None = None,
+        start_point: Sequence[float] | None = None,
     ) -> None:
         await self._scroll_in_content_direction("right", distance, start_point)
 
     async def scroll_until_top(
-        self, start_point: Optional[Sequence[float]] = None
+        self, start_point: Sequence[float] | None = None
     ) -> None:
         await self.scroll("up", point=start_point, scroll_type="scrollToTop")
 
     async def scroll_until_bottom(
-        self, start_point: Optional[Sequence[float]] = None
+        self, start_point: Sequence[float] | None = None
     ) -> None:
         await self.scroll("down", point=start_point, scroll_type="scrollToBottom")
 
     async def scroll_until_left(
-        self, start_point: Optional[Sequence[float]] = None
+        self, start_point: Sequence[float] | None = None
     ) -> None:
         await self.scroll("left", point=start_point, scroll_type="scrollToLeft")
 
     async def scroll_until_right(
-        self, start_point: Optional[Sequence[float]] = None
+        self, start_point: Sequence[float] | None = None
     ) -> None:
         await self.scroll("right", point=start_point, scroll_type="scrollToRight")
 
@@ -566,40 +577,51 @@ class AndroidDevice(AbstractInterface):
         try:
             # Take screenshot
             screenshot_base64 = await self._take_screenshot()
-            
+
             # Get UI dump
             ui_elements = await self._get_ui_elements()
-            
+
             # Build UI tree
             tree = await self._build_ui_tree()
-            
+
             return UIContext(
                 screenshot_base64=screenshot_base64,
                 size=self._screen_size or Size(width=1080, height=1920),
                 content=ui_elements,
-                tree=tree
+                tree=tree,
             )
-            
+
         except Exception as e:
             logger.error(f"Failed to get context: {e}")
             raise
-    
-    async def action_space(self) -> List[str]:
+
+    async def action_space(self) -> list[str]:
         """Get available actions"""
         return [
-            "tap", "long_press", "swipe", "scroll",
-            "input", "clear", "back", "home", "recent",
-            "volume_up", "volume_down", "power",
-            "install_app", "launch_app", "stop_app"
+            "tap",
+            "long_press",
+            "swipe",
+            "scroll",
+            "input",
+            "clear",
+            "back",
+            "home",
+            "recent",
+            "volume_up",
+            "volume_down",
+            "power",
+            "install_app",
+            "launch_app",
+            "stop_app",
         ]
-    
+
     async def tap(self, x: float, y: float) -> None:
         """Tap at logical coordinates (converted to physical for adb)."""
         try:
             px, py = self._to_physical(x, y)
-            await self._run_adb_command([
-                "-s", self.device_id, "shell", "input", "tap", str(px), str(py)
-            ])
+            await self._run_adb_command(
+                ["-s", self.device_id, "shell", "input", "tap", str(px), str(py)]
+            )
         except Exception as e:
             logger.error(f"Failed to tap at ({x}, {y}): {e}")
             raise
@@ -615,19 +637,29 @@ class AndroidDevice(AbstractInterface):
         scale_x = self._physical_size.width / self._screen_size.width
         scale_y = self._physical_size.height / self._screen_size.height
         return int(round(x * scale_x)), int(round(y * scale_y))
-    
+
     async def long_press(self, x: float, y: float, duration: int = 1000) -> None:
         """Long press at coordinates"""
         try:
             px, py = self._to_physical(x, y)
-            await self._run_adb_command([
-                "-s", self.device_id, "shell", "input", "swipe", 
-                str(px), str(py), str(px), str(py), str(duration)
-            ])
+            await self._run_adb_command(
+                [
+                    "-s",
+                    self.device_id,
+                    "shell",
+                    "input",
+                    "swipe",
+                    str(px),
+                    str(py),
+                    str(px),
+                    str(py),
+                    str(duration),
+                ]
+            )
         except Exception as e:
             logger.error(f"Failed to long press at ({x}, {y}): {e}")
             raise
-    
+
     async def swipe(
         self,
         direction_or_start_x,
@@ -635,7 +667,7 @@ class AndroidDevice(AbstractInterface):
         end_x=None,
         end_y=None,
         duration: int = 300,
-        distance: Optional[int] = None,
+        distance: int | None = None,
     ) -> None:
         """Swipe.
 
@@ -653,10 +685,20 @@ class AndroidDevice(AbstractInterface):
             start_x = direction_or_start_x
             fx, fy = self._to_physical(start_x, start_y)
             tx, ty = self._to_physical(end_x, end_y)
-            await self._run_adb_command([
-                "-s", self.device_id, "shell", "input", "swipe",
-                str(fx), str(fy), str(tx), str(ty), str(duration)
-            ])
+            await self._run_adb_command(
+                [
+                    "-s",
+                    self.device_id,
+                    "shell",
+                    "input",
+                    "swipe",
+                    str(fx),
+                    str(fy),
+                    str(tx),
+                    str(ty),
+                    str(duration),
+                ]
+            )
         except Exception as e:
             logger.error(f"Failed to swipe: {e}")
             raise
@@ -665,15 +707,18 @@ class AndroidDevice(AbstractInterface):
         self,
         start: Sequence[float],
         end: Sequence[float],
-        duration: Optional[int] = None,
+        duration: int | None = None,
     ) -> None:
         """Endpoint swipe between two logical points (upstream swipe(start, end))."""
         await self.swipe(
-            start[0], start[1], end[0], end[1],
+            start[0],
+            start[1],
+            end[0],
+            end[1],
             duration=int(duration if duration is not None else 300),
         )
 
-    async def size(self) -> Dict[str, int]:
+    async def size(self) -> dict[str, int]:
         """Logical screen size (upstream size()); physical / display density.
 
         When scrcpy is opted in and connected, its video resolution is the
@@ -691,9 +736,9 @@ class AndroidDevice(AbstractInterface):
     async def pull_gesture(
         self,
         direction: str,
-        start_point: Optional[Sequence[float]] = None,
-        distance: Optional[int] = None,
-        duration: Optional[int] = None,
+        start_point: Sequence[float] | None = None,
+        distance: int | None = None,
+        duration: int | None = None,
     ) -> None:
         """Pull to refresh (down) or load more (up), upstream PullGesture.
 
@@ -710,9 +755,7 @@ class AndroidDevice(AbstractInterface):
             start_y = _round_half_up(start_point[1])
         else:
             start_x = _round_half_up(width / 2)
-            start_y = _round_half_up(
-                height * (0.15 if direction == "down" else 0.85)
-            )
+            start_y = _round_half_up(height * (0.15 if direction == "down" else 0.85))
         if direction == "down":
             pull_distance = _round_half_up(distance or height * 0.5)
             duration_ms = int(duration if duration is not None else 800)
@@ -726,10 +769,10 @@ class AndroidDevice(AbstractInterface):
 
     async def pinch(
         self,
-        center: List[float],
+        center: list[float],
         start_distance: float,
         end_distance: float,
-        duration: Optional[int] = None,
+        duration: int | None = None,
     ) -> None:
         """Two-finger pinch through yadb (upstream Android touch.pinch).
 
@@ -746,25 +789,29 @@ class AndroidDevice(AbstractInterface):
         center_x, center_y = self._to_physical(center[0], center[1])
         ratio = center_x / center[0] if center_x != 0 and center[0] != 0 else 1
         duration_ms = int(duration if duration is not None else 500)
-        await self._run_adb_command([
-            "-s", self.device_id, "shell",
-            "app_process",
-            f"-Djava.class.path={YADB_DEVICE_PATH}",
-            YADB_DEVICE_PATH,
-            "com.ysbing.yadb.Main",
-            "-pinch",
-            str(center_x),
-            str(center_y),
-            str(_round_half_up(start_distance * ratio)),
-            str(_round_half_up(end_distance * ratio)),
-            str(duration_ms),
-        ])
+        await self._run_adb_command(
+            [
+                "-s",
+                self.device_id,
+                "shell",
+                "app_process",
+                f"-Djava.class.path={YADB_DEVICE_PATH}",
+                YADB_DEVICE_PATH,
+                "com.ysbing.yadb.Main",
+                "-pinch",
+                str(center_x),
+                str(center_y),
+                str(_round_half_up(start_distance * ratio)),
+                str(_round_half_up(end_distance * ratio)),
+                str(duration_ms),
+            ]
+        )
 
     async def _swipe_direction(
         self,
         direction: str,
-        distance: Optional[int] = None,
-        point: Optional[Sequence[float]] = None,
+        distance: int | None = None,
+        point: Sequence[float] | None = None,
         duration: int = DEFAULT_NORMAL_SCROLL_DURATION,
     ) -> None:
         if not self._screen_size:
@@ -777,8 +824,8 @@ class AndroidDevice(AbstractInterface):
         forward = direction in ("down", "right")
         axis_size = width if horizontal else height
         center_x, center_y = width // 2, height // 2
-        start: Tuple[int, int]
-        end: Tuple[int, int]
+        start: tuple[int, int]
+        end: tuple[int, int]
 
         if distance is None and point is None:
             # Upstream scrollDefault: the finger crosses the central 70% slowly
@@ -793,11 +840,15 @@ class AndroidDevice(AbstractInterface):
             start = (_round_half_up(point[0]), _round_half_up(point[1]))
             # Upstream uses `distance || height`; a zero request means the axis.
             scroll_distance = _round_half_up(distance or axis_size)
-            delta_x = scroll_distance if direction == "right" else (
-                -scroll_distance if direction == "left" else 0
+            delta_x = (
+                scroll_distance
+                if direction == "right"
+                else (-scroll_distance if direction == "left" else 0)
             )
-            delta_y = scroll_distance if direction == "down" else (
-                -scroll_distance if direction == "up" else 0
+            delta_y = (
+                scroll_distance
+                if direction == "down"
+                else (-scroll_distance if direction == "up" else 0)
             )
             end = calculate_scroll_end_point(start, delta_x, delta_y, width, height)
             if distance is not None:
@@ -811,9 +862,7 @@ class AndroidDevice(AbstractInterface):
             # Upstream scrollRaw: start at a quarter of the axis so a single
             # explicit-distance gesture keeps (n-1)/n of the screen as travel.
             scroll_distance = _round_half_up(distance or axis_size)
-            start_axis = _round_half_up(
-                axis_size / 4 if forward else axis_size * 3 / 4
-            )
+            start_axis = _round_half_up(axis_size / 4 if forward else axis_size * 3 / 4)
             end_axis = (
                 start_axis + scroll_distance
                 if forward
@@ -827,19 +876,27 @@ class AndroidDevice(AbstractInterface):
 
         fx, fy = self._to_physical(*start)
         tx, ty = self._to_physical(*end)
-        await self._run_adb_command([
-            "-s", self.device_id, "shell", "input", "swipe",
-            str(fx), str(fy), str(tx), str(ty), str(duration),
-        ])
+        await self._run_adb_command(
+            [
+                "-s",
+                self.device_id,
+                "shell",
+                "input",
+                "swipe",
+                str(fx),
+                str(fy),
+                str(tx),
+                str(ty),
+                str(duration),
+            ]
+        )
 
     async def drag_and_drop(self, from_point, to_point, duration: int = 1000) -> None:
         """Drag an element from one point to another (upstream dragPoint)."""
         try:
             from_x, from_y = from_point
             to_x, to_y = to_point
-            await self.swipe(
-                from_x, from_y, to_x, to_y, duration=duration
-            )
+            await self.swipe(from_x, from_y, to_x, to_y, duration=duration)
         except Exception as e:
             logger.error(f"Failed to drag from {from_point} to {to_point}: {e}")
             raise
@@ -897,10 +954,16 @@ class AndroidDevice(AbstractInterface):
         segments = text.split("\n")
         for index, segment in enumerate(segments):
             if segment:
-                await self._run_adb_command([
-                    "-s", self.device_id, "shell",
-                    "input", "text", shell_escape_arg(segment),
-                ])
+                await self._run_adb_command(
+                    [
+                        "-s",
+                        self.device_id,
+                        "shell",
+                        "input",
+                        "text",
+                        shell_escape_arg(segment),
+                    ]
+                )
             if index < len(segments) - 1:
                 await self.key_event("KEYCODE_ENTER")
 
@@ -909,9 +972,7 @@ class AndroidDevice(AbstractInterface):
         from midscene.shared.env import get_midscene_run_dir
 
         if self._yadb_bin_path is None:
-            self._yadb_bin_path = str(
-                Path(get_midscene_run_dir("bin")) / "yadb"
-            )
+            self._yadb_bin_path = str(Path(get_midscene_run_dir("bin")) / "yadb")
         return self._yadb_bin_path
 
     async def _ensure_yadb(self) -> None:
@@ -924,11 +985,12 @@ class AndroidDevice(AbstractInterface):
             import httpx
 
             url = (
-                "https://github.com/ysbing/YADB/releases/download/"
-                f"{YADB_VERSION}/yadb"
+                f"https://github.com/ysbing/YADB/releases/download/{YADB_VERSION}/yadb"
             )
             logger.info(f"Downloading Yadb tool from {url} ...")
-            async with httpx.AsyncClient(timeout=120.0, follow_redirects=True) as client:
+            async with httpx.AsyncClient(
+                timeout=120.0, follow_redirects=True
+            ) as client:
                 response = await client.get(url)
             if response.status_code != 200:
                 raise RuntimeError(
@@ -947,22 +1009,24 @@ class AndroidDevice(AbstractInterface):
         try:
             await self._ensure_yadb()
         except Exception as e:
-            logger.warning(
-                f"Yadb unavailable ({e}); falling back to `input text`."
-            )
+            logger.warning(f"Yadb unavailable ({e}); falling back to `input text`.")
             await self._shell_input_text(keyboard_content)
             return
-        await self._run_adb_command([
-            "-s", self.device_id, "shell",
-            "app_process",
-            f"-Djava.class.path={YADB_DEVICE_PATH}",
-            YADB_DEVICE_PATH,
-            "com.ysbing.yadb.Main",
-            "-keyboard",
-            "'" + escape_for_shell(keyboard_content) + "'",
-        ])
+        await self._run_adb_command(
+            [
+                "-s",
+                self.device_id,
+                "shell",
+                "app_process",
+                f"-Djava.class.path={YADB_DEVICE_PATH}",
+                YADB_DEVICE_PATH,
+                "com.ysbing.yadb.Main",
+                "-keyboard",
+                "'" + escape_for_shell(keyboard_content) + "'",
+            ]
+        )
 
-    async def run_adb_shell(self, command: str, timeout: Optional[float] = None) -> str:
+    async def run_adb_shell(self, command: str, timeout: float | None = None) -> str:
         """Run an arbitrary adb shell command (RunAdbShell action).
 
         `timeout` is accepted for upstream compatibility; the underlying adb
@@ -970,7 +1034,7 @@ class AndroidDevice(AbstractInterface):
         """
         output = await self._run_adb_command(["-s", self.device_id, "shell", command])
         return output if isinstance(output, str) else ""
-    
+
     async def clear_text(self) -> None:
         """Clear text in focused field"""
         try:
@@ -982,13 +1046,13 @@ class AndroidDevice(AbstractInterface):
         except Exception as e:
             logger.error(f"Failed to clear text: {e}")
             raise
-    
+
     async def scroll(
         self,
         direction: str,
-        distance: Optional[int] = None,
-        point: Optional[Sequence[float]] = None,
-        scroll_type: Optional[str] = None,
+        distance: int | None = None,
+        point: Sequence[float] | None = None,
+        scroll_type: str | None = None,
     ) -> None:
         """Scroll in direction.
 
@@ -1025,7 +1089,10 @@ class AndroidDevice(AbstractInterface):
                     }[direction]
                     for _ in range(DEFAULT_SCROLL_UNTIL_TIMES):
                         await self.swipe(
-                            start[0], start[1], end[0], end[1],
+                            start[0],
+                            start[1],
+                            end[0],
+                            end[1],
                             duration=DEFAULT_FAST_SCROLL_DURATION,
                         )
                 else:
@@ -1057,7 +1124,7 @@ class AndroidDevice(AbstractInterface):
             capture_output=True,
         )
         return result.stdout.decode("utf-8").strip()
-    
+
     async def clear_input(self, element: Any = None) -> None:
         """Clear text in the focused field, optionally focusing ``element`` first."""
         if element is not None:
@@ -1097,45 +1164,43 @@ class AndroidDevice(AbstractInterface):
     async def key_event(self, key_code: str) -> None:
         """Send key event"""
         try:
-            await self._run_adb_command([
-                "-s", self.device_id, "shell", "input", "keyevent", key_code
-            ])
+            await self._run_adb_command(
+                ["-s", self.device_id, "shell", "input", "keyevent", key_code]
+            )
         except Exception as e:
             logger.error(f"Failed to send key event {key_code}: {e}")
             raise
-    
+
     async def back(self) -> None:
         """Press back button"""
         await self.key_event("KEYCODE_BACK")
-    
+
     async def home(self) -> None:
         """Press home button"""
         await self.key_event("KEYCODE_HOME")
-    
+
     async def recent(self) -> None:
         """Press recent apps button"""
         await self.key_event("KEYCODE_APP_SWITCH")
-    
+
     async def install_app(self, apk_path: str) -> None:
         """Install APK"""
         try:
-            await self._run_adb_command([
-                "-s", self.device_id, "install", apk_path
-            ])
+            await self._run_adb_command(["-s", self.device_id, "install", apk_path])
         except Exception as e:
             logger.error(f"Failed to install app: {e}")
             raise
-    
-    def set_app_name_mapping(self, mapping: Dict[str, str]) -> None:
+
+    def set_app_name_mapping(self, mapping: dict[str, str]) -> None:
         """Set the friendly app name -> package name mapping (upstream
         setAppNameMapping)."""
         self._app_name_mapping = merge_and_normalize_app_name_mapping({}, mapping)
 
-    def _resolve_package_name(self, app_name: str) -> Optional[str]:
+    def _resolve_package_name(self, app_name: str) -> str | None:
         """Resolve a friendly app name to its package name, if mapped."""
         return self._app_name_mapping.get(normalize_for_comparison(app_name))
 
-    async def launch_app(self, package_name: str, activity: Optional[str] = None) -> None:
+    async def launch_app(self, package_name: str, activity: str | None = None) -> None:
         """Launch an app.
 
         Accepts a friendly app name, a package name, ``package/activity`` or a
@@ -1144,41 +1209,59 @@ class AndroidDevice(AbstractInterface):
         try:
             if activity:
                 component = f"{package_name}/{activity}"
-                await self._run_adb_command([
-                    "-s", self.device_id, "shell", "am", "start", "-n", component
-                ])
+                await self._run_adb_command(
+                    ["-s", self.device_id, "shell", "am", "start", "-n", component]
+                )
                 return
             resolved = self._resolve_package_name(package_name) or package_name
             if "://" in resolved:
-                await self._run_adb_command([
-                    "-s", self.device_id, "shell", "am", "start",
-                    "-a", "android.intent.action.VIEW", "-d", resolved,
-                ])
+                await self._run_adb_command(
+                    [
+                        "-s",
+                        self.device_id,
+                        "shell",
+                        "am",
+                        "start",
+                        "-a",
+                        "android.intent.action.VIEW",
+                        "-d",
+                        resolved,
+                    ]
+                )
             elif "/" in resolved:
-                await self._run_adb_command([
-                    "-s", self.device_id, "shell", "am", "start", "-n", resolved
-                ])
+                await self._run_adb_command(
+                    ["-s", self.device_id, "shell", "am", "start", "-n", resolved]
+                )
             else:
-                await self._run_adb_command([
-                    "-s", self.device_id, "shell", "monkey",
-                    "-p", resolved, "-c", "android.intent.category.LAUNCHER", "1",
-                ])
+                await self._run_adb_command(
+                    [
+                        "-s",
+                        self.device_id,
+                        "shell",
+                        "monkey",
+                        "-p",
+                        resolved,
+                        "-c",
+                        "android.intent.category.LAUNCHER",
+                        "1",
+                    ]
+                )
         except Exception as e:
             logger.error(f"Failed to launch app: {e}")
             raise
-    
+
     async def stop_app(self, package_name: str) -> None:
         """Stop app"""
         try:
             package_part = package_name.split("/", 1)[0]
             resolved = self._resolve_package_name(package_part) or package_part
-            await self._run_adb_command([
-                "-s", self.device_id, "shell", "am", "force-stop", resolved
-            ])
+            await self._run_adb_command(
+                ["-s", self.device_id, "shell", "am", "force-stop", resolved]
+            )
         except Exception as e:
             logger.error(f"Failed to stop app: {e}")
             raise
-    
+
     async def _take_screenshot(self) -> str:
         """Take screenshot and return base64 string.
 
@@ -1202,20 +1285,20 @@ class AndroidDevice(AbstractInterface):
 
         try:
             # Take screenshot using screencap
-            result = await self._run_adb_command([
-                "-s", self.device_id, "shell", "screencap", "-p"
-            ], capture_output=True)
-            
+            result = await self._run_adb_command(
+                ["-s", self.device_id, "shell", "screencap", "-p"], capture_output=True
+            )
+
             # Convert bytes to base64
-            screenshot_base64 = base64.b64encode(result.stdout).decode('utf-8')
-            
+            screenshot_base64 = base64.b64encode(result.stdout).decode("utf-8")
+
             return screenshot_base64
-            
+
         except Exception as e:
             logger.error(f"Failed to take screenshot: {e}")
             raise
-    
-    async def _get_ui_elements(self) -> List[AndroidElement]:
+
+    async def _get_ui_elements(self) -> list[AndroidElement]:
         """Get UI elements using uiautomator dump"""
         try:
             xml_content = await capture_android_ui_tree(
@@ -1228,32 +1311,34 @@ class AndroidDevice(AbstractInterface):
                     id=f"element_{index}",
                     **descriptor,
                 )
-                for index, descriptor in enumerate(
-                    parse_ui_automator_xml(xml_content)
-                )
+                for index, descriptor in enumerate(parse_ui_automator_xml(xml_content))
             ]
-            
+
         except Exception as e:
             logger.error(f"Failed to get UI elements: {e}")
             return []
-    
+
     async def _build_ui_tree(self) -> UITree:
         """Build UI tree structure"""
         # Simplified implementation - return minimal tree
         root_node = UINode(
             id="root",
             content="",
-            rect=Rect(left=0, top=0, width=self._screen_size.width if self._screen_size else 1080, 
-                     height=self._screen_size.height if self._screen_size else 1920),
+            rect=Rect(
+                left=0,
+                top=0,
+                width=self._screen_size.width if self._screen_size else 1080,
+                height=self._screen_size.height if self._screen_size else 1920,
+            ),
             center=(540, 960),
             node_type=NodeType.CONTAINER,
             attributes={},
             is_visible=True,
-            children=[]
+            children=[],
         )
-        
+
         return UITree(node=root_node, children=[])
-    
+
     async def _get_screen_size(self) -> None:
         """Resolve physical size + display density.
 
@@ -1261,11 +1346,11 @@ class AndroidDevice(AbstractInterface):
         Gestures convert back with `_to_physical`.
         """
         try:
-            result = await self._run_adb_command([
-                "-s", self.device_id, "shell", "wm", "size"
-            ], capture_output=True)
+            result = await self._run_adb_command(
+                ["-s", self.device_id, "shell", "wm", "size"], capture_output=True
+            )
 
-            output = result.stdout.decode('utf-8').strip()
+            output = result.stdout.decode("utf-8").strip()
             physical = parse_screen_size_output(output)
             if physical is None:
                 physical = Size(width=1080, height=1920)
@@ -1296,7 +1381,7 @@ class AndroidDevice(AbstractInterface):
         except Exception as e:
             logger.debug(f"Failed to read display density: {e}")
         return 160
-    
+
     async def _setup_ime(self) -> None:
         """No IME setup required: text injection uses the Yadb tool
         (app_process) or `input text`, neither of which needs an IME."""
@@ -1304,18 +1389,16 @@ class AndroidDevice(AbstractInterface):
             pass
         except Exception as e:
             logger.warning(f"Failed to setup IME: {e}")
-    
+
     @staticmethod
     async def _run_adb_command(
-        args: List[str], 
-        capture_output: bool = False,
-        timeout: int = 30
+        args: list[str], capture_output: bool = False, timeout: int = 30
     ) -> subprocess.CompletedProcess:
         """Run one ADB command through the adb helper module."""
         return await run_adb_command(
             args, capture_output=capture_output, timeout=timeout
         )
-    
+
     async def disconnect(self) -> None:
         """Disconnect from device"""
         if self._scrcpy_adapter is not None:
@@ -1326,7 +1409,7 @@ class AndroidDevice(AbstractInterface):
             self._scrcpy_adapter = None
         self._connected = False
         logger.info(f"Disconnected from device: {self.device_id}")
-    
+
     def __del__(self):
         """Cleanup on deletion"""
         if self._connected:

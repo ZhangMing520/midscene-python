@@ -1,15 +1,17 @@
 """Synced from upstream packages/core/tests/unit-test/runner-test-plan.test.ts."""
 
-from typing import Any, Dict
+from typing import Any
 
 from midscene.core.test_runner.reporting.test_plan import build_test_run_report_plan
 
 
-def _step(node: str, input_value: Dict[str, Any], meta: Dict[str, Any]) -> Dict[str, Any]:
+def _step(
+    node: str, input_value: dict[str, Any], meta: dict[str, Any]
+) -> dict[str, Any]:
     return {"node": node, "input": input_value, "meta": meta}
 
 
-def _document() -> Dict[str, Any]:
+def _document() -> dict[str, Any]:
     return {
         "documentId": "document",
         "projectId": "project",
@@ -74,8 +76,7 @@ def test_snapshots_all_phases_and_selection_without_retaining_mutable_inputs():
         != plan["cases"][1]["beforeEach"][0]["id"]
     )
     assert (
-        build_test_run_report_plan(original)["cases"][0]["steps"][0]["id"]
-        == step["id"]
+        build_test_run_report_plan(original)["cases"][0]["steps"][0]["id"] == step["id"]
     )
     original["cases"][0]["definition"]["steps"][0]["input"]["prompt"] = "changed"
     assert plan["cases"][0]["steps"][0]["input"]["value"]["prompt"] == {

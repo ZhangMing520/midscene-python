@@ -1,14 +1,14 @@
 """Action output examples (upstream prompt/planning/action-output-example.ts)."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 def _inject_locate_result_into_sample(
-    sample: Dict[str, Any],
-    locate_fields: List[str],
-    prompt_spec: Dict[str, Any],
+    sample: dict[str, Any],
+    locate_fields: list[str],
+    prompt_spec: dict[str, Any],
     locate_result_example_index: int,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     result = dict(sample)
     example_index = locate_result_example_index
     for field in locate_fields:
@@ -26,11 +26,11 @@ def _inject_locate_result_into_sample(
 
 
 def build_action_output_example(
-    action: Dict[str, Any],
+    action: dict[str, Any],
     build_action_output,
-    locate_prompt_spec: Optional[Dict[str, Any]] = None,
+    locate_prompt_spec: dict[str, Any] | None = None,
     locate_result_example_index: int = 0,
-) -> Optional[str]:
+) -> str | None:
     sample = action.get("sample")
     if not isinstance(sample, dict):
         return None
@@ -56,7 +56,7 @@ def build_action_output_example(
     )
 
 
-def create_sample_tap_action(prompt: str) -> Dict[str, Any]:
+def create_sample_tap_action(prompt: str) -> dict[str, Any]:
     return {
         "name": "Tap",
         "sample": {"locate": {"prompt": prompt}},
@@ -64,7 +64,7 @@ def create_sample_tap_action(prompt: str) -> Dict[str, Any]:
     }
 
 
-def create_sample_input_action(value: str) -> Dict[str, Any]:
+def create_sample_input_action(value: str) -> dict[str, Any]:
     return {"name": "Input", "sample": {"value": value}, "locate_fields": ["locate"]}
 
 

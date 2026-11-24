@@ -8,7 +8,7 @@ import asyncio
 import json
 import math
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -45,7 +45,7 @@ def _response_value(response: Any) -> Any:
     return response
 
 
-def _element_ids_from_response(response: Any) -> List[str]:
+def _element_ids_from_response(response: Any) -> list[str]:
     elements = _response_value(response)
     if not isinstance(elements, list):
         raise RuntimeError(f"Unexpected WDA elements response: {json.dumps(response)}")
@@ -56,8 +56,7 @@ def _element_ids_from_response(response: Any) -> List[str]:
             element_id = element.get(WEBDRIVER_ELEMENT_ID_KEY) or element.get("ELEMENT")
         if not isinstance(element_id, str):
             raise RuntimeError(
-                f"WDA element at index {index} has no element ID: "
-                f"{json.dumps(element)}"
+                f"WDA element at index {index} has no element ID: {json.dumps(element)}"
             )
         element_ids.append(element_id)
     return element_ids
@@ -67,15 +66,17 @@ class WebDriverAgentBackend(WebDriverClient):
     """Appium/WDA-specific endpoints on top of the W3C client
     (upstream ios-webdriver-client.ts)."""
 
-    async def _request(self, method: str, path: str, body: Optional[Dict[str, Any]] = None):
+    async def _request(
+        self, method: str, path: str, body: dict[str, Any] | None = None
+    ):
         self._ensure_session()
         return await self.make_request(
             method, f"/session/{self.session_id}{path}", body
         )
 
     async def create_session(
-        self, capabilities: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, capabilities: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """iOS defaults + appium settings (upstream createSession)."""
         defaults = {
             "platformName": "iOS",
@@ -144,7 +145,13 @@ class WebDriverAgentBackend(WebDriverClient):
         await self._request(
             "POST",
             "/wda/dragfromtoforduration",
-            {"fromX": center_x, "fromY": start_y, "toX": center_x, "toY": end_y, "duration": 1},
+            {
+                "fromX": center_x,
+                "fromY": start_y,
+                "toX": center_x,
+                "toY": end_y,
+                "duration": 1,
+            },
         )
         await asyncio.sleep(0.8)
 
@@ -171,12 +178,12 @@ class WebDriverAgentBackend(WebDriverClient):
 
         ios_key_map = {
             "Tab": "\t",
-            "ArrowUp": "\uE013",
-            "ArrowDown": "\uE015",
-            "ArrowLeft": "\uE012",
-            "ArrowRight": "\uE014",
-            "Home": "\uE011",
-            "End": "\uE010",
+            "ArrowUp": "\ue013",
+            "ArrowDown": "\ue015",
+            "ArrowLeft": "\ue012",
+            "ArrowRight": "\ue014",
+            "Home": "\ue011",
+            "End": "\ue010",
         }
         if key in ios_key_map:
             await self._request("POST", "/wda/keys", {"value": [ios_key_map[key]]})
@@ -188,7 +195,7 @@ class WebDriverAgentBackend(WebDriverClient):
 
     # -- input focus / clearing (upstream packages/ios/src/input-focus.ts) --------
 
-    async def get_active_element_id(self) -> Optional[str]:
+    async def get_active_element_id(self) -> str | None:
         """The id of the focused element, or None when nothing has focus."""
         try:
             response = await self._request("GET", "/element/active")
@@ -198,7 +205,7 @@ class WebDriverAgentBackend(WebDriverClient):
             raise
         return element_id_from(response.get("value"))
 
-    async def get_active_element(self) -> Optional[str]:
+    async def get_active_element(self) -> str | None:
         """Active element id, or None when discovery fails (upstream)."""
         try:
             return await self.get_active_element_id()
@@ -215,9 +222,7 @@ class WebDriverAgentBackend(WebDriverClient):
             raise RuntimeError(f"Failed to clear element: {e}") from e
 
     async def get_element_attribute(self, element_id: str, name: str) -> Any:
-        response = await self._request(
-            "GET", f"/element/{element_id}/attribute/{name}"
-        )
+        response = await self._request("GET", f"/element/{element_id}/attribute/{name}")
         return response.get("value")
 
     async def wait_for_input_focus(self, *, timeout_ms: float = 3000.0) -> None:
@@ -248,9 +253,7 @@ class WebDriverAgentBackend(WebDriverClient):
             await self._request("POST", "/wda/tap/0", {"x": x, "y": y})
 
     async def double_tap(self, x: float, y: float) -> None:
-        await self._request(
-            "POST", "/wda/doubleTap", {"x": x, "y": y}
-        )
+        await self._request("POST", "/wda/doubleTap", {"x": x, "y": y})
 
     async def triple_tap(self, x: float, y: float) -> None:
         """Triple tap through WDA's tapWithNumberOfTaps (upstream)."""
@@ -273,7 +276,11 @@ class WebDriverAgentBackend(WebDriverClient):
         )
 
     async def swipe(
-        self, from_x: float, from_y: float, to_x: float, to_y: float,
+        self,
+        from_x: float,
+        from_y: float,
+        to_x: float,
+        to_y: float,
         duration: float = 500.0,
     ) -> None:
         """W3C Actions API pointer sequence (upstream swipe)."""
@@ -284,10 +291,20 @@ class WebDriverAgentBackend(WebDriverClient):
                     "id": "finger1",
                     "parameters": {"pointerType": "touch"},
                     "actions": [
-                        {"type": "pointerMove", "duration": 0, "x": from_x, "y": from_y},
+                        {
+                            "type": "pointerMove",
+                            "duration": 0,
+                            "x": from_x,
+                            "y": from_y,
+                        },
                         {"type": "pointerDown", "button": 0},
                         {"type": "pause", "duration": 100},
-                        {"type": "pointerMove", "duration": duration, "x": to_x, "y": to_y},
+                        {
+                            "type": "pointerMove",
+                            "duration": duration,
+                            "x": to_x,
+                            "y": to_y,
+                        },
                         {"type": "pointerUp", "button": 0},
                     ],
                 }
@@ -296,14 +313,18 @@ class WebDriverAgentBackend(WebDriverClient):
         await self._request("POST", "/actions", actions)
 
     async def pinch(
-        self, center_x: float, center_y: float,
-        start_distance: float, end_distance: float, duration: float = 500.0,
+        self,
+        center_x: float,
+        center_y: float,
+        start_distance: float,
+        end_distance: float,
+        duration: float = 500.0,
     ) -> None:
         """Two-finger W3C Actions pinch (upstream pinch)."""
         half_start = start_distance / 2
         half_end = end_distance / 2
 
-        def finger(finger_id: str, sign: int) -> Dict[str, Any]:
+        def finger(finger_id: str, sign: int) -> dict[str, Any]:
             return {
                 "type": "pointer",
                 "id": finger_id,
@@ -335,7 +356,7 @@ class WebDriverAgentBackend(WebDriverClient):
 
     # -- keyboard dismissal -----------------------------------------------------
 
-    async def type_raw_keys(self, chars: List[str]) -> None:
+    async def type_raw_keys(self, chars: list[str]) -> None:
         """Send raw key events without trimming whitespace (typeRawKeys)."""
         await self._request("POST", "/wda/keys", {"value": list(chars)})
 
@@ -344,13 +365,11 @@ class WebDriverAgentBackend(WebDriverClient):
         using: str,
         value: str,
         *,
-        root_element_id: Optional[str] = None,
-        deadline: Optional[float] = None,
-    ) -> List[str]:
+        root_element_id: str | None = None,
+        deadline: float | None = None,
+    ) -> list[str]:
         endpoint = (
-            f"/element/{root_element_id}/elements"
-            if root_element_id
-            else "/elements"
+            f"/element/{root_element_id}/elements" if root_element_id else "/elements"
         )
         response = await self._keyboard_dismiss_request(
             "POST", endpoint, {"using": using, "value": value}, deadline
@@ -358,8 +377,8 @@ class WebDriverAgentBackend(WebDriverClient):
         return _element_ids_from_response(response)
 
     async def get_element_rect(
-        self, element_id: str, deadline: Optional[float] = None
-    ) -> Dict[str, float]:
+        self, element_id: str, deadline: float | None = None
+    ) -> dict[str, float]:
         response = await self._keyboard_dismiss_request(
             "GET", f"/element/{element_id}/rect", None, deadline
         )
@@ -372,7 +391,7 @@ class WebDriverAgentBackend(WebDriverClient):
         return {key: float(rect[key]) for key in ("x", "y", "width", "height")}
 
     async def click_element(
-        self, element_id: str, deadline: Optional[float] = None
+        self, element_id: str, deadline: float | None = None
     ) -> None:
         await self._keyboard_dismiss_request(
             "POST", f"/element/{element_id}/click", None, deadline
@@ -382,9 +401,9 @@ class WebDriverAgentBackend(WebDriverClient):
         self,
         method: str,
         endpoint: str,
-        data: Optional[Dict[str, Any]],
-        deadline: Optional[float],
-    ) -> Dict[str, Any]:
+        data: dict[str, Any] | None,
+        deadline: float | None,
+    ) -> dict[str, Any]:
         self._ensure_session()
         timeout = None
         if deadline is not None:
@@ -403,8 +422,8 @@ class WebDriverAgentBackend(WebDriverClient):
         )
 
     async def find_visible_keyboard_ids(
-        self, deadline: Optional[float] = None
-    ) -> List[str]:
+        self, deadline: float | None = None
+    ) -> list[str]:
         return await self.find_element_ids(
             "predicate string",
             'type == "XCUIElementTypeKeyboard" AND visible == true',
@@ -412,8 +431,8 @@ class WebDriverAgentBackend(WebDriverClient):
         )
 
     async def get_visible_keyboard_rect(
-        self, deadline: Optional[float] = None
-    ) -> Optional[Dict[str, float]]:
+        self, deadline: float | None = None
+    ) -> dict[str, float] | None:
         keyboard_ids = await self.find_visible_keyboard_ids(deadline)
         if not keyboard_ids:
             return None
@@ -428,8 +447,8 @@ class WebDriverAgentBackend(WebDriverClient):
 
     async def _dismiss_keyboard_by_name(
         self,
-        key_names: List[str],
-        keyboard_rect: Dict[str, float],
+        key_names: list[str],
+        keyboard_rect: dict[str, float],
         deadline: float,
     ) -> bool:
         predicate_names = ", ".join(
@@ -438,7 +457,7 @@ class WebDriverAgentBackend(WebDriverClient):
         )
         button_ids = await self.find_element_ids(
             "predicate string",
-            "type IN {\"XCUIElementTypeButton\", \"XCUIElementTypeKey\"} "
+            'type IN {"XCUIElementTypeButton", "XCUIElementTypeKey"} '
             "AND enabled == true AND visible == true AND "
             f"(name IN {{{predicate_names}}} OR label IN {{{predicate_names}}})",
             deadline=deadline,
@@ -457,12 +476,14 @@ class WebDriverAgentBackend(WebDriverClient):
             return False
         nearby.sort(key=lambda item: item[0])
         await self.click_element(nearby[0][1], deadline)
-        logger.debug(f"Dismissed keyboard using configured button: {', '.join(key_names)}")
+        logger.debug(
+            f"Dismissed keyboard using configured button: {', '.join(key_names)}"
+        )
         return True
 
     async def _dismiss_keyboard_using_accessory_toolbar(
         self,
-        keyboard_rect: Dict[str, float],
+        keyboard_rect: dict[str, float],
         deadline: float,
     ) -> bool:
         toolbar_ids = await self.find_element_ids(
@@ -473,7 +494,11 @@ class WebDriverAgentBackend(WebDriverClient):
             rect = await self.get_element_rect(toolbar_id, deadline)
             if is_keyboard_accessory_toolbar(rect, keyboard_rect):
                 toolbar_candidates.append(
-                    (abs(keyboard_accessory_toolbar_gap(rect, keyboard_rect)), toolbar_id, rect)
+                    (
+                        abs(keyboard_accessory_toolbar_gap(rect, keyboard_rect)),
+                        toolbar_id,
+                        rect,
+                    )
                 )
         toolbar_candidates.sort(key=lambda item: item[0])
 
@@ -484,7 +509,7 @@ class WebDriverAgentBackend(WebDriverClient):
                 root_element_id=toolbar_id,
                 deadline=deadline,
             )
-            buttons: List[KeyboardAccessoryButton] = []
+            buttons: list[KeyboardAccessoryButton] = []
             for button_id in button_ids:
                 buttons.append(
                     {
@@ -513,10 +538,12 @@ class WebDriverAgentBackend(WebDriverClient):
             remaining = deadline - _now_ms()
             if remaining <= 0:
                 return False
-            await asyncio.sleep(min(KEYBOARD_DISMISS_POLL_INTERVAL_MS, remaining) / 1000)
+            await asyncio.sleep(
+                min(KEYBOARD_DISMISS_POLL_INTERVAL_MS, remaining) / 1000
+            )
         return False
 
-    async def dismiss_keyboard(self, key_names: Optional[List[str]] = None) -> bool:
+    async def dismiss_keyboard(self, key_names: list[str] | None = None) -> bool:
         """Hide the software keyboard and wait until WDA confirms it is gone."""
         self._ensure_session()
         started_at = _now_ms()
@@ -550,7 +577,7 @@ class WebDriverAgentBackend(WebDriverClient):
 
     # -- screen -----------------------------------------------------------------
 
-    async def get_screen_scale(self) -> Optional[float]:
+    async def get_screen_scale(self) -> float | None:
         try:
             response = await self._request("GET", "/wda/screen")
             value = (response or {}).get("value") or {}
@@ -561,7 +588,7 @@ class WebDriverAgentBackend(WebDriverClient):
         return None
 
     async def execute_request(
-        self, method: str, endpoint: str, data: Optional[Dict[str, Any]] = None
+        self, method: str, endpoint: str, data: dict[str, Any] | None = None
     ):
         """Direct WDA API access (iOS equivalent of runAdbShell)."""
         return await self._request(method, endpoint, data)

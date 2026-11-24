@@ -74,7 +74,6 @@ def validate_imports(python_path):
         "import pydantic",
         "import playwright",
         "import pytest",
-        "import black",
         "import mkdocs",
         "import numpy",
         "import cv2",
@@ -105,7 +104,7 @@ def validate_cli_tools(python_path):
     
     cli_tests = [
         (f'"{python_path}" -m pytest --version', "pytest"),
-        (f'"{python_path}" -m black --version', "black"),
+        (f'"{python_path}" -m ruff --version', "ruff"),
         (f'"{python_path}" -m mkdocs --version', "mkdocs"),
     ]
     

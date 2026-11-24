@@ -1,11 +1,11 @@
 """CLI argument helpers (upstream packages/cli/src/args.ts)."""
 
-from typing import Any, Dict, List
+from typing import Any
 
 from midscene.cli.config_options import YAML_TARGET_KEYS as _TARGET_KEYS
 
 
-def find_only_item_in_args(args: Dict[str, Any], name: str) -> Any:
+def find_only_item_in_args(args: dict[str, Any], name: str) -> Any:
     """Return a single option value (upstream findOnlyItemInArgs).
 
     A missing option yields ``False`` (upstream returns ``false``); more than
@@ -21,9 +21,9 @@ def find_only_item_in_args(args: Dict[str, Any], name: str) -> Any:
     return found
 
 
-def order_matters_parse(args: List[str]) -> List[Dict[str, Any]]:
+def order_matters_parse(args: list[str]) -> list[dict[str, Any]]:
     """Parse ``--key value`` tokens while preserving their order."""
-    ordered: List[Dict[str, Any]] = []
+    ordered: list[dict[str, Any]] = []
     for index, arg in enumerate(args):
         if not arg.startswith("--"):
             continue
@@ -31,11 +31,7 @@ def order_matters_parse(args: List[str]) -> List[Dict[str, Any]]:
         value: Any = True
         if index + 1 < len(args) and not args[index + 1].startswith("--"):
             value = args[index + 1]
-        if (
-            isinstance(value, str)
-            and value.isascii()
-            and value.isdigit()
-        ):
+        if isinstance(value, str) and value.isascii() and value.isdigit():
             value = int(value, 10)
         ordered.append({"name": key, "value": value})
     return ordered

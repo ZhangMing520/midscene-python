@@ -1,6 +1,7 @@
 """Define a workflow node (upstream test-runner/node/define-node.ts)."""
 
-from typing import Any, Callable, Dict, Optional
+from collections.abc import Callable
+from typing import Any
 
 from midscene.core.test_runner.errors import NodeDefinitionError
 from midscene.core.test_runner.node.types import NodeDefinition
@@ -32,10 +33,10 @@ def _validate_input_schema(schema: Any, node: str) -> None:
 def define_node(
     name: str,
     execute: Callable[..., Any],
-    title: Optional[str] = None,
-    description: Optional[str] = None,
-    string_input_key: Optional[str] = None,
-    input_schema: Optional[Dict[str, Any]] = None,
+    title: str | None = None,
+    description: str | None = None,
+    string_input_key: str | None = None,
+    input_schema: dict[str, Any] | None = None,
 ) -> NodeDefinition:
     """Validate and build a node definition."""
     if not isinstance(name, str) or not name.strip():
@@ -60,7 +61,9 @@ def define_node(
             {"node": name, "field": "stringInputKey"},
         )
     if not callable(execute):
-        raise NodeDefinitionError(f'Node "{name}" must provide an execute function.', {"node": name})
+        raise NodeDefinitionError(
+            f'Node "{name}" must provide an execute function.', {"node": name}
+        )
     return NodeDefinition(
         name=name,
         execute=execute,

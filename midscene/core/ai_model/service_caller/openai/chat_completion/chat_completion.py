@@ -1,6 +1,6 @@
 """Chat-completion request preparation (upstream chat-completion/chat-completion.ts)."""
 
-from typing import Any, Dict, List
+from typing import Any
 
 from midscene.core.ai_model.model_adapter.temperature_with_semantic_retry import (
     _apply_semantic_retry_temperature,
@@ -18,9 +18,7 @@ from midscene.core.ai_model.service_caller.openai.chat_completion.utils import (
 from midscene.core.ai_model.service_caller.utils import resolve_image_detail
 
 
-async def call_chat_completion(
-    options: Dict[str, Any], stream: bool
-) -> Dict[str, Any]:
+async def call_chat_completion(options: dict[str, Any], stream: bool) -> dict[str, Any]:
     """Dispatch to the stream/non-stream parser (upstream callChatCompletion).
 
     Python's transport consumes the request before parsing, so ``options``
@@ -32,12 +30,10 @@ async def call_chat_completion(
             options["adapter"],
             options.get("onChunk") or options.get("on_chunk"),
         )
-    return call_chat_completion_non_streaming(
-        options["payload"], options["adapter"]
-    )
+    return call_chat_completion_non_streaming(options["payload"], options["adapter"])
 
 
-def _adapter_user_config(model_config: Dict[str, Any]) -> Dict[str, Any]:
+def _adapter_user_config(model_config: dict[str, Any]) -> dict[str, Any]:
     return {
         "temperature": model_config.get("temperature"),
         "reasoningEnabled": model_config.get("reasoningEnabled"),
@@ -49,16 +45,16 @@ def _adapter_user_config(model_config: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _strip_undefined(config: Dict[str, Any]) -> Dict[str, Any]:
+def _strip_undefined(config: dict[str, Any]) -> dict[str, Any]:
     """Adapter builders may set a key to None to mean 'omit the parameter'."""
     return {key: value for key, value in config.items() if value is not None}
 
 
 def prepare_chat_completion(
-    messages: List[dict],
+    messages: list[dict],
     model_runtime: ModelRuntime,
-    options: Dict[str, Any],
-) -> Dict[str, Any]:
+    options: dict[str, Any],
+) -> dict[str, Any]:
     model_config = model_runtime.config
     adapter = model_runtime.adapter
     image_detail = resolve_image_detail(
@@ -74,7 +70,7 @@ def prepare_chat_completion(
     )
     if model_config.get("temperature") == "unset":
         adapter_params.pop("temperature", None)
-    request_body: Dict[str, Any] = {
+    request_body: dict[str, Any] = {
         "model": model_config.get("modelName"),
         "messages": to_chat_messages(messages, image_detail),
         **_strip_undefined(adapter_params),

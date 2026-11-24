@@ -9,7 +9,7 @@ surface used by ``CodexAppServerConnection``.
 import asyncio
 import copy
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import pytest
 
@@ -29,7 +29,7 @@ from midscene.core.ai_model.service_caller.codex.codex_app_server import (
     normalize_codex_local_image_path,
 )
 
-BASE_MODEL_CONFIG: Dict[str, Any] = {
+BASE_MODEL_CONFIG: dict[str, Any] = {
     "modelName": "gpt-5.4",
     "modelDescription": "codex",
     "intent": "default",
@@ -41,9 +41,9 @@ class FakeReader:
     """Minimal ``asyncio.StreamReader`` stand-in backed by a queue."""
 
     def __init__(self) -> None:
-        self._queue: "asyncio.Queue[bytes]" = asyncio.Queue()
+        self._queue: asyncio.Queue[bytes] = asyncio.Queue()
 
-    def feed(self, message: Dict[str, Any]) -> None:
+    def feed(self, message: dict[str, Any]) -> None:
         self._queue.put_nowait((json.dumps(message) + "\n").encode("utf-8"))
 
     async def readline(self) -> bytes:
@@ -78,8 +78,8 @@ class FakeCodexAppServerProcess:
         self.stdin = FakeStdin(self._handle_message)
         self.stdout = FakeReader()
         self.stderr = FakeReader()
-        self.returncode: Optional[int] = None
-        self.received: List[Dict[str, Any]] = []
+        self.returncode: int | None = None
+        self.received: list[dict[str, Any]] = []
         self.request_log = ""
         self.turn_started = asyncio.Event()
         self._hold_turns = hold_turns
@@ -87,16 +87,16 @@ class FakeCodexAppServerProcess:
         self._done = asyncio.Event()
 
     def _reply(
-        self, message: Dict[str, Any], result: Any = None, error: Any = None
+        self, message: dict[str, Any], result: Any = None, error: Any = None
     ) -> None:
-        payload: Dict[str, Any] = {"id": message.get("id")}
+        payload: dict[str, Any] = {"id": message.get("id")}
         if error is not None:
             payload["error"] = error
         else:
             payload["result"] = result
         self.stdout.feed(payload)
 
-    def _handle_message(self, message: Dict[str, Any]) -> None:
+    def _handle_message(self, message: dict[str, Any]) -> None:
         self.received.append(message)
         method = message.get("method")
 
@@ -172,7 +172,7 @@ class FakeCodexAppServerProcess:
         self.returncode = -9
         self._done.set()
 
-    async def wait(self) -> Optional[int]:
+    async def wait(self) -> int | None:
         await self._done.wait()
         return self.returncode
 
@@ -187,7 +187,7 @@ def install_fake_process(monkeypatch, hold_turns: bool = False):
     return process
 
 
-def resolve_image_detail(input_data: Dict[str, Any]) -> str:
+def resolve_image_detail(input_data: dict[str, Any]) -> str:
     return input_data.get("imageDetail") or "high"
 
 
@@ -199,9 +199,7 @@ def test_detects_codex_provider_base_url() -> None:
 
 
 def test_preserves_default_codex_parameter_handling_for_other_model_families() -> None:
-    assert build_default_codex_app_server_params({})["config"] == {
-        "effort": "none"
-    }
+    assert build_default_codex_app_server_params({})["config"] == {"effort": "none"}
     assert build_default_codex_app_server_params(
         {"userConfig": {"reasoningEnabled": True}}
     )["config"] == {"effort": "medium"}
@@ -227,9 +225,7 @@ def test_converts_conversation_messages_into_codex_turn_payload() -> None:
         {"role": "assistant", "content": "I will check it now."},
     ]
 
-    payload = build_codex_turn_payload_from_messages(
-        messages, resolve_image_detail
-    )
+    payload = build_codex_turn_payload_from_messages(messages, resolve_image_detail)
 
     assert "System rule: return concise output." in payload["developerInstructions"]
     assert payload["input"][0]["type"] == "text"
@@ -251,7 +247,7 @@ def test_converts_conversation_messages_into_codex_turn_payload() -> None:
 def test_converts_history_entries_directly_and_applies_image_detail_without_mutating_history() -> (
     None
 ):
-    messages: List[Dict[str, Any]] = [
+    messages: list[dict[str, Any]] = [
         {
             "type": "input-message",
             "message": {"role": "system", "content": "System rule"},
@@ -324,9 +320,7 @@ def test_preserves_image_detail_in_codex_turn_inputs() -> None:
         }
     ]
 
-    payload = build_codex_turn_payload_from_messages(
-        messages, resolve_image_detail
-    )
+    payload = build_codex_turn_payload_from_messages(messages, resolve_image_detail)
 
     assert {
         "type": "image",
@@ -335,9 +329,7 @@ def test_preserves_image_detail_in_codex_turn_inputs() -> None:
     } in payload["input"]
 
 
-def test_overrides_image_detail_in_codex_turn_inputs_when_required_by_adapter() -> (
-    None
-):
+def test_overrides_image_detail_in_codex_turn_inputs_when_required_by_adapter() -> None:
     messages = [
         {
             "role": "user",
@@ -381,15 +373,11 @@ def test_normalizes_file_urls_into_platform_safe_local_image_paths() -> None:
         "/tmp/local-shot.png"
     )
     assert (
-        normalize_codex_local_image_path(
-            "file:///C:/tmp/local-shot.png", "win32"
-        )
+        normalize_codex_local_image_path("file:///C:/tmp/local-shot.png", "win32")
         == "C:\\tmp\\local-shot.png"
     )
     assert (
-        normalize_codex_local_image_path(
-            "file://server/share/local-shot.png", "win32"
-        )
+        normalize_codex_local_image_path("file://server/share/local-shot.png", "win32")
         == "\\\\server\\share\\local-shot.png"
     )
 
@@ -443,7 +431,7 @@ async def test_counts_queue_waiting_against_each_attempt_timeout_without_sending
     }
     chunk_received = asyncio.Event()
 
-    def on_chunk(_chunk: Dict[str, Any]) -> None:
+    def on_chunk(_chunk: dict[str, Any]) -> None:
         chunk_received.set()
 
     first_task = asyncio.create_task(
@@ -461,9 +449,7 @@ async def test_counts_queue_waiting_against_each_attempt_timeout_without_sending
         with pytest.raises(RuntimeError, match=r"1 retry \(2/2 attempts\)"):
             await call_generative_ai(
                 messages,
-                get_model_runtime(
-                    {**config, "timeout": 50, "retryCount": 1}
-                ),
+                get_model_runtime({**config, "timeout": 50, "retryCount": 1}),
             )
         assert process.request_log == "thread/start\n"
 
@@ -482,7 +468,7 @@ async def test_counts_queue_waiting_against_each_attempt_timeout_without_sending
             process.release_turn()
             try:
                 await asyncio.wait_for(first_task, timeout=5)
-            except (asyncio.TimeoutError, RuntimeError):
+            except (TimeoutError, RuntimeError):
                 pass
         await __shutdown_codex_app_server_for_tests()
 
@@ -528,7 +514,7 @@ async def test_reports_codex_json_rpc_requests_responses_and_turn_notifications(
     install_fake_process(monkeypatch)
     await __shutdown_codex_app_server_for_tests()
 
-    events: List[Dict[str, Any]] = []
+    events: list[dict[str, Any]] = []
     try:
         result = await call_ai_with_codex_app_server(
             [{"role": "user", "content": "hello"}],
@@ -552,9 +538,9 @@ async def test_reports_codex_json_rpc_requests_responses_and_turn_notifications(
         runtime = get_model_runtime(
             {**BASE_MODEL_CONFIG, "openaiBaseURL": "codex://app-server"}
         )
-        usage_calls: List[Dict[str, Any]] = []
+        usage_calls: list[dict[str, Any]] = []
         runtime.on_usage = usage_calls.append
-        chunks: List[Dict[str, Any]] = []
+        chunks: list[dict[str, Any]] = []
         enriched = await call_generative_ai(
             [{"role": "user", "content": "hello"}],
             runtime,
@@ -594,9 +580,7 @@ async def test_reports_codex_json_rpc_requests_responses_and_turn_notifications(
                 for key, value in extra.items():
                     actual = protocol.get(key)
                     if isinstance(value, dict) and isinstance(actual, dict):
-                        if not all(
-                            actual.get(k) == v for k, v in value.items()
-                        ):
+                        if not all(actual.get(k) == v for k, v in value.items()):
                             matched = False
                             break
                     elif actual != value:
@@ -607,9 +591,7 @@ async def test_reports_codex_json_rpc_requests_responses_and_turn_notifications(
             return False
 
         assert has_event("request", "thread/start")
-        assert has_event(
-            "request", "turn/start", params={"effort": "max"}
-        )
+        assert has_event("request", "turn/start", params={"effort": "max"})
         assert has_event(
             "chunk",
             "thread/start",

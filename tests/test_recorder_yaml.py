@@ -1,17 +1,22 @@
 """Synced from upstream
 ``packages/core/tests/unit-test/workflows/recorder-generation/yaml.test.ts``."""
 
-from typing import Any, Dict, List
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
 
 
-def _events() -> List[Dict[str, Any]]:
+def _events() -> list[dict[str, Any]]:
     return [
         {"type": "navigation", "url": "https://shop.example", "timestamp": 1},
         {"type": "click", "description": "search box", "timestamp": 2},
-        {"type": "input", "description": "search box", "value": "shoes", "timestamp": 3},
+        {
+            "type": "input",
+            "description": "search box",
+            "value": "shoes",
+            "timestamp": 3,
+        },
         {"type": "scroll", "timestamp": 4},
     ]
 
@@ -41,7 +46,7 @@ async def test_generates_recorder_yaml_from_recorded_events():
         generate_yaml_test,
     )
 
-    captured: Dict[str, Any] = {}
+    captured: dict[str, Any] = {}
 
     async def fake_call(prompt, runtime):
         captured["prompt"] = prompt
@@ -80,7 +85,7 @@ async def test_wraps_yaml_generation_errors():
     assert "Failed to generate recorder YAML test" in str(exc.value)
 
 
-def _mock_events() -> List[Dict[str, Any]]:
+def _mock_events() -> list[dict[str, Any]]:
     return [
         {
             "type": "navigation",
@@ -110,7 +115,7 @@ async def test_adds_a_language_instruction_when_generating_yaml():
         generate_yaml_test,
     )
 
-    captured: Dict[str, Any] = {}
+    captured: dict[str, Any] = {}
 
     async def fake_call(prompt, runtime):
         captured["prompt"] = prompt
@@ -127,7 +132,9 @@ async def test_adds_a_language_instruction_when_generating_yaml():
         )
 
     user_message = captured["prompt"][1]
-    assert "Write all human-readable YAML content in Chinese." in user_message["content"]
+    assert (
+        "Write all human-readable YAML content in Chinese." in user_message["content"]
+    )
 
 
 @pytest.mark.asyncio
@@ -136,7 +143,7 @@ async def test_uses_the_same_language_instruction_for_streaming_yaml_generation(
         generate_yaml_test_stream,
     )
 
-    captured: Dict[str, Any] = {}
+    captured: dict[str, Any] = {}
 
     async def fake_call(prompt, runtime, options):
         captured["prompt"] = prompt
@@ -154,7 +161,9 @@ async def test_uses_the_same_language_instruction_for_streaming_yaml_generation(
 
     assert result["isStreamed"] is True
     user_message = captured["prompt"][1]
-    assert "Write all human-readable YAML content in English." in user_message["content"]
+    assert (
+        "Write all human-readable YAML content in English." in user_message["content"]
+    )
 
 
 @pytest.mark.asyncio
@@ -163,7 +172,7 @@ async def test_preserves_non_web_recorder_targets_when_generating_yaml():
         generate_recorder_yaml_test,
     )
 
-    captured: Dict[str, Any] = {}
+    captured: dict[str, Any] = {}
 
     async def fake_call(prompt, runtime):
         captured["prompt"] = prompt
@@ -217,7 +226,7 @@ async def test_marks_screenshot_event_relationships_in_recorder_yaml_prompts():
         generate_recorder_yaml_test,
     )
 
-    captured: Dict[str, Any] = {}
+    captured: dict[str, Any] = {}
 
     async def fake_call(prompt, runtime):
         captured["prompt"] = prompt

@@ -1,6 +1,7 @@
 """Thin YAML batch runner (upstream packages/cli/src/batch-runner.ts)."""
 
-from typing import Any, Callable, Dict, List
+from collections.abc import Callable
+from typing import Any
 
 from midscene.cli.execution_summary import (
     get_execution_summary,
@@ -22,7 +23,7 @@ class BatchRunner:
 
     def __init__(
         self,
-        config: Dict[str, Any],
+        config: dict[str, Any],
         player_factory: Callable[[str, str], Any],
     ):
         """player_factory(yaml_content, file_path) -> ScriptPlayer-like object
@@ -30,13 +31,13 @@ class BatchRunner:
         self._raw_config = config
         self._player_factory = player_factory
         self.config = parse_batch_config(config)
-        self.results: List[Dict[str, Any]] = []
+        self.results: list[dict[str, Any]] = []
         self.hook_error = None
 
-    async def run(self) -> List[Dict[str, Any]]:
+    async def run(self) -> list[dict[str, Any]]:
         self.results = []
         self.hook_error = None
-        state: Dict[str, Any] = {}
+        state: dict[str, Any] = {}
         try:
             self.results = list(
                 await run_yaml_batch(
@@ -51,34 +52,30 @@ class BatchRunner:
         finally:
             self.hook_error = state.get("hook_error")
 
-    def get_execution_summary(self) -> Dict[str, Any]:
+    def get_execution_summary(self) -> dict[str, Any]:
         return get_execution_summary(self.results)
 
-    def get_results(self) -> List[Dict[str, Any]]:
+    def get_results(self) -> list[dict[str, Any]]:
         return list(self.results)
 
-    def get_failed_files(self) -> List[str]:
+    def get_failed_files(self) -> list[str]:
         return get_result_files_by_type(self.results, "failed")
 
-    def get_partial_failed_files(self) -> List[str]:
+    def get_partial_failed_files(self) -> list[str]:
         return get_result_files_by_type(self.results, "partialFailed")
 
-    def get_successful_files(self) -> List[str]:
+    def get_successful_files(self) -> list[str]:
         return get_result_files_by_type(self.results, "success")
 
-    def get_not_executed_files(self) -> List[str]:
+    def get_not_executed_files(self) -> list[str]:
         return get_result_files_by_type(self.results, "notExecuted")
 
     def print_execution_summary(self) -> bool:
         summary = self.config.get("summary")
-        summary_path = (
-            str(get_summary_absolute_path(summary)) if summary else ""
-        )
+        summary_path = str(get_summary_absolute_path(summary)) if summary else ""
         return print_execution_summary(self.results, summary_path)
 
-    def _apply_web_overrides(
-        self, content: str, overrides: Dict[str, Any]
-    ) -> str:
+    def _apply_web_overrides(self, content: str, overrides: dict[str, Any]) -> str:
         """Delegate to the executor's web override helper."""
         return _apply_web_overrides(content, overrides)
 

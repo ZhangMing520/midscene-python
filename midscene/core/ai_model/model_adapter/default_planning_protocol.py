@@ -1,18 +1,21 @@
 """Default planning protocol (upstream ai-model/model-adapter/default-planning-protocol.ts)."""
 
 import json
-from midscene.core.ai_model.shared.json import assert_json_object
-from midscene.core.ai_model.shared.json import parse_model_response_json
-from midscene.core.ai_model.shared.xml import extract_xml_tag
-from midscene.core.ai_model.shared.model_locate_result import format_locate_example_value
-from typing import Any, Dict, List, Optional
-
-from midscene.core.distance_schema import find_distance_fields
+from typing import Any
 
 from midscene.core.ai_model.model_adapter.planning_protocol import (
     PlanningActionOutputBuildInput,
     StandardPlanningProtocol,
 )
+from midscene.core.ai_model.shared.json import (
+    assert_json_object,
+    parse_model_response_json,
+)
+from midscene.core.ai_model.shared.model_locate_result import (
+    format_locate_example_value,
+)
+from midscene.core.ai_model.shared.xml import extract_xml_tag
+from midscene.core.distance_schema import find_distance_fields
 
 PLANNING_ACTION_OUTPUT_TAG_NAMES = ("action-type", "action-param-json")
 
@@ -55,7 +58,7 @@ def build_planning_action_output(
 
 
 def _serialize_action_param(
-    param: Dict[str, Any], locate_fields: List[str], locate_result_key: str
+    param: dict[str, Any], locate_fields: list[str], locate_result_key: str
 ) -> str:
     """Serialize the param keeping locate result arrays on one line.
 
@@ -73,7 +76,7 @@ def _serialize_action_param(
     while marker_prefix in json.dumps(param, ensure_ascii=False):
         marker_prefix = f"_{marker_prefix}"
 
-    replacements: Dict[str, str] = {}
+    replacements: dict[str, str] = {}
     counter = {"n": 0}
 
     def replace(obj: Any, in_locator: bool) -> Any:
@@ -84,7 +87,9 @@ def _serialize_action_param(
                 if is_locator and key == locate_result_key:
                     marker = f"{marker_prefix}{counter['n']}__"
                     counter["n"] += 1
-                    replacements[json.dumps(marker)] = format_locate_example_value(value)
+                    replacements[json.dumps(marker)] = format_locate_example_value(
+                        value
+                    )
                     out[key] = marker
                 else:
                     out[key] = replace(value, in_locator=is_locator)
@@ -106,8 +111,8 @@ def create_planning_action_output_parser(json_parser=None):
     parser = json_parser or parse_model_response_json
 
     def parse_action_output(
-        content: str, action_space: List[Any] = None
-    ) -> Optional[Dict[str, Any]]:
+        content: str, action_space: list[Any] = None
+    ) -> dict[str, Any] | None:
         action_type = extract_xml_tag(content, "action-type")
         action_param_str = extract_xml_tag(content, "action-param-json")
 
@@ -116,7 +121,7 @@ def create_planning_action_output_parser(json_parser=None):
 
         # Strip any trailing XML tags that leaked into the action type.
         action_type = action_type.split("<")[0].strip()
-        param: Optional[Dict[str, Any]] = None
+        param: dict[str, Any] | None = None
 
         if action_param_str:
             try:
@@ -129,9 +134,11 @@ def create_planning_action_output_parser(json_parser=None):
                 )
                 assert_json_object(param)
             except Exception as error:
-                raise ValueError(f"Failed to parse action-param-json: {error}")
+                raise ValueError(
+                    f"Failed to parse action-param-json: {error}"
+                ) from error
 
-        result: Dict[str, Any] = {"type": action_type}
+        result: dict[str, Any] = {"type": action_type}
         if param is not None:
             result["param"] = param
         return result
@@ -145,7 +152,7 @@ def create_midscene_planning_action_output_parser(json_parser=None):
 
 
 def build_locate_field_description(
-    locate_prompt_spec: Optional[Dict[str, Any]] = None,
+    locate_prompt_spec: dict[str, Any] | None = None,
 ) -> str:
     if locate_prompt_spec:
         return (
@@ -156,20 +163,20 @@ def build_locate_field_description(
     return "{ prompt: string /* description of the target element */ }"
 
 
-def build_action_description(build_input: Dict[str, Any]) -> Dict[str, Any]:
+def build_action_description(build_input: dict[str, Any]) -> dict[str, Any]:
     """Build one YAML action description from a DeviceAction prompt dict."""
     action = build_input["action"]
     action_dict = action if isinstance(action, dict) else action.to_prompt_dict()
     locate_field_description = build_input["locate_field_description"]
 
-    description: Dict[str, Any] = {
+    description: dict[str, Any] = {
         "type": action_dict["name"],
         "description": action_dict.get("description") or "No description provided",
     }
 
     param_schema = action_dict.get("param_schema")
     if param_schema:
-        param: Dict[str, Any] = {}
+        param: dict[str, Any] = {}
         locate_fields = list(action_dict.get("locate_fields", []))
         distance_fields = find_distance_fields(action_dict)
         for key, field in param_schema.items():

@@ -62,9 +62,7 @@ def _png(width: int, height: int, color=(255, 255, 255)) -> str:
 def _jpeg(width: int, height: int, color=(200, 200, 200)) -> str:
     buffer = io.BytesIO()
     Image.new("RGB", (width, height), color).save(buffer, format="JPEG")
-    return "data:image/jpeg;base64," + base64.b64encode(
-        buffer.getvalue()
-    ).decode()
+    return "data:image/jpeg;base64," + base64.b64encode(buffer.getvalue()).decode()
 
 
 def _body(data_url: str) -> bytes:
@@ -89,9 +87,7 @@ def test_composite_point_marker_keeps_image_dimensions_and_marks_a_point():
 
     assert ";base64," in marked_base64
     assert marked_base64 != base64_image
-    assert image_info_of_base64(marked_base64) == image_info_of_base64(
-        base64_image
-    )
+    assert image_info_of_base64(marked_base64) == image_info_of_base64(base64_image)
 
 
 def test_composite_point_marker_img_uses_red_and_blue_centered_reticle_markers_without_covering_the_target_point():
@@ -185,9 +181,7 @@ def test_crop_by_rect_normalizes_fractional_browser_coordinates():
         (None, "null", "object"),
     ],
 )
-def test_pre_process_image_url_rejects_non_string_values(
-    value, rendered, type_name
-):
+def test_pre_process_image_url_rejects_non_string_values(value, rendered, type_name):
     """port of "url is not a string will throw an error".
 
     Python has no ``undefined``; ``None`` covers the JS ``null`` case.
@@ -212,9 +206,7 @@ def test_pre_process_image_url_keeps_data_urls():
 def test_pre_process_image_url_normalizes_data_url_body():
     """port of "base64 string will be normalized for url-safe model payloads"."""
     assert (
-        transform.pre_process_image_url(
-            "data:image/png;base64,aaa\r\nbbb ccc", False
-        )
+        transform.pre_process_image_url("data:image/png;base64,aaa\r\nbbb ccc", False)
         == "data:image/png;base64,aaabbbccc"
     )
 
@@ -229,8 +221,7 @@ def test_pre_process_image_url_converts_local_file_to_base64(tmp_path):
     result = transform.pre_process_image_url(str(image_path), False)
 
     assert result == (
-        "data:image/jpeg;base64,"
-        + base64.b64encode(image_path.read_bytes()).decode()
+        "data:image/jpeg;base64," + base64.b64encode(image_path.read_bytes()).decode()
     )
 
 
@@ -270,8 +261,7 @@ def test_pre_process_image_url_converts_http_urls_when_requested(monkeypatch):
     )
 
     assert result == (
-        "data:image/svg+xml;base64,"
-        + base64.b64encode(mock_data).decode()
+        "data:image/svg+xml;base64," + base64.b64encode(mock_data).decode()
     )
 
 
@@ -302,16 +292,13 @@ def test_http_img2_base64(monkeypatch):
     result = transform.http_img2_base64("https://example.com/image.svg")
 
     assert result == (
-        "data:image/svg+xml;base64,"
-        + base64.b64encode(mock_response).decode()
+        "data:image/svg+xml;base64," + base64.b64encode(mock_response).decode()
     )
 
 
 def test_normalize_base64_image_keeps_existing_data_urls_and_trims_whitespace():
     assert (
-        transform.normalize_base64_image(
-            " data:image/png;base64,aaa\r\nbbb "
-        )
+        transform.normalize_base64_image(" data:image/png;base64,aaa\r\nbbb ")
         == "data:image/png;base64,aaa\r\nbbb"
     )
 
@@ -332,24 +319,18 @@ def test_normalize_base64_image_wraps_bare_non_png_base64_as_jpeg():
 
 def test_normalize_screenshot_base64_accepts_png_and_jpeg_data_urls():
     assert (
-        transform.normalize_screenshot_base64(
-            " data:image/png;base64,aaa\r\nbbb "
-        )
+        transform.normalize_screenshot_base64(" data:image/png;base64,aaa\r\nbbb ")
         == "data:image/png;base64,aaabbb"
     )
     assert (
-        transform.normalize_screenshot_base64(
-            "data:image/jpeg;base64,/9j/4AAQ"
-        )
+        transform.normalize_screenshot_base64("data:image/jpeg;base64,/9j/4AAQ")
         == "data:image/jpeg;base64,/9j/4AAQ"
     )
 
 
 def test_normalize_screenshot_base64_normalizes_jpg_data_urls_to_jpeg():
     assert (
-        transform.normalize_screenshot_base64(
-            "data:image/jpg;base64,/9j/4AAQ"
-        )
+        transform.normalize_screenshot_base64("data:image/jpg;base64,/9j/4AAQ")
         == "data:image/jpeg;base64,/9j/4AAQ"
     )
 
@@ -363,15 +344,12 @@ def test_normalize_screenshot_base64_wraps_raw_base64_as_png():
 
 def test_normalize_screenshot_base64_uses_the_provided_label_in_errors():
     with pytest.raises(ValueError, match="custom screenshot cannot be empty"):
-        transform.normalize_screenshot_base64(
-            " ", {"label": "custom screenshot"}
-        )
+        transform.normalize_screenshot_base64(" ", {"label": "custom screenshot"})
 
     with pytest.raises(
         ValueError,
         match=(
-            "custom screenshot must be a PNG/JPEG data URI or raw PNG "
-            "base64 string"
+            "custom screenshot must be a PNG/JPEG data URI or raw PNG base64 string"
         ),
     ):
         transform.normalize_screenshot_base64(
@@ -402,9 +380,7 @@ def test_convert_img_buffer_to_jpeg_rejects_invalid_image_bytes():
     Upstream asserts the Node-specific sharp error message; the Python backend
     reports the same failure shape with the Pillow name instead.
     """
-    with pytest.raises(
-        ValueError, match="Failed to convert image to JPEG with Pillow"
-    ):
+    with pytest.raises(ValueError, match="Failed to convert image to JPEG with Pillow"):
         transform.convert_img_buffer_to_jpeg(b"invalid image")
 
 
@@ -489,9 +465,7 @@ def test_resize_base64_image_to_jpeg_rejects_mismatched_source_dimensions():
     """port of "rejects source dimensions that do not match the encoded image"."""
     with pytest.raises(
         ValueError,
-        match=(
-            "sourceSize 1x1 does not match encoded image dimensions 4x3"
-        ),
+        match=("sourceSize 1x1 does not match encoded image dimensions 4x3"),
     ):
         transform.resize_base64_image_to_jpeg(
             JPEG_DATA_URL,
@@ -607,9 +581,7 @@ def test_resize_base64_image_to_jpeg_rejects_invalid_quality(jpeg_quality):
 )
 def test_resize_base64_image_to_jpeg_rejects_invalid_target_size(target_size):
     """port of "resizeBase64ImageToJpeg rejects invalid target size"."""
-    with pytest.raises(
-        ValueError, match=r"targetSize.*positive integers"
-    ):
+    with pytest.raises(ValueError, match=r"targetSize.*positive integers"):
         transform.resize_base64_image_to_jpeg(
             PNG_DATA_URL,
             {
@@ -630,9 +602,7 @@ def test_resize_base64_image_to_jpeg_rejects_invalid_target_size(target_size):
 )
 def test_resize_base64_image_to_jpeg_rejects_invalid_source_size(source_size):
     """port of "resizeBase64ImageToJpeg rejects invalid known source size"."""
-    with pytest.raises(
-        ValueError, match=r"sourceSize.*positive integers"
-    ):
+    with pytest.raises(ValueError, match=r"sourceSize.*positive integers"):
         transform.resize_base64_image_to_jpeg(
             PNG_DATA_URL,
             {
@@ -646,9 +616,7 @@ def test_constrain_base64_image_to_max_size_returns_bounded_image_unchanged():
     """port of "returns an already bounded image without loading an image
     backend" and "preserves an image already within the bound"."""
     assert (
-        transform.constrain_base64_image_to_max_size(
-            PNG_DATA_URL, {"maxSize": 8}
-        )
+        transform.constrain_base64_image_to_max_size(PNG_DATA_URL, {"maxSize": 8})
         == PNG_DATA_URL
     )
 
@@ -668,9 +636,7 @@ def test_constrain_base64_image_to_max_size_uses_real_image_bytes():
     """port of "bounds the longest edge with real image bytes"."""
     source = _png(68, 56)
 
-    result = transform.constrain_base64_image_to_max_size(
-        source, {"maxSize": 34}
-    )
+    result = transform.constrain_base64_image_to_max_size(source, {"maxSize": 34})
 
     assert result.startswith("data:image/jpeg;base64,")
     assert image_info_of_base64(result) == {"width": 34, "height": 28}
@@ -681,9 +647,7 @@ def test_constrain_base64_image_to_max_size_rejects_invalid_max_size(
     max_size,
 ):
     """port of "rejects invalid maxSize %s"."""
-    with pytest.raises(
-        ValueError, match="maxSize must be a positive integer"
-    ):
+    with pytest.raises(ValueError, match="maxSize must be a positive integer"):
         transform.constrain_base64_image_to_max_size(
             PNG_DATA_URL, {"maxSize": max_size}
         )
@@ -691,10 +655,7 @@ def test_constrain_base64_image_to_max_size_rejects_invalid_max_size(
 
 def test_convert_base64_image_to_jpeg_reuses_jpeg_bytes():
     """port of "reuses JPEG bytes without loading an image backend"."""
-    assert (
-        transform.convert_base64_image_to_jpeg(JPEG_DATA_URL, 90)
-        == JPEG_DATA_URL
-    )
+    assert transform.convert_base64_image_to_jpeg(JPEG_DATA_URL, 90) == JPEG_DATA_URL
 
 
 def test_convert_base64_image_to_jpeg_converts_png():
@@ -712,10 +673,7 @@ def test_convert_base64_image_to_jpeg_rejects_unsupported_formats():
     )
     with pytest.raises(
         ValueError,
-        match=(
-            "inputBase64 must contain a PNG or JPEG image. "
-            "Detected: image/gif"
-        ),
+        match=("inputBase64 must contain a PNG or JPEG image. Detected: image/gif"),
     ):
         transform.convert_base64_image_to_jpeg(gif)
 
@@ -724,9 +682,7 @@ def test_resize_img_base64_keeps_unchanged_png_input():
     """port of "keeps resizeImgBase64 backward compatible for unchanged PNG"."""
     source = _png(68, 56)
 
-    result = transform.resize_img_base64(
-        source, {"width": 68, "height": 56}
-    )
+    result = transform.resize_img_base64(source, {"width": 68, "height": 56})
 
     assert result == source
     assert result.startswith("data:image/png;base64,")
@@ -736,9 +692,7 @@ def test_resize_img_base64_keeps_unchanged_jpeg_input():
     """port of "keeps resizeImgBase64 backward compatible for unchanged JPEG"."""
     source = _jpeg(400, 905)
 
-    result = transform.resize_img_base64(
-        source, {"width": 400, "height": 905}
-    )
+    result = transform.resize_img_base64(source, {"width": 400, "height": 905})
 
     assert result == source
     assert result.startswith("data:image/jpeg;base64,")
@@ -747,9 +701,7 @@ def test_resize_img_base64_keeps_unchanged_jpeg_input():
 def test_resize_img_base64_returns_jpeg_when_dimensions_change():
     """port of "keeps resizeImgBase64 JPEG output behavior when dimensions
     change"."""
-    result = transform.resize_img_base64(
-        _png(68, 56), {"width": 34, "height": 28}
-    )
+    result = transform.resize_img_base64(_png(68, 56), {"width": 34, "height": 28})
 
     assert result.startswith("data:image/jpeg;base64,")
     assert image_info_of_base64(result) == {"width": 34, "height": 28}

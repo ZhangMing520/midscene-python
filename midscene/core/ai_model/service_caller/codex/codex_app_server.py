@@ -15,7 +15,6 @@ Approximations relative to the TypeScript implementation:
   tasks are cancelled during :meth:`CodexAppServerConnection.dispose` instead.
 """
 
-from typing import Any, Callable, Dict, List, Optional
 import asyncio
 import inspect
 import json
@@ -23,6 +22,8 @@ import os
 import re
 import sys
 import time
+from collections.abc import Callable
+from typing import Any
 from urllib.parse import unquote, urlsplit
 
 from loguru import logger
@@ -34,14 +35,14 @@ CODEX_DEFAULT_CLEANUP_TIMEOUT_MS = 8 * 1000
 CODEX_TEXT_INPUT_MAX_LENGTH = 256 * 1024
 
 
-def _to_non_empty_string(value: Any) -> Optional[str]:
+def _to_non_empty_string(value: Any) -> str | None:
     if not isinstance(value, str):
         return None
     trimmed = value.strip()
     return trimmed or None
 
 
-def is_codex_app_server_provider(base_url: Optional[str]) -> bool:
+def is_codex_app_server_provider(base_url: str | None) -> bool:
     """Whether ``base_url`` selects the Codex app-server transport."""
     if not isinstance(base_url, str):
         return False
@@ -49,7 +50,7 @@ def is_codex_app_server_provider(base_url: Optional[str]) -> bool:
 
 
 def normalize_codex_local_image_path(
-    image_url: str, platform: Optional[str] = None
+    image_url: str, platform: str | None = None
 ) -> str:
     """Convert a ``file://`` URL to a native path Codex can read."""
     if not image_url.startswith("file://"):
@@ -75,17 +76,17 @@ def normalize_codex_local_image_path(
         return unquote(image_url[len("file://") :])
 
 
-def _default_resolve_image_detail(input_data: Dict[str, Any]) -> str:
+def _default_resolve_image_detail(input_data: dict[str, Any]) -> str:
     return input_data.get("imageDetail") or "high"
 
 
-def _extract_text_from_message(message: Dict[str, Any]) -> str:
+def _extract_text_from_message(message: dict[str, Any]) -> str:
     content = message.get("content")
     if isinstance(content, str):
         return content
     if not isinstance(content, list):
         return ""
-    parts: List[str] = []
+    parts: list[str] = []
     for part in content:
         if isinstance(part, dict) and part.get("type") == "text":
             text = part.get("text")
@@ -95,14 +96,14 @@ def _extract_text_from_message(message: Dict[str, Any]) -> str:
 
 
 def _extract_image_inputs(
-    message: Dict[str, Any],
-    resolve_image_detail: Callable[[Dict[str, Any]], str],
-) -> List[Dict[str, Any]]:
+    message: dict[str, Any],
+    resolve_image_detail: Callable[[dict[str, Any]], str],
+) -> list[dict[str, Any]]:
     content = message.get("content")
     if not isinstance(content, list):
         return []
 
-    inputs: List[Dict[str, Any]] = []
+    inputs: list[dict[str, Any]] = []
     for part in content:
         if not isinstance(part, dict) or part.get("type") != "image":
             continue
@@ -124,7 +125,7 @@ def _extract_image_inputs(
     return inputs
 
 
-def _message_from_entry(entry: Any) -> Dict[str, Any]:
+def _message_from_entry(entry: Any) -> dict[str, Any]:
     if not isinstance(entry, dict):
         raise ValueError("Unsupported Codex conversation entry")
     if "role" in entry:
@@ -141,14 +142,14 @@ def _message_from_entry(entry: Any) -> Dict[str, Any]:
 
 
 def build_codex_turn_payload_from_messages(
-    messages: List[Dict[str, Any]],
-    resolve_image_detail: Optional[Callable[[Dict[str, Any]], str]] = None,
-) -> Dict[str, Any]:
+    messages: list[dict[str, Any]],
+    resolve_image_detail: Callable[[dict[str, Any]], str] | None = None,
+) -> dict[str, Any]:
     """Build the ``developerInstructions`` + ``input`` payload for a turn."""
     resolver = resolve_image_detail or _default_resolve_image_detail
-    developer_instruction_parts: List[str] = []
-    transcript_parts: List[str] = []
-    image_inputs: List[Dict[str, Any]] = []
+    developer_instruction_parts: list[str] = []
+    transcript_parts: list[str] = []
+    image_inputs: list[dict[str, Any]] = []
 
     for entry in messages or []:
         message = _message_from_entry(entry)
@@ -174,13 +175,15 @@ def build_codex_turn_payload_from_messages(
         full_transcript = full_transcript[-CODEX_TEXT_INPUT_MAX_LENGTH:]
     transcript_text = full_transcript or "Please answer the latest user request."
 
-    inputs: List[Dict[str, Any]] = [
+    inputs: list[dict[str, Any]] = [
         {"type": "text", "text": transcript_text, "text_elements": []},
         *image_inputs,
     ]
 
     developer_instructions = (
-        "\n\n".join(developer_instruction_parts) if developer_instruction_parts else None
+        "\n\n".join(developer_instruction_parts)
+        if developer_instruction_parts
+        else None
     )
     return {
         "developerInstructions": developer_instructions,
@@ -232,15 +235,15 @@ class CodexAppServerConnection:
 
     def __init__(self, process: Any):
         self._process = process
-        self._message_queue: "asyncio.Queue[Dict[str, Any]]" = asyncio.Queue()
-        self._pending_messages: List[Dict[str, Any]] = []
+        self._message_queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+        self._pending_messages: list[dict[str, Any]] = []
         self._next_request_id = 1
         self._closed = False
         self._disposed = False
-        self._last_exit_code: Optional[int] = None
-        self._process_error_message: Optional[str] = None
+        self._last_exit_code: int | None = None
+        self._process_error_message: str | None = None
         self._stderr_buffer = ""
-        self._tasks: List["asyncio.Task[Any]"] = []
+        self._tasks: list[asyncio.Task[Any]] = []
 
     @classmethod
     async def create(cls, process: Any = None) -> "CodexAppServerConnection":
@@ -273,32 +276,30 @@ class CodexAppServerConnection:
 
     async def run_turn(
         self,
-        messages: List[Dict[str, Any]],
-        resolve_image_detail: Optional[Callable[[Dict[str, Any]], str]] = None,
+        messages: list[dict[str, Any]],
+        resolve_image_detail: Callable[[dict[str, Any]], str] | None = None,
         model_config: Any = None,
         stream: bool = False,
-        on_chunk: Optional[Callable[[Dict[str, Any]], Any]] = None,
-        params: Optional[Dict[str, Any]] = None,
+        on_chunk: Callable[[dict[str, Any]], Any] | None = None,
+        params: dict[str, Any] | None = None,
         abort_signal: Any = None,
-        on_record_event: Optional[Callable[[Dict[str, Any]], Any]] = None,
-    ) -> Dict[str, Any]:
+        on_record_event: Callable[[dict[str, Any]], Any] | None = None,
+    ) -> dict[str, Any]:
         """Start a thread + turn and stream notifications until completion."""
         is_streaming = bool(stream and on_chunk)
 
-        payload = build_codex_turn_payload_from_messages(
-            messages, resolve_image_detail
-        )
+        payload = build_codex_turn_payload_from_messages(messages, resolve_image_detail)
         developer_instructions = payload["developerInstructions"]
         inputs = payload["input"]
 
-        thread_id: Optional[str] = None
-        turn_id: Optional[str] = None
-        latest_error_message: Optional[str] = None
+        thread_id: str | None = None
+        turn_id: str | None = None
+        latest_error_message: str | None = None
         accumulated_text = ""
         accumulated_reasoning = ""
-        latest_usage: Optional[Dict[str, Any]] = None
+        latest_usage: dict[str, Any] | None = None
 
-        def record(event: Dict[str, Any]) -> None:
+        def record(event: dict[str, Any]) -> None:
             if on_record_event is None:
                 return
             result = on_record_event(event)
@@ -310,7 +311,7 @@ class CodexAppServerConnection:
             content: str,
             reasoning: str,
             is_complete: bool,
-            usage: Optional[Dict[str, Any]] = None,
+            usage: dict[str, Any] | None = None,
         ) -> None:
             if not is_streaming or on_chunk is None:
                 return
@@ -364,7 +365,11 @@ class CodexAppServerConnection:
             if not thread_id:
                 raise RuntimeError("thread/start did not return a thread id")
 
-            turn_start_params = {**(params or {}), "threadId": thread_id, "input": inputs}
+            turn_start_params = {
+                **(params or {}),
+                "threadId": thread_id,
+                "input": inputs,
+            }
             record(
                 {
                     "type": "request",
@@ -393,7 +398,7 @@ class CodexAppServerConnection:
             if not turn_id:
                 raise RuntimeError("turn/start did not return a turn id")
 
-            turn_status: Optional[str] = None
+            turn_status: str | None = None
             while not turn_status:
                 message = await self._next_message(abort_signal=abort_signal)
 
@@ -410,12 +415,11 @@ class CodexAppServerConnection:
                 if not isinstance(notification_params, dict):
                     notification_params = {}
 
-                belongs_to_current_turn = (
-                    notification_params.get("threadId") == thread_id
-                    and (
-                        notification_params.get("turnId") == turn_id
-                        or (notification_params.get("turn") or {}).get("id") == turn_id
-                    )
+                belongs_to_current_turn = notification_params.get(
+                    "threadId"
+                ) == thread_id and (
+                    notification_params.get("turnId") == turn_id
+                    or (notification_params.get("turn") or {}).get("id") == turn_id
                 )
 
                 if belongs_to_current_turn:
@@ -433,12 +437,14 @@ class CodexAppServerConnection:
                 if method == "error":
                     error_info = notification_params.get("error") or {}
                     message_text = (
-                        error_info.get("message")
-                        if isinstance(error_info, dict)
-                        else None
-                    ) or notification_params.get(
-                        "message"
-                    ) or "codex app-server reported turn error"
+                        (
+                            error_info.get("message")
+                            if isinstance(error_info, dict)
+                            else None
+                        )
+                        or notification_params.get("message")
+                        or "codex app-server reported turn error"
+                    )
                     latest_error_message = str(message_text)
                     continue
 
@@ -607,7 +613,11 @@ class CodexAppServerConnection:
                 return
             if not line:
                 return
-            text = line.decode("utf-8", "replace") if isinstance(line, bytes) else str(line)
+            text = (
+                line.decode("utf-8", "replace")
+                if isinstance(line, bytes)
+                else str(line)
+            )
             for raw_line in text.splitlines():
                 trimmed = raw_line.strip()
                 if not trimmed:
@@ -633,7 +643,11 @@ class CodexAppServerConnection:
                 return
             if not line:
                 return
-            text = line.decode("utf-8", "replace") if isinstance(line, bytes) else str(line)
+            text = (
+                line.decode("utf-8", "replace")
+                if isinstance(line, bytes)
+                else str(line)
+            )
             self._stderr_buffer += text
             if len(self._stderr_buffer) > 8192:
                 self._stderr_buffer = self._stderr_buffer[-8192:]
@@ -670,7 +684,7 @@ class CodexAppServerConnection:
         await self._send_message({"method": "initialized"})
 
     @staticmethod
-    def _map_usage(usage: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def _map_usage(usage: dict[str, Any]) -> dict[str, Any] | None:
         token_usage = usage.get("tokenUsage") or {}
         picked = token_usage.get("last") or token_usage.get("total")
         if not isinstance(picked, dict):
@@ -688,11 +702,11 @@ class CodexAppServerConnection:
         }
 
     @staticmethod
-    def _is_request_message(message: Dict[str, Any]) -> bool:
+    def _is_request_message(message: dict[str, Any]) -> bool:
         return isinstance(message.get("method"), str) and message.get("id") is not None
 
     @staticmethod
-    def _is_response_message(message: Dict[str, Any]) -> bool:
+    def _is_response_message(message: dict[str, Any]) -> bool:
         return (
             message.get("id") is not None
             and ("result" in message or "error" in message)
@@ -703,7 +717,7 @@ class CodexAppServerConnection:
         self,
         method: str,
         params: Any = None,
-        deadline_at: Optional[float] = None,
+        deadline_at: float | None = None,
         abort_signal: Any = None,
     ) -> Any:
         _throw_if_aborted(abort_signal)
@@ -723,9 +737,7 @@ class CodexAppServerConnection:
                 error = message.get("error")
                 if error:
                     error_message = (
-                        error.get("message")
-                        if isinstance(error, dict)
-                        else str(error)
+                        error.get("message") if isinstance(error, dict) else str(error)
                     )
                     raise RuntimeError(
                         f"codex app-server {method} failed: "
@@ -740,7 +752,7 @@ class CodexAppServerConnection:
             # Keep unmatched notifications/other responses for later stream handling.
             self._pending_messages.append(message)
 
-    async def _respond_to_server_request(self, request: Dict[str, Any]) -> None:
+    async def _respond_to_server_request(self, request: dict[str, Any]) -> None:
         request_id = request.get("id")
         method = request.get("method")
 
@@ -768,10 +780,10 @@ class CodexAppServerConnection:
 
     async def _next_message(
         self,
-        deadline_at: Optional[float] = None,
+        deadline_at: float | None = None,
         abort_signal: Any = None,
         include_pending: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         if include_pending and self._pending_messages:
             return self._pending_messages.pop(0)
 
@@ -789,10 +801,10 @@ class CodexAppServerConnection:
 
             try:
                 return await asyncio.wait_for(self._message_queue.get(), timeout=0.02)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 continue
 
-    async def _send_message(self, payload: Dict[str, Any]) -> None:
+    async def _send_message(self, payload: dict[str, Any]) -> None:
         if self._closed:
             raise self._create_closed_connection_error()
 
@@ -814,8 +826,7 @@ class CodexAppServerConnection:
         if self._process_error_message:
             suffix = f". stderr={stderr}" if stderr else ""
             return RuntimeError(
-                f"codex app-server process error: "
-                f"{self._process_error_message}{suffix}"
+                f"codex app-server process error: {self._process_error_message}{suffix}"
             )
         suffix = f". stderr={stderr}" if stderr else ""
         return RuntimeError(
@@ -828,9 +839,9 @@ class CodexAppServerConnectionManager:
     """Serialize turns and keep one long-lived app-server connection."""
 
     def __init__(self) -> None:
-        self._connection: Optional[CodexAppServerConnection] = None
-        self._lock: Optional[asyncio.Lock] = None
-        self._loop: Optional[asyncio.AbstractEventLoop] = None
+        self._connection: CodexAppServerConnection | None = None
+        self._lock: asyncio.Lock | None = None
+        self._loop: asyncio.AbstractEventLoop | None = None
 
     def _get_lock(self) -> asyncio.Lock:
         loop = asyncio.get_running_loop()
@@ -845,15 +856,15 @@ class CodexAppServerConnectionManager:
 
     async def run_turn(
         self,
-        messages: List[Dict[str, Any]],
-        resolve_image_detail: Optional[Callable[[Dict[str, Any]], str]] = None,
+        messages: list[dict[str, Any]],
+        resolve_image_detail: Callable[[dict[str, Any]], str] | None = None,
         model_config: Any = None,
         stream: bool = False,
-        on_chunk: Optional[Callable[[Dict[str, Any]], Any]] = None,
-        params: Optional[Dict[str, Any]] = None,
+        on_chunk: Callable[[dict[str, Any]], Any] | None = None,
+        params: dict[str, Any] | None = None,
         abort_signal: Any = None,
-        on_record_event: Optional[Callable[[Dict[str, Any]], Any]] = None,
-    ) -> Dict[str, Any]:
+        on_record_event: Callable[[dict[str, Any]], Any] | None = None,
+    ) -> dict[str, Any]:
         async with self._get_lock():
             _throw_if_aborted(abort_signal)
             connection = await self._get_connection()
@@ -894,10 +905,10 @@ codex_connection_manager = CodexAppServerConnectionManager()
 
 
 async def call_ai_with_codex_app_server(
-    messages: List[Dict[str, Any]],
+    messages: list[dict[str, Any]],
     model_config: Any,
-    options: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    options: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Run one Codex turn through the shared app-server connection."""
     options = options or {}
     return await codex_connection_manager.run_turn(
@@ -909,8 +920,7 @@ async def call_ai_with_codex_app_server(
         on_chunk=options.get("onChunk") or options.get("on_chunk"),
         params=options.get("params"),
         abort_signal=options.get("abort_signal") or options.get("abortSignal"),
-        on_record_event=options.get("on_record_event")
-        or options.get("onRecordEvent"),
+        on_record_event=options.get("on_record_event") or options.get("onRecordEvent"),
     )
 
 

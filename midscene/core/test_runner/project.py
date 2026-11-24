@@ -1,18 +1,19 @@
 """Project and setup definition types (upstream test-runner/project.ts)."""
 
-from typing import Any, Awaitable, Callable, Dict, List, TypedDict
+from collections.abc import Awaitable, Callable
+from typing import Any, TypedDict
 
 JsonValue = Any
 
 
 class TestFileSelection(TypedDict, total=False):
-    include: List[str]
-    exclude: List[str]
+    include: list[str]
+    exclude: list[str]
 
 
 class TestTagSelection(TypedDict, total=False):
-    include: List[str]
-    exclude: List[str]
+    include: list[str]
+    exclude: list[str]
 
 
 class ExecutionProjectDefinition(TypedDict, total=False):
@@ -20,11 +21,11 @@ class ExecutionProjectDefinition(TypedDict, total=False):
     setup: Any
     fileSetup: Any
     maxConcurrentFiles: int
-    nodes: List[Any]
+    nodes: list[Any]
     files: TestFileSelection
     tags: TestTagSelection
     retry: int
-    variables: Dict[str, JsonValue]
+    variables: dict[str, JsonValue]
 
 
 class ResolvedExecutionProject(TypedDict, total=False):
@@ -34,9 +35,9 @@ class ResolvedExecutionProject(TypedDict, total=False):
     fileSetup: Any
     maxConcurrentFiles: int
     files: TestFileSelection
-    tags: Dict[str, List[str]]
+    tags: dict[str, list[str]]
     retry: int
-    variables: Dict[str, JsonValue]
+    variables: dict[str, JsonValue]
 
 
 class WorkflowExecutionProject(TypedDict, total=False):
@@ -49,7 +50,7 @@ class WorkflowExecutionProject(TypedDict, total=False):
 
 class ProjectSetupContext(TypedDict, total=False):
     project: ResolvedExecutionProject
-    env: Dict[str, str]
+    env: dict[str, str]
     signal: Any
     onTeardown: Callable[[Any], None]
 
@@ -69,8 +70,8 @@ class ProjectSetupDefinition(TypedDict, total=False):
 class FileSetupContext(TypedDict, total=False):
     project: ResolvedExecutionProject
     projectContext: Any
-    file: Dict[str, str]
-    env: Dict[str, str]
+    file: dict[str, str]
+    env: dict[str, str]
     signal: Any
     onTeardown: Callable[[Callable[[], Awaitable[None]]], None]
 
@@ -83,7 +84,7 @@ class FileSetupDefinition(TypedDict, total=False):
 class DocumentSetupContext(TypedDict, total=False):
     project: WorkflowExecutionProject
     projectContext: Any
-    document: Dict[str, Any]
+    document: dict[str, Any]
     signal: Any
     onTeardown: Callable[[Any], None]
 

@@ -15,7 +15,7 @@ import time
 import uuid
 from contextvars import ContextVar
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Protocol, TypedDict
+from typing import Any, Optional, Protocol, TypedDict
 
 from midscene.core.dump.execution_recorder import ExecutionRecorder
 from midscene.core.dump.html_utils import (
@@ -61,7 +61,7 @@ class ReportMeta(TypedDict, total=False):
     sdkVersion: str
     groupName: str
     groupDescription: str
-    modelBriefs: List[Dict[str, Any]]
+    modelBriefs: list[dict[str, Any]]
     deviceType: str
 
 
@@ -70,16 +70,16 @@ class IReportGenerator(Protocol):
 
     def on_execution_update(
         self,
-        execution: Dict[str, Any],
+        execution: dict[str, Any],
         report_meta: ReportMeta,
-        attributes: Optional[Dict[str, Any]] = None,
+        attributes: dict[str, Any] | None = None,
     ) -> None: ...
 
     async def flush(self) -> None: ...
 
-    async def finalize(self) -> Optional[str]: ...
+    async def finalize(self) -> str | None: ...
 
-    def get_report_path(self) -> Optional[str]: ...
+    def get_report_path(self) -> str | None: ...
 
 
 class NullReportGenerator:
@@ -91,22 +91,19 @@ class NullReportGenerator:
     async def flush(self) -> None:
         return None
 
-    async def finalize(self) -> Optional[str]:
+    async def finalize(self) -> str | None:
         return None
 
-    def get_report_path(self) -> Optional[str]:
+    def get_report_path(self) -> str | None:
         return None
 
 
 null_report_generator = NullReportGenerator()
 
 
-def assert_report_generation_options(opts: Dict[str, Any]) -> None:
+def assert_report_generation_options(opts: dict[str, Any]) -> None:
     """Reject an execution-dump request that has no report to attach to."""
-    if (
-        opts.get("generateReport") is False
-        and opts.get("persistExecutionDump") is True
-    ):
+    if opts.get("generateReport") is False and opts.get("persistExecutionDump") is True:
         raise ValueError(
             "persistExecutionDump cannot be true when generateReport is false"
         )
@@ -122,7 +119,7 @@ def ensure_html_file_name(report_file_name: str) -> str:
 
 def validate_report_file_name(
     report_file_name: str,
-    output_format: Optional[str] = None,
+    output_format: str | None = None,
 ) -> None:
     """Validate a user-supplied report name (upstream validateReportFileName)."""
     if not report_file_name or not report_file_name.strip():
@@ -156,7 +153,7 @@ _CURRENT_REPORT_SESSION: ContextVar[Optional["ReportSession"]] = ContextVar(
 )
 
 
-def _execution_id(execution: Any) -> Optional[str]:
+def _execution_id(execution: Any) -> str | None:
     if isinstance(execution, dict):
         return execution.get("id")
     return getattr(execution, "id", None)
@@ -175,16 +172,16 @@ def _json_default(value: Any) -> Any:
 class _ReportSourceRecorder:
     """Structured Agent records plus immutable Step cutoffs (upstream writer)."""
 
-    def __init__(self, directory: str, busy: Optional[Any] = None):
+    def __init__(self, directory: str, busy: Any | None = None):
         self.directory = directory
         self.busy = busy
         self.snapshot_images: set = set()
         self.recorder = ExecutionRecorder()
         self.id = uuid.uuid4().hex
         self._collected = set()
-        self._source_path: Optional[str] = None
-        self._finalization: Optional[asyncio.Future] = None
-        self._uncollected_source: Optional[Dict[str, Any]] = None
+        self._source_path: str | None = None
+        self._finalization: asyncio.Future | None = None
+        self._uncollected_source: dict[str, Any] | None = None
         self._queue: asyncio.Lock = asyncio.Lock()
 
     def get_report_path(self) -> None:
@@ -205,7 +202,7 @@ class _ReportSourceRecorder:
         self,
         execution: Any,
         report_meta: ReportMeta,
-        attributes: Optional[Dict[str, Any]] = None,
+        attributes: dict[str, Any] | None = None,
     ) -> None:
         if self._finalization is not None:
             raise RuntimeError("The report record stream has been finalized.")
@@ -216,8 +213,8 @@ class _ReportSourceRecorder:
     async def create_source_snapshot(
         self,
         scope_id: str,
-        execution_ids: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        execution_ids: list[str] | None = None,
+    ) -> dict[str, Any]:
         if self._finalization is not None:
             raise RuntimeError("The report record stream has been finalized.")
         return await self._snapshot(scope_id, execution_ids)
@@ -225,8 +222,8 @@ class _ReportSourceRecorder:
     async def _snapshot(
         self,
         scope_id: str,
-        execution_ids: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        execution_ids: list[str] | None = None,
+    ) -> dict[str, Any]:
         if not isinstance(scope_id, str) or not scope_id.strip():
             raise ValueError("Invalid report scope ID")
 
@@ -241,9 +238,7 @@ class _ReportSourceRecorder:
                 if _execution_id(execution) in wanted
             ]
 
-        path = os.path.join(
-            self.directory, f"{self.id}.{uuid.uuid4().hex}.json"
-        )
+        path = os.path.join(self.directory, f"{self.id}.{uuid.uuid4().hex}.json")
         payload = {"executions": captured}
         async with self._queue:
             os.makedirs(self.directory, exist_ok=True)
@@ -256,7 +251,7 @@ class _ReportSourceRecorder:
                 if execution_id:
                     self._collected.add(execution_id)
 
-        collection: Dict[str, Any] = {
+        collection: dict[str, Any] = {
             "status": "partial" if busy_at_cutoff else "complete",
             "capturedAt": int(time.time() * 1000),
         }
@@ -270,7 +265,7 @@ class _ReportSourceRecorder:
             "collection": collection,
         }
 
-    async def capture_uncollected(self) -> Optional[Dict[str, Any]]:
+    async def capture_uncollected(self) -> dict[str, Any] | None:
         if self._finalization is not None:
             await self._finalization
             source = self._uncollected_source
@@ -278,12 +273,11 @@ class _ReportSourceRecorder:
             return source
         return await self._capture_pending()
 
-    async def _capture_pending(self) -> Optional[Dict[str, Any]]:
+    async def _capture_pending(self) -> dict[str, Any] | None:
         ids = [
             execution_id
             for execution_id in (
-                _execution_id(execution)
-                for execution in self.recorder.executions
+                _execution_id(execution) for execution in self.recorder.executions
             )
             if execution_id and execution_id not in self._collected
         ]
@@ -316,10 +310,10 @@ class ReportSession:
         if not os.path.isabs(directory):
             raise ValueError("Report session directory must be absolute.")
         self.directory = directory
-        self._writers: List[_ReportSourceRecorder] = []
+        self._writers: list[_ReportSourceRecorder] = []
         self._ended = False
-        self._completion: Optional[List[Dict[str, Any]]] = None
-        self._ownership: Optional[asyncio.Future] = None
+        self._completion: list[dict[str, Any]] | None = None
+        self._ownership: asyncio.Future | None = None
         self._lock = asyncio.Lock()
 
     async def run(self, callback: Any) -> Any:
@@ -343,18 +337,14 @@ class ReportSession:
 
     def create_recorder(self, is_busy: Any) -> _ReportSourceRecorder:
         if self._ownership is None:
-            raise RuntimeError(
-                "Start the report session before creating a writer."
-            )
+            raise RuntimeError("Start the report session before creating a writer.")
         if self._ended:
-            raise RuntimeError(
-                "Cannot add a writer to an ended report session."
-            )
+            raise RuntimeError("Cannot add a writer to an ended report session.")
         writer = _ReportSourceRecorder(self.directory, is_busy)
         self._writers.append(writer)
         return writer
 
-    async def finish(self) -> List[Dict[str, Any]]:
+    async def finish(self) -> list[dict[str, Any]]:
         self._ended = True
         if self._completion is not None:
             return self._completion
@@ -362,7 +352,7 @@ class ReportSession:
         async with self._lock:
             if self._completion is not None:
                 return self._completion
-            sources: List[Dict[str, Any]] = []
+            sources: list[dict[str, Any]] = []
             for writer in self._writers:
                 source = await writer.capture_uncollected()
                 if source:
@@ -372,9 +362,7 @@ class ReportSession:
                 else:
                     await writer.flush()
             os.makedirs(self.directory, exist_ok=True)
-            os.makedirs(
-                os.path.join(self.directory, "screenshots"), exist_ok=True
-            )
+            os.makedirs(os.path.join(self.directory, "screenshots"), exist_ok=True)
             with open(
                 os.path.join(self.directory, "report.json"),
                 "w",
@@ -386,25 +374,17 @@ class ReportSession:
 
     async def prune(self) -> None:
         if self._completion is None:
-            raise RuntimeError(
-                "Finish the report session before pruning it."
-            )
+            raise RuntimeError("Finish the report session before pruning it.")
         if not self._writers:
             shutil.rmtree(self.directory, ignore_errors=True)
             return
         if any(writer.is_busy() for writer in self._writers):
             return
-        shutil.rmtree(
-            os.path.join(self.directory, "data"), ignore_errors=True
-        )
+        shutil.rmtree(os.path.join(self.directory, "data"), ignore_errors=True)
         report_path = os.path.join(self.directory, "report.json")
         if os.path.exists(report_path):
             os.remove(report_path)
-        retained = {
-            path
-            for writer in self._writers
-            for path in writer.snapshot_images
-        }
+        retained = {path for writer in self._writers for path in writer.snapshot_images}
         images_dir = os.path.join(self.directory, "screenshots")
         if os.path.isdir(images_dir):
             for file_name in os.listdir(images_dir):
@@ -412,7 +392,7 @@ class ReportSession:
                     os.remove(os.path.join(images_dir, file_name))
 
 
-def current_report_session() -> Optional[ReportSession]:
+def current_report_session() -> ReportSession | None:
     return _CURRENT_REPORT_SESSION.get()
 
 
@@ -427,9 +407,9 @@ class ReportGenerator:
 
     def __init__(
         self,
-        report_path: Optional[str] = None,
+        report_path: str | None = None,
         auto_print: bool = True,
-        dump: Optional[Dict[str, Any]] = None,
+        dump: dict[str, Any] | None = None,
         screenshot_mode: str = "inline",
         persist_execution_dump: bool = False,
         reuse_existing_report: bool = False,
@@ -441,10 +421,10 @@ class ReportGenerator:
         )
         self.persist_execution_dump = bool(persist_execution_dump)
         self.reuse_existing_report = bool(reuse_existing_report)
-        self.report_attributes: Dict[str, str] = {}
-        self._dump: Dict[str, Any] = dump or {}
+        self.report_attributes: dict[str, str] = {}
+        self._dump: dict[str, Any] = dump or {}
         existing_executions = self._dump.get("executions")
-        self._recorder: Optional[ExecutionRecorder] = (
+        self._recorder: ExecutionRecorder | None = (
             ExecutionRecorder(existing_executions)
             if existing_executions is not None
             else None
@@ -455,14 +435,14 @@ class ReportGenerator:
         self._printed = False
         self._initialized = False
         self._report_stream_id = uuid.uuid4().hex
-        self._last_report_meta: Optional[ReportMeta] = None
-        self._source_directory: Optional[str] = None
-        self._execution_comment_key_by_object: Dict[int, str] = {}
+        self._last_report_meta: ReportMeta | None = None
+        self._source_directory: str | None = None
+        self._execution_comment_key_by_object: dict[int, str] = {}
         self._execution_comment_key_index = 0
         self._execution_log_index = 0
-        self._execution_log_file_index_by_key: Dict[str, int] = {}
-        self._artifact_store: Optional[ReportArtifactStore] = None
-        self._screenshot_store: Optional[ReportImageStore] = None
+        self._execution_log_file_index_by_key: dict[str, int] = {}
+        self._artifact_store: ReportArtifactStore | None = None
+        self._screenshot_store: ReportImageStore | None = None
 
         if self.report_path:
             report_dir = os.path.dirname(self.report_path) or "."
@@ -495,7 +475,7 @@ class ReportGenerator:
             self._hydrate_state_from_existing_report()
 
     @classmethod
-    def create(cls, report_file_name: str, opts: Dict[str, Any]) -> IReportGenerator:
+    def create(cls, report_file_name: str, opts: dict[str, Any]) -> IReportGenerator:
         """Factory mirroring upstream ReportGenerator.create."""
         assert_report_generation_options(opts)
         output_format = opts.get("outputFormat", opts.get("output_format"))
@@ -514,9 +494,7 @@ class ReportGenerator:
             auto_print=opts.get("autoPrintReportMsg", True),
             screenshot_mode="directory" if directory_mode else "inline",
             persist_execution_dump=bool(
-                opts.get(
-                    "persistExecutionDump", opts.get("persist_execution_dump")
-                )
+                opts.get("persistExecutionDump", opts.get("persist_execution_dump"))
             ),
             reuse_existing_report=bool(
                 opts.get("reuseExistingReport", opts.get("reuse_existing_report"))
@@ -525,9 +503,9 @@ class ReportGenerator:
 
     def on_execution_update(
         self,
-        execution: Dict[str, Any],
+        execution: dict[str, Any],
         report_meta: ReportMeta,
-        attributes: Optional[Dict[str, Any]] = None,
+        attributes: dict[str, Any] | None = None,
     ) -> None:
         """Replace the stored state of an execution (latest state wins)."""
         if self._finalized:
@@ -535,9 +513,7 @@ class ReportGenerator:
         self._merge_report_meta(report_meta)
         self._merge_report_attributes(attributes)
         if self._recorder is None:
-            self._recorder = ExecutionRecorder(
-                self._dump.setdefault("executions", [])
-            )
+            self._recorder = ExecutionRecorder(self._dump.setdefault("executions", []))
         self._recorder.report_meta = report_meta
         self._recorder.record(execution)
         self._dirty = True
@@ -554,7 +530,7 @@ class ReportGenerator:
         else:
             self._flush_inline()
 
-    async def finalize(self) -> Optional[str]:
+    async def finalize(self) -> str | None:
         if not self._finalized:
             await self.flush()
             if self._artifact_store is not None:
@@ -578,10 +554,10 @@ class ReportGenerator:
             self._finalized = True
         return self.report_path if self._written else None
 
-    def get_report_path(self) -> Optional[str]:
+    def get_report_path(self) -> str | None:
         return self.report_path
 
-    def enable_source_snapshots(self, scope_id: Optional[str] = None) -> None:
+    def enable_source_snapshots(self, scope_id: str | None = None) -> None:
         """Prepare the source-snapshot directory for a report scope."""
         scope_id = scope_id or self._report_stream_id
         if (
@@ -597,7 +573,7 @@ class ReportGenerator:
             get_midscene_run_dir("test-results"), scope_id, "records"
         )
 
-    def _snapshot_meta(self) -> Dict[str, Any]:
+    def _snapshot_meta(self) -> dict[str, Any]:
         return dict(
             self._last_report_meta
             or {
@@ -610,8 +586,8 @@ class ReportGenerator:
     async def create_source_snapshot(
         self,
         scope_id: str,
-        execution_ids: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        execution_ids: list[str] | None = None,
+    ) -> dict[str, Any]:
         """Persist a frozen source snapshot (upstream createSourceSnapshot)."""
         if self._finalized:
             raise RuntimeError("The report has been finalized.")
@@ -620,9 +596,7 @@ class ReportGenerator:
         self.enable_source_snapshots(scope_id)
 
         if self._recorder is None:
-            self._recorder = ExecutionRecorder(
-                self._dump.setdefault("executions", [])
-            )
+            self._recorder = ExecutionRecorder(self._dump.setdefault("executions", []))
         self._recorder.report_meta = self._snapshot_meta()
         captured = self._recorder.capture(execution_ids, self._recorder.report_meta)
 
@@ -647,24 +621,20 @@ class ReportGenerator:
 
     async def write_runner_report(
         self,
-        input: Dict[str, Any],
+        input: dict[str, Any],
         scope_id: str,
         meta: ReportMeta,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Publish a runner snapshot into this report (upstream writeRunnerReport)."""
         if self._finalized:
             raise RuntimeError("The report has been finalized.")
         self._merge_report_meta(meta)
         if self._recorder is None:
-            self._recorder = ExecutionRecorder(
-                self._dump.setdefault("executions", [])
-            )
+            self._recorder = ExecutionRecorder(self._dump.setdefault("executions", []))
         self._recorder.report_meta = meta
         report_meta = self._last_report_meta or dict(meta)
         executions = list(self._recorder.executions)
-        agent_dump = ReportActionDump(
-            {**report_meta, "executions": executions}
-        )
+        agent_dump = ReportActionDump({**report_meta, "executions": executions})
         report_id = (
             self.report_attributes.get("data-report-id")
             or self.report_attributes.get("data-group-id")
@@ -703,17 +673,13 @@ class ReportGenerator:
                 )
                 if not self._initialized:
                     self._initialize_directory_report()
-            self._artifact_store.write_runner(
-                json.dumps(dump, ensure_ascii=False)
-            )
+            self._artifact_store.write_runner(json.dumps(dump, ensure_ascii=False))
         else:
             self._flush_inline()
             if not self._initialized:
                 self._initialize_inline_report()
             with open(self.report_path, "a", encoding="utf-8") as handle:
-                handle.write(
-                    "\n" + generate_test_run_report_script_tag(dump)
-                )
+                handle.write("\n" + generate_test_run_report_script_tag(dump))
 
         self._written = True
         self._dirty = False
@@ -778,15 +744,11 @@ class ReportGenerator:
         single_dump = ReportActionDump(
             {**(self._last_report_meta or {}), "executions": [dump_execution]}
         )
-        serialized = single_dump.serialize_with_reference_images(
-            reference_refs
-        )
+        serialized = single_dump.serialize_with_reference_images(reference_refs)
         with open(self.report_path, "a", encoding="utf-8") as handle:
             handle.write(
                 "\n"
-                + generate_dump_script_tag(
-                    serialized, self._dump_script_attributes()
-                )
+                + generate_dump_script_tag(serialized, self._dump_script_attributes())
             )
 
     def _write_execution_to_artifact(self, execution: Any) -> None:
@@ -797,9 +759,7 @@ class ReportGenerator:
         single_dump = ReportActionDump(
             {**(self._last_report_meta or {}), "executions": [dump_execution]}
         )
-        serialized = single_dump.serialize_with_reference_images(
-            reference_refs
-        )
+        serialized = single_dump.serialize_with_reference_images(reference_refs)
         self._artifact_store.write_execution(
             self._execution_comment_key(execution),
             serialized,
@@ -814,17 +774,15 @@ class ReportGenerator:
 
     def _persist_reference_images(
         self, dump_execution: ExecutionDump
-    ) -> Dict[str, Any]:
-        refs: Dict[str, Any] = {}
+    ) -> dict[str, Any]:
+        refs: dict[str, Any] = {}
         if self._screenshot_store is None:
             return refs
         for image_url in dump_execution.get_reference_image_urls():
-            refs[image_url] = self._screenshot_store.persist_reference_image(
-                image_url
-            )
+            refs[image_url] = self._screenshot_store.persist_reference_image(image_url)
         return refs
 
-    def _dump_script_attributes(self) -> Dict[str, str]:
+    def _dump_script_attributes(self) -> dict[str, str]:
         return {
             "data-group-id": self._report_stream_id,
             DATA_SCREENSHOT_MODE_ATTR: self.screenshot_mode,
@@ -890,9 +848,7 @@ class ReportGenerator:
             {**(self._last_report_meta or {}), "executions": [dump_execution]}
         )
         reference_refs = self._persist_reference_images(dump_execution)
-        serialized = single_dump.serialize_with_reference_images(
-            reference_refs, 2
-        )
+        serialized = single_dump.serialize_with_reference_images(reference_refs, 2)
         if self.screenshot_mode == "inline":
             serialized = json.dumps(
                 self._rewrite_inline_dump_refs_to_files(json.loads(serialized)),
@@ -924,9 +880,7 @@ class ReportGenerator:
                 for key, item in value.items()
             }
         if isinstance(value, list):
-            return [
-                self._rewrite_inline_dump_refs_to_files(item) for item in value
-            ]
+            return [self._rewrite_inline_dump_refs_to_files(item) for item in value]
         return value
 
     def _hydrate_state_from_existing_report(self) -> None:
@@ -976,9 +930,7 @@ class ReportGenerator:
         if report_meta.get("deviceType"):
             self._dump["deviceType"] = report_meta["deviceType"]
 
-    def _merge_report_attributes(
-        self, attributes: Optional[Dict[str, Any]]
-    ) -> None:
+    def _merge_report_attributes(self, attributes: dict[str, Any] | None) -> None:
         if not attributes:
             return
         for key, value in attributes.items():
@@ -1000,6 +952,4 @@ class ReportGenerator:
                 f"{os.path.dirname(self.report_path)}"
             )
         else:
-            logger.info(
-                f"Midscene - report file updated: {self.report_path}"
-            )
+            logger.info(f"Midscene - report file updated: {self.report_path}")

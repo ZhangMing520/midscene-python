@@ -63,9 +63,7 @@ async def test_does_not_publish_unresolved_locator(locate):
 @pytest.mark.asyncio
 async def test_publishes_resolved_action_lifecycle_events_with_the_same_fractional_center():
     """publishes resolved action lifecycle events with the same fractional center"""
-    task = _action_task(
-        {"locate": {"description": "submit", "center": [10.25, 20.75]}}
-    )
+    task = _action_task({"locate": {"description": "submit", "center": [10.25, 20.75]}})
     emitted = []
 
     async def emit(phase, data):

@@ -1,15 +1,13 @@
 """Synced from upstream packages/web-integration/tests/unit-test/
 web-actions-navigation.test.ts and action-keyboard-press.test.ts."""
 
-from typing import List
-
 import pytest
 
 
 class TestWebPageKeyboard:
     class RecordingServer:
         def __init__(self):
-            self.calls: List[tuple] = []
+            self.calls: list[tuple] = []
 
         async def call(self, method, args=None, timeout=None):
             self.calls.append((method, args))
@@ -43,7 +41,6 @@ class TestWebPageKeyboard:
         assert build_key_commands("page down") == [{"key": "PageDown"}]
         assert build_key_commands("+") == [{"key": "+"}]
 
-
     @pytest.mark.asyncio
     async def test_keyboard_press_sends_key_objects(self):
         # the extension dispatches CDP Input.dispatchKeyEvent from {key, command}
@@ -55,4 +52,3 @@ class TestWebPageKeyboard:
             "keyboard.press",
             [[{"key": "Control"}, {"key": "A", "command": "SelectAll"}]],
         )
-

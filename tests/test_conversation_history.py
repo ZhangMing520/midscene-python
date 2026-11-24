@@ -297,9 +297,7 @@ def test_ignores_newly_introduced_goals_with_empty_descriptions_in_merge_sub_goa
         ]
     )
 
-    assert history.sub_goals_to_text() == (
-        "Sub-goals:\n1. Existing goal (finished)"
-    )
+    assert history.sub_goals_to_text() == ("Sub-goals:\n1. Existing goal (finished)")
 
 
 def test_updates_a_single_sub_goal_by_index():
@@ -343,9 +341,7 @@ def test_updates_description_of_a_sub_goal():
 def test_returns_false_when_updating_non_existent_sub_goal():
     """returns false when updating non-existent sub-goal"""
     history = ConversationHistory()
-    history.set_sub_goals(
-        [{"index": 1, "status": "pending", "description": "First"}]
-    )
+    history.set_sub_goals([{"index": 1, "status": "pending", "description": "First"}])
 
     result = history.update_sub_goal(99, {"status": "finished"})
 
@@ -396,10 +392,7 @@ def test_marks_all_sub_goals_as_finished():
     history.mark_all_sub_goals_finished()
 
     assert history.sub_goals_to_text() == (
-        "Sub-goals:\n"
-        "1. Task 1 (finished)\n"
-        "2. Task 2 (finished)\n"
-        "3. Task 3 (finished)"
+        "Sub-goals:\n1. Task 1 (finished)\n2. Task 2 (finished)\n3. Task 3 (finished)"
     )
 
 
@@ -416,9 +409,7 @@ def test_marks_all_sub_goals_as_finished_when_some_are_already_finished():
     history.mark_all_sub_goals_finished()
 
     assert history.sub_goals_to_text() == (
-        "Sub-goals:\n"
-        "1. Task 1 (finished)\n"
-        "2. Task 2 (finished)"
+        "Sub-goals:\n1. Task 1 (finished)\n2. Task 2 (finished)"
     )
 
 
@@ -463,9 +454,7 @@ def test_does_not_change_status_when_no_pending_goals_exist():
 
     # No pending goals, so no change
     assert history.sub_goals_to_text() == (
-        "Sub-goals:\n"
-        "1. Task 1 (finished)\n"
-        "2. Task 2 (finished)"
+        "Sub-goals:\n1. Task 1 (finished)\n2. Task 2 (finished)"
     )
 
 
@@ -518,9 +507,7 @@ def test_appends_log_to_the_currently_running_sub_goal():
 def test_ignores_empty_log_strings():
     """ignores empty log strings"""
     history = ConversationHistory()
-    history.set_sub_goals(
-        [{"index": 1, "status": "pending", "description": "Task 1"}]
-    )
+    history.set_sub_goals([{"index": 1, "status": "pending", "description": "Task 1"}])
 
     history.append_sub_goal_log("")
     history.append_sub_goal_log("Valid log")
@@ -548,9 +535,7 @@ def test_does_nothing_when_appending_log_with_no_running_sub_goal():
 
     # No running goal, so no logs appear
     assert history.sub_goals_to_text() == (
-        "Sub-goals:\n"
-        "1. Task 1 (finished)\n"
-        "2. Task 2 (finished)"
+        "Sub-goals:\n1. Task 1 (finished)\n2. Task 2 (finished)"
     )
 
 
@@ -583,9 +568,7 @@ def test_clears_logs_when_sub_goal_status_changes_via_mark_sub_goal_finished():
 def test_clears_logs_when_sub_goal_description_changes_via_update_sub_goal():
     """clears logs when sub-goal description changes via updateSubGoal"""
     history = ConversationHistory()
-    history.set_sub_goals(
-        [{"index": 1, "status": "pending", "description": "Task 1"}]
-    )
+    history.set_sub_goals([{"index": 1, "status": "pending", "description": "Task 1"}])
 
     history.append_sub_goal_log("Did something")
 
@@ -593,18 +576,14 @@ def test_clears_logs_when_sub_goal_description_changes_via_update_sub_goal():
     history.update_sub_goal(1, {"description": "Updated Task 1"})
 
     assert history.sub_goals_to_text() == (
-        "Sub-goals:\n"
-        "1. Updated Task 1 (running)\n"
-        "Current sub-goal is: Updated Task 1"
+        "Sub-goals:\n1. Updated Task 1 (running)\nCurrent sub-goal is: Updated Task 1"
     )
 
 
 def test_preserves_logs_when_update_sub_goal_sets_same_values():
     """preserves logs when updateSubGoal sets same values"""
     history = ConversationHistory()
-    history.set_sub_goals(
-        [{"index": 1, "status": "pending", "description": "Task 1"}]
-    )
+    history.set_sub_goals([{"index": 1, "status": "pending", "description": "Task 1"}])
 
     history.append_sub_goal_log("Did something")
 
@@ -636,9 +615,7 @@ def test_clears_logs_when_set_sub_goals_replaces_all_sub_goals():
 
     # New sub-goals start with no logs
     assert history.sub_goals_to_text() == (
-        "Sub-goals:\n"
-        "1. New task (running)\n"
-        "Current sub-goal is: New task"
+        "Sub-goals:\n1. New task (running)\nCurrent sub-goal is: New task"
     )
 
 
@@ -657,9 +634,7 @@ def test_clears_logs_for_non_finished_goals_when_mark_all_sub_goals_finished_is_
 
     # All finished, no current goal, no logs shown
     assert history.sub_goals_to_text() == (
-        "Sub-goals:\n"
-        "1. Task 1 (finished)\n"
-        "2. Task 2 (finished)"
+        "Sub-goals:\n1. Task 1 (finished)\n2. Task 2 (finished)"
     )
 
 
@@ -714,9 +689,7 @@ def test_historical_logs_are_independent_from_sub_goal_logs():
     history = ConversationHistory()
 
     # Set up sub-goals (deepThink mode scenario)
-    history.set_sub_goals(
-        [{"index": 1, "status": "pending", "description": "Task 1"}]
-    )
+    history.set_sub_goals([{"index": 1, "status": "pending", "description": "Task 1"}])
     history.append_sub_goal_log("Sub-goal log entry")
 
     # Also add historical logs (non-deepThink mode scenario)
@@ -897,9 +870,7 @@ def test_handles_compression_with_image_messages():
 def test_keeps_output_items_together_while_trimming_old_input_images_in_a_snapshot():
     """keeps output items together while trimming old input images in a snapshot"""
     history = ConversationHistory()
-    history.append_message(
-        _user_with_image("before", "data:image/png;base64,OLD")
-    )
+    history.append_message(_user_with_image("before", "data:image/png;base64,OLD"))
     output = {
         "type": "model-output",
         "output": {
@@ -915,9 +886,7 @@ def test_keeps_output_items_together_while_trimming_old_input_images_in_a_snapsh
         },
     }
     history.append_model_output(output["output"])
-    history.append_message(
-        _user_with_image("after", "data:image/png;base64,NEW")
-    )
+    history.append_message(_user_with_image("after", "data:image/png;base64,NEW"))
     snapshot = history.snapshot(1)
     assert snapshot[1] == output
     assert snapshot[0] == {

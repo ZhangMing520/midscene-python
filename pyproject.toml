@@ -13,25 +13,23 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.12",
     "Topic :: Software Development :: Testing",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.12"
 dependencies = [
-    "pydantic>=2.0,<3.0",
+    "pydantic>=2.5,<3.0",
     "playwright>=1.40.0,<2.0",
     "websockets>=12.0,<16.0",
-    "opencv-python>=4.8.0,<5.0",
-    "pillow>=10.0.0,<11.0",
-    "numpy>=1.24.0,<2.0",
+    "opencv-python>=4.9.0,<5.0",
+    "pillow>=10.1.0,<11.0",
+    "numpy>=1.26.0,<2.0",
     "aiohttp>=3.9.0,<4.0",
     "loguru>=0.7.0,<1.0",
     "typer>=0.9.0,<1.0",
-    "pyyaml>=6.0,<7.0",
+    "pyyaml>=6.0.1,<7.0",
     "httpx[socks]>=0.25.0,<1.0",
     "asyncio-mqtt",
     "pure-python-adb>=0.3.0dev0",
@@ -54,11 +52,9 @@ dev = [
     "pytest>=7.4.0",
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.1.0",
-    "black>=23.0.0",
-    "isort>=5.12.0",
-    "mypy>=1.5.0",
+    "mypy>=1.6.0",
     "pre-commit>=3.4.0",
-    "ruff>=0.1.0",
+    "ruff>=0.6.1",
 ]
 docs = [
     "mkdocs>=1.5.0",
@@ -80,36 +76,8 @@ packages = ["midscene"]
 
 
 
-[tool.black]
-line-length = 88
-target-version = ['py39']
-include = '\.pyi?$'
-exclude = '''
-/(
-    \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | _build
-  | buck-out
-  | build
-  | dist
-)/
-'''
-
-[tool.isort]
-profile = "black"
-line_length = 88
-multi_line_output = 3
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-ensure_newline_before_comments = true
-
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.12"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -124,8 +92,10 @@ warn_unreachable = true
 strict_equality = true
 
 [tool.ruff]
-target-version = "py39"
+target-version = "py312"
 line-length = 88
+
+[tool.ruff.lint]
 select = [
     "E",  # pycodestyle errors
     "W",  # pycodestyle warnings
@@ -136,13 +106,27 @@ select = [
     "UP", # pyupgrade
 ]
 ignore = [
-    "E501",  # line too long, handled by black
+    "E501",  # line too long, handled by the formatter
     "B008",  # do not perform function calls in argument defaults
     "C901",  # too complex
+    # StrEnum changes str()/format() output of the existing str+Enum members.
+    "UP042",
+    # PEP 695 type parameters change runtime typing behavior of public generics.
+    "UP046",
+    "UP047",
 ]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
+# Import order in these modules is load-bearing for circular imports.
+"midscene/__init__.py" = ["I001"]
+"midscene/core/__init__.py" = ["I001"]
+"midscene/core/agent/agent.py" = ["I001"]
+# Typer inspects callback annotations at runtime; older supported versions
+# require typing.Optional instead of PEP 604 unions.
+"midscene/cli/index.py" = ["UP045"]
+# Late imports stay below the definitions to avoid circular imports.
+"midscene/shared/agent_tools/__init__.py" = ["E402"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

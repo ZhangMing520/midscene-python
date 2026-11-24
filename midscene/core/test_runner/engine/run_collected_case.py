@@ -3,7 +3,8 @@
 import datetime
 import inspect
 import uuid
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 from loguru import logger
 
@@ -31,14 +32,14 @@ from midscene.core.test_runner.parser.types import CollectedCase
 
 
 def _now() -> datetime.datetime:
-    return datetime.datetime.now(datetime.timezone.utc)
+    return datetime.datetime.now(datetime.UTC)
 
 
 def _iso(value: datetime.datetime) -> str:
     return value.isoformat().replace("+00:00", "Z")
 
 
-async def _call(callback: Optional[Callable[..., Any]], *args: Any) -> None:
+async def _call(callback: Callable[..., Any] | None, *args: Any) -> None:
     if callback is None:
         return
     result = callback(*args)
@@ -48,8 +49,8 @@ async def _call(callback: Optional[Callable[..., Any]], *args: Any) -> None:
 
 async def run_collected_case(
     collected_case: CollectedCase,
-    options: Dict[str, Any],
-) -> Dict[str, Any]:
+    options: dict[str, Any],
+) -> dict[str, Any]:
     definition = collected_case["definition"]
     phases = {
         "beforeEach": list(options.get("beforeEach") or []),
@@ -69,11 +70,11 @@ async def run_collected_case(
     started_at = _now()
     set_resource_operation_identity(scope_signal, {"scopeId": run_id})
 
-    beforeEach: List[Dict[str, Any]] = []
-    steps: List[Dict[str, Any]] = []
-    afterEach: List[Dict[str, Any]] = []
-    captured_sources: Dict[str, Dict[str, Any]] = {}
-    teardown_stack: List[Dict[str, Any]] = []
+    beforeEach: list[dict[str, Any]] = []
+    steps: list[dict[str, Any]] = []
+    afterEach: list[dict[str, Any]] = []
+    captured_sources: dict[str, dict[str, Any]] = {}
+    teardown_stack: list[dict[str, Any]] = []
     accepting_teardowns = True
 
     def on_teardown(node: str, teardown: Any) -> None:
@@ -98,7 +99,7 @@ async def run_collected_case(
 
     async def run_phase(
         phase: str,
-        results: List[Dict[str, Any]],
+        results: list[dict[str, Any]],
         signal: Any = None,
     ) -> None:
         execution_signal = scope_signal if signal is None else signal
@@ -155,7 +156,7 @@ async def run_collected_case(
             ):
                 break
 
-    execution_errors: List[Any] = []
+    execution_errors: list[Any] = []
     try:
         await run_phase("beforeEach", beforeEach)
         if not any(step.get("status") != "success" for step in beforeEach):
@@ -163,10 +164,10 @@ async def run_collected_case(
     except Exception as error:
         execution_errors.append(error)
 
-    teardown_errors: List[NodeScopeTeardownError] = []
-    report_paths: List[str] = []
-    report_sources: List[Dict[str, Any]] = []
-    cleanup_execution_errors: List[Any] = []
+    teardown_errors: list[NodeScopeTeardownError] = []
+    report_paths: list[str] = []
+    report_sources: list[dict[str, Any]] = []
+    cleanup_execution_errors: list[Any] = []
     deferred_cleanup = False
 
     async def cleanup() -> None:
@@ -270,11 +271,10 @@ async def run_collected_case(
         or bool(pending_operations)
         or bool(teardown_errors)
     )
-    result: Dict[str, Any] = {
+    result: dict[str, Any] = {
         "caseId": collected_case["caseId"],
         "runId": run_id,
-        "projectName": options.get("projectName")
-        or collected_case.get("projectId"),
+        "projectName": options.get("projectName") or collected_case.get("projectId"),
         "attemptIndex": options.get("attemptIndex", 0),
         "name": definition.get("name"),
         "sourcePath": collected_case.get("sourcePath"),
@@ -284,7 +284,11 @@ async def run_collected_case(
         "steps": list(steps),
         "afterEach": list(afterEach),
         "executionStatus": (
-            "failed" if has_failed_phase else "not-run" if has_not_run_phase else "success"
+            "failed"
+            if has_failed_phase
+            else "not-run"
+            if has_not_run_phase
+            else "success"
         ),
         "phases": phase_results,
         "cleanup": cleanup_snapshot,
@@ -324,7 +328,7 @@ async def run_collected_case(
     return result
 
 
-def _teardown_timeout(options: Dict[str, Any]) -> Optional[float]:
+def _teardown_timeout(options: dict[str, Any]) -> float | None:
     value = options.get("teardownTimeoutMs")
     if value is None:
         return None

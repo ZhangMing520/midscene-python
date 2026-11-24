@@ -1,9 +1,7 @@
 """Locate intent helpers (upstream models/utils/intent.ts)."""
 
-from typing import Optional
 
-
-def is_locate_intent(intent: Optional[str]) -> bool:
+def is_locate_intent(intent: str | None) -> bool:
     return intent == "locate"
 
 

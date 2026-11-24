@@ -22,17 +22,13 @@ def test_accepts_only_yaml_batch_config_paths():
 
 
 def test_accepts_legacy_tasks_flow_files(tmp_path):
-    legacy = _fixture(
-        tmp_path, "legacy.yaml", "tasks:\n  - name: old\n    flow: []\n"
-    )
+    legacy = _fixture(tmp_path, "legacy.yaml", "tasks:\n  - name: old\n    flow: []\n")
     assert_legacy_workflow_selection([legacy])
 
 
 def test_rejects_native_and_mixed_files_together_before_execution(tmp_path):
     legacy = _fixture(tmp_path, "legacy.yaml", "tasks: []\n")
-    native = _fixture(
-        tmp_path, "native.yaml", "cases:\n  - name: new\n    steps: []\n"
-    )
+    native = _fixture(tmp_path, "native.yaml", "cases:\n  - name: new\n    steps: []\n")
     mixed = _fixture(tmp_path, "mixed.yaml", "tasks: []\ncases: []\n")
 
     with pytest.raises(

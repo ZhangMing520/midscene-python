@@ -1,16 +1,14 @@
 """HarmonyOS device discovery helpers (upstream utils.ts)."""
 
-from typing import Dict, List, Optional
-
 from loguru import logger
 
 from midscene.harmony.hdc import HdcClient
 
 
 async def get_connected_devices(
-    hdc_path: Optional[str] = None,
-    timeout: Optional[float] = None,
-) -> List[Dict[str, str]]:
+    hdc_path: str | None = None,
+    timeout: float | None = None,
+) -> list[dict[str, str]]:
     """List connected HarmonyOS devices through HDC (upstream)."""
     hdc = HdcClient(
         hdc_path=hdc_path,

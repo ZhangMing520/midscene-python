@@ -71,9 +71,7 @@ def test_downloads_the_scrcpy_server_from_the_release_asset_url_directly(
         calls.append((url, timeout))
         return b"server-binary"
 
-    destination = ensure_scrcpy_server(
-        cache_dir=str(cache_dir), http_get=fetch_impl
-    )
+    destination = ensure_scrcpy_server(cache_dir=str(cache_dir), http_get=fetch_impl)
 
     assert calls[0][0] == (
         "https://github.com/Genymobile/scrcpy/releases/download/"

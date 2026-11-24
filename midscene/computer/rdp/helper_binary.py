@@ -2,7 +2,6 @@
 
 import platform
 from pathlib import Path
-from typing import Optional
 
 PLATFORM_BINARY_MAP = {
     "Darwin": ("darwin", "rdp-helper"),
@@ -11,7 +10,7 @@ PLATFORM_BINARY_MAP = {
 }
 
 
-def get_rdp_helper_binary_path(*, package_root: Optional[str] = None) -> str:
+def get_rdp_helper_binary_path(*, package_root: str | None = None) -> str:
     """Locate the rdp-helper binary shipped with the package."""
     system = platform.system()
     mapping = PLATFORM_BINARY_MAP.get(system)

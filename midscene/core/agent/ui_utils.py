@@ -1,11 +1,11 @@
 """UI coordinate helpers (upstream agent/ui-utils.ts)."""
 
-from typing import Any, Dict
+from typing import Any
 
 from midscene.core.types import UIContext
 
 
-def type_str(task: Dict[str, Any]) -> str:
+def type_str(task: dict[str, Any]) -> str:
     """Task type label (upstream typeStr)."""
     from midscene.core.report_markdown import _type_str
 
@@ -33,7 +33,7 @@ def pull_param_str(pull_param: Any) -> str:
     return _pull_param_str(pull_param)
 
 
-def extract_insight_param(task_param: Any) -> Dict[str, Any]:
+def extract_insight_param(task_param: Any) -> dict[str, Any]:
     """Extract insight content/images (upstream extractInsightParam)."""
     from midscene.core.report_markdown import _extract_insight_param
 
@@ -45,14 +45,14 @@ def task_title_str(task_type: str, prompt: str) -> str:
     return f"{task_type} - {prompt}" if prompt else task_type
 
 
-def param_str(task: Dict[str, Any]) -> str:
+def param_str(task: dict[str, Any]) -> str:
     """Human-readable task parameters (upstream paramStr)."""
     from midscene.core.report_markdown import _param_str
 
     return _param_str(task)
 
 
-def to_logical_coords(element: Dict[str, Any], context: UIContext) -> Dict[str, Any]:
+def to_logical_coords(element: dict[str, Any], context: UIContext) -> dict[str, Any]:
     """Scale screenshot-space coordinates back to logical viewport space
     (upstream task-builder.ts divides the shot coordinates by
     shrunkShotToLogicalRatio)."""

@@ -1,7 +1,8 @@
 """Document scheduling helpers (upstream engine/scheduler.ts)."""
 
 import asyncio
-from typing import Any, Awaitable, Callable, List, Mapping, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
+from typing import Any
 
 from midscene.core.test_runner.engine._abort import is_aborted
 from midscene.core.test_runner.engine.execution_failure import WorkflowAggregateError
@@ -43,7 +44,7 @@ async def run_concurrent_jobs(
         *(worker() for _ in range(min(concurrency, len(items)))),
         return_exceptions=True,
     )
-    errors: List[BaseException] = [
+    errors: list[BaseException] = [
         result for result in results if isinstance(result, BaseException)
     ]
     if len(errors) == 1:

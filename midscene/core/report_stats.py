@@ -1,7 +1,7 @@
 """Report usage/timing summaries (upstream core/src/report-stats.ts)."""
 
 import math
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 _USAGE_KEYS = (
     "intent",
@@ -32,7 +32,7 @@ def _read(value: Any, *keys: str) -> Any:
     return None
 
 
-def _finite_number(value: Any) -> Optional[float]:
+def _finite_number(value: Any) -> float | None:
     if isinstance(value, bool):
         return None
     if isinstance(value, (int, float)) and math.isfinite(value):
@@ -48,10 +48,7 @@ def _usage_value(usage: Any, key: str) -> float:
 def _has_usage(usage: Any) -> bool:
     if usage is None:
         return False
-    return any(
-        _read(usage, key) is not None
-        for key in _USAGE_KEYS
-    )
+    return any(_read(usage, key) is not None for key in _USAGE_KEYS)
 
 
 def _usage_total_tokens(usage: Any) -> float:
@@ -78,18 +75,18 @@ def _usage_model_name(usage: Any) -> str:
 
 def collect_report_summary(
     report: Any,
-    wall_time_fallback_ms: Optional[float] = None,
-) -> Dict[str, Any]:
+    wall_time_fallback_ms: float | None = None,
+) -> dict[str, Any]:
     """Aggregate token/timing facts from an execution dump."""
     executions = _read(report, "executions")
     if not isinstance(executions, (list, tuple)):
         raise ValueError("collectReportSummary: report.executions must be an array")
 
-    earliest: Optional[float] = None
-    latest: Optional[float] = None
+    earliest: float | None = None
+    latest: float | None = None
     model_call_count = 0
     model_call_time_ms = 0.0
-    models: Dict[str, Dict[str, Any]] = {}
+    models: dict[str, dict[str, Any]] = {}
 
     def add_timestamp(value: Any) -> None:
         nonlocal earliest, latest
@@ -141,21 +138,17 @@ def collect_report_summary(
             add_usage(_read(task, "usage"))
             add_usage(_read(task, "searchAreaUsage", "search_area_usage"))
 
-    model_summaries: List[Dict[str, Any]] = list(models.values())
+    model_summaries: list[dict[str, Any]] = list(models.values())
     tokens = {
         "promptTokens": sum(item["promptTokens"] for item in model_summaries),
-        "cachedInputTokens": sum(
-            item["cachedInputTokens"] for item in model_summaries
-        ),
-        "completionTokens": sum(
-            item["completionTokens"] for item in model_summaries
-        ),
+        "cachedInputTokens": sum(item["cachedInputTokens"] for item in model_summaries),
+        "completionTokens": sum(item["completionTokens"] for item in model_summaries),
         "totalTokens": sum(item["totalTokens"] for item in model_summaries),
     }
 
     fallback = _finite_number(wall_time_fallback_ms)
     has_fallback = fallback is not None and fallback >= 0
-    wall_time_ms: Optional[float] = None
+    wall_time_ms: float | None = None
     if earliest is not None and latest is not None:
         wall_time_ms = max(0.0, latest - earliest)
         wall_time_source = "task-timestamps"
@@ -168,7 +161,9 @@ def collect_report_summary(
     return {
         "timing": {
             "wallTimeMs": wall_time_ms,
-            "wallTimeStart": earliest if wall_time_source == "task-timestamps" else None,
+            "wallTimeStart": earliest
+            if wall_time_source == "task-timestamps"
+            else None,
             "wallTimeEnd": latest if wall_time_source == "task-timestamps" else None,
             "wallTimeSource": wall_time_source,
             "modelCallTimeMs": model_call_time_ms,

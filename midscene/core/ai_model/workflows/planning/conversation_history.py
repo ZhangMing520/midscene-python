@@ -1,7 +1,8 @@
 """Planning conversation history (upstream workflows/planning/conversation-history.ts)."""
 
 import copy
-from typing import Any, Dict, Iterator, List, Optional
+from collections.abc import Iterator
+from typing import Any
 
 
 class ConversationHistory:
@@ -9,13 +10,13 @@ class ConversationHistory:
 
     def __init__(
         self,
-        initial_messages: Optional[List[Dict[str, Any]]] = None,
+        initial_messages: list[dict[str, Any]] | None = None,
         images_include_count: int = 2,
     ):
-        self._messages: List[Dict[str, Any]] = []
-        self.sub_goals: List[Dict[str, Any]] = []
-        self.memories: List[str] = []
-        self.historical_logs: List[str] = []
+        self._messages: list[dict[str, Any]] = []
+        self.sub_goals: list[dict[str, Any]] = []
+        self.memories: list[str] = []
+        self.historical_logs: list[str] = []
         self.pending_feedback_message: str = ""
         self.images_include_count = images_include_count
         if initial_messages:
@@ -23,13 +24,13 @@ class ConversationHistory:
 
     # -- messages ---------------------------------------------------------
 
-    def append_message(self, message: Dict[str, Any]) -> None:
+    def append_message(self, message: dict[str, Any]) -> None:
         self._messages.append({"type": "input-message", "message": message})
 
-    def append_model_output(self, output: Dict[str, Any]) -> None:
+    def append_model_output(self, output: dict[str, Any]) -> None:
         self._messages.append({"type": "model-output", "output": output})
 
-    def seed(self, messages: List[Dict[str, Any]]) -> None:
+    def seed(self, messages: list[dict[str, Any]]) -> None:
         self.reset()
         self._messages.extend(messages)
 
@@ -40,9 +41,7 @@ class ConversationHistory:
         self.historical_logs.clear()
         self.pending_feedback_message = ""
 
-    def snapshot(
-        self, max_images: Optional[int] = None
-    ) -> List[Dict[str, Any]]:
+    def snapshot(self, max_images: int | None = None) -> list[dict[str, Any]]:
         """Return history entries, replacing images beyond ``max_images``.
 
         ``None`` means no limit. When a limit is given, the most recent images
@@ -77,10 +76,10 @@ class ConversationHistory:
     def __len__(self) -> int:
         return len(self._messages)
 
-    def __iter__(self) -> Iterator[Dict[str, Any]]:
+    def __iter__(self) -> Iterator[dict[str, Any]]:
         return iter(self._messages)
 
-    def to_json(self) -> List[Dict[str, Any]]:
+    def to_json(self) -> list[dict[str, Any]]:
         return self.snapshot()
 
     def reset_pending_feedback_message_if_exists(self) -> None:
@@ -89,17 +88,17 @@ class ConversationHistory:
 
     # -- sub-goals --------------------------------------------------------
 
-    def set_sub_goals(self, sub_goals: List[Dict[str, Any]]) -> None:
+    def set_sub_goals(self, sub_goals: list[dict[str, Any]]) -> None:
         self.sub_goals = [dict(goal) for goal in sub_goals]
         self.mark_first_pending_as_running()
 
-    def merge_sub_goals(self, sub_goals: List[Dict[str, Any]]) -> None:
+    def merge_sub_goals(self, sub_goals: list[dict[str, Any]]) -> None:
         if not self.sub_goals:
             self.set_sub_goals(sub_goals)
             return
 
         existing_by_index = {goal["index"]: goal for goal in self.sub_goals}
-        merged: List[Dict[str, Any]] = []
+        merged: list[dict[str, Any]] = []
         for goal in sub_goals:
             existing_goal = existing_by_index.get(goal["index"])
             has_non_empty_description = bool((goal.get("description") or "").strip())
@@ -122,12 +121,8 @@ class ConversationHistory:
             return
         self.set_sub_goals(merged)
 
-    def update_sub_goal(
-        self, index: int, updates: Dict[str, Any]
-    ) -> bool:
-        goal = next(
-            (goal for goal in self.sub_goals if goal["index"] == index), None
-        )
+    def update_sub_goal(self, index: int, updates: dict[str, Any]) -> bool:
+        goal = next((goal for goal in self.sub_goals if goal["index"] == index), None)
         if goal is None:
             return False
 
@@ -135,9 +130,8 @@ class ConversationHistory:
         if "status" in updates and updates["status"] != goal.get("status"):
             goal["status"] = updates["status"]
             changed = True
-        if (
-            "description" in updates
-            and updates["description"] != goal.get("description")
+        if "description" in updates and updates["description"] != goal.get(
+            "description"
         ):
             goal["description"] = updates["description"]
             changed = True
@@ -201,7 +195,7 @@ class ConversationHistory:
         if memory:
             self.memories.append(memory)
 
-    def get_memories(self) -> List[str]:
+    def get_memories(self) -> list[str]:
         return list(self.memories)
 
     def memories_to_text(self) -> str:

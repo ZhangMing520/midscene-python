@@ -52,9 +52,7 @@ async def test_get_xpaths_by_point_should_work_with_order_sensitive_and_order_in
 
     web, page = web_page
 
-    order_sensitive_xpaths = await page.evaluate(
-        _XPATHS_AT_POINT_JS, [100, 400, True]
-    )
+    order_sensitive_xpaths = await page.evaluate(_XPATHS_AT_POINT_JS, [100, 400, True])
     order_insensitive_xpaths = await page.evaluate(
         _XPATHS_AT_POINT_JS, [100, 400, False]
     )

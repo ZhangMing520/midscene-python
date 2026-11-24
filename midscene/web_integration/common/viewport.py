@@ -1,19 +1,19 @@
 """Viewport parsing (upstream common/viewport.ts)."""
 
 import math
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 DEFAULT_VIEWPORT_WIDTH = 1440
 DEFAULT_VIEWPORT_HEIGHT = 800
-DEFAULT_VIEWPORT_SIZE: Dict[str, int] = {
+DEFAULT_VIEWPORT_SIZE: dict[str, int] = {
     "width": DEFAULT_VIEWPORT_WIDTH,
     "height": DEFAULT_VIEWPORT_HEIGHT,
 }
-DEFAULT_PUPPETEER_WINDOW_VIEWPORT_SIZE: Dict[str, int] = {
+DEFAULT_PUPPETEER_WINDOW_VIEWPORT_SIZE: dict[str, int] = {
     "width": DEFAULT_VIEWPORT_WIDTH,
     "height": DEFAULT_VIEWPORT_HEIGHT,
 }
-DEFAULT_STATIC_PAGE_VIEWPORT_SIZE: Dict[str, int] = {
+DEFAULT_STATIC_PAGE_VIEWPORT_SIZE: dict[str, int] = {
     "width": DEFAULT_VIEWPORT_WIDTH,
     "height": DEFAULT_VIEWPORT_HEIGHT,
 }
@@ -43,7 +43,7 @@ def _to_number(raw_value: Any) -> float:
 
 
 def parse_viewport_dimension(
-    raw_value: Union[int, str, None],
+    raw_value: int | str | None,
     name: str,
 ) -> int:
     """Parse and validate a viewportWidth / viewportHeight option."""
@@ -62,9 +62,9 @@ def parse_viewport_dimension(
 
 
 def resolve_viewport_size(
-    viewport: Optional[Dict[str, Any]] = None,
-    fallback: Optional[Dict[str, int]] = None,
-) -> Dict[str, int]:
+    viewport: dict[str, Any] | None = None,
+    fallback: dict[str, int] | None = None,
+) -> dict[str, int]:
     """Resolve ``{width, height}`` from numbers or strings."""
     resolved_fallback = fallback if fallback is not None else DEFAULT_VIEWPORT_SIZE
     width = (viewport or {}).get("width")
@@ -84,9 +84,9 @@ def resolve_viewport_size(
 
 
 def resolve_web_viewport_size(
-    viewport: Optional[Dict[str, Any]] = None,
-    fallback: Optional[Dict[str, int]] = None,
-) -> Dict[str, int]:
+    viewport: dict[str, Any] | None = None,
+    fallback: dict[str, int] | None = None,
+) -> dict[str, int]:
     """Resolve ``{width, height}`` from ``viewportWidth``/``viewportHeight``."""
     source = viewport or {}
     return resolve_viewport_size(
@@ -98,12 +98,10 @@ def resolve_web_viewport_size(
     )
 
 
-def parse_viewport_size(config: Dict[str, Any]) -> Dict[str, int]:
+def parse_viewport_size(config: dict[str, Any]) -> dict[str, int]:
     """Read a viewport size from a web target config."""
     return {
-        "width": parse_viewport_dimension(
-            config.get("viewportWidth"), "viewportWidth"
-        ),
+        "width": parse_viewport_dimension(config.get("viewportWidth"), "viewportWidth"),
         "height": parse_viewport_dimension(
             config.get("viewportHeight"), "viewportHeight"
         ),

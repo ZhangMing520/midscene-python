@@ -1,9 +1,9 @@
 """Device option helpers (upstream device/device-options.ts)."""
 
-from typing import Any, Dict
+from typing import Any
 
 
-def _supported_kwargs(method: Any, kwargs: Dict[str, Any]) -> Dict[str, Any]:
+def _supported_kwargs(method: Any, kwargs: dict[str, Any]) -> dict[str, Any]:
     """Drop keyword arguments the platform primitive does not accept."""
     import inspect
 
@@ -19,7 +19,7 @@ def _supported_kwargs(method: Any, kwargs: Dict[str, Any]) -> Dict[str, Any]:
     return {key: value for key, value in kwargs.items() if key in parameters}
 
 
-def _scroll_supported_kwargs(device: Any, kwargs: Dict[str, Any]) -> Dict[str, Any]:
+def _scroll_supported_kwargs(device: Any, kwargs: dict[str, Any]) -> dict[str, Any]:
     return _supported_kwargs(device.scroll, kwargs)
 
 

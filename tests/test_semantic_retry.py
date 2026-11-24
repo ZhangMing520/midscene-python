@@ -140,9 +140,9 @@ async def test_increments_the_semantic_retry_attempt_after_parsing_failures():
     result = await call_ai_and_parse_with_retry(
         call_ai=call_ai,
         parse_response=parse_response,
-        to_parse_error=lambda error, response: error
-        if isinstance(error, Exception)
-        else RuntimeError(str(error)),
+        to_parse_error=lambda error, response: (
+            error if isinstance(error, Exception) else RuntimeError(str(error))
+        ),
         parse_retry_times=1,
     )
 
@@ -166,7 +166,7 @@ def test_adds_the_complete_validation_error_message_to_retry_feedback():
             "role": "user",
             "content": (
                 "The previous response was invalid:\n"
-                'failed to parse LLM response into JSON. Response -\n'
+                "failed to parse LLM response into JSON. Response -\n"
                 '{"untrusted":"raw response"}\n\n'
                 "Please avoid the validation error above in this response."
             ),

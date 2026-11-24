@@ -59,4 +59,3 @@ class TestDeviceInputPrimitives:
         assert {"Tap", "Input", "Scroll"} <= names
         assert "DragAndDrop" not in names
         assert "RightClick" not in names
-

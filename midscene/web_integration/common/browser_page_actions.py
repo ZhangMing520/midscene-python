@@ -9,7 +9,7 @@ Playwright ``Page`` API that every web page interface exposes.
 
 import asyncio
 import math
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -167,15 +167,13 @@ _RECT_FOR_XPATH_JS = """(xpath) => {
 
 
 def _resolve_text_input_options(
-    input_strategy: Optional[str], keyboard_type_delay: Optional[float]
-) -> "tuple[str, Optional[float]]":
+    input_strategy: str | None, keyboard_type_delay: float | None
+) -> "tuple[str, float | None]":
     """Validate the text typing options (upstream resolveInputStrategy)."""
     if keyboard_type_delay is not None:
-        delay: Optional[float] = float(keyboard_type_delay)
+        delay: float | None = float(keyboard_type_delay)
         if not math.isfinite(delay) or delay < 0:
-            raise ValueError(
-                "keyboardTypeDelay must be a finite non-negative number"
-            )
+            raise ValueError("keyboardTypeDelay must be a finite non-negative number")
     else:
         delay = None
     strategy = "legacy" if input_strategy is None else input_strategy
@@ -198,11 +196,11 @@ class BrowserPageActionsMixin:
     # These attributes are provided by the concrete page class.
     page: Any
     context: Any
-    keyboard_type_delay: Optional[float]
-    input_strategy: Optional[str]
+    keyboard_type_delay: float | None
+    input_strategy: str | None
 
     async def _judge_order_sensitive(
-        self, options: Optional[Dict[str, Any]] = None
+        self, options: dict[str, Any] | None = None
     ) -> bool:
         """Hook so callers can override the order-sensitive judgement."""
         return await judge_order_sensitive(options)
@@ -245,10 +243,10 @@ class BrowserPageActionsMixin:
 
     async def pinch(
         self,
-        center: List[float],
+        center: list[float],
         start_distance: float,
         end_distance: float,
-        duration: Optional[int] = None,
+        duration: int | None = None,
     ) -> None:
         """Two-finger pinch via CDP touch events (upstream web pinch).
 
@@ -292,8 +290,8 @@ class BrowserPageActionsMixin:
     async def swipe(
         self,
         direction: str,
-        distance: Optional[int] = None,
-        duration: Optional[int] = None,
+        distance: int | None = None,
+        duration: int | None = None,
     ) -> None:
         """Mouse swipe that honors an explicit duration (upstream base-page swipe).
 
@@ -321,14 +319,14 @@ class BrowserPageActionsMixin:
 
     async def swipe_points(
         self,
-        start: List[float],
-        end: List[float],
-        duration: Optional[int] = None,
+        start: list[float],
+        end: list[float],
+        duration: int | None = None,
     ) -> None:
         """Endpoint pointer swipe between two viewport points (upstream swipe)."""
         await self._mouse_swipe(start[0], start[1], end[0], end[1], duration)
 
-    async def size(self) -> Dict[str, int]:
+    async def size(self) -> dict[str, int]:
         """Viewport size in logical pixels (upstream size())."""
         viewport = self.page.viewport_size or {"width": 1280, "height": 720}
         return {"width": int(viewport["width"]), "height": int(viewport["height"])}
@@ -339,7 +337,7 @@ class BrowserPageActionsMixin:
         start_y: float,
         end_x: float,
         end_y: float,
-        duration: Optional[int] = None,
+        duration: int | None = None,
     ) -> None:
         """Press, move in 30 steps and release; the pointer is always released."""
         duration_ms = max(int(duration or 100), 150)
@@ -379,8 +377,8 @@ class BrowserPageActionsMixin:
             raise
 
     async def cache_feature_for_point(
-        self, center: List[float], options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, center: list[float], options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Build the xpath-based locate-cache feature for a point."""
         order_sensitive = await self._judge_order_sensitive(options)
         try:
@@ -393,9 +391,7 @@ class BrowserPageActionsMixin:
             xpaths = []
         return {"xpaths": sanitize_xpaths(xpaths)}
 
-    async def rect_matches_cache_feature(
-        self, feature: Dict[str, Any]
-    ) -> Rect:
+    async def rect_matches_cache_feature(self, feature: dict[str, Any]) -> Rect:
         """Resolve cached xpaths back to the first matching element rect."""
         xpaths = sanitize_xpaths((feature or {}).get("xpaths"))
         for xpath in xpaths:
@@ -432,9 +428,9 @@ class BrowserPageActionsMixin:
 
     def _text_input_options(
         self,
-        keyboard_type_delay: Optional[float],
-        input_strategy: Optional[str],
-    ) -> "tuple[str, Optional[float]]":
+        keyboard_type_delay: float | None,
+        input_strategy: str | None,
+    ) -> "tuple[str, float | None]":
         delay = (
             self.keyboard_type_delay
             if keyboard_type_delay is None
@@ -443,9 +439,7 @@ class BrowserPageActionsMixin:
         strategy = self.input_strategy if input_strategy is None else input_strategy
         return _resolve_text_input_options(strategy, delay)
 
-    async def _type_text(
-        self, text: str, strategy: str, delay: Optional[float]
-    ) -> None:
+    async def _type_text(self, text: str, strategy: str, delay: float | None) -> None:
         if strategy == "bulk":
             await self.page.keyboard.insert_text(text)
             return
@@ -462,8 +456,8 @@ class BrowserPageActionsMixin:
     async def replace_input(
         self,
         text: str,
-        keyboard_type_delay: Optional[float] = None,
-        input_strategy: Optional[str] = None,
+        keyboard_type_delay: float | None = None,
+        input_strategy: str | None = None,
     ) -> None:
         try:
             strategy, delay = self._text_input_options(
@@ -478,8 +472,8 @@ class BrowserPageActionsMixin:
     async def input_text(
         self,
         text: str,
-        keyboard_type_delay: Optional[float] = None,
-        input_strategy: Optional[str] = None,
+        keyboard_type_delay: float | None = None,
+        input_strategy: str | None = None,
     ) -> None:
         """Input text to focused element."""
         try:
@@ -492,7 +486,7 @@ class BrowserPageActionsMixin:
             raise
 
     async def scroll(
-        self, direction: str, distance: Optional[int] = None, **kwargs
+        self, direction: str, distance: int | None = None, **kwargs
     ) -> None:
         """Scroll in direction."""
         try:
@@ -605,10 +599,10 @@ def _truncate_feedback_value(value: str, max_length: int) -> str:
 
 
 def _build_planning_feedback(
-    summaries: List[Dict[str, Any]],
+    summaries: list[dict[str, Any]],
     total: int,
     offset: int,
-    active_index: Optional[int],
+    active_index: int | None,
 ) -> str:
     if total == 0:
         return "ListBrowserPages: no open pages."
@@ -641,7 +635,7 @@ def _build_planning_feedback(
     return f"{header}{chr(10).join(lines)}"
 
 
-def _build_page_info_planning_feedback(summary: Dict[str, Any]) -> str:
+def _build_page_info_planning_feedback(summary: dict[str, Any]) -> str:
     return (
         f"GetBrowserPageInfo index {summary.get('index')}; "
         f"active {summary.get('active')}.\n"
@@ -651,8 +645,8 @@ def _build_page_info_planning_feedback(summary: Dict[str, Any]) -> str:
 
 def create_browser_agent_page_actions(
     get_page_manager: Any,
-    set_planning_feedback: Optional[Any] = None,
-) -> List[Any]:
+    set_planning_feedback: Any | None = None,
+) -> list[Any]:
     """Build the upstream browser page actions.
 
     ``set_planning_feedback`` is optional because the Python planner does not
@@ -756,8 +750,8 @@ def create_browser_agent_page_actions(
 
 
 def append_browser_agent_page_actions(
-    custom_actions: Optional[List[Any]], browser_actions: List[Any]
-) -> List[Any]:
+    custom_actions: list[Any] | None, browser_actions: list[Any]
+) -> list[Any]:
     if not custom_actions:
         return browser_actions
     custom_names = {

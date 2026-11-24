@@ -38,7 +38,10 @@ async def test_retains_a_completed_step_and_cleanup_errors_when_its_callback_thr
     with pytest.raises(WorkflowExecutionFailure) as raised:
         await run_collected_case(
             _document()["cases"][0],
-            {"resolveNode": lambda _name: _resolve_node(), "onStepResult": on_step_result},
+            {
+                "resolveNode": lambda _name: _resolve_node(),
+                "onStepResult": on_step_result,
+            },
         )
     failure = raised.value
     assert failure.result["status"] == "failed"

@@ -1,7 +1,7 @@
 """Record log/screenshot entries (upstream agent/record-to-report.ts)."""
 
 import traceback
-from typing import Any, Dict, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -11,7 +11,7 @@ from midscene.shared.img.transform import normalize_screenshot_base64
 def normalize_record_to_report_screenshot(
     screenshot: Any,
     index: int,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Validate and normalize one recordToReport screenshot entry."""
     if not screenshot or not isinstance(screenshot.get("base64"), str):
         raise ValueError(
@@ -34,7 +34,7 @@ def normalize_record_to_report_screenshot(
 def record_to_report(
     agent,
     title: str,
-    opt: Optional[Dict[str, Any]] = None,
+    opt: dict[str, Any] | None = None,
 ) -> None:
     """Append a log/screenshot entry to the report (upstream
     recordToReport). opt: {content?, screenshots?: [{base64, description?}]}."""
@@ -52,9 +52,7 @@ def record_to_report(
             output=screenshots or None,
         )
     ]
-    execution = agent._get_report_builder().add_execution(
-        f"Log - {title}", tasks
-    )
+    execution = agent._get_report_builder().add_execution(f"Log - {title}", tasks)
     agent._last_execution = execution
     agent._notify_dump_update_listeners(execution)
 
@@ -62,7 +60,7 @@ def record_to_report(
 async def record_error_to_report(
     agent,
     title: str,
-    opt: Optional[Dict[str, Any]] = None,
+    opt: dict[str, Any] | None = None,
 ) -> None:
     """Append a failed Log entry to the report (upstream recordErrorToReport).
 
@@ -74,7 +72,7 @@ async def record_error_to_report(
     opt = opt or {}
     error = opt.get("error")
     message = str(error) if error is not None else ""
-    error_info: Dict[str, Any] = {
+    error_info: dict[str, Any] = {
         "name": type(error).__name__ if error is not None else "",
         "message": message,
         "stack": "",
@@ -91,9 +89,7 @@ async def record_error_to_report(
     )
     if not screenshot:
         try:
-            screenshot = getattr(
-                await agent.get_context(), "screenshot_base64", None
-            )
+            screenshot = getattr(await agent.get_context(), "screenshot_base64", None)
         except Exception as capture_error:  # screenshot is best effort
             logger.debug(f"record_error_to_report screenshot failed: {capture_error}")
     output = [{"base64": screenshot}] if screenshot else None

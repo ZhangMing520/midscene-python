@@ -1,16 +1,21 @@
 """Jev planning decision (upstream models/jev/planning-decision.ts)."""
 
-from typing import Any, Dict, List
+from typing import Any
+
 from midscene.core.ai_model.models.registry import ModelRuntime
-from midscene.core.ai_model.service_caller.system_one import SystemOneError, call_system_one
+from midscene.core.ai_model.service_caller.system_one import (
+    SystemOneError,
+    call_system_one,
+)
+
 
 async def decide_jev_action(
-    jev_context: Dict[str, Any],
+    jev_context: dict[str, Any],
     model_runtime: ModelRuntime,
-    action_space: List[Any],
+    action_space: list[Any],
     include_locate_in_planning: bool,
-) -> Dict[str, Any]:
-    criteria: Dict[str, str] = {
+) -> dict[str, Any]:
+    criteria: dict[str, str] = {
         "control:complete": (
             "The entire user goal is already satisfied, confirmed by the current "
             "screenshot and execution feedback. No text answer is requested."
@@ -21,7 +26,7 @@ async def decide_jev_action(
             "Delegate to the default model."
         ),
     }
-    choices: Dict[str, Dict[str, Any]] = {
+    choices: dict[str, dict[str, Any]] = {
         "control:complete": {"kind": "complete"},
         "control:delegate": {"kind": "delegate"},
     }
@@ -31,27 +36,21 @@ async def decide_jev_action(
         if key in choices:
             raise SystemOneError(f"Duplicate Jev planning choice: {key}")
         choices[key] = {"kind": kind, "action": action}
-        criteria[key] = (
-            f"{action.name}: {action.description or action.name}. "
-            + (
-                "Perform this action."
-                if kind == "action"
-                else "Suggest this action and delegate the next planning step, "
-                "including its parameters, to the default model."
-            )
+        criteria[key] = f"{action.name}: {action.description or action.name}. " + (
+            "Perform this action."
+            if kind == "action"
+            else "Suggest this action and delegate the next planning step, "
+            "including its parameters, to the default model."
         )
     if len(choices) > 255:
         raise SystemOneError("Jev Choice supports at most 255 options")
 
-    locate_in_planning = (
-        include_locate_in_planning
-        and any(
-            action.supported_by_system_one and len(action.locate_fields) == 1
-            for action in action_space
-        )
+    locate_in_planning = include_locate_in_planning and any(
+        action.supported_by_system_one and len(action.locate_fields) == 1
+        for action in action_space
     )
 
-    questions: Dict[str, Any] = {
+    questions: dict[str, Any] = {
         "action": {
             "type": "choice",
             "instructions": (
@@ -82,7 +81,9 @@ async def decide_jev_action(
             ),
         }
 
-    response = await call_system_one(model_runtime, {**jev_context, "questions": questions})
+    response = await call_system_one(
+        model_runtime, {**jev_context, "questions": questions}
+    )
     answers = response["answers"]
     if answers["action"]["type"] != "choice":
         raise SystemOneError("Invalid Jev planning action")

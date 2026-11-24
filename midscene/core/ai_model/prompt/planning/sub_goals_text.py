@@ -1,14 +1,14 @@
 """Sub-goals text (upstream prompt/planning/sub-goals-text.ts)."""
 
-from typing import Any, Dict, List
+from typing import Any
 
 
-def build_sub_goals_text(sub_goals: List[Dict[str, Any]]) -> str:
+def build_sub_goals_text(sub_goals: list[dict[str, Any]]) -> str:
     if not sub_goals:
         return ""
 
     lines = [
-        f'{goal["index"]}. {goal["description"]} ({goal["status"]})'
+        f"{goal['index']}. {goal['description']} ({goal['status']})"
         for goal in sub_goals
     ]
 
@@ -18,7 +18,7 @@ def build_sub_goals_text(sub_goals: List[Dict[str, Any]]) -> str:
 
     current_goal_text = ""
     if current_goal:
-        current_goal_text = f'\nCurrent sub-goal is: {current_goal["description"]}'
+        current_goal_text = f"\nCurrent sub-goal is: {current_goal['description']}"
         logs = current_goal.get("logs")
         if logs:
             log_lines = "\n".join(f"- {log}" for log in logs)

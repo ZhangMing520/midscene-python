@@ -2,7 +2,7 @@
 semantic-retry.test.ts and service-caller-timeout.test.ts."""
 
 import json
-from typing import Any, Dict, Optional
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -24,7 +24,7 @@ def make_runtime(**config_overrides):
 
 
 class FakeResponse:
-    def __init__(self, payload: Dict[str, Any], status_code: int = 200):
+    def __init__(self, payload: dict[str, Any], status_code: int = 200):
         self._payload = payload
         self.status_code = status_code
         self.headers = {"x-request-id": "req-1"}
@@ -36,10 +36,10 @@ class FakeResponse:
 
 def _chat_payload(
     content: str,
-    reasoning: Optional[str] = None,
+    reasoning: str | None = None,
     model: str = "mock-model",
-) -> Dict[str, Any]:
-    message: Dict[str, Any] = {"role": "assistant", "content": content}
+) -> dict[str, Any]:
+    message: dict[str, Any] = {"role": "assistant", "content": content}
     if reasoning:
         message["reasoning_content"] = reasoning
     return {

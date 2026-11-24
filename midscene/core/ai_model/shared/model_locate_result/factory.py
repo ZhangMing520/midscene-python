@@ -1,6 +1,6 @@
 """Locate result codec factory (upstream shared/model-locate-result/factory.ts)."""
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from midscene.core.ai_model.shared.model_locate_result.coordinates import (
     resolve_bounds_type,
@@ -30,8 +30,8 @@ class LocateResultCodec:
 
     def __init__(
         self,
-        prompt_spec: Dict[str, Any],
-        resolved_coordinates: Dict[str, Any],
+        prompt_spec: dict[str, Any],
+        resolved_coordinates: dict[str, Any],
         parse_raw_locate_value=None,
     ):
         self.prompt_spec = prompt_spec
@@ -43,8 +43,8 @@ class LocateResultCodec:
     def to_pixel_result(
         self,
         raw_result: Any,
-        context: Dict[str, Dict[str, float]],
-    ) -> Dict[str, Any]:
+        context: dict[str, dict[str, float]],
+    ) -> dict[str, Any]:
         """Return {center, rect?}; rect is None for point results."""
         result = self._parse_raw_locate_value(raw_result)
         prepared_size = context["preparedSize"]
@@ -63,7 +63,7 @@ class LocateResultCodec:
         center = clamp_pixel_point_to_size(
             map_locate_result_to_pixel_point(result, prepared_size), content_size
         )
-        rect: Optional[Dict[str, float]] = None
+        rect: dict[str, float] | None = None
         if result["coordinatesMeta"]["shape"] == "bbox":
             bounds_type = resolve_bounds_type(
                 result["coordinatesMeta"].get("boundsType")
@@ -78,7 +78,7 @@ class LocateResultCodec:
 
 
 def create_locate_result_codec(
-    result_format: Dict[str, Any],
+    result_format: dict[str, Any],
 ) -> LocateResultCodec:
     """Create a codec from a LocateResultFormatDefinition:
     {resultKey?, resultKeyAliases?, coordinates, parseRawLocateValue?}."""

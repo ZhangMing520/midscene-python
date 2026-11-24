@@ -38,9 +38,7 @@ class TestValidateAgentCacheInput:
             ValueError,
             match="cache.cacheDir must be a non-empty string when provided",
         ):
-            validate_agent_cache_input(
-                {"id": "custom-cache-id", "cacheDir": "  "}
-            )
+            validate_agent_cache_input({"id": "custom-cache-id", "cacheDir": "  "})
 
     def test_rejects_non_string_strategy(self):
         with pytest.raises(
@@ -55,15 +53,11 @@ class TestValidateAgentCacheInput:
             match='cache.strategy must be one of "read-only", "read-write", '
             '"write-only"',
         ):
-            validate_agent_cache_input(
-                {"id": "custom-cache-id", "strategy": "invalid"}
-            )
+            validate_agent_cache_input({"id": "custom-cache-id", "strategy": "invalid"})
 
 
 class TestNormalizeAgentCacheConfig:
-    @pytest.mark.parametrize(
-        "strategy", ["read-only", "read-write", "write-only"]
-    )
+    @pytest.mark.parametrize("strategy", ["read-only", "read-write", "write-only"])
     def test_preserves_cache_normalization(self, strategy):
         original = {
             "cache": {

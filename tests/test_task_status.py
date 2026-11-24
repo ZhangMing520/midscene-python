@@ -25,8 +25,7 @@ def test_treats_a_finished_task_carrying_an_error_as_failed():
         == "failed"
     )
     assert (
-        derive_task_status({"status": "finished", "errorMessage": "boom"})
-        == "failed"
+        derive_task_status({"status": "finished", "errorMessage": "boom"}) == "failed"
     )
 
 
@@ -43,9 +42,7 @@ def test_treats_a_finished_waitfor_with_falsy_output_as_a_warning():
 def test_treats_a_finished_assert_with_false_output_as_failed():
     """treats a finished Assert with false output as failed"""
     assert (
-        derive_task_status(
-            {"status": "finished", "subType": "Assert", "output": False}
-        )
+        derive_task_status({"status": "finished", "subType": "Assert", "output": False})
         == "failed"
     )
 
@@ -54,9 +51,7 @@ def test_treats_a_clean_finished_task_as_passed():
     """treats a clean finished task as passed"""
     assert derive_task_status({"status": "finished"}) == "passed"
     assert (
-        derive_task_status(
-            {"status": "finished", "subType": "Assert", "output": True}
-        )
+        derive_task_status({"status": "finished", "subType": "Assert", "output": True})
         == "passed"
     )
 

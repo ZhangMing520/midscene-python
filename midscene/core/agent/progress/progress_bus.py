@@ -1,7 +1,8 @@
 """Generic agent progress bus (upstream agent/progress/progress-bus.ts)."""
 
 import asyncio
-from typing import Any, Callable, List
+from collections.abc import Callable
+from typing import Any
 
 from loguru import logger
 
@@ -10,7 +11,7 @@ class AgentProgressBus:
     """Broadcast channel that stamps a monotonic sequence per event."""
 
     def __init__(self) -> None:
-        self._listeners: List[Callable] = []
+        self._listeners: list[Callable] = []
         self._sequence = 0
 
     def subscribe(self, listener: Callable) -> Callable[[], None]:
@@ -49,9 +50,7 @@ class AgentProgressBus:
                 if asyncio.iscoroutine(result):
                     await result
             except Exception as error:  # listeners must never break execution
-                logger.warning(
-                    f"error in progress listener, ignoring: {error}"
-                )
+                logger.warning(f"error in progress listener, ignoring: {error}")
 
 
 async def emit_progress(agent, scope: str, phase: str, data: Any) -> None:

@@ -26,7 +26,12 @@ class TestAutoGlm:
         action = parse_auto_glm_planning_action(
             {"think": "t", "content": 'do(action="Tap", element=[100,200])'}
         )
-        assert action == {"_metadata": "do", "action": "Tap", "element": (100, 200), "think": "t"}
+        assert action == {
+            "_metadata": "do",
+            "action": "Tap",
+            "element": (100, 200),
+            "think": "t",
+        }
 
     def test_parse_finish_with_escaped_quotes(self):
         from midscene.core.ai_model.workflows.planning.custom_planning import (
@@ -97,4 +102,3 @@ class TestAutoGlm:
                 {"_metadata": "do", "action": "Interact"}, [], None
             )
         assert "not supported" in str(exc.value)
-

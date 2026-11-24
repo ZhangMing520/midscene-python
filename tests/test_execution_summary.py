@@ -26,18 +26,14 @@ from midscene.cli.execution_summary import (
 
 def _write_fake_report(file_path: Path, group_name: str, execution_name: str) -> None:
     file_path.parent.mkdir(parents=True, exist_ok=True)
-    dump = (
-        json.dumps(
-            {
-                "sdkVersion": "1.9.1",
-                "groupName": group_name,
-                "groupDescription": "",
-                "modelBriefs": [],
-                "executions": [
-                    {"id": execution_name, "name": execution_name, "tasks": []}
-                ],
-            }
-        )
+    dump = json.dumps(
+        {
+            "sdkVersion": "1.9.1",
+            "groupName": group_name,
+            "groupDescription": "",
+            "modelBriefs": [],
+            "executions": [{"id": execution_name, "name": execution_name, "tasks": []}],
+        }
     )
     file_path.write_text(
         "<html><body>"
@@ -70,9 +66,9 @@ def test_preserves_a_directory_based_report_as_a_complete_retry_artifact(tmp_pat
     assert preserved["report"] == str(archived_report)
     assert not report_file.exists()
     assert "attempt one" in archived_report.read_text(encoding="utf-8")
-    assert (
-        root / "custom-report-attempt-1" / "screenshots" / "1.png"
-    ).read_text(encoding="utf-8") == "screenshot"
+    assert (root / "custom-report-attempt-1" / "screenshots" / "1.png").read_text(
+        encoding="utf-8"
+    ) == "screenshot"
 
 
 def test_prints_the_configured_retry_count_in_the_execution_plan(capsys):
@@ -109,7 +105,9 @@ def test_prints_failed_file_error_details(capsys):
     success = print_execution_summary(results, "/tmp/summary.json")
 
     assert success is False
-    assert "     Error: Assertion failed: expected page title" in capsys.readouterr().out
+    assert (
+        "     Error: Assertion failed: expected page title" in capsys.readouterr().out
+    )
 
 
 def test_prints_successful_file_report_and_output_details(capsys):
@@ -219,8 +217,16 @@ def test_writes_distinct_retry_reports_for_yaml_files_with_duplicate_basenames(
     for name, group, execution in (
         ("login-attempt-1.html", "login-attempt-one", "login-failed-before-retry"),
         ("login-attempt-2.html", "login-attempt-two", "login-passed-after-retry"),
-        ("checkout-attempt-1.html", "checkout-attempt-one", "checkout-failed-before-retry"),
-        ("checkout-attempt-2.html", "checkout-attempt-two", "checkout-passed-after-retry"),
+        (
+            "checkout-attempt-1.html",
+            "checkout-attempt-one",
+            "checkout-failed-before-retry",
+        ),
+        (
+            "checkout-attempt-2.html",
+            "checkout-attempt-two",
+            "checkout-passed-after-retry",
+        ),
     ):
         _write_fake_report(report_dir / name, group, execution)
 
@@ -301,9 +307,7 @@ async def test_keeps_writing_summary_when_retry_report_merging_fails(
         merge_calls.append(result)
         raise RuntimeError("merge failed")
 
-    monkeypatch.setattr(
-        summary_module, "create_retry_attempt_report", failing_merge
-    )
+    monkeypatch.setattr(summary_module, "create_retry_attempt_report", failing_merge)
 
     summary_path = write_execution_summary_file(
         "summary.json",

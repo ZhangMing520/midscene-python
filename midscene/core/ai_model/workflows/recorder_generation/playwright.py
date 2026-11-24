@@ -1,7 +1,7 @@
 """Playwright test generation (upstream recorder-generation/playwright.ts)."""
 
-from typing import Any, Dict, List, Optional
 import json
+from typing import Any
 
 from midscene.core.ai_model.service_caller.call_ai import (
     call_ai_with_string_response,
@@ -19,7 +19,6 @@ from midscene.core.ai_model.workflows.recorder_generation.common import (
     resolve_model_runtime,
     validate_events,
 )
-
 from midscene.shared.constants import PLAYWRIGHT_EXAMPLE_CODE
 
 PLAYWRIGHT_SYSTEM_PROMPT = (
@@ -31,10 +30,10 @@ PLAYWRIGHT_SYSTEM_PROMPT = (
 
 
 def _create_playwright_prompt(
-    events: List[Dict[str, Any]],
-    options: Dict[str, Any],
+    events: list[dict[str, Any]],
+    options: dict[str, Any],
     streaming: bool,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     summary = prepare_event_summary(
         events,
         {
@@ -45,20 +44,14 @@ def _create_playwright_prompt(
     playwright_summary = {
         **summary,
         "waitForNetworkIdle": options.get("waitForNetworkIdle") is not False,
-        "waitForNetworkIdleTimeout": options.get("waitForNetworkIdleTimeout")
-        or 2000,
-        "viewportSize": options.get("viewportSize")
-        or {"width": 1280, "height": 800},
+        "waitForNetworkIdleTimeout": options.get("waitForNetworkIdleTimeout") or 2000,
+        "viewportSize": options.get("viewportSize") or {"width": 1280, "height": 800},
     }
 
-    screenshots = get_screenshots_for_llm(
-        events, options.get("maxScreenshots") or 3
-    )
+    screenshots = get_screenshots_for_llm(events, options.get("maxScreenshots") or 3)
 
     extra_requirement = (
-        "\n8. can't wrap this test code in markdown code block"
-        if streaming
-        else ""
+        "\n8. can't wrap this test code in markdown code block" if streaming else ""
     )
     prompt_text = f"""Generate a Playwright test using @midscene/web/playwright that reproduces this recorded browser session. The test should be based on the following events and follow the structure of the example provided. Make the test descriptive with appropriate assertions and validations.
 
@@ -89,8 +82,8 @@ Important: Return ONLY the raw Playwright test code. Do NOT wrap the response in
 
 
 async def generate_playwright_test(
-    events: List[Dict[str, Any]],
-    options: Optional[Dict[str, Any]] = None,
+    events: list[dict[str, Any]],
+    options: dict[str, Any] | None = None,
     model_config: Any = None,
 ) -> str:
     """Generates Playwright test code from recorded events (upstream)."""
@@ -107,10 +100,10 @@ async def generate_playwright_test(
 
 
 async def generate_playwright_test_stream(
-    events: List[Dict[str, Any]],
-    options: Optional[Dict[str, Any]] = None,
+    events: list[dict[str, Any]],
+    options: dict[str, Any] | None = None,
     model_config: Any = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Generates Playwright test code with streaming support (upstream)."""
     options = dict(options or {})
     validate_events(events)

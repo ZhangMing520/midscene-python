@@ -1,6 +1,6 @@
 """RDP host/address helpers (upstream address.ts)."""
 
-from typing import Any, Dict
+from typing import Any
 
 from midscene.computer.rdp.protocol import RDPConnectionConfig
 
@@ -30,9 +30,9 @@ def format_rdp_server_address(host: str, port: int) -> str:
 
 def normalize_rdp_connection_config(
     config: RDPConnectionConfig,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Normalize the host/local address before handing it to the backend."""
-    normalized: Dict[str, Any] = dict(config)
+    normalized: dict[str, Any] = dict(config)
     normalized["host"] = normalize_rdp_host(config["host"])
     if config.get("localAddress"):
         normalized["localAddress"] = config["localAddress"].strip()

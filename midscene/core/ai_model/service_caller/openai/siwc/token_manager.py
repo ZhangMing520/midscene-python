@@ -1,6 +1,5 @@
 """Shared SIWC token manager (upstream openai/siwc/token-manager.ts)."""
 
-from typing import Optional
 import asyncio
 import time
 
@@ -16,7 +15,7 @@ class SiwcTokenManager:
     """Read/refresh stored SIWC credentials; refreshes are shared."""
 
     def __init__(self):
-        self._pending_refresh: Optional[asyncio.Task] = None
+        self._pending_refresh: asyncio.Task | None = None
 
     async def get_access_token(self) -> str:
         storage = credential_storage.get_credential_storage()
@@ -27,7 +26,7 @@ class SiwcTokenManager:
     def refresh_access_token(
         self,
         previous_access_token: str,
-        proxy: Optional[network.SiwcProxyConfig] = None,
+        proxy: network.SiwcProxyConfig | None = None,
     ) -> "asyncio.Task":
         if self._pending_refresh is None:
             self._pending_refresh = asyncio.create_task(
@@ -41,7 +40,7 @@ class SiwcTokenManager:
     async def _refresh_and_save(
         self,
         previous_access_token: str,
-        proxy: Optional[network.SiwcProxyConfig] = None,
+        proxy: network.SiwcProxyConfig | None = None,
     ) -> str:
         storage = credential_storage.get_credential_storage()
         record = await asyncio.to_thread(storage.read)

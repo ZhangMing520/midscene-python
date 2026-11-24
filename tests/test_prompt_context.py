@@ -15,9 +15,10 @@ def test_returns_the_original_string_prompt_when_context_is_undefined_or_blank()
 
 def test_renders_and_prepends_context_to_string_prompts():
     """renders and prepends context to string prompts"""
-    assert build_prompt_with_context(
-        "Click submit", "Use buyer checkout rules."
-    ) == "<CONTEXT>\nUse buyer checkout rules.\n</CONTEXT>\n\nClick submit"
+    assert (
+        build_prompt_with_context("Click submit", "Use buyer checkout rules.")
+        == "<CONTEXT>\nUse buyer checkout rules.\n</CONTEXT>\n\nClick submit"
+    )
 
 
 def test_preserves_multimodal_prompt_fields_while_updating_prompt_text():

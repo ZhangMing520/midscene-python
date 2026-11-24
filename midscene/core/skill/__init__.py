@@ -6,7 +6,7 @@ definitions from the device action space, and ``run_tools_cli`` exposes them as
 ``<script> <command> [options]`` CLI commands.
 """
 
-from typing import Any, Dict, Optional, Type
+from typing import Any, Optional
 
 from midscene.core.agent.agent import Agent
 from midscene.shared.agent_tools.base_tools import BaseMidsceneTools
@@ -16,7 +16,7 @@ from midscene.shared.cli import report_cli_error, run_tools_cli
 class SkillMidsceneTools(BaseMidsceneTools):
     """Lazily creates an Agent from a Device class for CLI / Agent Skills."""
 
-    def __init__(self, device_class: Type[Any]) -> None:
+    def __init__(self, device_class: type[Any]) -> None:
         super().__init__()
         self._device_class = device_class
 
@@ -29,7 +29,7 @@ class SkillMidsceneTools(BaseMidsceneTools):
         return self.agent
 
 
-async def run_skill_cli(options: Dict[str, Any]) -> None:
+async def run_skill_cli(options: dict[str, Any]) -> None:
     """Launch a Skill CLI for a custom interface Device class.
 
     This enables AI coding assistants (Claude Code, Cline, etc.) to control a
@@ -39,7 +39,7 @@ async def run_skill_cli(options: Dict[str, Any]) -> None:
         ``run_skill_cli({"DeviceClass": SampleDevice, "scriptName": "my-device"})``
     """
     tools = SkillMidsceneTools(options["DeviceClass"])
-    script_name: Optional[str] = options.get("scriptName") or "midscene-skill"
+    script_name: str | None = options.get("scriptName") or "midscene-skill"
     try:
         await run_tools_cli(tools, script_name)
     except SystemExit:

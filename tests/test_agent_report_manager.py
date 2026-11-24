@@ -19,9 +19,7 @@ class FakeAgent:
     """Minimal Agent surface used by the report helpers."""
 
     def __init__(self, group_name="first group"):
-        self.options = SimpleNamespace(
-            group_name=group_name, group_description=""
-        )
+        self.options = SimpleNamespace(group_name=group_name, group_description="")
         self.interface_type = "puppeteer"
         self.destroyed = False
         self._report_builder = None
@@ -108,8 +106,12 @@ def test_serializes_once_and_shares_the_same_update_with_all_registered_listener
     agent.append_execution_dump(current)
     first = []
     second = []
-    agent.add_dump_update_listener(lambda dump, execution: first.append((dump, execution)))
-    agent.add_dump_update_listener(lambda dump, execution: second.append((dump, execution)))
+    agent.add_dump_update_listener(
+        lambda dump, execution: first.append((dump, execution))
+    )
+    agent.add_dump_update_listener(
+        lambda dump, execution: second.append((dump, execution))
+    )
 
     agent.notify_dump_update_listeners(current)
 

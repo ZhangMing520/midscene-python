@@ -1,7 +1,7 @@
 """Synced from upstream packages/core/tests/unit-test/multimodal-prompt.test.ts
 and task-builder.test.ts (prompt snapping helpers)."""
 
-from typing import Any, List
+from typing import Any
 
 import pytest
 
@@ -30,7 +30,7 @@ class TestReferenceImages:
     ):
         from midscene.core.ai_model.shared import multimodal_prompt as context_utils
 
-        calls: List[Any] = []
+        calls: list[Any] = []
 
         def fake_resolve(image, convert_http):
             calls.append((image["url"], convert_http))
@@ -73,7 +73,7 @@ class TestReferenceImages:
     ):
         from midscene.core.ai_model.shared import multimodal_prompt as context_utils
 
-        captured: List[Any] = []
+        captured: list[Any] = []
         monkeypatch.setattr(
             context_utils,
             "resolve_reference_image",
@@ -84,16 +84,14 @@ class TestReferenceImages:
             {"prompt": "p", "images": [{"name": "r", "url": "https://x/y.png"}]}
         )
 
-        assert result["referenceImages"] == [
-            {"name": "r", "url": "https://x/y.png"}
-        ]
+        assert result["referenceImages"] == [{"name": "r", "url": "https://x/y.png"}]
         assert captured == [False]
 
     @pytest.mark.asyncio
     async def test_prepare_dedupes_urls(self, monkeypatch):
         from midscene.core.ai_model.shared import multimodal_prompt as context_utils
 
-        calls: List[Any] = []
+        calls: list[Any] = []
 
         def fake_resolve(image, convert_http):
             calls.append((image["url"], convert_http))
@@ -114,12 +112,11 @@ class TestReferenceImages:
         monkeypatch.setattr(
             context_utils,
             "resolve_reference_image",
-            lambda image, convert_http: None
-            if image["url"] == "missing.png"
-            else image["url"],
+            lambda image, convert_http: (
+                None if image["url"] == "missing.png" else image["url"]
+            ),
         )
         result = await context_utils.prepare_reference_images(
             ["missing.png", "a.png"], convert_http=False
         )
         assert result == ["a.png"]
-

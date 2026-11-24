@@ -21,9 +21,7 @@ def _agent(model_family: str = "gpt-5", **options):
 
 
 def test_uses_metadata_rather_than_action_parameter_names_and_leaves_durations_untouched():
-    action = DeviceAction(
-        name="Scroll", description="", distance_fields=["distance"]
-    )
+    action = DeviceAction(name="Scroll", description="", distance_fields=["distance"])
 
     parsed = parse_action_param(
         {"distance": 100},
@@ -96,13 +94,7 @@ async def test_converts_positions_and_distances_with_the_same_ratio():
 @pytest.mark.asyncio
 async def test_keeps_explicit_api_distances_and_model_visual_distances_invariant_at_shrink():
     agent = _agent()
-    cached = {
-        "yamlWorkflow": (
-            "- type: Scroll\n"
-            "  direction: down\n"
-            "  distance: 100\n"
-        )
-    }
+    cached = {"yamlWorkflow": ("- type: Scroll\n  direction: down\n  distance: 100\n")}
     assert await agent._replay_cached_plan(cached) is True
     assert agent.interface.scrolled[-1][1] == 100
 

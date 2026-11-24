@@ -1,6 +1,7 @@
 """Workflow engine result types (upstream test-runner/engine/types.ts)."""
 
-from typing import Any, Callable, Dict, List, Literal, Optional, TypedDict
+from collections.abc import Callable
+from typing import Any, Literal, TypedDict
 
 CaseNodePhase = Literal["beforeEach", "steps", "afterEach"]
 DocumentNodePhase = Literal["beforeAll", "afterAll"]
@@ -15,8 +16,8 @@ class WorkflowReportSource(TypedDict, total=False):
 
 
 class NodeScopeTeardownResult(TypedDict, total=False):
-    reportPaths: List[str]
-    reportSources: List[WorkflowReportSource]
+    reportPaths: list[str]
+    reportSources: list[WorkflowReportSource]
 
 
 class StepRunResult(TypedDict, total=False):
@@ -24,13 +25,13 @@ class StepRunResult(TypedDict, total=False):
     stepIndex: int
     node: str
     input: Any
-    meta: Dict[str, Any]
+    meta: dict[str, Any]
     continuedAfterError: bool
     waitForPreviousOperationMs: float
-    operations: Dict[str, Any]
+    operations: dict[str, Any]
     output: Any
     error: Any
-    report: Dict[str, Any]
+    report: dict[str, Any]
     status: str
     startedAt: str
     endedAt: str
@@ -49,17 +50,17 @@ class CaseRunResult(TypedDict, total=False):
     caseIndex: int
     status: str
     executionStatus: str
-    phases: Dict[str, Any]
+    phases: dict[str, Any]
     cleanup: Any
-    pendingOperations: List[Any]
+    pendingOperations: list[Any]
     retryDecision: Any
-    beforeEach: List[StepRunResult]
-    steps: List[StepRunResult]
-    afterEach: List[StepRunResult]
-    executionErrors: List[Any]
-    teardownErrors: List[Any]
-    reportPaths: List[str]
-    reportSources: List[WorkflowReportSource]
+    beforeEach: list[StepRunResult]
+    steps: list[StepRunResult]
+    afterEach: list[StepRunResult]
+    executionErrors: list[Any]
+    teardownErrors: list[Any]
+    reportPaths: list[str]
+    reportSources: list[WorkflowReportSource]
     reportScopeId: str
     startedAt: str
     endedAt: str
@@ -81,20 +82,20 @@ class WorkflowDocumentRunResult(TypedDict, total=False):
     sourcePath: str
     status: str
     executionStatus: str
-    phases: Dict[str, Any]
+    phases: dict[str, Any]
     cleanup: Any
-    pendingOperations: List[Any]
+    pendingOperations: list[Any]
     retryDecision: Any
     startedAt: str
     endedAt: str
     durationMs: float
-    beforeAll: List[StepRunResult]
-    afterAll: List[StepRunResult]
-    executionErrors: List[Any]
-    hostErrors: List[WorkflowHostError]
-    teardownErrors: List[Any]
-    reportPaths: List[str]
-    reportSources: List[WorkflowReportSource]
+    beforeAll: list[StepRunResult]
+    afterAll: list[StepRunResult]
+    executionErrors: list[Any]
+    hostErrors: list[WorkflowHostError]
+    teardownErrors: list[Any]
+    reportPaths: list[str]
+    reportSources: list[WorkflowReportSource]
     reportScopeId: str
 
 
@@ -141,8 +142,8 @@ class StepExecutionInfo(TypedDict, total=False):
 class RunCollectedCaseOptions(TypedDict, total=False):
     teardownTimeoutMs: Callable[[], float]
     resolveNode: Callable[[str], Any]
-    beforeEach: List[Dict[str, Any]]
-    afterEach: List[Dict[str, Any]]
+    beforeEach: list[dict[str, Any]]
+    afterEach: list[dict[str, Any]]
     context: Any
     projectName: str
     attemptIndex: int
@@ -164,13 +165,13 @@ class CaseRunOutcome(TypedDict, total=False):
     onFailure: str
     status: str
     run: CaseRunResult
-    attempts: List[CaseRunResult]
+    attempts: list[CaseRunResult]
     notRunReason: str
 
 
 class WorkflowDocumentExecutionResult(TypedDict):
     document: WorkflowDocumentRunResult
-    cases: List[CaseRunOutcome]
+    cases: list[CaseRunOutcome]
 
 
 class RunWorkflowDocumentOptions(TypedDict, total=False):
@@ -196,7 +197,7 @@ class RunWorkflowDocumentOptions(TypedDict, total=False):
     onDocumentResult: Callable[..., Any]
     createCaseRunId: Callable[..., str]
     createDocumentRunId: Callable[..., str]
-    resolveCaseReportScopeId: Callable[..., Optional[str]]
+    resolveCaseReportScopeId: Callable[..., str | None]
 
 
 class CreateDocumentRuntimeOptions(TypedDict, total=False):
@@ -234,14 +235,14 @@ class ProjectRuntimeResult(TypedDict, total=False):
     projectName: str
     status: str
     setupError: Any
-    teardownErrors: List[Any]
+    teardownErrors: list[Any]
     cleanup: Any
-    pendingOperations: List[Any]
+    pendingOperations: list[Any]
     startedAt: str
     endedAt: str
     durationMs: float
 
 
 class CaseRunnerOptions(TypedDict, total=False):
-    nodes: List[Any]
+    nodes: list[Any]
     context: Any

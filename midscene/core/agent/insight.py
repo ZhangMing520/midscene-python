@@ -6,18 +6,18 @@ with the locate and insight model slots. The public API is kept compatible
 with the previous Python SDK release.
 """
 
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from loguru import logger
 
+from midscene.core.agent.utils import _extract_typed_query_result
 from midscene.core.ai_model.models.registry import ModelRuntime, get_model_runtime
 from midscene.core.ai_model.prompt.insight import build_type_query_demand_value
-from midscene.shared.env import ModelConfigManager, get_global_model_config_manager
 from midscene.core.ai_model.workflows import ai_extract_element_info
-from midscene.core.agent.utils import _extract_typed_query_result
-from midscene.core.service.describe import ai_describe_element
-from midscene.core.service import locate_service
 from midscene.core.common import user_prompt_to_string
+from midscene.core.service import locate_service
+from midscene.core.service.describe import ai_describe_element
 from midscene.core.types import (
     AssertResult,
     ExtractOption,
@@ -27,6 +27,7 @@ from midscene.core.types import (
     TUserPrompt,
     UIContext,
 )
+from midscene.shared.env import ModelConfigManager, get_global_model_config_manager
 
 
 class Insight:
@@ -34,12 +35,10 @@ class Insight:
 
     def __init__(
         self,
-        context_provider: Union[
-            UIContext,
-            Callable[[InsightAction], Union[UIContext, Awaitable[UIContext]]],
-        ],
-        ai_service: Optional[Any] = None,
-        model_config: Optional[Union[Dict[str, str], Any]] = None,
+        context_provider: UIContext
+        | Callable[[InsightAction], UIContext | Awaitable[UIContext]],
+        ai_service: Any | None = None,
+        model_config: dict[str, str] | Any | None = None,
     ):
         """Initialize Insight engine
 
@@ -69,8 +68,8 @@ class Insight:
             if model_config
             else get_global_model_config_manager()
         )
-        self._runtime_cache: Dict[str, ModelRuntime] = {}
-        self._dump_subscribers: List[Callable] = []
+        self._runtime_cache: dict[str, ModelRuntime] = {}
+        self._dump_subscribers: list[Callable] = []
 
     def model_runtime(self, intent: str) -> ModelRuntime:
         if intent not in self._runtime_cache:
@@ -81,7 +80,7 @@ class Insight:
     async def locate(
         self,
         prompt: TUserPrompt,
-        options: Optional[LocateOption] = None,
+        options: LocateOption | None = None,
     ) -> LocateResult:
         """Locate a UI element by description (vision grounding)."""
         options = options or LocateOption()
@@ -119,8 +118,8 @@ class Insight:
     async def extract(
         self,
         prompt: TUserPrompt,
-        options: Optional[ExtractOption] = None,
-    ) -> Dict[str, Any]:
+        options: ExtractOption | None = None,
+    ) -> dict[str, Any]:
         """Extract data from the UI (aiQuery)."""
         options = options or ExtractOption()
         try:
@@ -141,7 +140,7 @@ class Insight:
                     "usage": response.get("usage"),
                 }
             )
-            result: Dict[str, Any] = {
+            result: dict[str, Any] = {
                 "data": parse_result.get("data"),
                 "usage": response.get("usage"),
             }
@@ -155,15 +154,13 @@ class Insight:
     async def assert_condition(
         self,
         assertion: TUserPrompt,
-        options: Optional[ExtractOption] = None,
+        options: ExtractOption | None = None,
     ) -> AssertResult:
         """Assert a condition about the UI (aiAssert)."""
         options = options or ExtractOption()
         try:
             context = await self._get_context(InsightAction.ASSERT)
-            assertion_text = (
-                assertion if isinstance(assertion, str) else str(assertion)
-            )
+            assertion_text = assertion if isinstance(assertion, str) else str(assertion)
             response = await ai_extract_element_info(
                 task_type="boolean",
                 data_query={"assertion": assertion_text},
@@ -172,7 +169,9 @@ class Insight:
             )
             parse_result = response.get("parse_result", {})
             data = parse_result.get("data")
-            passed = bool(data.get("assertion")) if isinstance(data, dict) else bool(data)
+            passed = (
+                bool(data.get("assertion")) if isinstance(data, dict) else bool(data)
+            )
             thought = parse_result.get("thought") or ""
 
             await self._notify_dump_subscribers(
@@ -197,7 +196,7 @@ class Insight:
     async def ai_query(
         self,
         demand: Any,
-        options: Optional[Any] = None,
+        options: Any | None = None,
     ) -> Any:
         """Extract structured data from the UI (upstream aiQuery)."""
         extract_option = ExtractOption(
@@ -212,7 +211,7 @@ class Insight:
         demand_type: str,
         api_name: str,
         prompt: TUserPrompt,
-        options: Optional[Any] = None,
+        options: Any | None = None,
     ) -> Any:
         context = await self._get_context(InsightAction.EXTRACT)
         demand_value = build_type_query_demand_value(
@@ -241,45 +240,45 @@ class Insight:
     async def ai_boolean(
         self,
         prompt: TUserPrompt,
-        options: Optional[Any] = None,
+        options: Any | None = None,
     ) -> bool:
-        return bool(await self._query_primitive("Boolean", "aiBoolean", prompt, options))
+        return bool(
+            await self._query_primitive("Boolean", "aiBoolean", prompt, options)
+        )
 
     async def ai_number(
         self,
         prompt: TUserPrompt,
-        options: Optional[Any] = None,
+        options: Any | None = None,
     ) -> float:
         return await self._query_primitive("Number", "aiNumber", prompt, options)
 
     async def ai_string(
         self,
         prompt: TUserPrompt,
-        options: Optional[Any] = None,
+        options: Any | None = None,
     ) -> str:
         return await self._query_primitive("String", "aiString", prompt, options)
 
     async def ai_ask(
         self,
         prompt: TUserPrompt,
-        options: Optional[Any] = None,
+        options: Any | None = None,
     ) -> str:
         return await self._query_primitive("String", "aiAsk", prompt, options)
 
     async def ai_assert(
         self,
         assertion: TUserPrompt,
-        message: Optional[str] = None,
-        options: Optional[Any] = None,
-    ) -> Optional[Dict[str, Any]]:
+        message: str | None = None,
+        options: Any | None = None,
+    ) -> dict[str, Any] | None:
         """Assert a condition about the UI (upstream aiAssert)."""
         assertion_text = user_prompt_to_string(assertion)
         result = await self.assert_condition(
             assertion,
             ExtractOption(
-                screenshot_included=self._option(
-                    options, "screenshotIncluded", True
-                )
+                screenshot_included=self._option(options, "screenshotIncluded", True)
             ),
         )
         failure_message = (
@@ -303,8 +302,8 @@ class Insight:
     async def describe(
         self,
         point: tuple,
-        options: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        options: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Describe the element at the given coordinates.
 
         The screenshot is annotated with the upstream ring + crosshair marker
@@ -344,7 +343,7 @@ class Insight:
             return await result
         return result
 
-    async def _notify_dump_subscribers(self, dump_data: Dict[str, Any]) -> None:
+    async def _notify_dump_subscribers(self, dump_data: dict[str, Any]) -> None:
         """Notify all dump subscribers"""
         import asyncio
 

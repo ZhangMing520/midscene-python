@@ -12,7 +12,7 @@ import base64
 import inspect
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from loguru import logger
 
@@ -39,7 +39,7 @@ DECODE_BATCH_SIZE = 4
 class UIObservation:
     """Fixed observation window; insight calls evaluate the recorded frames."""
 
-    def __init__(self, agent, frames: List[str], started_at: int):
+    def __init__(self, agent, frames: list[str], started_at: int):
         self._agent = agent
         # own the window: the observer keeps sampling into its own buffer.
         # Upstream dedupeRefs drops repeated *frame refs* (one persisted file
@@ -69,14 +69,16 @@ class UIObservation:
         if not self._frames:
             raise RuntimeError("observation has no recorded frames")
 
-    def _reject_dom_included(self, options: Optional[Dict[str, Any]]) -> None:
+    def _reject_dom_included(self, options: dict[str, Any] | None) -> None:
         if options and options.get("domIncluded"):
             raise ValueError(
                 "UIObservation does not support domIncluded because it only "
                 "evaluates recorded screenshots"
             )
 
-    async def ai_query(self, demand: Union[str, Dict[str, str]], opt: Optional[Dict[str, Any]] = None) -> Any:
+    async def ai_query(
+        self, demand: str | dict[str, str], opt: dict[str, Any] | None = None
+    ) -> Any:
         self._ensure_usable()
         self._reject_dom_included(opt)
         opt = dict(opt or {})
@@ -97,21 +99,25 @@ class UIObservation:
         self._agent._record_usage_metrics("insight", response.get("usage"))
         return response.get("parse_result", {}).get("data")
 
-    async def ai_boolean(self, prompt: str, opt: Optional[Dict[str, Any]] = None) -> bool:
+    async def ai_boolean(self, prompt: str, opt: dict[str, Any] | None = None) -> bool:
         result = await self._typed_query("Boolean", "aiBoolean", prompt, opt)
         return bool(result)
 
-    async def ai_number(self, prompt: str, opt: Optional[Dict[str, Any]] = None):
+    async def ai_number(self, prompt: str, opt: dict[str, Any] | None = None):
         return await self._typed_query("Number", "aiNumber", prompt, opt)
 
-    async def ai_string(self, prompt: str, opt: Optional[Dict[str, Any]] = None) -> str:
+    async def ai_string(self, prompt: str, opt: dict[str, Any] | None = None) -> str:
         return await self._typed_query("String", "aiString", prompt, opt)
 
-    async def ai_ask(self, prompt: str, opt: Optional[Dict[str, Any]] = None) -> str:
+    async def ai_ask(self, prompt: str, opt: dict[str, Any] | None = None) -> str:
         return await self._typed_query("String", "aiAsk", prompt, opt)
 
     async def _typed_query(
-        self, demand_type: str, api_name: str, prompt: str, opt: Optional[Dict[str, Any]]
+        self,
+        demand_type: str,
+        api_name: str,
+        prompt: str,
+        opt: dict[str, Any] | None,
     ) -> Any:
         self._ensure_usable()
         self._reject_dom_included(opt)
@@ -144,8 +150,8 @@ class UIObservation:
     async def ai_assert(
         self,
         assertion: str,
-        message: Optional[str] = None,
-        opt: Optional[Dict[str, Any]] = None,
+        message: str | None = None,
+        opt: dict[str, Any] | None = None,
     ):
         """aiAssert over the recorded window; keepRawResponse returns dict."""
         self._ensure_usable()
@@ -195,18 +201,20 @@ class UIObservation:
 class UIObserver:
     """Record frames from the agent's interface until stopped."""
 
-    def __init__(self, agent, opt: Optional[Dict[str, Any]] = None):
+    def __init__(self, agent, opt: dict[str, Any] | None = None):
         opt = opt or {}
-        self.interval_ms = max(MIN_INTERVAL_MS, int(opt.get("intervalMs", DEFAULT_INTERVAL_MS)))
+        self.interval_ms = max(
+            MIN_INTERVAL_MS, int(opt.get("intervalMs", DEFAULT_INTERVAL_MS))
+        )
         self.max_frames = max(2, int(opt.get("maxFrames", DEFAULT_MAX_FRAMES)))
         self.watchdog_ms = int(opt.get("watchdogMs", DEFAULT_WATCHDOG_MS))
         self._agent = agent
-        self._frames: List[str] = []
-        self._loop_task: Optional[asyncio.Task] = None
+        self._frames: list[str] = []
+        self._loop_task: asyncio.Task | None = None
         self._stop_requested = False
-        self._observation: Optional[UIObservation] = None
-        self._stop_task: Optional[asyncio.Task] = None
-        self._watchdog_task: Optional[asyncio.Task] = None
+        self._observation: UIObservation | None = None
+        self._stop_task: asyncio.Task | None = None
+        self._watchdog_task: asyncio.Task | None = None
         self.started_at = 0
 
     @property
@@ -238,7 +246,7 @@ class UIObserver:
         if len(self._frames) > self.max_frames:
             self._frames = self._thin_buffer(self._frames)
 
-    def _thin_buffer(self, frames: List[str]) -> List[str]:
+    def _thin_buffer(self, frames: list[str]) -> list[str]:
         """Drop redundant frames, always keeping the first and the last."""
         if len(frames) <= 1:
             return frames
@@ -246,7 +254,7 @@ class UIObserver:
         is_change_point.insert(0, True)
         is_change_point[-1] = True
 
-        result: List[str] = []
+        result: list[str] = []
         static_counter = 0
         for index, frame in enumerate(frames):
             if is_change_point[index]:
@@ -315,9 +323,7 @@ class UIObserver:
                 f"{MAX_FRAMES_PER_RECORD}): every frame goes to the model, "
                 "consider increasing intervalMs or decreasing maxFrames"
             )
-        self._observation = UIObservation(
-            self._agent, self._frames, self.started_at
-        )
+        self._observation = UIObservation(self._agent, self._frames, self.started_at)
         return self._observation
 
     async def dispose(self) -> None:
@@ -356,10 +362,10 @@ class UIObservationImpl:
 
     def __init__(
         self,
-        record: Dict[str, Any],
+        record: dict[str, Any],
         insight: Any,
-        dispose_record: Optional[Any] = None,
-        on_disposed: Optional[Any] = None,
+        dispose_record: Any | None = None,
+        on_disposed: Any | None = None,
     ) -> None:
         self._disposed = False
         self._record = clone_ui_observation_record(record)
@@ -384,7 +390,7 @@ class UIObservationImpl:
             raise RuntimeError("UI observation has been disposed")
 
     @staticmethod
-    def _ensure_fixed_window_options(options: Optional[Dict[str, Any]]) -> None:
+    def _ensure_fixed_window_options(options: dict[str, Any] | None) -> None:
         if options is not None and "domIncluded" in options:
             raise ValueError(
                 "UIObservation does not support domIncluded because it only "
@@ -394,7 +400,7 @@ class UIObservationImpl:
     async def ai_query(
         self,
         demand: Any,
-        options: Optional[Dict[str, Any]] = None,
+        options: dict[str, Any] | None = None,
     ) -> Any:
         self._ensure_usable()
         self._ensure_fixed_window_options(options)
@@ -403,7 +409,7 @@ class UIObservationImpl:
     async def ai_boolean(
         self,
         prompt: Any,
-        options: Optional[Dict[str, Any]] = None,
+        options: dict[str, Any] | None = None,
     ) -> bool:
         self._ensure_usable()
         self._ensure_fixed_window_options(options)
@@ -412,7 +418,7 @@ class UIObservationImpl:
     async def ai_number(
         self,
         prompt: Any,
-        options: Optional[Dict[str, Any]] = None,
+        options: dict[str, Any] | None = None,
     ) -> float:
         self._ensure_usable()
         self._ensure_fixed_window_options(options)
@@ -421,7 +427,7 @@ class UIObservationImpl:
     async def ai_string(
         self,
         prompt: Any,
-        options: Optional[Dict[str, Any]] = None,
+        options: dict[str, Any] | None = None,
     ) -> str:
         self._ensure_usable()
         self._ensure_fixed_window_options(options)
@@ -430,7 +436,7 @@ class UIObservationImpl:
     async def ai_ask(
         self,
         prompt: Any,
-        options: Optional[Dict[str, Any]] = None,
+        options: dict[str, Any] | None = None,
     ) -> str:
         self._ensure_usable()
         self._ensure_fixed_window_options(options)
@@ -439,14 +445,14 @@ class UIObservationImpl:
     async def ai_assert(
         self,
         assertion: Any,
-        message: Optional[str] = None,
-        options: Optional[Dict[str, Any]] = None,
+        message: str | None = None,
+        options: dict[str, Any] | None = None,
     ) -> Any:
         self._ensure_usable()
         self._ensure_fixed_window_options(options)
         return await self._insight.ai_assert(assertion, message, options)
 
-    async def export_record(self) -> Dict[str, Any]:
+    async def export_record(self) -> dict[str, Any]:
         self._ensure_usable()
         return clone_ui_observation_record(self._record)
 
@@ -467,22 +473,22 @@ class UIObservationImpl:
 class UIObserverImpl:
     """Record an explicit screen window (upstream UIObserverImpl)."""
 
-    def __init__(self, deps: Any, opt: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, deps: Any, opt: dict[str, Any] | None = None) -> None:
         opt = opt or {}
         self._deps = deps
-        self._frames: List[Dict[str, Any]] = []
+        self._frames: list[dict[str, Any]] = []
         self._source: Any = None
         self._using_fallback = False
         self._stopped = False
         self._disposed = False
-        self._loop_task: Optional[asyncio.Future] = None
-        self._stop_future: Optional[asyncio.Future] = None
-        self._representative: Optional[UIContext] = None
-        self._representative_frame: Optional[Dict[str, Any]] = None
-        self._watchdog_task: Optional[asyncio.Future] = None
-        self._persist_future: Optional[asyncio.Future] = None
-        self._persisted_by_ref: Dict[Any, Dict[str, Any]] = {}
-        self._observation: Optional[UIObservationImpl] = None
+        self._loop_task: asyncio.Future | None = None
+        self._stop_future: asyncio.Future | None = None
+        self._representative: UIContext | None = None
+        self._representative_frame: dict[str, Any] | None = None
+        self._watchdog_task: asyncio.Future | None = None
+        self._persist_future: asyncio.Future | None = None
+        self._persisted_by_ref: dict[Any, dict[str, Any]] = {}
+        self._observation: UIObservationImpl | None = None
         self._started_at = 0
         self._interval_ms = max(
             MIN_INTERVAL_MS,
@@ -510,9 +516,7 @@ class UIObserverImpl:
         if self._loop_task is not None or self._stopped:
             raise RuntimeError("observer has already started")
         self._started_at = int(time.time() * 1000)
-        open_source = _deps_value(
-            self._deps, "openFrameSource", "open_frame_source"
-        )
+        open_source = _deps_value(self._deps, "openFrameSource", "open_frame_source")
         try:
             self._source = await open_source() if callable(open_source) else None
         except Exception as error:  # noqa: BLE001 - fallback is expected
@@ -533,8 +537,7 @@ class UIObserverImpl:
                 first_frame = latest() if callable(latest) else None
             if first_frame is None:
                 logger.debug(
-                    f"no first frame within {FIRST_FRAME_TIMEOUT_MS}ms; "
-                    "starting anyway"
+                    f"no first frame within {FIRST_FRAME_TIMEOUT_MS}ms; starting anyway"
                 )
 
         await self._capture_once()
@@ -583,9 +586,7 @@ class UIObserverImpl:
                 representative = representative.model_copy(
                     update={
                         "screenshot_base64": _frame_path_data_url(
-                            self._writer.resolve_frame_path(
-                                last_frame["persisted"]
-                            ),
+                            self._writer.resolve_frame_path(last_frame["persisted"]),
                             last_frame["persisted"]["mimeType"],
                         )
                     }
@@ -593,9 +594,7 @@ class UIObserverImpl:
             self._representative = representative
             ended_at = int(time.time() * 1000)
             record = await self._finalize_record(ended_at)
-            create_insight = _deps_value(
-                self._deps, "createInsight", "create_insight"
-            )
+            create_insight = _deps_value(self._deps, "createInsight", "create_insight")
             insight = create_insight(record) if callable(create_insight) else None
             self._observation = UIObservationImpl(
                 record,
@@ -633,7 +632,7 @@ class UIObserverImpl:
             return await result
         return result
 
-    async def _finalize_record(self, ended_at: int) -> Dict[str, Any]:
+    async def _finalize_record(self, ended_at: int) -> dict[str, Any]:
         if not self._stopped or self._representative is None:
             raise RuntimeError(
                 "observation must be stopped before finalizing the observed window"
@@ -643,7 +642,7 @@ class UIObserverImpl:
             self._persist_future = None
         await self._persist_unstored_frames()
 
-        sampled_frames: List[Dict[str, Any]] = []
+        sampled_frames: list[dict[str, Any]] = []
         for frame in self._frames:
             if not frame.get("persisted"):
                 raise RuntimeError("observation frame was not persisted")
@@ -660,9 +659,7 @@ class UIObserverImpl:
             representative = representative.model_copy(
                 update={
                     "screenshot_base64": _frame_path_data_url(
-                        self._writer.resolve_frame_path(
-                            self._representative_frame
-                        ),
+                        self._writer.resolve_frame_path(self._representative_frame),
                         self._representative_frame["mimeType"],
                     )
                 }
@@ -686,9 +683,7 @@ class UIObserverImpl:
                 "width": representative.size.width,
                 "height": representative.size.height,
             },
-            "shrunkShotToLogicalRatio": (
-                representative.shrunk_shot_to_logical_ratio
-            ),
+            "shrunkShotToLogicalRatio": (representative.shrunk_shot_to_logical_ratio),
         }
         return self._writer.finalize(frames, metadata)
 
@@ -705,9 +700,7 @@ class UIObserverImpl:
                 await self._observation.dispose()
             else:
                 self._writer.dispose()
-                on_disposed = _deps_value(
-                    self._deps, "onDisposed", "on_disposed"
-                )
+                on_disposed = _deps_value(self._deps, "onDisposed", "on_disposed")
                 if callable(on_disposed):
                     result = on_disposed()
                     if inspect.isawaitable(result):
@@ -748,10 +741,8 @@ class UIObserverImpl:
                 for data_url in decoded
             ]
             for index, frame in enumerate(batch):
-                self._persisted_by_ref[frame["ref"]] = (
-                    self._writer.persist_frame(
-                        prepared[index], frame["capturedAt"]
-                    )
+                self._persisted_by_ref[frame["ref"]] = self._writer.persist_frame(
+                    prepared[index], frame["capturedAt"]
                 )
         for frame in self._frames:
             if not frame.get("persisted"):
@@ -774,9 +765,7 @@ class UIObserverImpl:
                     prepared = await prepare_screenshot_for_persistence(
                         ref, {"shrinkFactor": self._screenshot_shrink_factor}
                     )
-                    persisted = self._writer.persist_frame(
-                        prepared, captured_at
-                    )
+                    persisted = self._writer.persist_frame(prepared, captured_at)
                     self._push_frame(
                         {
                             "ref": persisted["path"],
@@ -785,9 +774,7 @@ class UIObserverImpl:
                         }
                     )
                 else:
-                    self._push_frame(
-                        {"ref": ref, "capturedAt": captured_at}
-                    )
+                    self._push_frame({"ref": ref, "capturedAt": captured_at})
                 return
             capture = _deps_value(
                 self._deps, "captureRawScreenshot", "capture_raw_screenshot"
@@ -798,9 +785,7 @@ class UIObserverImpl:
             prepared = await prepare_screenshot_for_persistence(
                 raw, {"shrinkFactor": self._screenshot_shrink_factor}
             )
-            persisted = self._writer.persist_frame(
-                prepared, int(time.time() * 1000)
-            )
+            persisted = self._writer.persist_frame(prepared, int(time.time() * 1000))
             self._push_frame(
                 {
                     "ref": persisted["path"],
@@ -833,24 +818,16 @@ class UIObserverImpl:
             except Exception:  # noqa: BLE001 - watchdog must not crash
                 pass
 
-    def _push_frame(self, frame: Dict[str, Any]) -> None:
+    def _push_frame(self, frame: dict[str, Any]) -> None:
         self._frames.append(frame)
         if len(self._frames) > self._max_frames:
             self._frames = self._thin_buffer(self._frames)
             self._writer.prune_frames(
-                [
-                    frame["persisted"]
-                    for frame in self._frames
-                    if frame.get("persisted")
-                ]
+                [frame["persisted"] for frame in self._frames if frame.get("persisted")]
             )
-            logger.debug(
-                f"frame buffer thinned to {len(self._frames)} frames"
-            )
+            logger.debug(f"frame buffer thinned to {len(self._frames)} frames")
 
-    def _thin_buffer(
-        self, frames: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+    def _thin_buffer(self, frames: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if len(frames) <= 1:
             return frames
         is_change_point = [
@@ -860,7 +837,7 @@ class UIObserverImpl:
         is_change_point.insert(0, True)
         is_change_point[-1] = True
 
-        result: List[Dict[str, Any]] = []
+        result: list[dict[str, Any]] = []
         static_counter = 0
         for index, frame in enumerate(frames):
             if is_change_point[index]:
@@ -873,20 +850,15 @@ class UIObserverImpl:
                 static_counter += 1
         if len(result) > self._max_frames:
             step = len(result) / self._max_frames
-            sampled = [
-                result[int(index * step)]
-                for index in range(self._max_frames)
-            ]
+            sampled = [result[int(index * step)] for index in range(self._max_frames)]
             sampled[-1] = result[-1]
             result = sampled
         return result
 
     @staticmethod
-    def _dedupe_refs(
-        frames: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
-        seen: List[Any] = []
-        result: List[Dict[str, Any]] = []
+    def _dedupe_refs(frames: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        seen: list[Any] = []
+        result: list[dict[str, Any]] = []
         for frame in frames:
             if frame["ref"] not in seen:
                 seen.append(frame["ref"])
@@ -895,12 +867,10 @@ class UIObserverImpl:
 
 
 def ui_context_from_observation_record(
-    record: Dict[str, Any],
+    record: dict[str, Any],
 ) -> UIContext:
     """Rebuild model-facing temporal context from a resolved record."""
-    if record.get("type") != "midscene_ui_observation" or record.get(
-        "version"
-    ) != 1:
+    if record.get("type") != "midscene_ui_observation" or record.get("version") != 1:
         raise ValueError("invalid UI observation record type or version")
     if not record.get("frames"):
         raise ValueError("UI observation record contains no frames")
@@ -911,9 +881,7 @@ def ui_context_from_observation_record(
         raise ValueError("UI observation record shot height must be positive")
     ratio = record["shrunkShotToLogicalRatio"]
     if not (ratio > 0 and ratio != float("inf")):
-        raise ValueError(
-            "UI observation record screenshot ratio must be positive"
-        )
+        raise ValueError("UI observation record screenshot ratio must be positive")
 
     screenshot_sequence = [
         _frame_path_data_url(frame["path"], frame["mimeType"])

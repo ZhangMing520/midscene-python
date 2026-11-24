@@ -55,4 +55,3 @@ class TestActionScroll:
             locate_fn,
         )
         assert device.calls == [("down", None, [10, 20], "singleAction")]
-

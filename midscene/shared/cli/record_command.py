@@ -1,7 +1,8 @@
 """Foreground recording command (upstream cli/record-command.ts)."""
 
 import inspect
-from typing import Any, Awaitable, Callable, Dict, Optional
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from midscene.shared.agent_tools.error_formatter import get_error_message
 from midscene.shared.agent_tools.observation_artifact import (
@@ -44,7 +45,7 @@ _RECORD_CLI_METADATA: ToolCliMetadata = {
 
 
 def _merge_cli_metadata(
-    base: ToolCliMetadata, extra: Optional[ToolCliMetadata] = None
+    base: ToolCliMetadata, extra: ToolCliMetadata | None = None
 ) -> ToolCliMetadata:
     return {
         "positionals": base.get("positionals"),
@@ -64,14 +65,14 @@ async def _maybe_await(value: Any) -> Any:
 
 
 def create_record_cli_command(
-    get_agent: Callable[[Dict[str, Any]], Awaitable[Any]],
-    init_arg_schema: Optional[ToolSchema] = None,
-    init_arg_cli_metadata: Optional[ToolCliMetadata] = None,
+    get_agent: Callable[[dict[str, Any]], Awaitable[Any]],
+    init_arg_schema: ToolSchema | None = None,
+    init_arg_cli_metadata: ToolCliMetadata | None = None,
 ) -> ToolDefinition:
     """Create the foreground recording command exposed only by Midscene CLIs."""
     init_schema = init_arg_schema or {}
 
-    async def handler(args: Dict[str, Any]) -> ToolResult:
+    async def handler(args: dict[str, Any]) -> ToolResult:
         if args.get("action") != "start":
             return _create_error_result(
                 "record requires the start operation (for example: record start "
@@ -134,9 +135,7 @@ def create_record_cli_command(
                 record = await _maybe_await(
                     observation_artifacts.export_record(observation)
                 )
-                output_path = write_ui_observation_record(
-                    record, args.get("output")
-                )
+                output_path = write_ui_observation_record(record, args.get("output"))
                 return ToolResult(
                     [
                         {
@@ -158,9 +157,7 @@ def create_record_cli_command(
         except Exception as error:  # noqa: BLE001
             error_message = get_error_message(error)
             print(f"Error executing record: {error_message}")
-            return _create_error_result(
-                f"Failed to execute record: {error_message}"
-            )
+            return _create_error_result(f"Failed to execute record: {error_message}")
 
     return ToolDefinition(
         name="record",

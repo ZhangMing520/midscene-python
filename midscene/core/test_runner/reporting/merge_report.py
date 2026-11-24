@@ -1,7 +1,8 @@
 """Merge multiple report dumps (upstream reporting/merge-report.ts)."""
 
 import datetime
-from typing import Any, Callable, Dict, List, Optional, TypedDict
+from collections.abc import Callable
+from typing import Any, TypedDict
 
 from midscene.core.test_run_report import (
     TestRunReportDump,
@@ -15,9 +16,9 @@ from midscene.core.test_runner.reporting.metrics import (
 class MergeTestRunReportSource(TypedDict, total=False):
     reportId: str
     sourcePath: str
-    attributes: Dict[str, Any]
+    attributes: dict[str, Any]
     dump: TestRunReportDump
-    timing: Dict[str, Any]
+    timing: dict[str, Any]
 
 
 _REFERENCE_KEYS = (
@@ -48,7 +49,7 @@ _METRIC_FIELDS = (
 )
 
 
-def _parse_ms(value: Any) -> Optional[float]:
+def _parse_ms(value: Any) -> float | None:
     if not isinstance(value, str):
         return None
     try:
@@ -62,15 +63,13 @@ def _parse_ms(value: Any) -> Optional[float]:
 
 def _iso_ms(value: float) -> str:
     return (
-        datetime.datetime.fromtimestamp(value / 1000, tz=datetime.timezone.utc)
+        datetime.datetime.fromtimestamp(value / 1000, tz=datetime.UTC)
         .isoformat(timespec="milliseconds")
         .replace("+00:00", "Z")
     )
 
 
-def _remap_error(
-    error: Any, id_for: Callable[[str], str]
-) -> Dict[str, Any]:
+def _remap_error(error: Any, id_for: Callable[[str], str]) -> dict[str, Any]:
     def remap_references(value: Any) -> Any:
         if not isinstance(value, dict):
             return value
@@ -96,15 +95,13 @@ def _remap_error(
     if error.get("cause") is not None:
         result["cause"] = _remap_error(error["cause"], id_for)
     if error.get("errors") is not None:
-        result["errors"] = [
-            _remap_error(item, id_for) for item in error["errors"]
-        ]
+        result["errors"] = [_remap_error(item, id_for) for item in error["errors"]]
     return result
 
 
 def _agent_report_as_test_run(
     source: MergeTestRunReportSource,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     attributes = source.get("attributes") or {}
     report_id = source.get("reportId")
     test_status = attributes.get("testStatus")
@@ -116,7 +113,7 @@ def _agent_report_as_test_run(
         status = "failed"
     failed = status == "failed"
     timing = source.get("timing")
-    result: Dict[str, Any] = {
+    result: dict[str, Any] = {
         "status": "failed" if failed else "success",
         "summary": {
             "total": 1,
@@ -181,14 +178,13 @@ def _agent_report_as_test_run(
 
 def _retain_host_failure(
     source: MergeTestRunReportSource,
-) -> Optional[TestRunReportDump]:
+) -> TestRunReportDump | None:
     dump = source.get("dump")
     attributes = source.get("attributes") or {}
     if (
         dump is None
         or dump.get("status") == "failed"
-        or attributes.get("testStatus")
-        not in ("failed", "timedOut", "interrupted")
+        or attributes.get("testStatus") not in ("failed", "timedOut", "interrupted")
     ):
         return dump
 
@@ -203,7 +199,7 @@ def _retain_host_failure(
     document_index = len(documents) - 1
     document = documents[document_index] if document_index >= 0 else None
 
-    def after_host(value: Dict[str, Any]) -> Dict[str, Any]:
+    def after_host(value: dict[str, Any]) -> dict[str, Any]:
         ended_at = value.get("endedAt") or dump.get("endedAt")
         after_all = list(value.get("afterAll") or [])
         after_all.append(
@@ -231,12 +227,12 @@ def _retain_host_failure(
     else:
         summary["projectFailures"] = summary.get("projectFailures", 0) + 1
 
-    merged_projects: List[Dict[str, Any]] = []
+    merged_projects: list[dict[str, Any]] = []
     for index, item in enumerate(projects):
         if index != project_index:
             merged_projects.append(item)
             continue
-        merged_documents: List[Dict[str, Any]] = []
+        merged_documents: list[dict[str, Any]] = []
         for document_index_, value in enumerate(item.get("documents") or []):
             if document_index_ != document_index:
                 merged_documents.append(value)
@@ -272,12 +268,12 @@ def _retain_host_failure(
 
 
 def merge_test_run_report_dumps(
-    sources: List[MergeTestRunReportSource],
+    sources: list[MergeTestRunReportSource],
     metrics: TestRunReportMetrics,
     run_id: str,
-    raw_execution_metrics: Optional[Dict[str, TestRunReportMetrics]] = None,
+    raw_execution_metrics: dict[str, TestRunReportMetrics] | None = None,
 ) -> TestRunReportDump:
-    dumps: List[Dict[str, Any]] = []
+    dumps: list[dict[str, Any]] = []
     for source in sources:
         source_dump = source.get("dump")
         if source_dump is not None:
@@ -289,19 +285,15 @@ def merge_test_run_report_dumps(
                     f"{source.get('sourcePath')}"
                 )
         retained = _retain_host_failure(source)
-        dump = (
-            retained
-            if retained is not None
-            else _agent_report_as_test_run(source)
-        )
+        dump = retained if retained is not None else _agent_report_as_test_run(source)
 
         def id_for(value: str, source: MergeTestRunReportSource = source) -> str:
             return f"{source.get('reportId')}:{value}"
 
-        def error(value: Any) -> Dict[str, Any]:
+        def error(value: Any) -> dict[str, Any]:
             return _remap_error(value, id_for)
 
-        def scope_errors(value: Dict[str, Any]) -> Dict[str, Any]:
+        def scope_errors(value: dict[str, Any]) -> dict[str, Any]:
             result = {**value}
             if value.get("setupError") is not None:
                 result["setupError"] = error(value["setupError"])
@@ -316,7 +308,7 @@ def merge_test_run_report_dumps(
                 ]
             return result
 
-        def reference(value: Dict[str, Any]) -> Dict[str, Any]:
+        def reference(value: dict[str, Any]) -> dict[str, Any]:
             result = {**value}
             if value.get("stepId"):
                 result["stepId"] = id_for(value["stepId"])
@@ -324,7 +316,7 @@ def merge_test_run_report_dumps(
                 result["scopeId"] = id_for(value["scopeId"])
             return result
 
-        def cleanup(value: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        def cleanup(value: dict[str, Any] | None) -> dict[str, Any] | None:
             if value is None:
                 return None
             result = {**value}
@@ -337,13 +329,17 @@ def merge_test_run_report_dumps(
             return result
 
         def scope_reports(
-            report_ids: Optional[List[str]],
-        ) -> Optional[List[str]]:
+            report_ids: list[str] | None,
+            source: MergeTestRunReportSource = source,
+        ) -> list[str] | None:
             if report_ids:
                 return [source.get("reportId")]
             return report_ids
 
-        def step(value: Dict[str, Any]) -> Dict[str, Any]:
+        def step(
+            value: dict[str, Any],
+            source: MergeTestRunReportSource = source,
+        ) -> dict[str, Any]:
             result = {**value, "id": id_for(value.get("id"))}
             if value.get("error") is not None:
                 result["error"] = error(value["error"])
@@ -351,8 +347,7 @@ def merge_test_run_report_dumps(
                 evidence = {**value["evidenceCollection"]}
                 if value["evidenceCollection"].get("errors") is not None:
                     evidence["errors"] = [
-                        error(item)
-                        for item in value["evidenceCollection"]["errors"]
+                        error(item) for item in value["evidenceCollection"]["errors"]
                     ]
                 result["evidenceCollection"] = evidence
             if value.get("operations") is not None:
@@ -367,8 +362,7 @@ def merge_test_run_report_dumps(
                         mapped["scopeId"] = id_for(event["scopeId"])
                     if event.get("blockingOperations") is not None:
                         mapped["blockingOperations"] = [
-                            reference(item)
-                            for item in event["blockingOperations"]
+                            reference(item) for item in event["blockingOperations"]
                         ]
                     events.append(mapped)
                 result["operations"] = {**value["operations"], "events": events}
@@ -381,7 +375,7 @@ def merge_test_run_report_dumps(
                 result["blockedBy"] = id_for(result["blockedBy"])
             return result
 
-        def document_scope(value: Dict[str, Any]) -> Dict[str, Any]:
+        def document_scope(value: dict[str, Any]) -> dict[str, Any]:
             result = scope_errors(value)
             if value.get("cleanup") is not None:
                 result["cleanup"] = cleanup(value["cleanup"])
@@ -401,7 +395,7 @@ def merge_test_run_report_dumps(
                 result["scopeReportIds"] = scoped_reports
             return result
 
-        merged_projects: List[Dict[str, Any]] = []
+        merged_projects: list[dict[str, Any]] = []
         for project in dump.get("projects") or []:
             merged_project = {
                 **project,
@@ -421,34 +415,27 @@ def merge_test_run_report_dumps(
                     merged_lifecycle["cleanup"] = cleanup(lifecycle["cleanup"])
                 if lifecycle.get("pendingOperations") is not None:
                     merged_lifecycle["pendingOperations"] = [
-                        reference(item)
-                        for item in lifecycle["pendingOperations"]
+                        reference(item) for item in lifecycle["pendingOperations"]
                     ]
                 merged_project["lifecycle"] = merged_lifecycle
-            merged_documents: List[Dict[str, Any]] = []
+            merged_documents: list[dict[str, Any]] = []
             for document in project.get("documents") or []:
                 merged_document = document_scope(document)
                 if document.get("attempts") is not None:
                     merged_document["attempts"] = [
-                        document_scope(attempt)
-                        for attempt in document["attempts"]
+                        document_scope(attempt) for attempt in document["attempts"]
                     ]
                 merged_cases = []
                 for test_case in document.get("cases") or []:
                     merged_attempts = []
                     for attempt in test_case.get("attempts") or []:
                         merged_attempt = scope_errors(attempt)
-                        merged_attempt["attemptId"] = id_for(
-                            attempt.get("attemptId")
-                        )
+                        merged_attempt["attemptId"] = id_for(attempt.get("attemptId"))
                         if attempt.get("cleanup") is not None:
-                            merged_attempt["cleanup"] = cleanup(
-                                attempt["cleanup"]
-                            )
+                            merged_attempt["cleanup"] = cleanup(attempt["cleanup"])
                         if attempt.get("pendingOperations") is not None:
                             merged_attempt["pendingOperations"] = [
-                                reference(item)
-                                for item in attempt["pendingOperations"]
+                                reference(item) for item in attempt["pendingOperations"]
                             ]
                         merged_attempt["beforeEach"] = [
                             step(item) for item in attempt.get("beforeEach") or []
@@ -459,9 +446,7 @@ def merge_test_run_report_dumps(
                         merged_attempt["afterEach"] = [
                             step(item) for item in attempt.get("afterEach") or []
                         ]
-                        scoped_reports = scope_reports(
-                            attempt.get("scopeReportIds")
-                        )
+                        scoped_reports = scope_reports(attempt.get("scopeReportIds"))
                         if scoped_reports is not None:
                             merged_attempt["scopeReportIds"] = scoped_reports
                         merged_attempts.append(merged_attempt)
@@ -494,7 +479,7 @@ def merge_test_run_report_dumps(
 
     # A report without recorded timestamps contributes outcomes, not the time
     # at which an unrelated merge command happened to run.
-    recorded_times: List[Dict[str, float]] = []
+    recorded_times: list[dict[str, float]] = []
     for dump in dumps:
         if dump.get("startedAt") and dump.get("endedAt"):
             start = _parse_ms(dump["startedAt"])
@@ -503,8 +488,7 @@ def merge_test_run_report_dumps(
                 recorded_times.append({"start": start, "end": end})
     if not recorded_times:
         raise ValueError(
-            "Cannot merge Midscene Test reports without recorded execution "
-            "timestamps."
+            "Cannot merge Midscene Test reports without recorded execution timestamps."
         )
     started_at = _iso_ms(min(item["start"] for item in recorded_times))
     ended_at = _iso_ms(max(item["end"] for item in recorded_times))
@@ -524,11 +508,11 @@ def merge_test_run_report_dumps(
         for key in summary:
             summary[key] += dump_summary.get(key, 0)
 
-    diagnostics: List[Dict[str, Any]] = []
+    diagnostics: list[dict[str, Any]] = []
     for dump in dumps:
         diagnostics.extend(dump.get("diagnostics") or [])
 
-    execution_metrics: Dict[str, TestRunReportMetrics] = dict(
+    execution_metrics: dict[str, TestRunReportMetrics] = dict(
         raw_execution_metrics or {}
     )
     for source in sources:
@@ -554,17 +538,11 @@ def merge_test_run_report_dumps(
     for source in sources:
         source_dump = source.get("dump")
         if source_dump is not None:
-            collections.append(
-                (source_dump.get("metrics") or {}).get("collection")
-            )
+            collections.append((source_dump.get("metrics") or {}).get("collection"))
 
     metrics_collection = metrics.get("collection") or {}
-    incomplete = (
-        metrics_collection.get("status") in ("partial", "unknown")
-        or any(
-            (collection or {}).get("status") != "complete"
-            for collection in collections
-        )
+    incomplete = metrics_collection.get("status") in ("partial", "unknown") or any(
+        (collection or {}).get("status") != "complete" for collection in collections
     )
     if incomplete:
         has_recorded = metrics.get("modelCallCount", 0) > 0 or any(
@@ -595,9 +573,9 @@ def merge_test_run_report_dumps(
             if reason not in reasons:
                 reasons.append(reason)
 
-    fields: Dict[str, str] = {}
+    fields: dict[str, str] = {}
     for field in _METRIC_FIELDS:
-        states: List[Optional[str]] = []
+        states: list[str | None] = []
         for collection in collections:
             state = None
             if collection is not None:
@@ -652,9 +630,7 @@ def merge_test_run_report_dumps(
         result["executionMetrics"] = execution_metrics
     if any(dump.get("operationLogs") for dump in dumps):
         result["operationLogs"] = [
-            log
-            for dump in dumps
-            for log in (dump.get("operationLogs") or [])
+            log for dump in dumps for log in (dump.get("operationLogs") or [])
         ]
     if diagnostics:
         result["diagnostics"] = diagnostics

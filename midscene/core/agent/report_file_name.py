@@ -5,7 +5,9 @@ import os
 from midscene.core.dump import get_report_file_name
 
 
-def report_name(agent, ) -> str:
+def report_name(
+    agent,
+) -> str:
     if agent._report_file_name:
         return agent._report_file_name
     name = getattr(agent.options, "report_file_name", None)

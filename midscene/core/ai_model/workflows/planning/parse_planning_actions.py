@@ -1,13 +1,13 @@
 """Planning action validation/normalization (upstream workflows/planning/parse-planning-actions.ts)."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from midscene.core.ai_model.workflows.planning.locate_normalization import (
     normalize_planning_locate_parameter,
 )
 
 
-def _param_schema_of(definition: Any) -> Optional[Dict[str, Any]]:
+def _param_schema_of(definition: Any) -> dict[str, Any] | None:
     if isinstance(definition, dict):
         return definition.get("param_schema")
     return getattr(definition, "param_schema", None)
@@ -32,12 +32,12 @@ def _validate_user_prompt(prompt: Any, field: str) -> None:
 
 
 def parse_planning_actions(
-    actions: List[Dict[str, Any]],
-    action_space: List[Any],
+    actions: list[dict[str, Any]],
+    action_space: list[Any],
     parse_raw_locate_parameter,
     include_locate_in_planning: bool,
-    locate_result_codec: Optional[Any] = None,
-    locate_result_context: Optional[Dict[str, Any]] = None,
+    locate_result_codec: Any | None = None,
+    locate_result_context: dict[str, Any] | None = None,
 ) -> None:
     """Validate and normalize planning actions in place."""
     from midscene.core.common import (
@@ -48,9 +48,7 @@ def parse_planning_actions(
     from midscene.core.device import find_action_in_action_space_or_throw
 
     for action in actions:
-        definition = find_action_in_action_space_or_throw(
-            action["type"], action_space
-        )
+        definition = find_action_in_action_space_or_throw(action["type"], action_space)
         if not _param_schema_of(definition):
             continue
 
@@ -75,9 +73,7 @@ def parse_planning_actions(
                 # Validate only the model-facing prompt; coordinates are
                 # normalized later at execution time.
                 if not isinstance(locate, dict):
-                    raise ValueError(
-                        f"{field}: Expected an object with a prompt field"
-                    )
+                    raise ValueError(f"{field}: Expected an object with a prompt field")
                 if "prompt" not in locate:
                     raise ValueError(f"{field}.prompt: Required")
                 _validate_user_prompt(locate["prompt"], field)

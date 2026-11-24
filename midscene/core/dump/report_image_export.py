@@ -1,8 +1,8 @@
 """Export report image bytes once (upstream dump/report-image-export.ts)."""
 
-from typing import Any, Dict, List, Optional, Set
 import base64
 from pathlib import Path
+from typing import Any
 
 from midscene.core.dump.image_reference import image_ref_file_extension
 from midscene.core.dump.screenshot_store import (
@@ -18,19 +18,17 @@ class ReportImageExporter:
     def __init__(self, report_path: str, screenshots_dir: str):
         self.report_path = report_path
         self.screenshots_dir = Path(screenshots_dir)
-        self._locations: Dict[str, str] = {}
-        self._written_files: Set[str] = set()
+        self._locations: dict[str, str] = {}
+        self._written_files: set[str] = set()
 
-    def write(
-        self, ref: Dict[str, Any], data_uri: Optional[str] = None
-    ) -> str:
+    def write(self, ref: dict[str, Any], data_uri: str | None = None) -> str:
         key = repr(
             [ref.get("id"), ref.get("mimeType"), ref.get("storage"), ref.get("path")]
         )
         known = self._locations.get(key)
         if known:
             return known
-        source: Dict[str, str]
+        source: dict[str, str]
         if data_uri:
             source = {"type": "data-uri", "dataUri": data_uri}
         else:
@@ -50,7 +48,7 @@ class ReportImageExporter:
         return name
 
     @property
-    def files(self) -> List[str]:
+    def files(self) -> list[str]:
         return [
             str(self.screenshots_dir / name) for name in sorted(self._written_files)
         ]

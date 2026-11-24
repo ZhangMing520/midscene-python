@@ -3,13 +3,14 @@
 import asyncio
 import datetime
 import os
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 from loguru import logger
 
 from midscene.core.test_runner.engine._abort import (
-    add_abort_listener,
     abort_reason,
+    add_abort_listener,
     is_aborted,
 )
 from midscene.core.test_runner.engine.execution_failure import WorkflowAggregateError
@@ -31,14 +32,14 @@ from midscene.core.types import AbortSignal
 
 
 def _now() -> datetime.datetime:
-    return datetime.datetime.now(datetime.timezone.utc)
+    return datetime.datetime.now(datetime.UTC)
 
 
 def _iso(value: datetime.datetime) -> str:
     return value.isoformat().replace("+00:00", "Z")
 
 
-def _setup_definition(setup: Any) -> Optional[Dict[str, Any]]:
+def _setup_definition(setup: Any) -> dict[str, Any] | None:
     if setup is None:
         return None
     if isinstance(setup, dict):
@@ -51,7 +52,7 @@ def _setup_definition(setup: Any) -> Optional[Dict[str, Any]]:
     raise TypeError("Project setup must be a definition or callable.")
 
 
-def _teardown_timeout(options: Dict[str, Any]) -> Optional[float]:
+def _teardown_timeout(options: dict[str, Any]) -> float | None:
     value = options.get("teardownTimeoutMs")
     if value is None:
         return None
@@ -61,7 +62,7 @@ def _teardown_timeout(options: Dict[str, Any]) -> Optional[float]:
 class ProjectRuntime:
     """Owns one project execution scope: setup, context and teardown."""
 
-    def __init__(self, options: Dict[str, Any]) -> None:
+    def __init__(self, options: dict[str, Any]) -> None:
         self._options = options
         self._project = options["project"]
         self._setup = _setup_definition(options.get("setup"))
@@ -73,18 +74,19 @@ class ProjectRuntime:
         set_resource_operation_identity(
             self._controller, {"scopeId": self._project.get("projectId")}
         )
-        self._parent_disposer: Optional[Callable[[], None]] = None
+        self._parent_disposer: Callable[[], None] | None = None
         if parent_signal is not None:
             self._parent_disposer = add_abort_listener(
-                parent_signal, lambda: self._controller.abort(abort_reason(parent_signal))
+                parent_signal,
+                lambda: self._controller.abort(abort_reason(parent_signal)),
             )
 
-        self._teardown_stack: List[Dict[str, Any]] = []
+        self._teardown_stack: list[dict[str, Any]] = []
         self._context: Any = None
-        self._setup_error: Optional[ProjectSetupError] = None
+        self._setup_error: ProjectSetupError | None = None
         self._started = False
         self._accepting_teardowns = self._setup is not None
-        self._finish_task: Optional["asyncio.Future[Any]"] = None
+        self._finish_task: asyncio.Future[Any] | None = None
 
     # -- runtime accessors -------------------------------------------------
     @property
@@ -97,20 +99,22 @@ class ProjectRuntime:
 
     @property
     def can_run(self) -> bool:
-        return self._started and self._setup_error is None and not is_aborted(
-            self._controller
+        return (
+            self._started
+            and self._setup_error is None
+            and not is_aborted(self._controller)
         )
 
     @property
-    def project(self) -> Dict[str, Any]:
+    def project(self) -> dict[str, Any]:
         return self._project
 
     # -- lifecycle ---------------------------------------------------------
     def _create_result(
         self,
         requested_status: str,
-        teardown_errors: Optional[List[ProjectTeardownError]] = None,
-    ) -> Dict[str, Any]:
+        teardown_errors: list[ProjectTeardownError] | None = None,
+    ) -> dict[str, Any]:
         teardown_errors = teardown_errors or []
         ended_at = _now()
         cleanup = get_resource_cleanup_snapshot(self._controller)
@@ -122,7 +126,7 @@ class ProjectRuntime:
             or cleanup.get("status") in ("pending", "failed")
             or bool(pending)
         )
-        result: Dict[str, Any] = {
+        result: dict[str, Any] = {
             "projectName": self._project.get("name"),
             "status": "failed" if failed else "success",
             "startedAt": _iso(self._started_at),
@@ -155,7 +159,7 @@ class ProjectRuntime:
             {"registrationIndex": len(self._teardown_stack), "teardown": teardown}
         )
 
-    async def start(self) -> Dict[str, Any]:
+    async def start(self) -> dict[str, Any]:
         if self._started:
             raise WorkflowLifecycleError(
                 "Project runtime has already started.",
@@ -197,7 +201,7 @@ class ProjectRuntime:
                 )
         return self._create_result("failed" if self._setup_error else "success")
 
-    async def finish(self, requested_status: str = "success") -> Dict[str, Any]:
+    async def finish(self, requested_status: str = "success") -> dict[str, Any]:
         if self._finish_task is not None:
             return await self._finish_task
         if not self._started:
@@ -205,14 +209,12 @@ class ProjectRuntime:
                 "Project runtime must start before it can finish.",
                 {"projectName": self._project.get("name")},
             )
-        self._finish_task = asyncio.ensure_future(
-            self._finish_impl(requested_status)
-        )
+        self._finish_task = asyncio.ensure_future(self._finish_impl(requested_status))
         return await self._finish_task
 
-    async def _finish_impl(self, requested_status: str) -> Dict[str, Any]:
+    async def _finish_impl(self, requested_status: str) -> dict[str, Any]:
         status_before_teardown = self._create_result(requested_status)["status"]
-        teardown_errors: List[ProjectTeardownError] = []
+        teardown_errors: list[ProjectTeardownError] = []
         deferred_cleanup = False
 
         async def cleanup() -> None:
@@ -292,7 +294,7 @@ async def _maybe_await(value: Any) -> Any:
     return value
 
 
-def create_project_runtime(options: Dict[str, Any]) -> ProjectRuntime:
+def create_project_runtime(options: dict[str, Any]) -> ProjectRuntime:
     return ProjectRuntime(options)
 
 

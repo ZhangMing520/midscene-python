@@ -50,9 +50,7 @@ async def test_reads_all_inline_executions_retaining_latest_progress_and_skippin
         {"id": "first", "name": "after update </script> 中文"},
         {"id": "second", "name": "second"},
     ]
-    assert (
-        await read_report_artifact_manifest_async(path)
-    ) is None
+    assert (await read_report_artifact_manifest_async(path)) is None
     assert path.read_text(encoding="utf-8").find("<!doctype html>") != -1
 
 
@@ -63,9 +61,7 @@ async def test_reads_all_directory_executions_retaining_latest_progress_and_skip
     """reads all directory executions, retaining latest progress and skipping Viewer script strings"""
     path = tmp_path / "index.html"
     store = ReportArtifactStore(tmp_path, "artifact-reader", "agent")
-    store.write_execution(
-        "first", _dump("before update"), {"groupName": "test-group"}
-    )
+    store.write_execution("first", _dump("before update"), {"groupName": "test-group"})
     store.write_execution(
         "first", _dump("after update </script> 中文"), {"groupName": "test-group"}
     )
@@ -87,7 +83,5 @@ async def test_reads_all_directory_executions_retaining_latest_progress_and_skip
         {"id": "first", "name": "after update </script> 中文"},
         {"id": "second", "name": "second"},
     ]
-    assert (
-        await read_report_artifact_manifest_async(path)
-    ) is not None
+    assert (await read_report_artifact_manifest_async(path)) is not None
     assert path.read_text(encoding="utf-8").find("<!doctype html>") != -1

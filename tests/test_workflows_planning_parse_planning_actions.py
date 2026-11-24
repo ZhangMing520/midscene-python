@@ -206,9 +206,7 @@ def test_accepts_planning_locators_before_execution_resolves_them(locate):
 def test_requires_a_model_facing_prompt(locate):
     """requires a model-facing prompt: %j"""
     _assert_raises(
-        lambda: _parse(
-            [{"type": "Tap", "param": {"locate": locate}}], _action_space()
-        ),
+        lambda: _parse([{"type": "Tap", "param": {"locate": locate}}], _action_space()),
         "Invalid parameters for action Tap: locate.prompt: Required",
     )
 

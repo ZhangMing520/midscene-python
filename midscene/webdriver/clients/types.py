@@ -3,14 +3,14 @@
 Synced from upstream packages/webdriver/src/clients/types.ts.
 """
 
-from typing import Any, Dict, Optional, TypedDict
+from typing import Any, TypedDict
 
 from midscene.shared.constants import WEBDRIVER_ELEMENT_ID_KEY
 
 
 class WDASession(TypedDict):
     sessionId: str
-    capabilities: Dict[str, Any]
+    capabilities: dict[str, Any]
 
 
 WDAElement = TypedDict(
@@ -46,7 +46,7 @@ class WebDriverOptions(TypedDict, total=False):
     port: int
     host: str
     timeout: float
-    sessionId: Optional[str]
+    sessionId: str | None
 
 
 class WebDriverRequestOptions(TypedDict, total=False):

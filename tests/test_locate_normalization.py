@@ -6,7 +6,9 @@ import pytest
 class TestPlanningLocateNormalization:
     def _codec(self):
         from midscene.core.ai_model.models.registry import GPT_LOCATE_FORMAT
-        from midscene.core.ai_model.shared.model_locate_result import create_locate_result_codec
+        from midscene.core.ai_model.shared.model_locate_result import (
+            create_locate_result_codec,
+        )
 
         return create_locate_result_codec(GPT_LOCATE_FORMAT)
 
@@ -49,7 +51,6 @@ class TestPlanningLocateNormalization:
                 {"preparedSize": {"width": 320, "height": 240}},
                 True,
             )
-
 
 
 class TestNormalizePlanningActionFields:
@@ -107,7 +108,12 @@ class TestNormalizePlanningActionFields:
             normalize_planning_action_fields,
         )
 
-        actions = [{"type": "Tap", "param": {"locate": {"prompt": "submit", "bbox": [1, 2, 3, 4]}}}]
+        actions = [
+            {
+                "type": "Tap",
+                "param": {"locate": {"prompt": "submit", "bbox": [1, 2, 3, 4]}},
+            }
+        ]
         normalize_planning_action_fields(
             actions,
             [{"name": "Tap", "locate_fields": ["locate"]}],

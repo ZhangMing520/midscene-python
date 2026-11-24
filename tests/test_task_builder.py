@@ -6,9 +6,9 @@ upstream plan-to-task registry and planning feedback on live tasks have no
 Python counterpart and are skipped with concrete reasons.
 """
 
-from types import SimpleNamespace
-from typing import Any, Dict, List
 import time
+from types import SimpleNamespace
+from typing import Any
 
 import pytest
 
@@ -21,8 +21,8 @@ class _LocateInterface:
     interface_type = "mock"
 
     def __init__(self) -> None:
-        self.features: List[List[float]] = []
-        self.resolved: List[Any] = []
+        self.features: list[list[float]] = []
+        self.resolved: list[Any] = []
 
     async def cache_feature_for_point(self, center, options=None):
         self.features.append(list(center))
@@ -42,8 +42,8 @@ class _LocateInterface:
 
 class _TaskCache:
     def __init__(self) -> None:
-        self.matched: List[str] = []
-        self.appended: List[Any] = []
+        self.matched: list[str] = []
+        self.appended: list[Any] = []
 
     def match_locate_cache(self, prompt):
         self.matched.append(prompt)
@@ -57,7 +57,7 @@ class _LocateAgent:
     def __init__(self, interface, cache) -> None:
         self.interface = interface
         self.cache = cache
-        self.locate_calls: List[Any] = []
+        self.locate_calls: list[Any] = []
 
     def _get_task_cache(self):
         return self.cache
@@ -99,7 +99,7 @@ async def test_honors_locate_caching_independently_of_the_planner(
     cache = _TaskCache()
     agent = _LocateAgent(interface, cache)
     prompt = "" if has_coordinates else "target"
-    locate_param: Dict[str, Any] = {"prompt": prompt}
+    locate_param: dict[str, Any] = {"prompt": prompt}
     if cacheable is not None:
         locate_param["cacheable"] = cacheable
     if has_coordinates:
@@ -151,9 +151,7 @@ def test_locates_plan_for_locate_normalizes_strings_and_deep_think():
         (
             {
                 "prompt": "target icon",
-                "images": [
-                    {"name": "local", "url": "https://example.com/local.png"}
-                ],
+                "images": [{"name": "local", "url": "https://example.com/local.png"}],
                 "convertHttpImage2Base64": False,
             },
             False,
@@ -206,9 +204,7 @@ async def test_preserves_locator_prompts_while_inheriting_reference_images(
     )
 
     expected_prompt = (
-        {"prompt": "target icon", **multimodal_prompt}
-        if inherit_images
-        else prompt
+        {"prompt": "target icon", **multimodal_prompt} if inherit_images else prompt
     )
     assert received == [expected_prompt]
 
@@ -235,9 +231,7 @@ async def test_build_dispatches_finished_and_locate_plans():
     )
     assert built["tasks"][0]["subType"] == "Finished"
     await built["tasks"][0]["executor"]({"task": {}, "uiContext": None})
-    result = await built["tasks"][1]["executor"](
-        {"task": {}, "uiContext": None}
-    )
+    result = await built["tasks"][1]["executor"]({"task": {}, "uiContext": None})
     assert result["output"]["element"]["center"] == [20, 20]
 
 
@@ -392,7 +386,9 @@ async def test_throws_when_building_an_executable_task_for_an_action_outside_act
         async def _locate_for_action(self, locate_param):
             return locate_param
 
-    with pytest.raises(ValueError, match="Action type 'Tap' is not in the current action space"):
+    with pytest.raises(
+        ValueError, match="Action type 'Tap' is not in the current action space"
+    ):
         await task_builder.execute_planning_action(
             _Agent(), {"type": "Tap", "param": {}}
         )
@@ -546,7 +542,7 @@ async def test_allows_actions_to_attach_planning_feedback_to_the_running_task():
 async def test_preserves_the_distance_unit_and_device_unit_defaults(
     distance_unit, distance, ratio, expected
 ):
-    captured: List[Dict[str, Any]] = []
+    captured: list[dict[str, Any]] = []
 
     async def execute(param, device, locate):
         captured.append(dict(param))

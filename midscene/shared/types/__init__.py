@@ -6,19 +6,26 @@ type vocabulary without importing core runtime modules.
 """
 
 from abc import ABC, abstractmethod
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Awaitable, Callable, Dict, Generic, List, Optional, TypeVar, Union
+from typing import (
+    Any,
+    Generic,
+    Optional,
+    TypeVar,
+)
 
 from pydantic import BaseModel
 
 # Type variables
-ElementType = TypeVar('ElementType', bound='BaseElement')
-T = TypeVar('T')
+ElementType = TypeVar("ElementType", bound="BaseElement")
+T = TypeVar("T")
 
 
 class InterfaceType(str, Enum):
     """Interface type enumeration"""
+
     WEB = "web"
     ANDROID = "android"
     COMPUTER = "computer"
@@ -28,6 +35,7 @@ class InterfaceType(str, Enum):
 
 class NodeType(str, Enum):
     """UI Node type enumeration"""
+
     CONTAINER = "container"
     TEXT = "text"
     INPUT = "input"
@@ -40,6 +48,7 @@ class NodeType(str, Enum):
 @dataclass
 class Point:
     """2D Point representation"""
+
     x: float
     y: float
 
@@ -47,6 +56,7 @@ class Point:
 @dataclass
 class Size:
     """Size representation"""
+
     width: float
     height: float
 
@@ -54,6 +64,7 @@ class Size:
 @dataclass
 class Rect:
     """Rectangle representation"""
+
     left: float
     top: float
     width: float
@@ -69,22 +80,20 @@ class Rect:
 
     @property
     def center(self) -> Point:
-        return Point(
-            x=self.left + self.width / 2,
-            y=self.top + self.height / 2
-        )
+        return Point(x=self.left + self.width / 2, y=self.top + self.height / 2)
 
 
 class BaseElement(BaseModel):
     """Base UI element interface"""
+
     id: str
     content: str
     rect: Rect
     center: tuple[float, float]
     node_type: NodeType = NodeType.OTHER
-    attributes: Dict[str, Any] = field(default_factory=dict)
+    attributes: dict[str, Any] = field(default_factory=dict)
     is_visible: bool = True
-    xpaths: Optional[List[str]] = None
+    xpaths: list[str] | None = None
 
     async def tap(self) -> None:
         """Tap/click this element"""
@@ -97,42 +106,46 @@ class BaseElement(BaseModel):
 
 class UINode(BaseModel):
     """UI tree node representation"""
+
     id: str
     content: str
     rect: Rect
     center: tuple[float, float]
     node_type: NodeType
-    attributes: Dict[str, Any] = field(default_factory=dict)
+    attributes: dict[str, Any] = field(default_factory=dict)
     is_visible: bool = True
-    children: List['UINode'] = field(default_factory=list)
+    children: list["UINode"] = field(default_factory=list)
 
 
 class UITree(BaseModel):
     """UI tree representation"""
+
     node: UINode
-    children: List['UITree'] = field(default_factory=list)
+    children: list["UITree"] = field(default_factory=list)
 
 
 class UIContext(BaseModel, Generic[ElementType]):
     """UI context containing screenshot and element information"""
+
     screenshot_base64: str
     size: Size
-    content: List[ElementType]
+    content: list[ElementType]
     tree: UITree
     # Screenshot coordinates -> logical viewport coordinates factor
     # (upstream shrunkShotToLogicalRatio = dpr / screenshotShrinkFactor).
     shrunk_shot_to_logical_ratio: float = 1.0
     # Optional consecutive screenshots over a time window (UI observation
     # frames, earliest first; upstream screenshotSequence)
-    screenshot_sequence: Optional[List[str]] = None
+    screenshot_sequence: list[str] | None = None
 
 
 class AIUsageInfo(BaseModel):
     """AI usage information"""
+
     prompt_tokens: int = 0
     completion_tokens: int = 0
     total_tokens: int = 0
-    cost: Optional[float] = None
+    cost: float | None = None
 
 
 class LocateResult(BaseModel):
@@ -143,32 +156,35 @@ class LocateResult(BaseModel):
     `element` is kept for backward compatibility and stays None in the
     pure-vision flow.
     """
-    element: Optional[BaseElement] = None
-    rect: Optional[Rect] = None
-    center: Optional[List[float]] = None
-    description: Optional[str] = None
-    raw_response: Optional[str] = None
+
+    element: BaseElement | None = None
+    rect: Rect | None = None
+    center: list[float] | None = None
+    description: str | None = None
+    raw_response: str | None = None
 
 
 class ExecutionResult(BaseModel, Generic[T]):
     """Generic execution result"""
+
     success: bool = True
-    data: Optional[Any] = None
-    error: Optional[str] = None
-    usage: Optional[AIUsageInfo] = None
+    data: Any | None = None
+    error: str | None = None
+    usage: AIUsageInfo | None = None
 
 
 class AssertResult(BaseModel):
     """Assertion result"""
+
     passed: bool
     thought: str = ""
     message: str = ""
 
 
 # Type aliases
-TUserPrompt = Union[str, Dict[str, Any]]
-ElementById = Callable[[str], Optional[BaseElement]]
-OnTaskStartTip = Callable[[str], Union[None, Awaitable[None]]]
+TUserPrompt = str | dict[str, Any]
+ElementById = Callable[[str], BaseElement | None]
+OnTaskStartTip = Callable[[str], None | Awaitable[None]]
 
 
 class AbortError(RuntimeError):
@@ -191,7 +207,7 @@ class AbortSignal:
 
         self._aborted = False
         self._reason: Any = None
-        self._listeners: List[Any] = []
+        self._listeners: list[Any] = []
         self._lock = threading.RLock()
 
     @property
@@ -258,7 +274,7 @@ class AbortSignal:
 class FileChooserHandler:
     """Handle passed to a file chooser listener (upstream FileChooserHandler)."""
 
-    accept: Callable[[List[str]], Awaitable[None]]
+    accept: Callable[[list[str]], Awaitable[None]]
 
 
 @dataclass
@@ -266,7 +282,7 @@ class FileChooserRegistration:
     """Result of registering a file chooser listener."""
 
     dispose: Callable[[], None]
-    get_error: Callable[[], Optional[BaseException]]
+    get_error: Callable[[], BaseException | None]
 
 
 # Abstract interface for device/platform implementations
@@ -304,7 +320,7 @@ class AbstractInterface(ABC):
         return context.size
 
     @abstractmethod
-    async def action_space(self) -> List[str]:
+    async def action_space(self) -> list[str]:
         """Get available actions"""
         pass
 
@@ -319,7 +335,9 @@ class AbstractInterface(ABC):
         pass
 
     @abstractmethod
-    async def scroll(self, direction: str, distance: Optional[int] = None, **kwargs) -> None:
+    async def scroll(
+        self, direction: str, distance: int | None = None, **kwargs
+    ) -> None:
         """Scroll in direction"""
         pass
 
@@ -346,14 +364,14 @@ class AbstractInterface(ABC):
     async def replace_input(self, text: str) -> None:
         raise NotImplementedError("replace_input is not supported on this interface")
 
-    async def swipe(self, direction: str, distance: Optional[int] = None) -> None:
+    async def swipe(self, direction: str, distance: int | None = None) -> None:
         raise NotImplementedError("swipe is not supported on this interface")
 
     async def swipe_points(
         self,
-        start: List[float],
-        end: List[float],
-        duration: Optional[int] = None,
+        start: list[float],
+        end: list[float],
+        duration: int | None = None,
     ) -> None:
         """Swipe from one logical point to another (upstream swipe(start, end))."""
         raise NotImplementedError("swipe_points is not supported on this interface")
@@ -361,19 +379,19 @@ class AbstractInterface(ABC):
     async def pull_gesture(
         self,
         direction: str,
-        start_point: Optional[List[float]] = None,
-        distance: Optional[int] = None,
-        duration: Optional[int] = None,
+        start_point: list[float] | None = None,
+        distance: int | None = None,
+        duration: int | None = None,
     ) -> None:
         """Pull-to-refresh / pull-up gesture (upstream Android PullGesture)."""
         raise NotImplementedError("pull_gesture is not supported on this interface")
 
     async def pinch(
         self,
-        center: List[float],
+        center: list[float],
         start_distance: float,
         end_distance: float,
-        duration: Optional[int] = None,
+        duration: int | None = None,
     ) -> None:
         """Two-finger pinch around `center` (upstream pinch primitive)."""
         raise NotImplementedError("pinch is not supported on this interface")
@@ -416,8 +434,8 @@ class AbstractInterface(ABC):
     # Optional element locate-cache hooks -----------------------------------
 
     async def cache_feature_for_point(
-        self, center: List[float], options: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, center: list[float], options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Build a serializable feature for the element at `center`.
 
         The feature is persisted in the locate cache and must be resolvable by
@@ -428,9 +446,7 @@ class AbstractInterface(ABC):
             "cache_feature_for_point is not supported on this interface"
         )
 
-    async def rect_matches_cache_feature(
-        self, feature: Dict[str, Any]
-    ) -> Optional[Rect]:
+    async def rect_matches_cache_feature(self, feature: dict[str, Any]) -> Rect | None:
         """Resolve a cached feature back to a rect; raise when it is stale."""
         raise NotImplementedError(
             "rect_matches_cache_feature is not supported on this interface"
@@ -446,6 +462,7 @@ def supports_interface_extension(interface: Any, method_name: str) -> bool:
 
 class InsightAction(str, Enum):
     """Insight action types"""
+
     LOCATE = "locate"
     EXTRACT = "extract"
     ASSERT = "assert"
@@ -454,17 +471,19 @@ class InsightAction(str, Enum):
 @dataclass
 class LocateOption:
     """Locate operation options"""
-    prompt: Optional[TUserPrompt] = None
+
+    prompt: TUserPrompt | None = None
     deep_think: bool = False
     cacheable: bool = True
-    xpath: Optional[str] = None
-    ui_context: Optional[UIContext] = None
+    xpath: str | None = None
+    ui_context: UIContext | None = None
 
 
 @dataclass
 class ExtractOption:
     """Extract operation options"""
-    dom_included: Union[bool, str] = False  # False, True, or 'visible-only'
+
+    dom_included: bool | str = False  # False, True, or 'visible-only'
     screenshot_included: bool = True
     return_thought: bool = False
     is_wait_for_assert: bool = False
@@ -473,9 +492,10 @@ class ExtractOption:
 
 class ScrollParam(BaseModel):
     """Scroll parameters"""
+
     direction: str  # 'down', 'up', 'left', 'right'
     scroll_type: str  # 'once', 'untilBottom', 'untilTop', 'untilLeft', 'untilRight'
-    distance: Optional[int] = None  # distance in pixels
+    distance: int | None = None  # distance in pixels
 
 
 __all__ = [

@@ -1,7 +1,7 @@
 """Image helpers shared by CLI tool surfaces (upstream shared/src/img)."""
 
 import base64 as _base64
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from midscene.shared.img.box_select import (
     composite_point_marker,
@@ -34,7 +34,7 @@ def _normalize_base64_body(value: str) -> str:
     return "".join(value.split())
 
 
-def detect_image_mime_type_from_buffer(buffer: bytes) -> Optional[str]:
+def detect_image_mime_type_from_buffer(buffer: bytes) -> str | None:
     for magic, mime_type in _IMAGE_MAGIC:
         if buffer.startswith(magic):
             return mime_type
@@ -43,16 +43,14 @@ def detect_image_mime_type_from_buffer(buffer: bytes) -> Optional[str]:
     return None
 
 
-def parse_base64(full_base64_string: str) -> Dict[str, Any]:
+def parse_base64(full_base64_string: str) -> dict[str, Any]:
     """Split a data URL (or raw base64 body) into mimeType and body."""
     try:
         separator = ";base64,"
         index = full_base64_string.find(separator)
         if index == -1:
             body = _normalize_base64_body(full_base64_string)
-            mime_type = detect_image_mime_type_from_buffer(
-                _base64.b64decode(body)
-            )
+            mime_type = detect_image_mime_type_from_buffer(_base64.b64decode(body))
             if not mime_type:
                 raise ValueError("Invalid base64 string")
             return {"mimeType": mime_type, "body": body}

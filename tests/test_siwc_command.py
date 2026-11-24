@@ -62,9 +62,7 @@ def _no_network(monkeypatch):
         raise AssertionError("refresh_siwc_credentials should not be called")
 
     monkeypatch.setattr(siwc_module, "login_with_openai", default_login)
-    monkeypatch.setattr(
-        siwc_module, "refresh_siwc_credentials", default_refresh
-    )
+    monkeypatch.setattr(siwc_module, "refresh_siwc_credentials", default_refresh)
     yield {"login": login_calls, "refresh": refresh_calls}
 
 
@@ -88,9 +86,7 @@ async def test_saves_full_credentials_with_private_permissions_and_prints_only_t
 
     monkeypatch.setattr(siwc_module, "login_with_openai", fake_login)
 
-    assert (
-        await run_siwc_command(["login", "--no-open"], io, credentials_path) == 0
-    )
+    assert await run_siwc_command(["login", "--no-open"], io, credentials_path) == 0
 
     saved = json.loads(Path(credentials_path).read_text(encoding="utf-8"))
     assert saved["credentials"]["access_token"] == "test-access"
@@ -105,8 +101,7 @@ async def test_saves_full_credentials_with_private_permissions_and_prints_only_t
         "Waiting for authorization..." in "\n".join(io["err"])
     )
     assert (
-        f"Full credentials are saved locally to:\n{credentials_path}"
-        in io["err"][-1]
+        f"Full credentials are saved locally to:\n{credentials_path}" in io["err"][-1]
     )
     assert os.stat(credentials_path).st_mode & 0o777 == 0o600
     joined = "\n".join(io["err"])
@@ -129,9 +124,7 @@ async def test_reuses_the_saved_client_and_host_on_login(
 
     monkeypatch.setattr(siwc_module, "login_with_openai", fake_login)
 
-    assert (
-        await run_siwc_command(["login", "--no-open"], io, credentials_path) == 0
-    )
+    assert await run_siwc_command(["login", "--no-open"], io, credentials_path) == 0
     assert login_calls[0]["client_id"] == credentials["client_id"]
     assert login_calls[0]["host_id"] == credentials["ext_agent_host_id"]
 
@@ -162,9 +155,7 @@ async def test_rotates_stored_credentials_on_refresh_without_opening_login(
     async def fake_refresh(saved):
         return replacement
 
-    monkeypatch.setattr(
-        siwc_module, "refresh_siwc_credentials", fake_refresh
-    )
+    monkeypatch.setattr(siwc_module, "refresh_siwc_credentials", fake_refresh)
 
     assert await run_siwc_command(["refresh"], io, credentials_path) == 0
     assert read_registration(credentials_path) == replacement
@@ -173,7 +164,8 @@ async def test_rotates_stored_credentials_on_refresh_without_opening_login(
     assert _parse_iso(saved["updated_at"]) > _parse_iso(created_at)
     assert io["out"] == [replacement["access_token"]]
     assert any(
-        re.fullmatch(r"\nExpires at: .+ \(in 1 hour\)", message) for message in io["err"]
+        re.fullmatch(r"\nExpires at: .+ \(in 1 hour\)", message)
+        for message in io["err"]
     )
     assert _no_network["login"] == []
 
@@ -185,15 +177,11 @@ async def test_prints_login_diagnostics_and_releases_the_lock(
     """prints login diagnostics and releases the lock"""
 
     async def fake_login(**options):
-        raise SiwcError(
-            "Stage: Token exchange\nHTTP status: 400\nError: invalid_grant"
-        )
+        raise SiwcError("Stage: Token exchange\nHTTP status: 400\nError: invalid_grant")
 
     monkeypatch.setattr(siwc_module, "login_with_openai", fake_login)
 
-    assert (
-        await run_siwc_command(["login", "--no-open"], io, credentials_path) == 1
-    )
+    assert await run_siwc_command(["login", "--no-open"], io, credentials_path) == 1
     output = "\n".join(io["err"])
     assert "Stage: Token exchange" in output
     assert "HTTP status: 400" in output
@@ -213,9 +201,7 @@ async def test_keeps_old_credentials_and_prints_original_failure_details(
     async def fake_refresh(saved):
         raise Exception("refresh_token=secret")
 
-    monkeypatch.setattr(
-        siwc_module, "refresh_siwc_credentials", fake_refresh
-    )
+    monkeypatch.setattr(siwc_module, "refresh_siwc_credentials", fake_refresh)
 
     assert await run_siwc_command(["refresh"], io, credentials_path) == 1
     assert read_registration(credentials_path) == credentials
@@ -236,9 +222,7 @@ async def test_does_not_replace_a_saved_account_with_a_different_identity(
 
     monkeypatch.setattr(siwc_module, "login_with_openai", fake_login)
 
-    assert (
-        await run_siwc_command(["login", "--no-open"], io, credentials_path) == 1
-    )
+    assert await run_siwc_command(["login", "--no-open"], io, credentials_path) == 1
     assert read_registration(credentials_path) == credentials
 
 
@@ -267,9 +251,7 @@ async def test_requires_saved_credentials_for_refresh(
 @pytest.mark.asyncio
 async def test_rejects_the_old_flat_credentials_format(credentials_path):
     """rejects the old flat credentials format"""
-    Path(credentials_path).write_text(
-        json.dumps(credentials), encoding="utf-8"
-    )
+    Path(credentials_path).write_text(json.dumps(credentials), encoding="utf-8")
     with pytest.raises(SiwcError, match="Invalid local SIWC credentials file."):
         read_registration(credentials_path)
 
@@ -292,9 +274,7 @@ async def test_rejects_invalid_options_before_authorization(
 
 
 @pytest.mark.asyncio
-async def test_shows_help_with_no_subcommand(
-    io, credentials_path, _no_network
-):
+async def test_shows_help_with_no_subcommand(io, credentials_path, _no_network):
     """shows help with no subcommand"""
     assert await run_siwc_command([], io, credentials_path) == 0
     assert await run_siwc_command(["--help"], io, credentials_path) == 0

@@ -6,7 +6,6 @@ latest decoded frame is near-instant compared to WDA's per-screenshot cost.
 
 import asyncio
 import base64
-from typing import Dict, List, Optional, Tuple
 
 import httpx
 from loguru import logger
@@ -20,13 +19,13 @@ _RECONNECT_DELAY_SECONDS = 0.5
 _FIRST_FRAME_POLL_SECONDS = 0.03
 
 
-def extract_jpeg_frames(buffer: bytes) -> Tuple[List[bytes], bytes]:
+def extract_jpeg_frames(buffer: bytes) -> tuple[list[bytes], bytes]:
     """Extract complete JPEG frames from a (possibly partial) MJPEG buffer.
 
     Anything before the first SOI marker is discarded; trailing incomplete
     bytes are returned as `rest`.
     """
-    frames: List[bytes] = []
+    frames: list[bytes] = []
     search_start = 0
     length = len(buffer)
 
@@ -39,9 +38,7 @@ def extract_jpeg_frames(buffer: bytes) -> Tuple[List[bytes], bytes]:
         if soi == -1:
             last = length - 1
             rest = (
-                buffer[last:]
-                if last >= search_start and buffer[last] == SOI_0
-                else b""
+                buffer[last:] if last >= search_start and buffer[last] == SOI_0 else b""
             )
             return frames, rest
 
@@ -63,8 +60,8 @@ class MjpegFrameSource:
     def __init__(self, url: str, now_fn=None):
         self.url = url
         self._now = now_fn or (lambda: asyncio.get_event_loop().time() * 1000)
-        self._latest: Optional[Dict[str, float]] = None
-        self._task: Optional[asyncio.Task] = None
+        self._latest: dict[str, float] | None = None
+        self._task: asyncio.Task | None = None
         self._stopped = False
 
     async def ensure_started(self, timeout_ms: float = 3000) -> None:
@@ -82,11 +79,9 @@ class MjpegFrameSource:
             if self._stopped:
                 raise RuntimeError("MjpegFrameSource has been stopped")
             await asyncio.sleep(_FIRST_FRAME_POLL_SECONDS)
-        raise RuntimeError(
-            f"MjpegFrameSource: no frame received within {timeout_ms}ms"
-        )
+        raise RuntimeError(f"MjpegFrameSource: no frame received within {timeout_ms}ms")
 
-    def get_latest(self) -> Optional[Dict[str, float]]:
+    def get_latest(self) -> dict[str, float] | None:
         if not self._latest:
             return None
         return {
@@ -108,8 +103,7 @@ class MjpegFrameSource:
                     async with client.stream("GET", self.url) as response:
                         if response.status_code >= 400:
                             raise RuntimeError(
-                                "MJPEG stream responded with "
-                                f"{response.status_code}"
+                                f"MJPEG stream responded with {response.status_code}"
                             )
                         pending = b""
                         async for chunk in response.aiter_bytes():
@@ -131,10 +125,7 @@ class MjpegFrameSource:
             except Exception as error:  # noqa: BLE001 - reconnect on any stream error
                 if self._stopped:
                     return
-                logger.debug(
-                    "MJPEG stream error, will retry: "
-                    f"{type(error).__name__}"
-                )
+                logger.debug(f"MJPEG stream error, will retry: {type(error).__name__}")
             if not self._stopped:
                 await asyncio.sleep(_RECONNECT_DELAY_SECONDS)
 

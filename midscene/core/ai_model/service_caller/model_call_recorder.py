@@ -4,12 +4,12 @@ Enabled with ``MIDSCENE_RECORD_MODEL_CALL=true``. Events are appended as
 JSONL to ``<midscene_run>/model-requests/<iso>-<pid>.jsonl``.
 """
 
-from typing import Any, Dict, Optional
 import asyncio
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from loguru import logger
 
@@ -28,15 +28,12 @@ class ModelCallRecorder:
 
     def __init__(self):
         self._process_start_time = (
-            datetime.now(timezone.utc)
-            .isoformat()
-            .replace(":", "-")
-            .replace(".", "-")
+            datetime.now(UTC).isoformat().replace(":", "-").replace(".", "-")
         )
-        self._file_path: Optional[Path] = None
-        self._write_queue: Optional[asyncio.Task] = None
+        self._file_path: Path | None = None
+        self._write_queue: asyncio.Task | None = None
 
-    def _get_file_path(self) -> Optional[Path]:
+    def _get_file_path(self) -> Path | None:
         if self._file_path is not None:
             return self._file_path
         if not is_model_call_recording_enabled():
@@ -50,18 +47,18 @@ class ModelCallRecorder:
             logger.warning(f"Failed to initialize model call recorder: {error}")
         return self._file_path
 
-    def _write_event(self, event: Dict[str, Any]) -> None:
+    def _write_event(self, event: dict[str, Any]) -> None:
         file_path = self._get_file_path()
         if file_path is None:
             return
         record = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             **event,
         }
         with open(file_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(record, ensure_ascii=False, default=str) + "\n")
 
-    def record(self, event: Dict[str, Any]) -> None:
+    def record(self, event: dict[str, Any]) -> None:
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
@@ -91,7 +88,7 @@ class ModelCallRecorder:
 model_call_recorder = ModelCallRecorder()
 
 
-def record_model_call_event(event: Dict[str, Any]) -> None:
+def record_model_call_event(event: dict[str, Any]) -> None:
     model_call_recorder.record(event)
 
 

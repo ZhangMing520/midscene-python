@@ -24,7 +24,7 @@ _USAGE_KEYS = (
 
 
 def create_usage(**overrides):
-    usage = {key: None for key in _USAGE_KEYS}
+    usage = dict.fromkeys(_USAGE_KEYS)
     usage.update(overrides)
     return usage
 
@@ -88,9 +88,7 @@ def test_distinguishes_missing_provider_fields_from_actual_zero_usage():
         create_report(
             [
                 create_task(
-                    usage=create_usage(
-                        model_name="model", total_tokens=0, time_cost=0
-                    )
+                    usage=create_usage(model_name="model", total_tokens=0, time_cost=0)
                 )
             ]
         )
@@ -126,9 +124,7 @@ def test_marks_live_and_unrecorded_model_requests_as_incomplete_without_estimati
         create_report(
             [
                 create_task(
-                    usage=create_usage(
-                        model_name="model", total_tokens=7, time_cost=10
-                    )
+                    usage=create_usage(model_name="model", total_tokens=7, time_cost=10)
                 ),
                 create_task(status="running", timing={"start": 0, "callAiStart": 1}),
             ]

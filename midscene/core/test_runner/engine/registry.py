@@ -1,6 +1,6 @@
 """Workflow node registry (upstream test-runner/engine/registry.ts)."""
 
-from typing import Iterable, List, Optional
+from collections.abc import Iterable
 
 from midscene.core.test_runner.errors import DuplicateNodeError, NodeNotFoundError
 from midscene.core.test_runner.node.define_node import define_node
@@ -19,8 +19,8 @@ def _validate_definition(node: NodeDefinition) -> None:
 
 
 class NodeRegistry:
-    def __init__(self, nodes: Optional[Iterable[NodeDefinition]] = None) -> None:
-        self._nodes: "dict[str, NodeDefinition]" = {}
+    def __init__(self, nodes: Iterable[NodeDefinition] | None = None) -> None:
+        self._nodes: dict[str, NodeDefinition] = {}
         for node in nodes or ():
             self.register(node)
 
@@ -31,7 +31,7 @@ class NodeRegistry:
         self._nodes[node.name] = node
         return self
 
-    def get(self, name: str) -> Optional[NodeDefinition]:
+    def get(self, name: str) -> NodeDefinition | None:
         return self._nodes.get(name)
 
     def require(self, name: str) -> NodeDefinition:
@@ -43,10 +43,10 @@ class NodeRegistry:
     def has(self, name: str) -> bool:
         return name in self._nodes
 
-    def names(self) -> List[str]:
+    def names(self) -> list[str]:
         return list(self._nodes.keys())
 
-    def definitions(self) -> List[NodeDefinition]:
+    def definitions(self) -> list[NodeDefinition]:
         return list(self._nodes.values())
 
 

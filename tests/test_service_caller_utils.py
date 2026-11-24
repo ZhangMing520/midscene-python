@@ -74,9 +74,7 @@ def test_append_failure_summary_omits_previous_errors_for_a_single_attempt():
     )
 
     error = RuntimeError("single failure")
-    append_ai_request_failure_summary(
-        error, [{"attempt": 1, "error": error}], 1
-    )
+    append_ai_request_failure_summary(error, [{"attempt": 1, "error": error}], 1)
 
     message = str(error)
     assert "after 0 retries (1/1 attempts)" in message

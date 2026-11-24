@@ -4,7 +4,6 @@ Synced from upstream packages/harmony/src/keycode.ts. Numeric values follow
 the public OpenHarmony Input Kit KeyCode enum.
 """
 
-from typing import List
 NAMED_HARMONY_KEY_CODES = {
     "Enter": "2054",
     "Backspace": "2055",
@@ -40,7 +39,7 @@ _KEY_NAME_ALIASES = {
 def _unsupported_key(key_name: str) -> RuntimeError:
     return RuntimeError(
         f"Unsupported HarmonyOS keyboardPress key: {key_name!r}. Use "
-        'typeText() for text input, or pass a supported key name such as '
+        "typeText() for text input, or pass a supported key name such as "
         '"Enter", "A", or "1".'
     )
 
@@ -70,7 +69,7 @@ def _resolve_single_key(key_name: str) -> str:
     raise _unsupported_key(key_name)
 
 
-def resolve_harmony_key_codes(key_name: str) -> List[str]:
+def resolve_harmony_key_codes(key_name: str) -> list[str]:
     """Resolve one logical key name to uitest keyEvent code(s).
     Key combinations are not supported (upstream)."""
     trimmed = key_name.strip()

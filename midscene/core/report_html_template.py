@@ -1,7 +1,7 @@
 """Single-file HTML report template (upstream core/src/report-html-template.ts)."""
 
-from typing import Any, Dict, Optional
 import json
+from typing import Any
 
 _TEMPLATE = """<!doctype html>
 <html lang="en">
@@ -101,8 +101,8 @@ REPORT_HTML_TEMPLATE = _TEMPLATE
 
 
 def render_report_html(
-    dump: Dict[str, Any],
-    file_name: Optional[str] = None,
+    dump: dict[str, Any],
+    file_name: str | None = None,
 ) -> str:
     """Render the dump as a self-contained HTML string (upstream
     reportHTMLString)."""
@@ -123,9 +123,4 @@ def render_report_html(
 
 
 def esc_html(text: str) -> str:
-    return (
-        str(text)
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-    )
+    return str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")

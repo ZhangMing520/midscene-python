@@ -1,6 +1,7 @@
 """Insight response parser (upstream workflows/insight/insight-response-parser.ts)."""
 
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 from midscene.core.ai_model.shared.xml import (
     extract_raw_xml_fragment,
@@ -10,16 +11,18 @@ from midscene.core.ai_model.shared.xml import (
 
 def parse_insight_response(
     content: str,
-    data_output_protocol: Dict[str, Any],
-    json_parser: Optional[Callable[..., Any]] = None,
-) -> Dict[str, Any]:
+    data_output_protocol: dict[str, Any],
+    json_parser: Callable[..., Any] | None = None,
+) -> dict[str, Any]:
     """Parse an insight XML response into {thought?, data, errors?}."""
     observation = extract_xml_tag(content, "observation")
     errors_content = extract_xml_tag(content, "errors")
-    raw_data_output = extract_raw_xml_fragment(content, data_output_protocol["tag_names"])
+    raw_data_output = extract_raw_xml_fragment(
+        content, data_output_protocol["tag_names"]
+    )
     data = data_output_protocol["parse"](raw_data_output)
 
-    errors: Optional[List[str]] = None
+    errors: list[str] | None = None
     if errors_content:
         try:
             if json_parser is not None:
@@ -40,7 +43,7 @@ def parse_insight_response(
             # Error details are optional and must not discard valid extracted data.
             pass
 
-    result: Dict[str, Any] = {"data": data}
+    result: dict[str, Any] = {"data": data}
     if observation:
         result["thought"] = observation
     if errors:

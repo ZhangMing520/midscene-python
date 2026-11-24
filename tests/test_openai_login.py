@@ -90,6 +90,7 @@ class TestSiwcAuthorization:
 
     def test_parse_callback_rejects_dynamic_client(self):
         from midscene.core.siwc import (
+            SiwcError,
             create_siwc_authorization,
             parse_siwc_callback,
         )
@@ -102,13 +103,11 @@ class TestSiwcAuthorization:
             "http://127.0.0.1:9999/auth/callback"
             f"?code=abc&client_id=dynamic_agent_client&state={attempt['state']}"
         )
-        with pytest.raises(Exception):
+        with pytest.raises(SiwcError):
             parse_siwc_callback(callback_url, attempt)
 
 
-_SIWC_MODULE = (
-    "midscene.core.ai_model.service_caller.openai.siwc.authorization"
-)
+_SIWC_MODULE = "midscene.core.ai_model.service_caller.openai.siwc.authorization"
 
 
 def test_loopback_login_returns_credentials_and_closes_the_server(
@@ -146,7 +145,7 @@ def test_loopback_login_returns_credentials_and_closes_the_server(
     assert len(exchange_calls) == 1
 
     base = _callback_url(seen["url"]).split("/auth/callback")[0]
-    with pytest.raises(Exception):
+    with pytest.raises(urllib.error.URLError):
         asyncio.run(_get(f"{base}/auth/callback"))
 
 
@@ -166,9 +165,7 @@ def test_handles_denial_without_exchanging_a_code(monkeypatch):
 
     with pytest.raises(Exception) as info:
         asyncio.run(
-            login_module.login_with_openai(
-                {"onAuthorization": on_authorization}
-            )
+            login_module.login_with_openai({"onAuthorization": on_authorization})
         )
 
     message = str(info.value)
@@ -189,7 +186,7 @@ def test_rejects_occupied_ports_without_hanging():
         launched.append(True)
 
     try:
-        with pytest.raises(Exception):
+        with pytest.raises(OSError):
             asyncio.run(
                 login_module.login_with_openai(
                     {"port": port, "onAuthorization": on_authorization}
@@ -222,7 +219,7 @@ def test_closes_the_listener_when_cancelled():
         )
 
     assert "cancelled" in str(info.value)
-    with pytest.raises(Exception):
+    with pytest.raises(urllib.error.URLError):
         asyncio.run(_get(_callback_url(seen["url"])))
 
 
@@ -281,4 +278,3 @@ def test_reuses_supplied_registration_and_host_identifiers(monkeypatch):
 
     assert result["ext_agent_host_id"] == "urn:uuid:test-host"
     assert len(exchange_calls) == 1
-

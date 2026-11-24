@@ -1,23 +1,24 @@
 """Streaming Responses parsing (upstream responses/stream.ts)."""
 
-from typing import Any, AsyncIterator, Dict, Optional
 import json
+from collections.abc import AsyncIterator
+from typing import Any
 
+from midscene.core.ai_model.service_caller.openai.responses.utils import parse_response
 from midscene.core.ai_model.service_caller.types import AIResponseParseError
 from midscene.core.ai_model.service_caller.utils import (
     emit_stream_chunk,
     has_usable_text,
 )
-from midscene.core.ai_model.service_caller.openai.responses.utils import parse_response
 
 
 async def call_responses_stream(
     lines: AsyncIterator[str],
-    on_chunk: Optional[Any] = None,
-) -> Dict[str, Any]:
+    on_chunk: Any | None = None,
+) -> dict[str, Any]:
     accumulated = ""
-    final_response: Optional[Dict[str, Any]] = None
-    completed_items: Dict[int, Dict[str, Any]] = {}
+    final_response: dict[str, Any] | None = None
+    completed_items: dict[int, dict[str, Any]] = {}
 
     async for line in lines:
         line = line.strip()
@@ -61,14 +62,10 @@ async def call_responses_stream(
         )
         if content or reasoning_content:
             accumulated += content
-            await emit_stream_chunk(
-                on_chunk, content, reasoning_content, accumulated
-            )
+            await emit_stream_chunk(on_chunk, content, reasoning_content, accumulated)
 
     if final_response is None:
-        raise RuntimeError(
-            "Responses stream ended without a response.completed event"
-        )
+        raise RuntimeError("Responses stream ended without a response.completed event")
     payload = {"status": "completed", **final_response}
     # Some ChatGPT plan responses omit output from the completion event even
     # after delivering complete items. Preserve those items without treating
@@ -76,9 +73,7 @@ async def call_responses_stream(
     if not payload.get("output"):
         payload = {
             **payload,
-            "output": [
-                completed_items[index] for index in sorted(completed_items)
-            ],
+            "output": [completed_items[index] for index in sorted(completed_items)],
         }
     result = parse_response(payload)
     if not has_usable_text(result["content"]):

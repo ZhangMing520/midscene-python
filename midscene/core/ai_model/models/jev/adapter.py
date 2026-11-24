@@ -1,6 +1,7 @@
 """Jev (System One) adapter config and callbacks (upstream ai-model/models/jev/adapter.ts)."""
 
-from typing import Any, Callable, Dict
+from collections.abc import Callable
+from typing import Any
 
 
 def _jev_boolean_fn() -> Callable:
@@ -21,7 +22,7 @@ def _jev_plan_fn() -> Callable:
     return jev_plan
 
 
-jev_adapters: Dict[str, Dict[str, Any]] = {
+jev_adapters: dict[str, dict[str, Any]] = {
     "jev": {
         "model_type": "system-one",
         "allowed_task_types": ["locate", "boolean", "planning"],

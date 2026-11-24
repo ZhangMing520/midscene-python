@@ -6,9 +6,9 @@ from midscene.cli.printer import (
     context_task_list_summary,
     current_spinning_frame,
     format_yaml_progress_snapshot,
+    resolve_is_tty,
     single_task_info,
 )
-from midscene.cli.printer import resolve_is_tty
 
 
 def test_returns_true_on_a_real_interactive_tty():
@@ -48,10 +48,7 @@ def test_spinner_constants_and_frame_selection():
 
 def test_format_yaml_progress_snapshot_mentions_attempt_only_for_retries():
     assert format_yaml_progress_snapshot("running", 1, 1) == "running"
-    assert (
-        format_yaml_progress_snapshot("running", 2, 3)
-        == "Attempt 2/3\nrunning"
-    )
+    assert format_yaml_progress_snapshot("running", 2, 3) == "Attempt 2/3\nrunning"
 
 
 def test_context_info_renders_file_state_output_and_report(monkeypatch):

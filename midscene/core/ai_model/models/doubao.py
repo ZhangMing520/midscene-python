@@ -1,11 +1,7 @@
 """Doubao (Seed/Vision) adapter (upstream ai-model/models/doubao.ts)."""
 
-from typing import Any, Dict, List
+from typing import Any
 
-from midscene.core.ai_model.shared.model_locate_result import (
-    create_locate_result_value,
-    unwrap_coordinate_list_like_input,
-)
 from midscene.core.ai_model.model_adapter.chat_completion import (
     _json_object_config,
 )
@@ -25,13 +21,18 @@ from midscene.core.ai_model.model_adapter.types import (
 from midscene.core.ai_model.models.default import (
     build_chat_completion_params_from_context,
 )
+from midscene.core.ai_model.shared.model_locate_result import (
+    create_locate_result_value,
+    unwrap_coordinate_list_like_input,
+)
+
 
 def _build_doubao_params(
-    midscene_defaults: Dict[str, Any],
+    midscene_defaults: dict[str, Any],
     user_config: ModelRequestUserConfig,
     expected_json_object_response: bool = False,
-) -> Dict[str, Any]:
-    config: Dict[str, Any] = dict(midscene_defaults)
+) -> dict[str, Any]:
+    config: dict[str, Any] = dict(midscene_defaults)
     _apply_temperature(config, user_config)
     config.update(_json_object_config(user_config, expected_json_object_response))
     reasoning_enabled = _reasoning_enabled(user_config)
@@ -50,22 +51,28 @@ def _build_doubao_params(
 
 
 DOUBAO_BBOX_COORDS = {
-    "shape": "bbox", "order": "xy", "normalizedBy": 1000, "rounding": "round",
+    "shape": "bbox",
+    "order": "xy",
+    "normalizedBy": 1000,
+    "rounding": "round",
 }
 
 
 DOUBAO_POINT_COORDS = {
-    "shape": "point", "order": "xy", "normalizedBy": 1000, "rounding": "round",
+    "shape": "point",
+    "order": "xy",
+    "normalizedBy": 1000,
+    "rounding": "round",
 }
 
 
-def _parse_doubao_raw_locate_value(input_value: Any) -> Dict[str, Any]:
+def _parse_doubao_raw_locate_value(input_value: Any) -> dict[str, Any]:
     """Lenient Doubao parser: bbox lists of length 2-8 (upstream doubao.ts)."""
     import json as _json
     import re as _re
 
     bbox = unwrap_coordinate_list_like_input(input_value)
-    bbox_list: List[float] = []
+    bbox_list: list[float] = []
     if (
         isinstance(bbox, (list, tuple))
         and len(bbox) == 4
@@ -105,7 +112,7 @@ def _parse_doubao_raw_locate_value(input_value: Any) -> Dict[str, Any]:
     )
 
 
-def parse_doubao_raw_locate_value(input: Any) -> Dict[str, Any]:
+def parse_doubao_raw_locate_value(input: Any) -> dict[str, Any]:
     """Public Doubao locate parser (upstream parseDoubaoRawLocateValue)."""
     return _parse_doubao_raw_locate_value(input)
 
@@ -118,7 +125,7 @@ DOUBAO_LOCATE_FORMAT = {
 }
 
 
-_doubao_vision_adapter_config: Dict[str, Any] = {
+_doubao_vision_adapter_config: dict[str, Any] = {
     "chat_completion": {
         "build_chat_completion_params": build_chat_completion_params_from_context(
             _build_doubao_params

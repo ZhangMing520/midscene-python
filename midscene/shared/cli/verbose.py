@@ -1,8 +1,8 @@
 """CLI verbose output and progress dispatch (upstream cli/verbose.ts)."""
 
 import json
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from midscene.shared.cli.verbose_ai_act import (
     AI_ACT_CLI_PROGRESS_RENDERER,
@@ -18,11 +18,11 @@ CLI_VERBOSE_FLAG = "verbose"
 
 _PROGRESS_EVENT_NAME = "midscene_progress"
 
-_PROGRESS_RENDERERS: Dict[str, CliProgressRenderer] = {
+_PROGRESS_RENDERERS: dict[str, CliProgressRenderer] = {
     CLI_AI_ACT_PROGRESS_SCOPE: AI_ACT_CLI_PROGRESS_RENDERER,
 }
 
-_context: Dict[str, Any] = {"current": {"enabled": False}}
+_context: dict[str, Any] = {"current": {"enabled": False}}
 
 
 def _is_record(value: Any) -> bool:
@@ -30,7 +30,7 @@ def _is_record(value: Any) -> bool:
 
 
 def _iso_now() -> str:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return now.strftime("%Y-%m-%dT%H:%M:%S.") + f"{now.microsecond // 1000:03d}Z"
 
 
@@ -44,9 +44,9 @@ def _parse_verbose_format(raw_format: str) -> str:
 
 
 def strip_verbose_flag(
-    argv: List[str],
-) -> Dict[str, Any]:
-    raw_args: List[str] = []
+    argv: list[str],
+) -> dict[str, Any]:
+    raw_args: list[str] = []
     verbose = False
     verbose_format = "text"
 
@@ -56,16 +56,14 @@ def strip_verbose_flag(
             continue
         if arg.startswith(f"--{CLI_VERBOSE_FLAG}="):
             verbose = True
-            verbose_format = _parse_verbose_format(
-                arg[len(f"--{CLI_VERBOSE_FLAG}=") :]
-            )
+            verbose_format = _parse_verbose_format(arg[len(f"--{CLI_VERBOSE_FLAG}=") :])
             continue
         raw_args.append(arg)
 
     return {"rawArgs": raw_args, "verbose": verbose, "format": verbose_format}
 
 
-async def with_cli_verbose_context(context: Dict[str, Any], fn: Any) -> Any:
+async def with_cli_verbose_context(context: dict[str, Any], fn: Any) -> Any:
     previous = _context["current"]
     _context["current"] = {
         **context,
@@ -77,7 +75,7 @@ async def with_cli_verbose_context(context: Dict[str, Any], fn: Any) -> Any:
         _context["current"] = previous
 
 
-def get_cli_verbose_context() -> Dict[str, Any]:
+def get_cli_verbose_context() -> dict[str, Any]:
     return _context["current"]
 
 
@@ -87,7 +85,7 @@ def is_cli_verbose_enabled() -> bool:
 
 def _progress_renderer_for_event(
     event: Any,
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     if not _is_record(event):
         return None
     scope = event.get("scope")
@@ -97,7 +95,7 @@ def _progress_renderer_for_event(
     return {"scope": scope, "renderer": renderer} if renderer else None
 
 
-def emit_cli_verbose_event(event: Dict[str, Any]) -> None:
+def emit_cli_verbose_event(event: dict[str, Any]) -> None:
     context = get_cli_verbose_context()
     if not context.get("enabled"):
         return
@@ -143,7 +141,7 @@ def _compact_text(value: Any) -> str:
         return str(value)
 
 
-def _compact_primitive(value: Any) -> Dict[str, Any]:
+def _compact_primitive(value: Any) -> dict[str, Any]:
     if value is None:
         return {"handled": True, "value": value}
     if isinstance(value, str):
@@ -190,10 +188,9 @@ def compact_cli_verbose_value(value: Any) -> Any:
     }
 
 
-def compact_cli_verbose_args(args: Dict[str, Any]) -> Dict[str, Any]:
+def compact_cli_verbose_args(args: dict[str, Any]) -> dict[str, Any]:
     return {
-        key: _compact_structured_value(value)
-        for key, value in list(args.items())[:8]
+        key: _compact_structured_value(value) for key, value in list(args.items())[:8]
     }
 
 
@@ -223,7 +220,7 @@ def _summarize_user_instruction(value: Any) -> str:
     return _compact_text(value)
 
 
-def _summarize_task_param_text(task: Dict[str, Any]) -> str:
+def _summarize_task_param_text(task: dict[str, Any]) -> str:
     param = task.get("param")
     if not _is_record(param):
         return _compact_text(_summarize_param(param))
@@ -248,7 +245,9 @@ def _summarize_sub_goals(value: Any) -> str:
             continue
         index = f"{goal['index']}. " if isinstance(goal.get("index"), int) else ""
         status = f"[{goal['status']}] " if isinstance(goal.get("status"), str) else ""
-        description = goal.get("description") if isinstance(goal.get("description"), str) else ""
+        description = (
+            goal.get("description") if isinstance(goal.get("description"), str) else ""
+        )
         text = f"{index}{status}{description}".strip()
         if text:
             goals.append(text)
@@ -262,7 +261,9 @@ def _summarize_actions(value: Any) -> str:
     for action in value[:5]:
         if not _is_record(action):
             continue
-        type_name = action.get("type") if isinstance(action.get("type"), str) else "Action"
+        type_name = (
+            action.get("type") if isinstance(action.get("type"), str) else "Action"
+        )
         param = _compact_text(_summarize_param(action.get("param")))
         text = f"{type_name}: {param}" if param else type_name
         if text:
@@ -270,7 +271,7 @@ def _summarize_actions(value: Any) -> str:
     return f"actions: {'; '.join(actions)}" if actions else ""
 
 
-def _summarize_task_output_text(task: Dict[str, Any]) -> str:
+def _summarize_task_output_text(task: dict[str, Any]) -> str:
     output = task.get("output")
     if not _is_record(output):
         return _compact_text(output)
@@ -282,7 +283,7 @@ def _summarize_task_output_text(task: Dict[str, Any]) -> str:
     )
 
 
-def _summarize_task_text(task: Dict[str, Any]) -> str:
+def _summarize_task_text(task: dict[str, Any]) -> str:
     parts = [
         part
         for part in (task.get("type"), task.get("subType"))
@@ -303,8 +304,8 @@ def _summarize_task_text(task: Dict[str, Any]) -> str:
 
 def _summarize_dump_update(
     execution_dump: Any,
-    screenshot_options: Optional[Dict[str, Any]] = None,
-) -> Optional[Dict[str, Any]]:
+    screenshot_options: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
     options = screenshot_options or {}
     if not _is_record(execution_dump) or not isinstance(
         execution_dump.get("tasks"), list
@@ -356,9 +357,7 @@ def _summarize_dump_update(
         "execution": {
             "id": execution_dump.get("id"),
             "name": execution_dump.get("name"),
-            "description": compact_cli_verbose_value(
-                execution_dump.get("description")
-            ),
+            "description": compact_cli_verbose_value(execution_dump.get("description")),
             "taskCount": len(tasks),
         },
         "steps": steps,
@@ -370,18 +369,16 @@ def _summarize_dump_update(
 def _stringify_args(args: Any) -> str:
     if not _is_record(args) or not args:
         return ""
-    return ", ".join(
-        f"{key}={_compact_text(value)}" for key, value in args.items()
-    )
+    return ", ".join(f"{key}={_compact_text(value)}" for key, value in args.items())
 
 
-def _is_act_verbose_event(command: Optional[str], tool: Optional[str]) -> bool:
+def _is_act_verbose_event(command: str | None, tool: str | None) -> bool:
     return command == "act" or tool == "act"
 
 
 def _render_lines_once(
-    context: Dict[str, Any], lines: List[Dict[str, str]]
-) -> Optional[str]:
+    context: dict[str, Any], lines: list[dict[str, str]]
+) -> str | None:
     if not lines:
         return None
     rendered_line_keys = context.get("renderedLineKeys")
@@ -398,16 +395,20 @@ def _render_lines_once(
 
 
 def _render_cli_verbose_event_text(
-    event: Dict[str, Any], context: Dict[str, Any]
-) -> Optional[str]:
-    command = event.get("command") if isinstance(event.get("command"), str) else "command"
+    event: dict[str, Any], context: dict[str, Any]
+) -> str | None:
+    command = (
+        event.get("command") if isinstance(event.get("command"), str) else "command"
+    )
     tool = event.get("tool") if isinstance(event.get("tool"), str) else None
     event_name = event.get("event")
 
     if event_name == "agent_progress":
         scope = event.get("scope") if isinstance(event.get("scope"), str) else None
         renderer = _PROGRESS_RENDERERS.get(scope) if scope else None
-        progress_event = event.get("progress") if _is_record(event.get("progress")) else None
+        progress_event = (
+            event.get("progress") if _is_record(event.get("progress")) else None
+        )
         if not renderer or not progress_event:
             return None
         return _render_lines_once(context, renderer.build_lines(progress_event))
@@ -447,7 +448,9 @@ def _render_cli_verbose_event_text(
             if isinstance(event.get("steps"), list)
             else []
         )
-        execution = event.get("execution") if _is_record(event.get("execution")) else None
+        execution = (
+            event.get("execution") if _is_record(event.get("execution")) else None
+        )
         execution_name = (
             execution.get("name")
             if execution and isinstance(execution.get("name"), str)
@@ -491,7 +494,9 @@ def _render_cli_verbose_event_text(
             return None
         kind = event.get("kind") if isinstance(event.get("kind"), str) else "artifact"
         path = event.get("path") if isinstance(event.get("path"), str) else None
-        return f"[Midscene] {kind} saved: {path}" if path else f"[Midscene] {kind} ready"
+        return (
+            f"[Midscene] {kind} saved: {path}" if path else f"[Midscene] {kind} ready"
+        )
     if event_name == "command_done":
         if _is_act_verbose_event(command, tool):
             if event.get("status") == "error":
@@ -527,14 +532,14 @@ def _render_cli_verbose_event_text(
 
 
 def attach_cli_verbose_dump_listener(
-    agent: Any, options: Optional[Dict[str, Any]] = None
+    agent: Any, options: dict[str, Any] | None = None
 ) -> Any:
     options = options or {}
     if not is_cli_verbose_enabled():
         return lambda: None
 
     is_act_tool = options.get("toolName") == "act"
-    screenshot_export_cache: Dict[str, str] = {}
+    screenshot_export_cache: dict[str, str] = {}
 
     add_progress_listener = getattr(agent, "add_progress_listener", None)
     if is_act_tool and add_progress_listener is not None:

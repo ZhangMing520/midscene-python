@@ -1,7 +1,7 @@
 """Synced from upstream packages/core/tests/unit-test/jev.test.ts."""
 
 import base64
-from typing import Any, Dict, List
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -10,7 +10,7 @@ from tests.core_helpers import FakeResponse, make_png_base64
 
 
 class TestSystemOne:
-    def _response(self, answers: Dict[str, Any]) -> Dict[str, Any]:
+    def _response(self, answers: dict[str, Any]) -> dict[str, Any]:
         return {
             "model": "jev-1",
             "answers": answers,
@@ -18,7 +18,9 @@ class TestSystemOne:
         }
 
     def test_validate_response_accepts_valid(self):
-        from midscene.core.ai_model.service_caller.system_one import validate_system_one_response
+        from midscene.core.ai_model.service_caller.system_one import (
+            validate_system_one_response,
+        )
 
         payload = self._response(
             {
@@ -33,7 +35,10 @@ class TestSystemOne:
         assert validated["answers"]["present"]["noul"] == 0.9
 
     def test_validate_response_rejects_bad_box(self):
-        from midscene.core.ai_model.service_caller.system_one import SystemOneError, validate_system_one_response
+        from midscene.core.ai_model.service_caller.system_one import (
+            SystemOneError,
+            validate_system_one_response,
+        )
 
         payload = self._response(
             {
@@ -47,14 +52,19 @@ class TestSystemOne:
             validate_system_one_response(payload)
 
     def test_validate_response_rejects_probability_out_of_range(self):
-        from midscene.core.ai_model.service_caller.system_one import SystemOneError, validate_system_one_response
+        from midscene.core.ai_model.service_caller.system_one import (
+            SystemOneError,
+            validate_system_one_response,
+        )
 
         payload = self._response({"present": {"type": "noul", "noul": 1.5}})
         with pytest.raises(SystemOneError):
             validate_system_one_response(payload)
 
     def test_encode_images_openrouter_inline(self):
-        from midscene.core.ai_model.service_caller.system_one import encode_system_one_images
+        from midscene.core.ai_model.service_caller.system_one import (
+            encode_system_one_images,
+        )
 
         data_url = "data:image/png;base64,AAAA"
         state, assets = encode_system_one_images({"shot": data_url}, True)
@@ -62,7 +72,9 @@ class TestSystemOne:
         assert assets == {}
 
     def test_encode_images_assets(self):
-        from midscene.core.ai_model.service_caller.system_one import encode_system_one_images
+        from midscene.core.ai_model.service_caller.system_one import (
+            encode_system_one_images,
+        )
 
         data_url = "data:image/jpeg;base64,BBBB"
         state, assets = encode_system_one_images({"shot": data_url}, False)
@@ -70,7 +82,9 @@ class TestSystemOne:
         assert list(assets.values())[0]["format"] == "jpg"
 
     def test_resolve_endpoint(self):
-        from midscene.core.ai_model.service_caller.system_one import resolve_system_one_endpoint
+        from midscene.core.ai_model.service_caller.system_one import (
+            resolve_system_one_endpoint,
+        )
 
         assert (
             resolve_system_one_endpoint({"openaiBaseURL": "https://x/v1/"})
@@ -89,15 +103,18 @@ class TestSystemOne:
         request = {"state": {}, "questions": {}}
         prepared = prepare_system_one(config, request, execution_id="exec-123")
         assert prepared["headers"]["x-midscene-execution-id"] == "exec-123"
-        assert prepare_system_one(config, request)["headers"].get(
-            "x-midscene-execution-id"
-        ) is None
+        assert (
+            prepare_system_one(config, request)["headers"].get(
+                "x-midscene-execution-id"
+            )
+            is None
+        )
 
     @pytest.mark.asyncio
     async def test_call_sends_stable_runtime_execution_id(self):
         from midscene.core.ai_model.service_caller import system_one
 
-        captured: List[Dict[str, str]] = []
+        captured: list[dict[str, str]] = []
         payload = self._response({"present": {"type": "noul", "noul": 0.9}})
 
         class FakeAsyncClient:
@@ -167,7 +184,6 @@ class TestSystemOne:
         assert '"noul": 1.5' in exc.value.raw_response
 
 
-
 def _make_runtime(**overrides):
     from midscene.core.ai_model.models.registry import get_model_runtime
 
@@ -199,7 +215,12 @@ class TestJevWorkflows:
                 "answers": {
                     "target": {
                         "type": "box",
-                        "box": {"left": 0.25, "top": 0.25, "right": 0.75, "bottom": 0.75},
+                        "box": {
+                            "left": 0.25,
+                            "top": 0.25,
+                            "right": 0.75,
+                            "bottom": 0.75,
+                        },
                     },
                 },
             }
@@ -339,7 +360,10 @@ class TestJevWorkflows:
             new=fake_call_system_one,
         ):
             await jev_locate(
-                {"prompt": "the button", "images": [{"name": "ref", "url": str(reference)}]},
+                {
+                    "prompt": "the button",
+                    "images": [{"name": "ref", "url": str(reference)}],
+                },
                 {"imageBase64": make_png_base64(), "width": 320, "height": 240},
                 None,
             )
@@ -364,6 +388,7 @@ class TestJevWorkflows:
             "midscene.core.ai_model.models.jev.boolean.call_system_one",
             new=fake_call_system_one,
         ):
+
             class _Ctx:
                 screenshot_base64 = make_png_base64()
 
@@ -371,8 +396,8 @@ class TestJevWorkflows:
         assert result["value"] is True
 
     def test_build_jev_action_attaches_reference_images(self):
-        from midscene.core.device import build_web_action_space
         from midscene.core.ai_model.models.jev.planning_action import build_jev_action
+        from midscene.core.device import build_web_action_space
 
         tap = next(a for a in build_web_action_space() if a.name == "Tap")
         actions = build_jev_action(
@@ -405,16 +430,35 @@ class TestJevWorkflows:
         )
 
 
-
 class TestModelFallback:
     def test_jev_extracts_fall_back_to_default(self):
         from midscene.core.ai_model.models import resolve_model_for_task_type
 
         configs = {
-            "locate": {"modelName": "jev-1", "modelFamily": "jev", "intent": "locate", "slot": "locate"},
-            "insight": {"modelName": "jev-1", "modelFamily": "jev", "intent": "insight", "slot": "insight"},
-            "planning": {"modelName": "jev-1", "modelFamily": "jev", "intent": "planning", "slot": "planning"},
-            "default": {"modelName": "doubao", "modelFamily": "doubao-seed", "intent": "default", "slot": "default"},
+            "locate": {
+                "modelName": "jev-1",
+                "modelFamily": "jev",
+                "intent": "locate",
+                "slot": "locate",
+            },
+            "insight": {
+                "modelName": "jev-1",
+                "modelFamily": "jev",
+                "intent": "insight",
+                "slot": "insight",
+            },
+            "planning": {
+                "modelName": "jev-1",
+                "modelFamily": "jev",
+                "intent": "planning",
+                "slot": "planning",
+            },
+            "default": {
+                "modelName": "doubao",
+                "modelFamily": "doubao-seed",
+                "intent": "default",
+                "slot": "default",
+            },
         }
         runtime = resolve_model_for_task_type(
             lambda intent: configs[intent], "insight", "extract"
@@ -429,7 +473,6 @@ class TestModelFallback:
         assert runtime.model_fallback is None
 
 
-
 class TestPrepareReferences:
     @pytest.mark.asyncio
     async def test_collects_reference_images(self):
@@ -440,6 +483,4 @@ class TestPrepareReferences:
             {"images": [{"url": data_uri, "name": "reference"}]}
         )
         assert len(result["images"]) == 1
-        assert result["references"] == [
-            {"image": "`reference_0`", "name": "reference"}
-        ]
+        assert result["references"] == [{"image": "`reference_0`", "name": "reference"}]

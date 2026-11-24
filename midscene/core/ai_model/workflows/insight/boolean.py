@@ -5,14 +5,15 @@ instead of the generic ``data-json`` extraction workflow.
 """
 
 import json
-from typing import Any, Callable, Dict, Optional, Union
+from collections.abc import Callable
+from typing import Any
 
 from midscene.core.ai_model.models.registry import ModelRuntime
 
 BooleanFn = Callable[..., Any]
 
 
-def resolve_boolean_fn(model_runtime: ModelRuntime) -> Optional[BooleanFn]:
+def resolve_boolean_fn(model_runtime: ModelRuntime) -> BooleanFn | None:
     """Return the adapter boolean fast path, if the model provides one."""
     return getattr(model_runtime.adapter, "insight_boolean_fn", None)
 
@@ -25,12 +26,12 @@ def _boolean_statement(demand: Any) -> str:
 
 async def extract_boolean(
     boolean_fn: BooleanFn,
-    data_query: Union[str, Dict[str, Any]],
+    data_query: str | dict[str, Any],
     context: Any,
     model_runtime: ModelRuntime,
     page_description: str = "",
-    context_text: Optional[str] = None,
-) -> Dict[str, Any]:
+    context_text: str | None = None,
+) -> dict[str, Any]:
     """Run the adapter boolean fast path and wrap it as an insight result."""
     keys = list(data_query.keys()) if isinstance(data_query, dict) else []
     if len(keys) != 1:

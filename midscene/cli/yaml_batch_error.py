@@ -1,13 +1,13 @@
 """YAML batch execution errors (upstream packages/cli/src/yaml-batch-error.ts)."""
 
-from typing import Any, Dict, List, TypedDict
+from typing import Any, TypedDict
 
 
 class YamlBatchErrorOccurrence(TypedDict):
     """One file result attached to a batch execution error."""
 
     caseId: Any
-    result: Dict[str, Any]
+    result: dict[str, Any]
 
 
 def _normalize_batch_error(error: Any) -> BaseException:
@@ -19,9 +19,7 @@ def _normalize_batch_error(error: Any) -> BaseException:
 class YamlBatchExecutionError(Exception):
     """Unexpected YAML execution failure carrying the results collected so far."""
 
-    def __init__(
-        self, error: Any, occurrences: List[YamlBatchErrorOccurrence]
-    ) -> None:
+    def __init__(self, error: Any, occurrences: list[YamlBatchErrorOccurrence]) -> None:
         cause = _normalize_batch_error(error)
         super().__init__(str(cause))
         self.__cause__ = cause

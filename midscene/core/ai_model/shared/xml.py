@@ -4,10 +4,10 @@ Synced from upstream packages/core/src/ai-model/shared/xml.ts.
 """
 
 import re
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 
-def extract_xml_tag(xml_string: str, tag_name: str) -> Optional[str]:
+def extract_xml_tag(xml_string: str, tag_name: str) -> str | None:
     """Extract content of a tag, searching from the end.
 
     Handles models that prepend thinking content before the response tags, and
@@ -43,9 +43,7 @@ def _escapeRegExp(value: str) -> str:
     return re.sub(r"[.*+?^${}()|[\]\\]", lambda m: "\\" + m.group(0), value)
 
 
-def extract_raw_xml_fragment(
-    content: str, tag_names: Sequence[str]
-) -> str:
+def extract_raw_xml_fragment(content: str, tag_names: Sequence[str]) -> str:
     """Extract raw XML from the first protocol tag through the last protocol tag."""
     start_tag_name = tag_names[0]
     end_tag_name = tag_names[-1]
@@ -55,7 +53,7 @@ def extract_raw_xml_fragment(
     if not start_match:
         return ""
 
-    content_from_start = content[start_match.start():]
+    content_from_start = content[start_match.start() :]
     end_matches = list(
         re.finditer(
             r"</" + _escapeRegExp(end_tag_name) + r">",

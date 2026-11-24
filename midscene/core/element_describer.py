@@ -7,38 +7,38 @@ a screenshot supplied by the caller (`screenshotBase64`).
 
 import inspect
 import math
-from typing import Any, Callable, Dict, List, Optional, Sequence, Union
+from collections.abc import Callable, Sequence
+from typing import Any
 
 from midscene.core.ai_model.models.registry import ModelRuntime
-from midscene.shared.img.transform import image_size
-from midscene.core.service.describe import ai_describe_element
 from midscene.core.service import locate_service
+from midscene.core.service.describe import ai_describe_element
 from midscene.core.types import NodeType, Rect, Size, UIContext, UINode, UITree
+from midscene.shared.img.transform import image_size
 
 DEFAULT_CENTER_DISTANCE_THRESHOLD = 20
 DEFAULT_RETRY_LIMIT = 3
 
-LocatorVerifyFn = Callable[[Dict[str, Any]], Union[Dict[str, Any], bool]]
+LocatorVerifyFn = Callable[[dict[str, Any]], dict[str, Any] | bool]
 
 
 def _distance(p1: Sequence[float], p2: Sequence[float]) -> int:
     return round(math.hypot(float(p1[0]) - float(p2[0]), float(p1[1]) - float(p2[1])))
 
 
-def _included_in_rect(point: Sequence[float], rect: Dict[str, float]) -> bool:
+def _included_in_rect(point: Sequence[float], rect: dict[str, float]) -> bool:
     x, y = float(point[0]), float(point[1])
     left, top = float(rect["left"]), float(rect["top"])
-    return (
-        left <= x <= left + float(rect["width"])
-        and top <= y <= top + float(rect["height"])
+    return left <= x <= left + float(rect["width"]) and top <= y <= top + float(
+        rect["height"]
     )
 
 
 def build_locate_validator_result(
     expect_center: Sequence[float],
-    located: Dict[str, Any],
-    center_distance_threshold: Optional[float] = None,
-) -> Dict[str, Any]:
+    located: dict[str, Any],
+    center_distance_threshold: float | None = None,
+) -> dict[str, Any]:
     """Upstream LocateValidatorResult: pass when close enough or inside the rect."""
     center = list(located.get("center") or [])
     rect = located.get("rect")
@@ -57,7 +57,7 @@ def build_locate_validator_result(
     }
 
 
-def _bound_context(screenshot_base64: str, opt: Dict[str, Any]) -> UIContext:
+def _bound_context(screenshot_base64: str, opt: dict[str, Any]) -> UIContext:
     """A frozen UIContext over a caller-supplied screenshot (upstream helper)."""
     size = image_size(screenshot_base64)
     size = Size(width=float(size["width"]), height=float(size["height"]))
@@ -81,8 +81,8 @@ def _bound_context(screenshot_base64: str, opt: Dict[str, Any]) -> UIContext:
 def _map_point_to_screenshot_space(
     center: Sequence[float],
     shot_size: Size,
-    opt: Dict[str, Any],
-) -> List[float]:
+    opt: dict[str, Any],
+) -> list[float]:
     if (opt.get("coordinate_space") or "screenshot") == "screenshot":
         return [float(center[0]), float(center[1])]
     logical = opt.get("logical_size")
@@ -99,8 +99,8 @@ def _map_point_to_screenshot_space(
 async def _resolve_target(
     agent: Any,
     center: Sequence[float],
-    opt: Dict[str, Any],
-) -> Dict[str, Any]:
+    opt: dict[str, Any],
+) -> dict[str, Any]:
     screenshot = opt.get("screenshot_base64")
     if not screenshot:
         return {"context": None, "center": [float(center[0]), float(center[1])]}
@@ -118,9 +118,9 @@ def _locate_runtime(agent: Any) -> ModelRuntime:
 
 
 async def _apply_locator_verify_fn(
-    locator_verify_fn: Optional[LocatorVerifyFn],
-    payload: Dict[str, Any],
-) -> Dict[str, Any]:
+    locator_verify_fn: LocatorVerifyFn | None,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
     if locator_verify_fn is None:
         return payload["verifyResult"]
     custom = locator_verify_fn(payload)
@@ -135,8 +135,8 @@ async def verify_locator(
     agent: Any,
     prompt: str,
     expect_center: Sequence[float],
-    opt: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    opt: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Locate ``prompt`` again and check it still lands on ``expect_center``."""
     opt = opt or {}
     description = (prompt or "").strip()
@@ -167,8 +167,8 @@ async def verify_element_description_at_point(
     agent: Any,
     description: str,
     center: Sequence[float],
-    opt: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    opt: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Does ``description`` locate to the element at ``center``?"""
     return await verify_locator(agent, description, center, opt)
 
@@ -176,8 +176,8 @@ async def verify_element_description_at_point(
 async def describe_element_at_point(
     agent: Any,
     center: Sequence[float],
-    opt: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    opt: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Describe the element at ``center`` and verify the description locates back.
 
     Retries up to ``retry_limit`` times; from the second attempt on,
@@ -187,7 +187,9 @@ async def describe_element_at_point(
     """
     opt = opt or {}
     verify_prompt = opt.get("verify_prompt", opt.get("verifyPrompt", True))
-    retry_limit = int(opt.get("retry_limit", opt.get("retryLimit", DEFAULT_RETRY_LIMIT)))
+    retry_limit = int(
+        opt.get("retry_limit", opt.get("retryLimit", DEFAULT_RETRY_LIMIT))
+    )
     auto_deep_describe = ("deep_describe" not in opt) and ("deepDescribe" not in opt)
     auto_deep_locate = ("deep_locate" not in opt) and ("deepLocate" not in opt)
     deep_describe = bool(opt.get("deep_describe", opt.get("deepDescribe", False)))
@@ -205,9 +207,9 @@ async def describe_element_at_point(
     success = False
     retry_count = 0
     result_prompt = ""
-    verify_result: Optional[Dict[str, Any]] = None
-    last_error: Optional[str] = None
-    failure_stage: Optional[str] = None
+    verify_result: dict[str, Any] | None = None
+    last_error: str | None = None
+    failure_stage: str | None = None
 
     while not success and retry_count < retry_limit:
         if retry_count >= 1 and auto_deep_describe:
@@ -231,11 +233,13 @@ async def describe_element_at_point(
         result_prompt = described["description"]
         if not verify_prompt:
             if on_progress:
-                on_progress({
-                    "prompt": result_prompt,
-                    "deepDescribe": deep_describe,
-                    "deepLocate": deep_locate,
-                })
+                on_progress(
+                    {
+                        "prompt": result_prompt,
+                        "deepDescribe": deep_describe,
+                        "deepLocate": deep_locate,
+                    }
+                )
             success = True
             break
 
@@ -261,12 +265,14 @@ async def describe_element_at_point(
                 },
             )
             if on_progress:
-                on_progress({
-                    "prompt": result_prompt,
-                    "deepDescribe": deep_describe,
-                    "deepLocate": deep_locate,
-                    "verifyResult": verify_result,
-                })
+                on_progress(
+                    {
+                        "prompt": result_prompt,
+                        "deepDescribe": deep_describe,
+                        "deepLocate": deep_locate,
+                        "verifyResult": verify_result,
+                    }
+                )
             if verify_result.get("pass"):
                 success = True
                 break
@@ -276,11 +282,13 @@ async def describe_element_at_point(
             last_error = str(error)
             failure_stage = "verify"
             if on_progress:
-                on_progress({
-                    "prompt": result_prompt,
-                    "deepDescribe": deep_describe,
-                    "deepLocate": deep_locate,
-                })
+                on_progress(
+                    {
+                        "prompt": result_prompt,
+                        "deepDescribe": deep_describe,
+                        "deepLocate": deep_locate,
+                    }
+                )
         retry_count += 1
 
     return {

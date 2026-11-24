@@ -1,7 +1,7 @@
 """System One request preparation (upstream system-one/prepare-system-one.ts)."""
 
 import json
-from typing import Any, Dict, Optional
+from typing import Any
 from urllib.parse import urlparse
 
 from midscene.core.ai_model.service_caller.system_one.resolve_endpoint import (
@@ -14,11 +14,11 @@ from midscene.core.ai_model.service_caller.system_one.utils import (
 
 
 def prepare_system_one(
-    config: Dict[str, Any],
-    request: Dict[str, Any],
+    config: dict[str, Any],
+    request: dict[str, Any],
     *,
-    execution_id: Optional[str] = None,
-) -> Dict[str, Any]:
+    execution_id: str | None = None,
+) -> dict[str, Any]:
     if not config.get("openaiApiKey"):
         raise SystemOneError("Jev requires MIDSCENE_*_MODEL_API_KEY")
     protocol = config.get("protocol")
@@ -27,10 +27,8 @@ def prepare_system_one(
 
     url = resolve_system_one_endpoint(config)
     is_openrouter = urlparse(url).hostname == "openrouter.ai"
-    image_state, assets = encode_system_one_images(
-        request.get("images"), is_openrouter
-    )
-    body: Dict[str, Any] = {
+    image_state, assets = encode_system_one_images(request.get("images"), is_openrouter)
+    body: dict[str, Any] = {
         **(config.get("extraBody") or {}),
         "model": config.get("modelName"),
         "state": {**request.get("state", {}), **image_state},
@@ -42,7 +40,7 @@ def prepare_system_one(
     if len(serialized_body.encode("utf-8")) > 32 * 1024 * 1024:
         raise SystemOneError("Jev request exceeds the 32 MiB body limit")
 
-    headers: Dict[str, str] = {
+    headers: dict[str, str] = {
         "Authorization": f"Bearer {config.get('openaiApiKey')}",
         "Content-Type": "application/json",
         "TypeSafe-Danger-Zone-Images": "true",

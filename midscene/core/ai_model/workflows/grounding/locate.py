@@ -3,27 +3,30 @@
 Synced from upstream packages/core/src/ai-model/workflows/grounding/locate.ts.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from loguru import logger
 
-from midscene.core.ai_model.service_caller.types import AIResponseParseError
-from midscene.core.ai_model.service_caller.call_ai import call_generative_ai
 from midscene.core.ai_model.model_adapter.locate import resolve_locate
-from midscene.core.ai_model.prompt.locate import build_element_locate_system_prompt
-from midscene.core.ai_model.service_caller.semantic_retry import call_ai_and_parse_with_retry, with_semantic_retry_feedback
 from midscene.core.ai_model.models.registry import ModelRuntime
+from midscene.core.ai_model.prompt.locate import build_element_locate_system_prompt
+from midscene.core.ai_model.service_caller.call_ai import call_generative_ai
+from midscene.core.ai_model.service_caller.semantic_retry import (
+    call_ai_and_parse_with_retry,
+    with_semantic_retry_feedback,
+)
+from midscene.core.ai_model.service_caller.types import AIResponseParseError
 from midscene.core.ai_model.shared.multimodal_prompt import (
     ensure_data_url,
     user_prompt_to_string,
+)
+from midscene.core.ai_model.workflows.grounding.search_area_mapping import (
+    map_search_area_result_to_original_result,
 )
 from midscene.core.ai_model.workflows.grounding.types import (
     LocateImage,
     LocateModelResponse,
     LocateResult,
-)
-from midscene.core.ai_model.workflows.grounding.search_area_mapping import (
-    map_search_area_result_to_original_result,
 )
 from midscene.core.ai_model.workflows.grounding.utils import (
     format_locate_model_context,
@@ -35,9 +38,9 @@ async def ai_locate_element(
     target_element_description: Any,
     context: Any,
     model_runtime: ModelRuntime,
-    locate_image: Optional[LocateImage] = None,
-    abort_signal: Optional[Any] = None,
-    search_config: Optional[Dict[str, Any]] = None,
+    locate_image: LocateImage | None = None,
+    abort_signal: Any | None = None,
+    search_config: dict[str, Any] | None = None,
 ) -> LocateResult:
     """Locate an element by description; returns a LocateResult-like dict:
 
@@ -146,7 +149,7 @@ async def ai_locate_element(
         }
 
 
-async def generic_locate(locate_request: Dict[str, Any]) -> Dict[str, Any]:
+async def generic_locate(locate_request: dict[str, Any]) -> dict[str, Any]:
     """Locate an element with the adapter's standard locate protocol.
 
     Mirrors upstream ``genericLocate`` and returns a locate model response:
@@ -192,16 +195,16 @@ async def generic_locate(locate_request: Dict[str, Any]) -> Dict[str, Any]:
 
     def build_base(
         raw_response: str,
-        usage: Optional[Dict[str, Any]],
-        reasoning_content: Optional[str],
-    ) -> Dict[str, Any]:
+        usage: dict[str, Any] | None,
+        reasoning_content: str | None,
+    ) -> dict[str, Any]:
         return {
             "raw_response": raw_response,
             "usage": usage,
             "reasoning_content": reasoning_content,
         }
 
-    async def call_ai(retry_attempt: int, previous_parse_error: Optional[Any] = None):
+    async def call_ai(retry_attempt: int, previous_parse_error: Any | None = None):
         return await call_generative_ai(
             with_semantic_retry_feedback(messages, previous_parse_error),
             model_runtime,
@@ -211,7 +214,7 @@ async def generic_locate(locate_request: Dict[str, Any]) -> Dict[str, Any]:
             },
         )
 
-    def parse_response(response: Dict[str, Any]) -> Dict[str, Any]:
+    def parse_response(response: dict[str, Any]) -> dict[str, Any]:
         raw_response = response["content"]
         parsed_locate_result = protocol["parse_raw_response"](
             raw_response, result_codec.prompt_spec
@@ -254,7 +257,7 @@ async def generic_locate(locate_request: Dict[str, Any]) -> Dict[str, Any]:
             )
             raise ValueError(message) from error
 
-    def to_parse_error(error: Any, response: Dict[str, Any]) -> AIResponseParseError:
+    def to_parse_error(error: Any, response: dict[str, Any]) -> AIResponseParseError:
         return AIResponseParseError(
             f"Failed to parse locate result: {error}",
             response.get("content", ""),
@@ -293,7 +296,7 @@ def _get_screenshot(context: Any) -> str:
     return ensure_data_url(get_screenshot_base64(context))
 
 
-def _get_size(context: Any) -> Dict[str, int]:
+def _get_size(context: Any) -> dict[str, int]:
     from midscene.core.ai_model.shared.multimodal_prompt import get_shot_size
 
     return get_shot_size(context)

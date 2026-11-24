@@ -8,7 +8,8 @@ The upstream engine relies on DOM `AbortSignal` semantics
 
 import asyncio
 import threading
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 from midscene.core.types import AbortError, AbortSignal
 
@@ -26,9 +27,7 @@ def is_aborted(signal: Any) -> bool:
     is_set = getattr(signal, "is_set", None)
     if callable(is_set):
         return bool(is_set())
-    raise TypeError(
-        "signal must be an AbortSignal, asyncio.Event or threading.Event"
-    )
+    raise TypeError("signal must be an AbortSignal, asyncio.Event or threading.Event")
 
 
 def abort_reason(signal: Any) -> Any:
@@ -64,9 +63,7 @@ def add_abort_listener(signal: Any, callback: Callable[[], None]) -> Callable[[]
         signal.add_event_listener("abort", callback)
         return lambda: signal.remove_event_listener("abort", callback)
 
-    if hasattr(signal, "add_event_listener") and callable(
-        signal.add_event_listener
-    ):
+    if hasattr(signal, "add_event_listener") and callable(signal.add_event_listener):
         signal.add_event_listener("abort", callback)
         return lambda: signal.remove_event_listener("abort", callback)
 
@@ -97,7 +94,9 @@ def link_abort(signal: AbortSignal, parent: Any) -> Callable[[], None]:
     if is_aborted(parent):
         signal.abort(abort_reason(parent))
         return lambda: None
-    return add_abort_listener(signal=parent, callback=lambda: signal.abort(abort_reason(parent)))
+    return add_abort_listener(
+        signal=parent, callback=lambda: signal.abort(abort_reason(parent))
+    )
 
 
 def abort_controller(signal: AbortSignal, reason: Any = None) -> None:
@@ -127,14 +126,14 @@ def is_event_signal(signal: Any) -> bool:
     return hasattr(signal, "is_set") and callable(signal.is_set)
 
 
-def event_waiter(signal: Any) -> Optional[Any]:
+def event_waiter(signal: Any) -> Any | None:
     waiter = getattr(signal, "wait", None)
     if callable(waiter):
         return waiter
     return None
 
 
-def thread_event_wait(signal: Any, timeout: Optional[float] = None) -> bool:
+def thread_event_wait(signal: Any, timeout: float | None = None) -> bool:
     waiter = event_waiter(signal)
     if waiter is None:
         return is_aborted(signal)

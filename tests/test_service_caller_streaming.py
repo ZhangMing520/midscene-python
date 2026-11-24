@@ -2,7 +2,7 @@
 ``packages/core/tests/unit-test/service-caller-streaming.test.ts``
 (``reads usage after finish_reason and completes only after the stream ends``)."""
 
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
 
@@ -16,7 +16,7 @@ async def _stream_lines(lines):
 async def test_reads_usage_after_finish_reason_and_completes_only_after_the_stream_ends():
     from midscene.core.ai_model.service_caller.model_call import _aggregate_stream_lines
 
-    chunks: List[Dict[str, Any]] = []
+    chunks: list[dict[str, Any]] = []
     result = await _aggregate_stream_lines(
         _stream_lines(
             [

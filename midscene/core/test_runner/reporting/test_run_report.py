@@ -2,7 +2,7 @@
 
 import datetime
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 from midscene.core.test_run_report import (
     IndexedTestRunReportSource,
@@ -40,19 +40,19 @@ _EXACT_MIDSCENE_DETAIL_NODES = {"aiAct", "aiAssert", "recordToReport"}
 
 @dataclass
 class _ManifestBuildContext:
-    diagnostics: List[TestRunReportDiagnostic] = field(default_factory=list)
-    sources_by_scope: Dict[str, List[IndexedTestRunReportSource]] = field(
+    diagnostics: list[TestRunReportDiagnostic] = field(default_factory=list)
+    sources_by_scope: dict[str, list[IndexedTestRunReportSource]] = field(
         default_factory=dict
     )
-    details_by_scope_and_execution: Dict[str, TestRunReportAgentDetail] = field(
+    details_by_scope_and_execution: dict[str, TestRunReportAgentDetail] = field(
         default_factory=dict
     )
-    traced_scope_by_execution: Dict[str, str] = field(default_factory=dict)
-    expected_executions: Set[str] = field(default_factory=set)
-    captured_executions: Set[str] = field(default_factory=set)
-    execution_metrics: Dict[str, TestRunReportMetrics] = field(default_factory=dict)
-    missing_metrics: Set[str] = field(default_factory=set)
-    traced_scopes: Set[str] = field(default_factory=set)
+    traced_scope_by_execution: dict[str, str] = field(default_factory=dict)
+    expected_executions: set[str] = field(default_factory=set)
+    captured_executions: set[str] = field(default_factory=set)
+    execution_metrics: dict[str, TestRunReportMetrics] = field(default_factory=dict)
+    missing_metrics: set[str] = field(default_factory=set)
+    traced_scopes: set[str] = field(default_factory=set)
 
 
 def _scoped_execution_key(scope_id: Any, execution_id: Any) -> str:
@@ -61,7 +61,7 @@ def _scoped_execution_key(scope_id: Any, execution_id: Any) -> str:
 
 def _report_sources_for_scope(
     context: _ManifestBuildContext, scope_id: Any
-) -> List[IndexedTestRunReportSource]:
+) -> list[IndexedTestRunReportSource]:
     return context.sources_by_scope.get(scope_id) or []
 
 
@@ -71,7 +71,7 @@ def _add_diagnostic(
     context.diagnostics.append(diagnostic)
 
 
-def _attempts(outcome: RunReportCaseInput) -> List[Any]:
+def _attempts(outcome: RunReportCaseInput) -> list[Any]:
     attempts = outcome.get("attempts")
     if attempts is not None:
         return list(attempts)
@@ -80,8 +80,8 @@ def _attempts(outcome: RunReportCaseInput) -> List[Any]:
 
 
 def _planned_step(
-    plan: Optional[TestRunReportCasePlan], key: str, index: Any
-) -> Optional[TestRunReportPlannedStep]:
+    plan: TestRunReportCasePlan | None, key: str, index: Any
+) -> TestRunReportPlannedStep | None:
     if plan is None:
         return None
     steps = plan.get(key) or []
@@ -90,7 +90,7 @@ def _planned_step(
     return None
 
 
-def _copy_operations(operations: Any) -> Dict[str, Any]:
+def _copy_operations(operations: Any) -> dict[str, Any]:
     return {**operations, "events": list(operations.get("events") or [])}
 
 
@@ -99,7 +99,7 @@ def _build_step(
     scope_id: Any,
     context: _ManifestBuildContext,
     execution_id: str,
-    plan: Optional[TestRunReportPlannedStep] = None,
+    plan: TestRunReportPlannedStep | None = None,
 ) -> TestRunReportStep:
     step_id = f"{execution_id}:{step.get('phase')}:{step.get('stepIndex')}"
     if step.get("status") == "not-run":
@@ -125,10 +125,10 @@ def _build_step(
             result["operations"] = _copy_operations(step["operations"])
         return result
 
-    details: List[TestRunReportAgentDetail] = []
-    unresolved_execution_ids: List[str] = []
-    usage: List[TestRunReportMetrics] = []
-    missing_usage: List[str] = []
+    details: list[TestRunReportAgentDetail] = []
+    unresolved_execution_ids: list[str] = []
+    usage: list[TestRunReportMetrics] = []
+    missing_usage: list[str] = []
     report = step.get("report") or {}
     for trace in report.get("traces") or []:
         context.traced_scopes.add(scope_id)
@@ -161,7 +161,7 @@ def _build_step(
                 missing_usage.append(reason)
                 context.missing_metrics.add(reason)
 
-    agent_detail_diagnostic: Optional[str] = None
+    agent_detail_diagnostic: str | None = None
     if unresolved_execution_ids:
         agent_detail_diagnostic = (
             "Agent detail could not be resolved for "
@@ -181,7 +181,9 @@ def _build_step(
                 "stepId": step_id,
             }
             if sources:
-                diagnostic["sourcePaths"] = [source.get("sourcePath") for source in sources]
+                diagnostic["sourcePaths"] = [
+                    source.get("sourcePath") for source in sources
+                ]
             _add_diagnostic(context, diagnostic)
     elif not details and step.get("node") in _EXACT_MIDSCENE_DETAIL_NODES:
         agent_detail_diagnostic = (
@@ -203,8 +205,7 @@ def _build_step(
         _add_diagnostic(context, diagnostic)
 
     collection_errors = [
-        sanitize_report_error(error)
-        for error in (report.get("collectionErrors") or [])
+        sanitize_report_error(error) for error in (report.get("collectionErrors") or [])
     ]
     for error in collection_errors:
         _add_diagnostic(
@@ -223,13 +224,8 @@ def _build_step(
         for source in (report.get("sources") or [])
         if source.get("collection")
     ]
-    evidence_collection: Optional[Dict[str, Any]] = None
-    if (
-        snapshots
-        or collection_errors
-        or details
-        or unresolved_execution_ids
-    ):
+    evidence_collection: dict[str, Any] | None = None
+    if snapshots or collection_errors or details or unresolved_execution_ids:
         if (
             collection_errors
             or unresolved_execution_ids
@@ -262,7 +258,7 @@ def _build_step(
             or input_value.get("scenario")
             or input_value.get("title")
         )
-    prompt: Optional[str] = None
+    prompt: str | None = None
     if isinstance(candidate_title, str):
         prompt = candidate_title
     elif isinstance(candidate_title, dict):
@@ -290,7 +286,7 @@ def _build_step(
     result["input"] = sanitize_report_value(step.get("input"))
     if step.get("output") is not None:
         output = step["output"]
-        sanitized_output: Dict[str, Any] = {}
+        sanitized_output: dict[str, Any] = {}
         if output.get("summary") is not None:
             sanitized_output["summary"] = sanitize_report_text(output["summary"])
         if output.get("data") is not None:
@@ -319,7 +315,7 @@ def _attempt_report_scope(attempt: Any) -> str:
 def _build_attempt(
     attempt: Any,
     context: _ManifestBuildContext,
-    plan: Optional[TestRunReportCasePlan] = None,
+    plan: TestRunReportCasePlan | None = None,
 ) -> TestRunReportAttempt:
     scope_id = _attempt_report_scope(attempt)
     result: TestRunReportAttempt = {
@@ -390,7 +386,7 @@ def _build_attempt(
 def _build_case(
     outcome: RunReportCaseInput,
     context: _ManifestBuildContext,
-    plan: Optional[TestRunReportCasePlan] = None,
+    plan: TestRunReportCasePlan | None = None,
 ) -> TestRunReportCase:
     result: TestRunReportCase = {}
     if plan is not None:
@@ -411,9 +407,7 @@ def _document_report_scope(document: Any) -> str:
     return document.get("reportScopeId") or document.get("documentRunId")
 
 
-def _find_plan(
-    plans: Any, document_id: Any
-) -> Optional[TestRunReportDocumentPlan]:
+def _find_plan(plans: Any, document_id: Any) -> TestRunReportDocumentPlan | None:
     for plan in plans or []:
         if plan.get("documentId") == document_id:
             return plan
@@ -422,10 +416,10 @@ def _find_plan(
 
 def _build_document(
     document_id: str,
-    document: Optional[Any],
-    cases: List[RunReportCaseInput],
+    document: Any | None,
+    cases: list[RunReportCaseInput],
     context: _ManifestBuildContext,
-    plan: Optional[TestRunReportDocumentPlan] = None,
+    plan: TestRunReportDocumentPlan | None = None,
 ) -> TestRunReportDocument:
     if plan is None and document is not None:
         plan = document.get("plan")
@@ -445,7 +439,11 @@ def _build_document(
             else "success"
         )
     if status is None:
-        status = "failed" if any(case.get("status") != "success" for case in cases) else "success"
+        status = (
+            "failed"
+            if any(case.get("status") != "success" for case in cases)
+            else "success"
+        )
     scope_id = _document_report_scope(document) if document is not None else None
 
     result: TestRunReportDocument = {"documentId": document_id}
@@ -473,9 +471,7 @@ def _build_document(
         result["endedAt"] = document.get("endedAt")
         result["durationMs"] = document.get("durationMs")
     document_steps = document if document is not None else {}
-    document_run_id = (
-        document.get("documentRunId") if document is not None else None
-    )
+    document_run_id = document.get("documentRunId") if document is not None else None
     result["beforeAll"] = [
         _build_step(
             step,
@@ -534,13 +530,11 @@ def _build_document(
     if scope_id:
         sources = _report_sources_for_scope(context, scope_id)
         if sources:
-            result["scopeReportIds"] = [
-                source.get("reportId") for source in sources
-            ]
+            result["scopeReportIds"] = [source.get("reportId") for source in sources]
     return result
 
 
-def _parse_ms(value: Any) -> Optional[float]:
+def _parse_ms(value: Any) -> float | None:
     if not isinstance(value, str):
         return None
     try:
@@ -560,14 +554,13 @@ def _build_project(
     cases_input = project.get("cases") or []
     plans = project.get("plans")
 
-    document_count: Dict[str, int] = {}
+    document_count: dict[str, int] = {}
     for document in documents_input:
         document_id = document.get("documentId")
         document_count[document_id] = document_count.get(document_id, 0) + 1
     for outcome in cases_input:
-        if (
-            document_count.get(outcome.get("documentId"), 0) > 1
-            and not outcome.get("documentRunId")
+        if document_count.get(outcome.get("documentId"), 0) > 1 and not outcome.get(
+            "documentRunId"
         ):
             raise ValueError(
                 f"Case {outcome.get('caseId')} must identify its documentRunId "
@@ -576,8 +569,8 @@ def _build_project(
 
     # A new attemptIndex 0 begins a distinct invocation of the same file. Only
     # whole-file retries belong to one logical document and its Case history.
-    groups: List[List[Any]] = []
-    current_group: Dict[str, List[Any]] = {}
+    groups: list[list[Any]] = []
+    current_group: dict[str, list[Any]] = {}
     for document in documents_input:
         document_id = document.get("documentId")
         group = current_group.get(document_id)
@@ -587,12 +580,12 @@ def _build_project(
             current_group[document_id] = group
         group.append(document)
 
-    group_counts: Dict[str, int] = {}
+    group_counts: dict[str, int] = {}
     for group in groups:
         first_id = group[0].get("documentId")
         group_counts[first_id] = group_counts.get(first_id, 0) + 1
 
-    documents: List[TestRunReportDocument] = []
+    documents: list[TestRunReportDocument] = []
     for group in groups:
         first = group[0]
         last = group[-1]
@@ -601,21 +594,17 @@ def _build_project(
             if group_counts.get(first.get("documentId"), 0) > 1
             else first.get("documentId")
         )
-        outcomes: Dict[str, RunReportCaseInput] = {}
+        outcomes: dict[str, RunReportCaseInput] = {}
         for document in group:
             for outcome in cases_input:
                 if outcome.get("documentId") != document.get("documentId"):
                     continue
-                if (
-                    outcome.get("documentRunId")
-                    and outcome.get("documentRunId")
-                    != document.get("documentRunId")
-                ):
+                if outcome.get("documentRunId") and outcome.get(
+                    "documentRunId"
+                ) != document.get("documentRunId"):
                     continue
                 previous = outcomes.get(outcome.get("caseId"))
-                previous_attempts = (
-                    (previous.get("attempts") or []) if previous else []
-                )
+                previous_attempts = (previous.get("attempts") or []) if previous else []
                 document_attempt_index = document.get("attemptIndex")
                 merged = []
                 for attempt in _attempts(outcome):
@@ -645,7 +634,7 @@ def _build_project(
                 if end_ms is not None and start_ms is not None
                 else 0.0
             )
-            attempt_documents: List[Dict[str, Any]] = []
+            attempt_documents: list[dict[str, Any]] = []
             for document in group:
                 attempt = dict(
                     _build_document(
@@ -693,7 +682,7 @@ def _build_project(
     result["retry"] = project.get("retry")
     lifecycle = project.get("lifecycle")
     if lifecycle is not None:
-        project_lifecycle: Dict[str, Any] = {
+        project_lifecycle: dict[str, Any] = {
             "status": lifecycle.get("status"),
             "startedAt": lifecycle.get("startedAt"),
             "endedAt": lifecycle.get("endedAt"),
@@ -724,9 +713,11 @@ def _build_project(
     return result
 
 
-def collect_test_run_report_sources(result: RunReportInput) -> List[TestRunReportSource]:
+def collect_test_run_report_sources(
+    result: RunReportInput,
+) -> list[TestRunReportSource]:
     """Report sources reachable from the projected execution records."""
-    sources: List[TestRunReportSource] = []
+    sources: list[TestRunReportSource] = []
     for project in result.get("projects") or []:
         for document in project.get("documents") or []:
             scope_id = _document_report_scope(document)
@@ -760,8 +751,8 @@ def build_test_run_report_dump(
     result: RunReportInput,
     index: TestRunReportSourceIndex,
 ) -> TestRunReportDump:
-    sources_by_scope: Dict[str, List[IndexedTestRunReportSource]] = {}
-    details_by_scope_and_execution: Dict[str, TestRunReportAgentDetail] = {}
+    sources_by_scope: dict[str, list[IndexedTestRunReportSource]] = {}
+    details_by_scope_and_execution: dict[str, TestRunReportAgentDetail] = {}
     for source in index.get("sources") or []:
         scope_id = source.get("scopeId")
         scope_sources = sources_by_scope.setdefault(scope_id, [])
@@ -823,7 +814,7 @@ def build_test_run_report_dump(
 
     index_execution_metrics = index.get("executionMetrics")
     index_metrics = index.get("metrics") or {}
-    metric_values: List[TestRunReportMetrics] = []
+    metric_values: list[TestRunReportMetrics] = []
     if (index.get("sources") or []) or (
         index_execution_metrics is None
         and (index_metrics.get("modelCallCount") or index_metrics.get("collection"))
@@ -832,9 +823,7 @@ def build_test_run_report_dump(
     for execution_id, value in context.execution_metrics.items():
         if not (index_execution_metrics or {}).get(execution_id):
             metric_values.append(value)
-    metrics = sum_test_run_report_metrics(
-        metric_values, list(context.missing_metrics)
-    )
+    metrics = sum_test_run_report_metrics(metric_values, list(context.missing_metrics))
 
     dump: TestRunReportDump = {
         "schemaVersion": 1,

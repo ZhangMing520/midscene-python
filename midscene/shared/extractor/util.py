@@ -6,7 +6,7 @@ reused by DOM shims and tests.
 """
 
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from loguru import logger as _logger
 
@@ -25,10 +25,10 @@ _debug_mode = False
 
 # Module-level window/document shims.  Upstream reads the browser globals; in
 # Python callers may install equivalent objects for DOM-backed integrations.
-window: Optional[Any] = None
-document: Optional[Any] = None
+window: Any | None = None
+document: Any | None = None
 
-_node_hash_cache: Optional[Dict[str, Any]] = None
+_node_hash_cache: dict[str, Any] | None = None
 
 _UNSET = object()
 
@@ -59,7 +59,7 @@ def _is_htmlelement(element: Any, current_window: Any) -> bool:
     return ctor is not None and isinstance(element, ctor)
 
 
-def _node_type(node: Any) -> Optional[int]:
+def _node_type(node: Any) -> int | None:
     return _get(node, "nodeType", "node_type", default=None)
 
 
@@ -69,7 +69,7 @@ def _node_name(node: Any) -> str:
 
 
 def _computed_style(
-    current_window: Any, element: Any, pseudo: Optional[str] = None
+    current_window: Any, element: Any, pseudo: str | None = None
 ) -> Any:
     getter = _get(
         current_window, "getComputedStyle", "get_computed_style", default=None
@@ -100,13 +100,13 @@ def _rect_number(rect: Any, *names: str, default: float = 0.0) -> float:
         return default
 
 
-def _iter_attributes(node: Any) -> List[Tuple[str, Any]]:
+def _iter_attributes(node: Any) -> list[tuple[str, Any]]:
     attributes = _get(node, "attributes", default=None)
     if not attributes:
         return []
     if isinstance(attributes, dict):
         return list(attributes.items())
-    result: List[Tuple[str, Any]] = []
+    result: list[tuple[str, Any]] = []
     for attribute in attributes:
         name = _get(attribute, "name", "nodeName", "node_name", default="")
         value = _get(
@@ -140,8 +140,8 @@ def logger(_msg: Any = _UNSET, *msg: Any) -> None:
 
 
 def overlapped_rect(
-    rect1: Dict[str, float], rect2: Dict[str, float]
-) -> Optional[Dict[str, float]]:
+    rect1: dict[str, float], rect2: dict[str, float]
+) -> dict[str, float] | None:
     """Intersection of two rects, or None when they do not overlap."""
     left = max(rect1["left"], rect2["left"])
     top = max(rect1["top"], rect2["top"])
@@ -162,22 +162,16 @@ def overlapped_rect(
     return None
 
 
-def _viewport_rect(
-    current_window: Any, current_document: Any
-) -> Dict[str, float]:
+def _viewport_rect(current_window: Any, current_document: Any) -> dict[str, float]:
     width = _get(current_window, "innerWidth", "inner_width", default=_UNSET)
     height = _get(current_window, "innerHeight", "inner_height", default=_UNSET)
     document_element = _get(
         current_document, "documentElement", "document_element", default=None
     )
     if width is _UNSET or not width:
-        width = _get(
-            document_element, "clientWidth", "client_width", default=0
-        )
+        width = _get(document_element, "clientWidth", "client_width", default=0)
     if height is _UNSET or not height:
-        height = _get(
-            document_element, "clientHeight", "client_height", default=0
-        )
+        height = _get(document_element, "clientHeight", "client_height", default=0)
     width = float(width or 0)
     height = float(height or 0)
     return {
@@ -194,7 +188,7 @@ def _viewport_rect(
 
 
 def is_element_partially_in_viewport(
-    rect: Dict[str, float],
+    rect: dict[str, float],
     viewport_width: float,
     viewport_height: float,
     visible_area_ratio: float = 2 / 3,
@@ -221,7 +215,7 @@ def is_element_partially_in_viewport(
 
 
 def _is_element_partially_in_viewport(
-    rect: Dict[str, float],
+    rect: dict[str, float],
     current_window: Any,
     current_document: Any,
     visible_area_ratio: float = 2 / 3,
@@ -236,9 +230,7 @@ def _is_element_partially_in_viewport(
     return (overlap["width"] * overlap["height"]) / total_area >= visible_area_ratio
 
 
-def get_pseudo_element_content(
-    element: Any, current_window: Any
-) -> Dict[str, str]:
+def get_pseudo_element_content(element: Any, current_window: Any) -> dict[str, str]:
     """Return the ``::before``/``::after`` text content of an element."""
     if not _is_htmlelement(element, current_window):
         return {"before": "", "after": ""}
@@ -265,7 +257,7 @@ def has_overflow_y(element: Any, current_window: Any) -> bool:
     return overflow_y in ("scroll", "auto", "hidden")
 
 
-def get_rect(el: Any, base_zoom: float, current_window: Any) -> Dict[str, float]:
+def get_rect(el: Any, base_zoom: float, current_window: Any) -> dict[str, float]:
     """Compute the zoom-adjusted bounding rect of a node (upstream getRect)."""
     new_zoom = 1.0
 
@@ -296,9 +288,7 @@ def get_rect(el: Any, base_zoom: float, current_window: Any) -> Dict[str, float]
         if _is_htmlelement(el, current_window) and not _has(
             el, "currentCSSZoom", "current_css_zoom"
         ):
-            zoom_value = _get(
-                _computed_style(current_window, el), "zoom", default=None
-            )
+            zoom_value = _get(_computed_style(current_window, el), "zoom", default=None)
             try:
                 new_zoom = float(zoom_value) if zoom_value not in (None, "") else 1.0
             except (TypeError, ValueError):
@@ -327,9 +317,7 @@ def get_rect(el: Any, base_zoom: float, current_window: Any) -> Dict[str, float]
     }
 
 
-def _is_element_covered(
-    el: Any, rect: Dict[str, float], current_window: Any
-) -> bool:
+def _is_element_covered(el: Any, rect: dict[str, float], current_window: Any) -> bool:
     x = rect["left"] + rect["width"] / 2
     y = rect["top"] + rect["height"] / 2
 
@@ -358,9 +346,7 @@ def _is_element_covered(
     return True
 
 
-def _parent_until_non_static(
-    current_node: Any, current_window: Any
-) -> Any:
+def _parent_until_non_static(current_node: Any, current_window: Any) -> Any:
     parent = _get(current_node, "parentElement", "parent_element", default=None)
     while parent:
         style = _computed_style(current_window, parent)
@@ -469,14 +455,14 @@ def valid_text_node_content(node: Any) -> Any:
     return False
 
 
-def get_node_attributes(node: Any, current_window: Any) -> Dict[str, str]:
+def get_node_attributes(node: Any, current_window: Any) -> dict[str, str]:
     """Return trimmed node attributes keyed by name (upstream)."""
     if not node or not _is_htmlelement(node, current_window):
         return {}
     if not _get(node, "attributes", default=None):
         return {}
 
-    result: Dict[str, str] = {}
+    result: dict[str, str] = {}
     for name, raw_value in _iter_attributes(node):
         value = "" if raw_value is None else str(raw_value)
         if name == "class":
@@ -490,7 +476,7 @@ def get_node_attributes(node: Any, current_window: Any) -> Dict[str, str]:
     return result
 
 
-def _get_node_cache_map() -> Optional[Dict[str, Any]]:
+def _get_node_cache_map() -> dict[str, Any] | None:
     if window is None:
         return None
     return _node_hash_cache
@@ -525,9 +511,7 @@ def get_node_from_cache_list(id: str) -> Any:
     return cache.get(id)
 
 
-def midscene_generate_hash(
-    node: Any, content: str, rect: Any
-) -> str:
+def midscene_generate_hash(node: Any, content: str, rect: Any) -> str:
     """Hash content+rect and cache the node under the hash (upstream)."""
     sliced_hash = generate_hash_id(rect, content)
 
@@ -557,7 +541,7 @@ def _set_window_attribute(name: str, value: Any) -> None:
         setattr(window, name, value)
 
 
-def _resolve_extract_text_with_position() -> Optional[Any]:
+def _resolve_extract_text_with_position() -> Any | None:
     existing = globals().get("extract_text_with_position")
     if existing is not None:
         return existing

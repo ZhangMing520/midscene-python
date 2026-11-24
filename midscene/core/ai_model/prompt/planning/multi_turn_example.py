@@ -1,6 +1,6 @@
 """Multi-turn conversation example (upstream prompt/planning/multi-turn-example.ts)."""
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from midscene.core.ai_model.prompt.planning.action_output_example import (
     build_action_output_example,
@@ -12,7 +12,10 @@ from midscene.core.ai_model.prompt.planning.planning_response_example import (
 )
 from midscene.core.ai_model.prompt.planning.sub_goals_text import build_sub_goals_text
 
-_SAMPLE_NAME_SUB_GOAL = {"index": 1, "description": "Fill in the Name field with 'John'"}
+_SAMPLE_NAME_SUB_GOAL = {
+    "index": 1,
+    "description": "Fill in the Name field with 'John'",
+}
 _SAMPLE_EMAIL_SUB_GOAL = {
     "index": 2,
     "description": "Fill in the Email field with 'john@example.com'",
@@ -28,8 +31,8 @@ def build_planning_multi_turn_example(
     include_sub_goals: bool,
     include_thought: bool,
     include_log: bool,
-    locate_prompt_spec: Optional[Dict[str, Any]] = None,
-    prefix: Optional[str] = None,
+    locate_prompt_spec: dict[str, Any] | None = None,
+    prefix: str | None = None,
 ) -> str:
     build_action_output = action_output_protocol["build_action_output"]
 
@@ -86,7 +89,9 @@ def build_planning_multi_turn_example(
             if include_sub_goals
             else None
         ),
-        log="Click on the Name field to start filling the form" if include_log else None,
+        log="Click on the Name field to start filling the form"
+        if include_log
+        else None,
         action_output_example=tap_name_example,
     )
 
@@ -185,11 +190,21 @@ Below is an example of a multi-turn conversation for "fill out the registration 
 **User message:**
 The previous action has been executed, here is the latest screenshot. Please continue according to the instruction.
 
-{render_sub_goals_content(build_sub_goals_text([
-    {**_SAMPLE_NAME_SUB_GOAL, 'status': 'running', 'logs': ['Click on the Name field to start filling the form']},
-    {**_SAMPLE_EMAIL_SUB_GOAL, 'status': 'pending'},
-    {**_SAMPLE_RETURN_EMAIL_SUB_GOAL, 'status': 'pending'},
-]))}
+{
+        render_sub_goals_content(
+            build_sub_goals_text(
+                [
+                    {
+                        **_SAMPLE_NAME_SUB_GOAL,
+                        "status": "running",
+                        "logs": ["Click on the Name field to start filling the form"],
+                    },
+                    {**_SAMPLE_EMAIL_SUB_GOAL, "status": "pending"},
+                    {**_SAMPLE_RETURN_EMAIL_SUB_GOAL, "status": "pending"},
+                ]
+            )
+        )
+    }
 
 **Screenshot:** [Shows the form with Name field now focused/active]
 
@@ -202,11 +217,24 @@ The previous action has been executed, here is the latest screenshot. Please con
 **User message:**
 The previous action has been executed, here is the latest screenshot. Please continue according to the instruction.
 
-{render_sub_goals_content(build_sub_goals_text([
-    {**_SAMPLE_NAME_SUB_GOAL, 'status': 'running', 'logs': ['Click on the Name field to start filling the form', "Typing 'John' into the Name field"]},
-    {**_SAMPLE_EMAIL_SUB_GOAL, 'status': 'pending'},
-    {**_SAMPLE_RETURN_EMAIL_SUB_GOAL, 'status': 'pending'},
-]))}
+{
+        render_sub_goals_content(
+            build_sub_goals_text(
+                [
+                    {
+                        **_SAMPLE_NAME_SUB_GOAL,
+                        "status": "running",
+                        "logs": [
+                            "Click on the Name field to start filling the form",
+                            "Typing 'John' into the Name field",
+                        ],
+                    },
+                    {**_SAMPLE_EMAIL_SUB_GOAL, "status": "pending"},
+                    {**_SAMPLE_RETURN_EMAIL_SUB_GOAL, "status": "pending"},
+                ]
+            )
+        )
+    }
 
 **Screenshot:** [Shows the form with Name field containing 'John']
 
@@ -219,11 +247,21 @@ The previous action has been executed, here is the latest screenshot. Please con
 **User message:**
 The previous action has been executed, here is the latest screenshot. Please continue according to the instruction.
 
-{render_sub_goals_content(build_sub_goals_text([
-    {**_SAMPLE_NAME_SUB_GOAL, 'status': 'finished'},
-    {**_SAMPLE_EMAIL_SUB_GOAL, 'status': 'running', 'logs': ['Moving to the Email field']},
-    {**_SAMPLE_RETURN_EMAIL_SUB_GOAL, 'status': 'pending'},
-]))}
+{
+        render_sub_goals_content(
+            build_sub_goals_text(
+                [
+                    {**_SAMPLE_NAME_SUB_GOAL, "status": "finished"},
+                    {
+                        **_SAMPLE_EMAIL_SUB_GOAL,
+                        "status": "running",
+                        "logs": ["Moving to the Email field"],
+                    },
+                    {**_SAMPLE_RETURN_EMAIL_SUB_GOAL, "status": "pending"},
+                ]
+            )
+        )
+    }
 
 **Screenshot:** [Shows the form with Name='John' and Email field focused]
 
@@ -231,16 +269,31 @@ The previous action has been executed, here is the latest screenshot. Please con
 
 {turn4}
 
-### Turn 5 - After entering email ({render_sub_goals_content('Goal accomplished', 'Instruction fulfilled')})
+### Turn 5 - After entering email ({
+        render_sub_goals_content("Goal accomplished", "Instruction fulfilled")
+    })
 
 **User message:**
 The previous action has been executed, here is the latest screenshot. Please continue according to the instruction.
 
-{render_sub_goals_content(build_sub_goals_text([
-    {**_SAMPLE_NAME_SUB_GOAL, 'status': 'finished'},
-    {**_SAMPLE_EMAIL_SUB_GOAL, 'status': 'running', 'logs': ['Moving to the Email field', 'Typing email address into the Email field']},
-    {**_SAMPLE_RETURN_EMAIL_SUB_GOAL, 'status': 'pending'},
-]))}
+{
+        render_sub_goals_content(
+            build_sub_goals_text(
+                [
+                    {**_SAMPLE_NAME_SUB_GOAL, "status": "finished"},
+                    {
+                        **_SAMPLE_EMAIL_SUB_GOAL,
+                        "status": "running",
+                        "logs": [
+                            "Moving to the Email field",
+                            "Typing email address into the Email field",
+                        ],
+                    },
+                    {**_SAMPLE_RETURN_EMAIL_SUB_GOAL, "status": "pending"},
+                ]
+            )
+        )
+    }
 
 **Screenshot:** [Shows the form with Name='John' and Email='john@example.com']
 

@@ -2,10 +2,9 @@
 
 import asyncio
 import platform
-from typing import Dict
 
 
-def check_mac_os_platform() -> Dict[str, object]:
+def check_mac_os_platform() -> dict[str, object]:
     """Report whether the host is macOS (upstream checkMacOSPlatform)."""
     current_platform = platform.system().lower()
     # Node's os.platform() reports "win32"; normalize Python's "windows" so
@@ -18,12 +17,12 @@ def check_mac_os_platform() -> Dict[str, object]:
     }
 
 
-def check_macos_platform() -> Dict[str, object]:
+def check_macos_platform() -> dict[str, object]:
     """Backward-compatible alias of :func:`check_mac_os_platform`."""
     return check_mac_os_platform()
 
 
-async def check_ios_environment() -> Dict[str, object]:
+async def check_ios_environment() -> dict[str, object]:
     """Check xcode command-line tooling availability (upstream)."""
     platform_check = check_mac_os_platform()
     if not platform_check["isMacOS"]:
@@ -74,9 +73,7 @@ async def _command_succeeds(command: str) -> bool:
     return process.returncode == 0
 
 
-def screenshots_similar(
-    before: str, after: str, tolerance_percent: float
-) -> bool:
+def screenshots_similar(before: str, after: str, tolerance_percent: float) -> bool:
     """Compare base64 screenshots while tolerating a little dynamic content.
 
     Upstream compares the encoded text directly: animated clocks and badges

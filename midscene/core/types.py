@@ -6,10 +6,10 @@ The definitions now live in :mod:`midscene.shared.types` (upstream
 """
 
 from midscene.shared.types import (
-    AIUsageInfo,
     AbortError,
     AbortSignal,
     AbstractInterface,
+    AIUsageInfo,
     AssertResult,
     BaseElement,
     ElementById,

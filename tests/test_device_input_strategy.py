@@ -1,7 +1,6 @@
 """Port of upstream packages/core/tests/unit-test/input-strategy.test.ts."""
 
 import math
-from typing import List
 
 import pytest
 
@@ -20,16 +19,14 @@ class TestTextInputStrategy:
         with pytest.raises(
             ValueError,
             match=(
-                "inputStrategy must be one of: legacy, sequential, bulk; "
-                "received paste"
+                "inputStrategy must be one of: legacy, sequential, bulk; received paste"
             ),
         ):
             resolve_input_strategy("paste")
         with pytest.raises(
             ValueError,
             match=(
-                "inputStrategy must be one of: legacy, sequential, bulk; "
-                "received null"
+                "inputStrategy must be one of: legacy, sequential, bulk; received null"
             ),
         ):
             resolve_input_strategy(None)
@@ -105,8 +102,8 @@ class TestTextInputStrategy:
         """sends Unicode code points in order and waits only between them"""
         from midscene.core.device.input_strategy import send_text_sequentially
 
-        characters: List[str] = []
-        waits: List[int] = []
+        characters: list[str] = []
+        waits: list[int] = []
 
         await send_text_sequentially(
             "A😀B",
@@ -125,7 +122,7 @@ class TestTextInputStrategy:
         """can preserve a legacy trailing delay explicitly"""
         from midscene.core.device.input_strategy import send_text_sequentially
 
-        waits: List[int] = []
+        waits: list[int] = []
 
         await send_text_sequentially(
             "AB",

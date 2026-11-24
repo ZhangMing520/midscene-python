@@ -1,9 +1,9 @@
 """Synced from upstream packages/core/tests/unit-test/action-swipe.test.ts and
 device/swipe.test.ts."""
 
-import pytest
+from typing import Any
 
-from typing import Any, Dict, List
+import pytest
 
 
 def test_web_action_space_exposes_a_single_swipe_action():
@@ -68,10 +68,10 @@ async def test_skips_duration_for_devices_without_the_keyword():
 
 class _RecordingSwipeDevice:
     def __init__(self):
-        self.points: List[tuple] = []
-        self.direction_swipes: List[tuple] = []
+        self.points: list[tuple] = []
+        self.direction_swipes: list[tuple] = []
 
-    async def size(self) -> Dict[str, int]:
+    async def size(self) -> dict[str, int]:
         return {"width": 1000, "height": 600}
 
     async def swipe(self, direction, distance=None, duration=None):
@@ -86,7 +86,7 @@ async def _swipe_locate_fn(locate):
 
 
 class TestSwipeAction:
-    def _normalize(self, param: Dict[str, Any]) -> Dict[str, Any]:
+    def _normalize(self, param: dict[str, Any]) -> dict[str, Any]:
         from midscene.core.device import normalize_swipe_param
 
         return normalize_swipe_param(param, {"width": 1000, "height": 600})
@@ -140,7 +140,12 @@ class TestSwipeAction:
 
         action = _swipe_action()
         assert set(action.param_schema) == {
-            "start", "direction", "distance", "end", "duration", "repeat"
+            "start",
+            "direction",
+            "distance",
+            "end",
+            "duration",
+            "repeat",
         }
         assert action.locate_fields == ["start", "end"]
         assert "end" in action.description

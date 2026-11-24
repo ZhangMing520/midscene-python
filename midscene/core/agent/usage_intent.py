@@ -1,6 +1,6 @@
 """Task-type to config-intent mapping (upstream agent/usage-intent.ts)."""
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -11,9 +11,9 @@ def intent_for_task_type(task_type: str) -> str:
 
 
 def with_usage_intent(
-    usage: Optional[Dict[str, Any]],
+    usage: dict[str, Any] | None,
     intent: str,
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Attach an intent to a usage record without overwriting an existing one."""
     if not usage:
         return None

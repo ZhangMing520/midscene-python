@@ -2,7 +2,7 @@
 
 import inspect
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from midscene.core.agent.agent_options import AgentOptions, coerce_agent_options
 from midscene.core.types import InterfaceType
@@ -43,8 +43,8 @@ def _tab_field(tab: Any, key: str) -> Any:
 
 
 def build_bridge_agent_options(
-    init_args: Optional[Dict[str, Any]],
-    report_options: Optional[Dict[str, Any]] = None,
+    init_args: dict[str, Any] | None,
+    report_options: dict[str, Any] | None = None,
 ) -> AgentOptions:
     """Merge behavior init args and report options into AgentOptions."""
     behavior = extract_agent_behavior_init_args(init_args) or {}
@@ -62,8 +62,8 @@ class WebMidsceneTools(BaseMidsceneTools):
             cli={"preferBareKeys": True},
             adapt=adapt_web_agent_init_args,
         )
-        self.last_init_args_signature: Optional[str] = None
-        self.last_init_args: Optional[Dict[str, Any]] = None
+        self.last_init_args_signature: str | None = None
+        self.last_init_args: dict[str, Any] | None = None
 
     def get_cli_report_session_name(self) -> str:
         return "midscene-web"
@@ -71,9 +71,7 @@ class WebMidsceneTools(BaseMidsceneTools):
     def create_temporary_device(self) -> Any:
         return _StaticWebPage()
 
-    async def ensure_agent(
-        self, init_param: Any = None
-    ) -> AgentOverChromeBridge:
+    async def ensure_agent(self, init_param: Any = None) -> AgentOverChromeBridge:
         init_args = init_param or {}
         next_signature = get_agent_init_args_signature(init_args)
         should_open_url = isinstance(init_args.get("url"), str)
@@ -99,8 +97,8 @@ class WebMidsceneTools(BaseMidsceneTools):
 
     async def _reconnect_agent(
         self,
-        init_args: Optional[Dict[str, Any]] = None,
-        tab_id: Optional[int] = None,
+        init_args: dict[str, Any] | None = None,
+        tab_id: int | None = None,
     ) -> AgentOverChromeBridge:
         await self.destroy()
         agent = await self._init_bridge_mode_agent(init_args, tab_id)
@@ -111,8 +109,8 @@ class WebMidsceneTools(BaseMidsceneTools):
 
     async def _init_bridge_mode_agent(
         self,
-        init_args: Optional[Dict[str, Any]] = None,
-        tab_id: Optional[int] = None,
+        init_args: dict[str, Any] | None = None,
+        tab_id: int | None = None,
     ) -> AgentOverChromeBridge:
         url = (init_args or {}).get("url")
         options = build_bridge_agent_options(
@@ -144,7 +142,7 @@ class WebMidsceneTools(BaseMidsceneTools):
                 ) from error
             raise
 
-    async def _list_tabs(self) -> List[Dict[str, Any]]:
+    async def _list_tabs(self) -> list[dict[str, Any]]:
         agent = self.agent if self.agent is not None else await self.ensure_agent()
         active_id = str(await agent.page.get_active_tab_id())
         tabs = await agent.get_browser_tab_list()
@@ -179,18 +177,16 @@ class WebMidsceneTools(BaseMidsceneTools):
             int(tab_id),
         )
 
-    def prepare_platform_tools(self) -> List[ToolDefinition]:
-        async def connect(args: Dict[str, Any]) -> ToolResult:
+    def prepare_platform_tools(self) -> list[ToolDefinition]:
+        async def connect(args: dict[str, Any]) -> ToolResult:
             init_args = self.extract_agent_init_param(args) or {}
             url = init_args.get("url")
 
-            report_session = self.create_new_cli_report_session(
-                url or "current-tab"
-            )
+            report_session = self.create_new_cli_report_session(url or "current-tab")
             self.commit_cli_report_session(report_session)
             agent = await self._reconnect_agent(init_args)
 
-            content: List[Dict[str, Any]] = [
+            content: list[dict[str, Any]] = [
                 {"type": "text", "text": f"Connected to: {url or 'current tab'}"}
             ]
             page = getattr(agent, "page", None)
@@ -203,18 +199,14 @@ class WebMidsceneTools(BaseMidsceneTools):
                     content.extend(self.build_screenshot_content(screenshot))
             return ToolResult(content)
 
-        async def disconnect(_args: Dict[str, Any]) -> ToolResult:
+        async def disconnect(_args: dict[str, Any]) -> ToolResult:
             if self.agent is None:
-                return self.build_text_result(
-                    "No active connection to disconnect"
-                )
+                return self.build_text_result("No active connection to disconnect")
             await self.destroy()
             return self.build_text_result("Disconnected from web page")
 
         return [
-            *create_tab_tools(
-                {"list": self._list_tabs, "select": self._select_tab}
-            ),
+            *create_tab_tools({"list": self._list_tabs, "select": self._select_tab}),
             ToolDefinition(
                 name="web_connect",
                 description=(
@@ -228,8 +220,7 @@ class WebMidsceneTools(BaseMidsceneTools):
             ToolDefinition(
                 name="web_disconnect",
                 description=(
-                    "Disconnect from current web page and release browser "
-                    "resources"
+                    "Disconnect from current web page and release browser resources"
                 ),
                 schema={},
                 handler=disconnect,

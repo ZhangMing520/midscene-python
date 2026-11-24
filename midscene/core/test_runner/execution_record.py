@@ -1,7 +1,7 @@
 """Execution records for the workflow entry adapter (upstream execution-record.ts)."""
 
 import json
-from typing import Any, Dict, List, TypedDict
+from typing import Any, TypedDict
 
 from midscene.core.test_runner.engine.types import (
     WorkflowDocumentExecutionResult,
@@ -28,20 +28,20 @@ class WorkflowExecutionRecord(TypedDict, total=False):
     execution: WorkflowDocumentExecutionResult
     setupError: Any
     executionError: Any
-    cleanupErrors: List[Any]
-    outputs: Dict[str, Any]
-    reportPaths: List[str]
-    reportSources: List[WorkflowReportSource]
-    children: List["WorkflowExecutionRecord"]
+    cleanupErrors: list[Any]
+    outputs: dict[str, Any]
+    reportPaths: list[str]
+    reportSources: list[WorkflowReportSource]
+    children: list["WorkflowExecutionRecord"]
     reportError: Any
-    publicationErrors: List[Any]
-    observerErrors: List[Any]
+    publicationErrors: list[Any]
+    observerErrors: list[Any]
 
 
-def execution_record_to_result(record: WorkflowExecutionRecord) -> Dict[str, Any]:
+def execution_record_to_result(record: WorkflowExecutionRecord) -> dict[str, Any]:
     """Complete host facts as a kernel result. Report and summary consume this view."""
     execution = (record.get("execution") or {}).get("document")
-    host_errors: List[WorkflowHostError] = list(
+    host_errors: list[WorkflowHostError] = list(
         (execution or {}).get("hostErrors") or []
     )
 
@@ -65,9 +65,8 @@ def execution_record_to_result(record: WorkflowExecutionRecord) -> Dict[str, Any
         or (execution or {}).get("projectName")
         or record.get("platform")
     )
-    result_document: Dict[str, Any] = {
-        "plan": (execution or {}).get("plan")
-        or build_test_run_report_plan(document),
+    result_document: dict[str, Any] = {
+        "plan": (execution or {}).get("plan") or build_test_run_report_plan(document),
         "documentId": document["documentId"],
         "documentRunId": record["runId"],
         "attemptIndex": record["attemptIndex"],
@@ -117,8 +116,8 @@ def execution_record_to_result(record: WorkflowExecutionRecord) -> Dict[str, Any
     return {"document": result_document, "cases": cases}
 
 
-def _error_payload(value: Any) -> Dict[str, Any]:
-    payload: Dict[str, Any] = {
+def _error_payload(value: Any) -> dict[str, Any]:
+    payload: dict[str, Any] = {
         "name": type(value).__name__,
         "message": str(value),
     }
@@ -146,7 +145,9 @@ def serialize_workflow_value(value: Any) -> str:
             return _error_payload(item)
         if hasattr(item, "isoformat"):
             return item.isoformat()
-        raise TypeError(f"Object of type {type(item).__name__} is not JSON serializable")
+        raise TypeError(
+            f"Object of type {type(item).__name__} is not JSON serializable"
+        )
 
     return json.dumps(value, default=default, indent=2, ensure_ascii=False)
 

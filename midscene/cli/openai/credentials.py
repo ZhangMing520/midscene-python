@@ -4,7 +4,7 @@ import datetime
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from midscene.core.ai_model.service_caller.openai.siwc.credential_storage import (
     REAUTHORIZATION_HINT,
@@ -16,8 +16,8 @@ from midscene.core.ai_model.service_caller.openai.siwc.credential_storage import
 )
 from midscene.core.ai_model.service_caller.openai.siwc.errors import SiwcError
 
-OpenAICredentials = Dict[str, Any]
-Registration = Dict[str, Any]
+OpenAICredentials = dict[str, Any]
+Registration = dict[str, Any]
 
 INVALID_REGISTRATION_MESSAGE = "Invalid local SIWC credentials file."
 
@@ -28,13 +28,13 @@ def default_credentials_path() -> str:
 
 def _now_iso() -> str:
     return (
-        datetime.datetime.now(datetime.timezone.utc)
+        datetime.datetime.now(datetime.UTC)
         .isoformat(timespec="milliseconds")
         .replace("+00:00", "Z")
     )
 
 
-def _read_record(path: str) -> Optional[Dict[str, Any]]:
+def _read_record(path: str) -> dict[str, Any] | None:
     file_path = Path(path)
     if not file_path.exists():
         return None
@@ -52,13 +52,13 @@ def _read_record(path: str) -> Optional[Dict[str, Any]]:
     return record
 
 
-def read_registration(path: str) -> Optional[Dict[str, Any]]:
+def read_registration(path: str) -> dict[str, Any] | None:
     """Return the saved credentials, or None when no registration exists."""
     record = _read_record(path)
     return record["credentials"] if record else None
 
 
-def save_registration(path: str, credentials: Dict[str, Any]) -> None:
+def save_registration(path: str, credentials: dict[str, Any]) -> None:
     """Persist credentials atomically with 0600 permissions."""
     existing = _read_record(path)
     now = _now_iso()
@@ -83,7 +83,7 @@ def save_registration(path: str, credentials: Dict[str, Any]) -> None:
         temporary.unlink(missing_ok=True)
 
 
-def require_credentials(saved: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+def require_credentials(saved: dict[str, Any] | None) -> dict[str, Any]:
     if not saved or not saved.get("refresh_token"):
         raise SiwcError(
             'No saved SIWC credentials. Run "midscene model siwc login" first.'
@@ -96,9 +96,7 @@ async def lock_credentials(path: str):
     lock_path = f"{path}.lock"
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     try:
-        descriptor = os.open(
-            lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600
-        )
+        descriptor = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
     except FileExistsError as error:
         raise SiwcError(
             "Another midscene model siwc command is already running."

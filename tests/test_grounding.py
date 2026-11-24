@@ -18,8 +18,9 @@ from midscene.core.types import (
 
 
 def make_png_base64(width: int = 320, height: int = 240) -> str:
-    from PIL import Image
     import io
+
+    from PIL import Image
 
     image = Image.new("RGB", (width, height), (200, 200, 200))
     buffer = io.BytesIO()
@@ -155,9 +156,7 @@ async def test_retries_json_parsing_through_the_same_locate_retry_loop(
             return {"content": "not json at all", "usage": None}
         return {"content": '{"bbox": [0, 0, 9, 9]}', "usage": None}
 
-    with patch_model_call(
-        "midscene.core.ai_model.workflows.grounding.locate", handler
-    ):
+    with patch_model_call("midscene.core.ai_model.workflows.grounding.locate", handler):
         context = await mock_interface.get_context()
         result = await ai_locate_element(
             target_element_description="retry target",
@@ -189,13 +188,16 @@ async def test_passes_locate_request_context_to_custom_locate_and_maps_its_bbox_
             },
         }
 
-    with patch(
-        "midscene.core.ai_model.models.jev.locate.call_system_one",
-        new=fake_system_one,
-    ), patch_model_call(
-        "midscene.core.ai_model.workflows.grounding.locate",
-        AsyncMock(
-            side_effect=AssertionError("standard locate path should not run")
+    with (
+        patch(
+            "midscene.core.ai_model.models.jev.locate.call_system_one",
+            new=fake_system_one,
+        ),
+        patch_model_call(
+            "midscene.core.ai_model.workflows.grounding.locate",
+            AsyncMock(
+                side_effect=AssertionError("standard locate path should not run")
+            ),
         ),
     ):
         context = await mock_interface.get_context()

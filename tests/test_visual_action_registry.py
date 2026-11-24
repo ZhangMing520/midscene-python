@@ -21,9 +21,7 @@ async def test_runs_the_completion_hook_after_dispatch_with_the_registered_actio
     async def on_action_settled(name):
         order.append(("settled", name))
 
-    actions = create_visual_action_registry(
-        {"launch": dispatch}, on_action_settled
-    )
+    actions = create_visual_action_registry({"launch": dispatch}, on_action_settled)
 
     assert await actions["launch"]("com.example.app") == "launched:com.example.app"
     assert order == ["dispatch", ("settled", "launch")]
@@ -45,9 +43,7 @@ async def test_settles_a_composite_action_only_once():
     async def on_action_settled(name):
         settled.append(name)
 
-    actions = create_visual_action_registry(
-        {"swipe": swipe}, on_action_settled
-    )
+    actions = create_visual_action_registry({"swipe": swipe}, on_action_settled)
 
     await actions["swipe"](3)
 
@@ -75,9 +71,7 @@ async def test_settles_an_action_after_a_dispatch_that_fails():
     async def on_action_settled(name):
         events.append(("settled", name))
 
-    actions = create_visual_action_registry(
-        {"swipe": swipe}, on_action_settled
-    )
+    actions = create_visual_action_registry({"swipe": swipe}, on_action_settled)
 
     with pytest.raises(RuntimeError) as excinfo:
         await actions["swipe"]()

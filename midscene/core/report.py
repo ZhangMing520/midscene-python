@@ -17,7 +17,7 @@ import shutil
 import tempfile
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 from urllib.parse import unquote
 
 from loguru import logger
@@ -88,20 +88,18 @@ _screenshot_mode_attr_reg_exp = re.compile(
 warned_mismatched_versions: set = set()
 
 
-def _report_dump_from_string(dump_string: str) -> Dict[str, Any]:
+def _report_dump_from_string(dump_string: str) -> dict[str, Any]:
     parsed = json.loads(dump_string)
-    if not isinstance(parsed, dict) or not isinstance(
-        parsed.get("executions"), list
-    ):
+    if not isinstance(parsed, dict) or not isinstance(parsed.get("executions"), list):
         raise ValueError("Invalid report dump")
     return parsed
 
 
 def dedupe_executions_keep_latest(
-    executions: List[Dict[str, Any]],
-) -> List[Dict[str, Any]]:
+    executions: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
     """Deduplicate executions by stable id, keeping only the last occurrence."""
-    deduped: Dict[str, Dict[str, Any]] = {}
+    deduped: dict[str, dict[str, Any]] = {}
     no_id_counter = 0
     for execution in executions:
         key = execution.get("id") if isinstance(execution, dict) else None
@@ -125,10 +123,10 @@ def remove_report_artifact(report_file_path: str) -> None:
     Path(report_file_path).unlink()
 
 
-def _read_declared_screenshot_mode(report_file_path: str) -> Optional[str]:
-    mode: Optional[str] = None
+def _read_declared_screenshot_mode(report_file_path: str) -> str | None:
+    mode: str | None = None
 
-    def visit(dump_script: Dict[str, str]) -> bool:
+    def visit(dump_script: dict[str, str]) -> bool:
         nonlocal mode
         if "data-group-id" not in dump_script["openTag"]:
             return False
@@ -155,18 +153,16 @@ def is_directory_mode_report(report_file_path: str) -> bool:
     return (Path(report_file_path).parent / "screenshots").exists()
 
 
-def _peek_report_sdk_version(report_file_path: str) -> Optional[str]:
+def _peek_report_sdk_version(report_file_path: str) -> str | None:
     try:
-        reference: Dict[str, Optional[str]] = {"dump": None}
+        reference: dict[str, str | None] = {"dump": None}
 
-        def visit(dump_script: Dict[str, str]) -> bool:
+        def visit(dump_script: dict[str, str]) -> bool:
             reference["dump"] = dump_script["content"]
             return True
 
         stream_report_dump_scripts(report_file_path, visit)
-        dump = reference["dump"] or extract_last_dump_script_sync(
-            report_file_path
-        )
+        dump = reference["dump"] or extract_last_dump_script_sync(report_file_path)
         if not dump:
             return None
         match = re.search(r'"sdkVersion"\s*:\s*"([^"]+)"', dump)
@@ -177,7 +173,7 @@ def _peek_report_sdk_version(report_file_path: str) -> Optional[str]:
 
 def _try_parse_agent_report_dump(
     dump_string: str,
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     trimmed = dump_string.lstrip()
     if not trimmed.startswith("{") or '"executions"' not in trimmed:
         return None
@@ -189,18 +185,13 @@ def _try_parse_agent_report_dump(
 
 def _iso_from_ms(value: float) -> str:
     milliseconds = int(value)
-    moment = datetime.datetime.fromtimestamp(
-        milliseconds / 1000, tz=datetime.timezone.utc
-    )
-    return (
-        moment.strftime("%Y-%m-%dT%H:%M:%S.")
-        + f"{milliseconds % 1000:03d}Z"
-    )
+    moment = datetime.datetime.fromtimestamp(milliseconds / 1000, tz=datetime.UTC)
+    return moment.strftime("%Y-%m-%dT%H:%M:%S.") + f"{milliseconds % 1000:03d}Z"
 
 
 def _agent_report_timing(
-    report: Dict[str, Any], duration_ms: float
-) -> Optional[Dict[str, Any]]:
+    report: dict[str, Any], duration_ms: float
+) -> dict[str, Any] | None:
     timing = collect_report_summary(report)["timing"]
     execution_times = [
         execution.get("logTime")
@@ -214,9 +205,7 @@ def _agent_report_timing(
     if started is None:
         return None
     fallback_end = started + (
-        max(0.0, duration_ms)
-        if isinstance(duration_ms, (int, float))
-        else 0.0
+        max(0.0, duration_ms) if isinstance(duration_ms, (int, float)) else 0.0
     )
     ended = timing.get("wallTimeEnd")
     if ended is None:
@@ -228,16 +217,14 @@ def _agent_report_timing(
     }
 
 
-def merged_agent_report_comment(reports: List[Dict[str, Any]]) -> str:
+def merged_agent_report_comment(reports: list[dict[str, Any]]) -> str:
     if not reports:
         return ""
     if len(reports) == 1:
         return generate_agent_report_comment(reports[0])
     device_types = list(
         dict.fromkeys(
-            report.get("deviceType")
-            for report in reports
-            if report.get("deviceType")
+            report.get("deviceType") for report in reports if report.get("deviceType")
         )
     )
     merged = {
@@ -245,9 +232,7 @@ def merged_agent_report_comment(reports: List[Dict[str, Any]]) -> str:
         "groupName": "Merged Midscene Report",
         "groupDescription": "Agent-readable summary for merged report HTML",
         "modelBriefs": [
-            brief
-            for report in reports
-            for brief in (report.get("modelBriefs") or [])
+            brief for report in reports for brief in (report.get("modelBriefs") or [])
         ],
         "deviceType": device_types[0] if len(device_types) == 1 else "mixed",
         "executions": dedupe_executions_keep_latest(
@@ -281,10 +266,10 @@ def validate_test_run_report_file_name(file_name: str) -> None:
 
 
 def write_report_html(
-    dump: Dict[str, Any],
-    file_name: Optional[str] = None,
-    run_dir: Optional[str] = None,
-) -> Optional[str]:
+    dump: dict[str, Any],
+    file_name: str | None = None,
+    run_dir: str | None = None,
+) -> str | None:
     """Write `<midscene_run>/report/<name>.html` rendering the dump."""
     try:
         report_dir = Path(run_dir or get_midscene_run_dir("report"))
@@ -314,12 +299,12 @@ class ReportMergingTool:
     """Collect report sources and merge them into one report artifact."""
 
     def __init__(self) -> None:
-        self.report_infos: List[Dict[str, Any]] = []
+        self.report_infos: list[dict[str, Any]] = []
 
     def create_empty_dump_string(
-        self, group_name: str, group_description: Optional[str] = None
+        self, group_name: str, group_description: str | None = None
     ) -> str:
-        dump: Dict[str, Any] = {
+        dump: dict[str, Any] = {
             "sdkVersion": "",
             "groupName": group_name,
             "modelBriefs": [],
@@ -329,7 +314,7 @@ class ReportMergingTool:
             dump["groupDescription"] = group_description
         return json.dumps(dump, ensure_ascii=False)
 
-    def append(self, report_info: Dict[str, Any]) -> None:
+    def append(self, report_info: dict[str, Any]) -> None:
         attributes = report_info.get("reportAttributes") or {}
         report_file_path = report_info.get("reportFilePath")
         if not report_file_path and attributes.get("testStatus") != "skipped":
@@ -358,9 +343,7 @@ class ReportMergingTool:
     def clear(self) -> None:
         self.report_infos = []
 
-    def merge_dump_scripts(
-        self, contents: List[str], external: bool
-    ) -> str:
+    def merge_dump_scripts(self, contents: list[str], external: bool) -> str:
         """Merge several dump payloads from one source report into one dump."""
         unescaped = [
             content if external else anti_escape_script_tag(content)
@@ -381,8 +364,8 @@ class ReportMergingTool:
         return json.dumps(base, ensure_ascii=False)
 
     def merge_reports(
-        self, report_file_name: str = "AUTO", opts: Optional[Dict[str, Any]] = None
-    ) -> Optional[str]:
+        self, report_file_name: str = "AUTO", opts: dict[str, Any] | None = None
+    ) -> str | None:
         opts = opts or {}
         rm_original_reports = bool(opts.get("rmOriginalReports"))
         overwrite = bool(opts.get("overwrite"))
@@ -444,8 +427,8 @@ class ReportMergingTool:
                 entry, external, "test" if has_runner_dump else "agent"
             )
             writer.initialize_sync()
-            agent_reports: List[Dict[str, Any]] = []
-            runner_sources: List[MergeTestRunReportSource] = []
+            agent_reports: list[dict[str, Any]] = []
+            runner_sources: list[MergeTestRunReportSource] = []
             group_ids: set = set()
             for index, info in enumerate(self.report_infos):
                 attributes = info.get("reportAttributes") or {}
@@ -472,14 +455,10 @@ class ReportMergingTool:
                     if dumps:
                         serialized = self.merge_dump_scripts(
                             [dump["content"] for dump in dumps],
-                            bool(
-                                read_report_artifact_manifest(report_file_path)
-                            ),
+                            bool(read_report_artifact_manifest(report_file_path)),
                         )
                     else:
-                        serialized = extract_last_dump_script_sync(
-                            report_file_path
-                        )
+                        serialized = extract_last_dump_script_sync(report_file_path)
                         if not serialized:
                             # Legacy single-file reports embed
                             # ``midscene_report_dump`` instead of the streaming
@@ -496,9 +475,7 @@ class ReportMergingTool:
                                 )
                                 legacy_dump = None
                             if legacy_dump:
-                                serialized = json.dumps(
-                                    legacy_dump, ensure_ascii=False
-                                )
+                                serialized = json.dumps(legacy_dump, ensure_ascii=False)
                         serialized = serialized or self.create_empty_dump_string(
                             attributes.get("testTitle") or "",
                             attributes.get("testDescription"),
@@ -513,8 +490,7 @@ class ReportMergingTool:
                     runner_sources.append(
                         {
                             "reportId": group_id,
-                            "sourcePath": report_file_path
-                            or "<skipped-agent-report>",
+                            "sourcePath": report_file_path or "<skipped-agent-report>",
                             "attributes": attributes,
                             "dump": runner_dumps[index],
                             "timing": (
@@ -528,18 +504,12 @@ class ReportMergingTool:
                         }
                     )
                 group_attributes = {
-                    **(
-                        {"data-report-id": group_id}
-                        if has_runner_dump
-                        else {}
-                    ),
+                    **({"data-report-id": group_id} if has_runner_dump else {}),
                     "playwright_test_duration": attributes.get("testDuration"),
                     "playwright_test_status": attributes.get("testStatus"),
                     "playwright_test_title": attributes.get("testTitle"),
                     "playwright_test_id": attributes.get("testId"),
-                    "playwright_test_description": attributes.get(
-                        "testDescription"
-                    ),
+                    "playwright_test_description": attributes.get("testDescription"),
                     "is_merged": True,
                 }
                 writer.add_group_sync(
@@ -555,7 +525,7 @@ class ReportMergingTool:
                     },
                 )
 
-            runner: Optional[TestRunReportDump] = None
+            runner: TestRunReportDump | None = None
             if has_runner_dump:
                 executions = dedupe_executions_keep_latest(
                     [
@@ -564,9 +534,7 @@ class ReportMergingTool:
                         for execution in (report.get("executions") or [])
                     ]
                 )
-                metrics = collect_test_run_report_metrics(
-                    {"executions": executions}
-                )
+                metrics = collect_test_run_report_metrics({"executions": executions})
                 execution_metrics = {
                     execution["id"]: collect_test_run_report_metrics(
                         {"executions": [execution]}
@@ -604,13 +572,13 @@ class ReportMergingTool:
 
 def collect_deduped_executions(
     html_path: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Collect executions from a report HTML, keeping the latest by id."""
-    base_dump: Optional[Dict[str, Any]] = None
+    base_dump: dict[str, Any] | None = None
     execution_serial = 0
-    latest_serial_by_execution_id: Dict[str, int] = {}
+    latest_serial_by_execution_id: dict[str, int] = {}
 
-    def record(dump_script: Dict[str, str]) -> bool:
+    def record(dump_script: dict[str, str]) -> bool:
         nonlocal execution_serial
         if "data-group-id" not in dump_script["openTag"]:
             return False
@@ -625,10 +593,10 @@ def collect_deduped_executions(
 
     stream_report_dump_scripts(html_path, record)
 
-    executions: List[Dict[str, Any]] = []
+    executions: list[dict[str, Any]] = []
     execution_serial = 0
 
-    def collect(dump_script: Dict[str, str]) -> bool:
+    def collect(dump_script: dict[str, str]) -> bool:
         nonlocal base_dump, execution_serial
         if "data-group-id" not in dump_script["openTag"]:
             return False
@@ -655,7 +623,7 @@ def collect_deduped_executions(
 
 
 def _externalize_images_in_execution(
-    execution: Dict[str, Any], images: ReportImageExporter
+    execution: dict[str, Any], images: ReportImageExporter
 ) -> None:
     def visit(node: Any) -> None:
         if isinstance(node, list):
@@ -676,7 +644,7 @@ def _externalize_images_in_execution(
     visit(execution)
 
 
-def split_report_html_by_execution(options: Dict[str, Any]) -> Dict[str, List[str]]:
+def split_report_html_by_execution(options: dict[str, Any]) -> dict[str, list[str]]:
     """Reverse parse a report HTML into per-execution JSON files + screenshots."""
     html_path = options["htmlPath"]
     output_dir = Path(options["outputDir"])
@@ -685,7 +653,7 @@ def split_report_html_by_execution(options: Dict[str, Any]) -> Dict[str, List[st
     output_dir.mkdir(parents=True, exist_ok=True)
     screenshots_dir.mkdir(parents=True, exist_ok=True)
 
-    execution_json_files: List[str] = []
+    execution_json_files: list[str] = []
     images = ReportImageExporter(html_path, str(screenshots_dir))
     collected = collect_deduped_executions(html_path)
     base_dump = collected["baseDump"]
@@ -693,9 +661,7 @@ def split_report_html_by_execution(options: Dict[str, Any]) -> Dict[str, List[st
     for file_index, execution in enumerate(collected["executions"], 1):
         _externalize_images_in_execution(execution, images)
         single_dump = {
-            key: base_dump[key]
-            for key in _DUMP_HEADER_KEYS
-            if key in base_dump
+            key: base_dump[key] for key in _DUMP_HEADER_KEYS if key in base_dump
         }
         single_dump["executions"] = [execution]
         json_path = output_dir / f"{file_index}.execution.json"
@@ -712,25 +678,23 @@ def split_report_html_by_execution(options: Dict[str, Any]) -> Dict[str, List[st
 
 
 def _unique_test_run_report_sources(
-    sources: List[TestRunReportSource],
-) -> List[TestRunReportSource]:
-    unique: Dict[str, TestRunReportSource] = {}
+    sources: list[TestRunReportSource],
+) -> list[TestRunReportSource]:
+    unique: dict[str, TestRunReportSource] = {}
     for source in sources:
         scope_id = (source.get("scopeId") or "").strip()
         source_path = str(Path(source["sourcePath"]).resolve())
         if not scope_id:
-            raise ValueError(
-                "Midscene Test report source scopeId must not be empty."
-            )
+            raise ValueError("Midscene Test report source scopeId must not be empty.")
         key = f"{scope_id}\u0000{source.get('dumpPath') or source_path}"
         unique[key] = {**source, "scopeId": scope_id, "sourcePath": source_path}
     return list(unique.values())
 
 
 def _collect_image_origins(
-    dump: Dict[str, Any],
+    dump: dict[str, Any],
     source: TestRunReportSource,
-    origins: Dict[str, str],
+    origins: dict[str, str],
 ) -> None:
     def visit(value: Any) -> None:
         ref = normalize_stored_image_ref(value)
@@ -751,25 +715,21 @@ def _collect_image_origins(
 
 
 def _prepare_test_run_report_sources(
-    sources: List[TestRunReportSource],
-    loaded_dumps: Optional[Dict[str, Union[str, Exception]]] = None,
-) -> Dict[str, Any]:
-    prepared: List[Dict[str, Any]] = []
-    diagnostics: List[TestRunReportDiagnostic] = []
-    owner_by_scoped_execution: Dict[str, str] = {}
-    prepared_by_path: Dict[str, Dict[str, Any]] = {}
+    sources: list[TestRunReportSource],
+    loaded_dumps: dict[str, str | Exception] | None = None,
+) -> dict[str, Any]:
+    prepared: list[dict[str, Any]] = []
+    diagnostics: list[TestRunReportDiagnostic] = []
+    owner_by_scoped_execution: dict[str, str] = {}
+    prepared_by_path: dict[str, dict[str, Any]] = {}
 
-    for source_index, source in enumerate(
-        _unique_test_run_report_sources(sources)
-    ):
+    for source_index, source in enumerate(_unique_test_run_report_sources(sources)):
         try:
             if source.get("dumpPath"):
                 if loaded_dumps is not None and source["dumpPath"] in loaded_dumps:
                     contents = loaded_dumps[source["dumpPath"]]
                 else:
-                    contents = Path(source["dumpPath"]).read_text(
-                        encoding="utf-8"
-                    )
+                    contents = Path(source["dumpPath"]).read_text(encoding="utf-8")
                 if isinstance(contents, Exception):
                     raise contents
                 base_dump = _report_dump_from_string(contents)
@@ -806,15 +766,12 @@ def _prepare_test_run_report_sources(
                     "code": "agent-source-unavailable",
                     "scopeId": source["scopeId"],
                     "sourcePaths": [source["sourcePath"]],
-                    "message": (
-                        "Agent source could not be collected: "
-                        f"{str(error)}"
-                    ),
+                    "message": (f"Agent source could not be collected: {str(error)}"),
                 }
             )
             continue
 
-        image_origins: Dict[str, str] = {}
+        image_origins: dict[str, str] = {}
         _collect_image_origins(base_dump, source, image_origins)
         source_key = source["sourcePath"]
         shared = prepared_by_path.get(source_key)
@@ -872,9 +829,7 @@ def _prepare_test_run_report_sources(
                     None,
                 )
                 scoped["collection"] = (
-                    partial
-                    or source.get("collection")
-                    or scoped.get("collection")
+                    partial or source.get("collection") or scoped.get("collection")
                 )
             else:
                 prepared.append(
@@ -911,7 +866,7 @@ def _prepare_test_run_report_sources(
             "deviceType": base_dump.get("deviceType"),
             "executions": executions,
         }
-        prepared_source: Dict[str, Any] = {
+        prepared_source: dict[str, Any] = {
             "reportId": report_id,
             "scopeId": source["scopeId"],
             "sourcePath": source["sourcePath"],
@@ -934,9 +889,7 @@ def _prepare_test_run_report_sources(
     )
     metrics = collect_test_run_report_metrics({"executions": executions})
     execution_metrics = {
-        execution["id"]: collect_test_run_report_metrics(
-            {"executions": [execution]}
-        )
+        execution["id"]: collect_test_run_report_metrics({"executions": [execution]})
         for execution in executions
         if execution.get("id")
     }
@@ -981,7 +934,7 @@ def _prepare_test_run_report_sources(
     }
 
 
-def _build_source_index(prepared: Dict[str, Any]) -> TestRunReportSourceIndex:
+def _build_source_index(prepared: dict[str, Any]) -> TestRunReportSourceIndex:
     return {
         "sources": [
             {
@@ -1005,25 +958,21 @@ class TestRunReportAssembler:
 
     def _build_runner_dump(
         self,
-        options: Dict[str, Any],
-        prepared: Dict[str, Any],
+        options: dict[str, Any],
+        prepared: dict[str, Any],
     ) -> TestRunReportDump:
-        builder = options.get("buildRunnerDump") or options.get(
-            "build_runner_dump"
-        )
+        builder = options.get("buildRunnerDump") or options.get("build_runner_dump")
         if builder is None:
             raise ValueError("buildRunnerDump is required")
         return builder(_build_source_index(prepared))
 
     def _write(
         self,
-        options: Dict[str, Any],
-        prepared: Dict[str, Any],
+        options: dict[str, Any],
+        prepared: dict[str, Any],
         runner_dump: TestRunReportDump,
     ) -> str:
-        directory_mode = (
-            options.get("outputFormat") == "html-and-external-assets"
-        )
+        directory_mode = options.get("outputFormat") == "html-and-external-assets"
         output_dir = Path(options["outputDir"]).resolve()
         output_dir.mkdir(parents=True, exist_ok=True)
         final_artifact_path = output_dir / options["reportFileName"]
@@ -1032,11 +981,7 @@ class TestRunReportAssembler:
         final_report_path = (
             directory_report_path if directory_mode else standalone_report_path
         )
-        existing = (
-            [final_artifact_path]
-            if directory_mode
-            else [standalone_report_path]
-        )
+        existing = [final_artifact_path] if directory_mode else [standalone_report_path]
         existing = [path for path in existing if path.exists()]
         if existing and not options.get("overwrite"):
             raise ValueError(
@@ -1063,11 +1008,10 @@ class TestRunReportAssembler:
                 runner_dump.get("runId"),
             )
             writer.initialize_sync()
-            agent_reports: List[Dict[str, Any]] = []
-            for source in dict(
-                (source["reportId"], source)
-                for source in prepared["sources"]
-            ).values():
+            agent_reports: list[dict[str, Any]] = []
+            for source in {
+                source["reportId"]: source for source in prepared["sources"]
+            }.values():
                 agent_reports.append(source["dump"])
                 writer.add_group_sync(
                     source["reportId"],
@@ -1079,9 +1023,7 @@ class TestRunReportAssembler:
                     },
                     source.get("imageOrigins"),
                 )
-            writer.finish_sync(
-                runner_dump, merged_agent_report_comment(agent_reports)
-            )
+            writer.finish_sync(runner_dump, merged_agent_report_comment(agent_reports))
             publish_report_artifact(
                 temporary_artifact if directory_mode else temporary_report,
                 final_artifact_path if directory_mode else standalone_report_path,
@@ -1094,7 +1036,7 @@ class TestRunReportAssembler:
             shutil.rmtree(temporary_root, ignore_errors=True)
             raise
 
-    def assemble(self, options: Dict[str, Any]) -> str:
+    def assemble(self, options: dict[str, Any]) -> str:
         validate_test_run_report_file_name(options["reportFileName"])
         prepared = _prepare_test_run_report_sources(options.get("sources") or [])
         runner_dump = self._build_runner_dump(options, prepared)
@@ -1103,16 +1045,16 @@ class TestRunReportAssembler:
             or runner_dump.get("kind") != "test-runner"
         ):
             raise ValueError(
-                'buildRunnerDump must return a Midscene Test report dump with '
+                "buildRunnerDump must return a Midscene Test report dump with "
                 'schemaVersion 1 and kind "test-runner".'
             )
         # Validate serializability before creating any output artifact.
         json.dumps(runner_dump)
         return self._write(options, prepared, runner_dump)
 
-    async def assemble_async(self, options: Dict[str, Any]) -> str:
+    async def assemble_async(self, options: dict[str, Any]) -> str:
         validate_test_run_report_file_name(options["reportFileName"])
-        loaded: Dict[str, Union[str, Exception]] = {}
+        loaded: dict[str, str | Exception] = {}
 
         async def load(dump_path: str) -> None:
             try:

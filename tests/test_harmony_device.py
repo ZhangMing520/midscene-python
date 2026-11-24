@@ -13,7 +13,10 @@ not portable: see the skipped action-space case and the report.
 
 import pytest
 
-from midscene.core.device import build_action_space_for, find_action_in_action_space_or_throw
+from midscene.core.device import (
+    build_action_space_for,
+    find_action_in_action_space_or_throw,
+)
 from midscene.harmony.device import HarmonyDevice
 
 SCREEN = (1200, 2400)
@@ -401,9 +404,7 @@ async def test_rejects_scroll_without_reversing_or_sending_an_empty_fling(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "left", [float("nan"), float("inf"), -1, 1200]
-)
+@pytest.mark.parametrize("left", [float("nan"), float("inf"), -1, 1200])
 async def test_rejects_invalid_horizontal_origin_for_vertical_scrolling(left):
     """rejects invalid horizontal origin %s for vertical scrolling."""
 

@@ -1,6 +1,6 @@
 """Cache configuration (upstream agent/cache-config.ts)."""
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from midscene.core.agent.task_cache import TaskCache
 from midscene.core.utils import process_cache_config
@@ -58,7 +58,7 @@ def validate_agent_cache_input(cache: Any) -> None:
         )
 
 
-def normalize_agent_cache_config(opts: Any) -> Optional[Dict[str, Any]]:
+def normalize_agent_cache_config(opts: Any) -> dict[str, Any] | None:
     """Return the normalized cache settings for an Agent's options."""
     cache = _option(opts, "cache")
     cache_id = _option(opts, "cacheId", "cache_id")
@@ -95,7 +95,7 @@ def normalize_agent_cache_config(opts: Any) -> Optional[Dict[str, Any]]:
     return None
 
 
-def get_task_cache(agent) -> Optional[TaskCache]:
+def get_task_cache(agent) -> TaskCache | None:
     if agent._task_cache is not None:
         return agent._task_cache
 

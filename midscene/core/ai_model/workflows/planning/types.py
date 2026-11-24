@@ -1,37 +1,38 @@
 """Planning workflow types (upstream workflows/planning/types.ts)."""
 
-from typing import Any, Awaitable, Callable, Dict, List, Optional, TypedDict
+from collections.abc import Awaitable, Callable
+from typing import Any, TypedDict
 
 
 class PlanOptions(TypedDict, total=False):
     ui_context: Any
-    action_space: List[Any]
-    action_context: Optional[str]
-    planning_advice: Optional[str]
+    action_space: list[Any]
+    action_context: str | None
+    planning_advice: str | None
     model_runtime: Any
-    get_default_model_runtime: Optional[Callable[[], Any]]
+    get_default_model_runtime: Callable[[], Any] | None
     conversation_history: Any
     include_locate_in_planning: bool
-    images_include_count: Optional[int]
+    images_include_count: int | None
     effort: str
     abort_signal: Any
 
 
 class PlanningAIResponse(TypedDict, total=False):
-    actions: List[Dict[str, Any]]
-    action: Dict[str, Any]
+    actions: list[dict[str, Any]]
+    action: dict[str, Any]
     log: str
     memory: str
     error: str
     thought: str
     finalize_success: bool
     finalize_message: str
-    update_sub_goals: List[Dict[str, Any]]
-    mark_finished_indexes: List[int]
+    update_sub_goals: list[dict[str, Any]]
+    mark_finished_indexes: list[int]
     delegation: bool
     raw_response: str
-    usage: Optional[Dict[str, Any]]
-    reasoning_content: Optional[str]
+    usage: dict[str, Any] | None
+    reasoning_content: str | None
     yaml_flow: str
     should_continue_planning: bool
 

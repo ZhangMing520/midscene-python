@@ -9,7 +9,7 @@ import re
 import shutil
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 from urllib.parse import quote
 
 from loguru import logger
@@ -23,7 +23,7 @@ _DUMP_SCRIPT_PATTERN = re.compile(
 not_executed_error = "Not executed (previous task failed)"
 
 
-def create_not_executed_yaml_result(file_path: str) -> Dict[str, Any]:
+def create_not_executed_yaml_result(file_path: str) -> dict[str, Any]:
     """Result for a file skipped because an earlier task failed."""
     return {
         "file": file_path,
@@ -46,15 +46,12 @@ def _field(value: Any, *names: str, default: Any = None) -> Any:
     return default
 
 
-def _player_task_status_list(player: Any) -> List[Dict[str, Any]]:
+def _player_task_status_list(player: Any) -> list[dict[str, Any]]:
     statuses = _field(player, "taskStatusList", "task_status_list")
     if isinstance(statuses, list):
         return statuses
     failed_tasks = _field(player, "failedTasks", "failed_tasks", default=[])
-    return [
-        {"status": "error", "error": task}
-        for task in failed_tasks or []
-    ]
+    return [{"status": "error", "error": task} for task in failed_tasks or []]
 
 
 def _is_player_successful(player: Any) -> bool:
@@ -72,8 +69,8 @@ def is_yaml_player_successful(player: Any) -> bool:
     return _is_player_successful(player)
 
 
-def _task_error_messages(player: Any) -> List[str]:
-    messages: List[str] = []
+def _task_error_messages(player: Any) -> list[str]:
+    messages: list[str] = []
     for task in _player_task_status_list(player):
         error = _field(task, "error")
         message = _field(error, "message", default=error)
@@ -82,7 +79,7 @@ def _task_error_messages(player: Any) -> List[str]:
     return messages
 
 
-def create_executed_yaml_result(options: Dict[str, Any]) -> Dict[str, Any]:
+def create_executed_yaml_result(options: dict[str, Any]) -> dict[str, Any]:
     """Build the result for a directly executed YAML file."""
     file_path = options["file"]
     player = options["player"]
@@ -104,7 +101,7 @@ def create_executed_yaml_result(options: Dict[str, Any]) -> Dict[str, Any]:
     if output_path and not Path(output_path).exists():
         output_path = None
 
-    error_message: Optional[str] = None
+    error_message: str | None = None
     setup_error = _field(player, "errorInSetup", "error_in_setup")
     if _field(setup_error, "message"):
         error_message = _field(setup_error, "message")
@@ -129,7 +126,7 @@ def create_executed_yaml_result(options: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def create_unexpected_yaml_result(options: Dict[str, Any]) -> Dict[str, Any]:
+def create_unexpected_yaml_result(options: dict[str, Any]) -> dict[str, Any]:
     """Build the result for a file whose execution raised unexpectedly."""
     file_path = options["file"]
     error = options["error"]
@@ -149,7 +146,7 @@ def create_unexpected_yaml_result(options: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def resolve_yaml_max_attempts(retry: Optional[float] = None) -> int:
+def resolve_yaml_max_attempts(retry: float | None = None) -> int:
     """Total attempts for one file: retries + the initial run."""
     if (
         not isinstance(retry, (int, float))
@@ -162,9 +159,7 @@ def resolve_yaml_max_attempts(retry: Optional[float] = None) -> int:
     return int(retry) + 1
 
 
-def create_yaml_attempt(
-    result: Dict[str, Any], attempt: int
-) -> Dict[str, Any]:
+def create_yaml_attempt(result: dict[str, Any], attempt: int) -> dict[str, Any]:
     """Project one player result onto the per-attempt record."""
     return {
         "attempt": attempt,
@@ -177,38 +172,36 @@ def create_yaml_attempt(
     }
 
 
-def get_yaml_attempts_duration(attempts: List[Dict[str, Any]]) -> int:
+def get_yaml_attempts_duration(attempts: list[dict[str, Any]]) -> int:
     """Aggregate duration across all attempts of one file."""
     return sum((attempt.get("duration") or 0) for attempt in attempts)
 
 
 def get_result_files_by_type(
-    results: List[Dict[str, Any]], result_type: str
-) -> List[str]:
+    results: list[dict[str, Any]], result_type: str
+) -> list[str]:
     """Files whose resultType matches `result_type`."""
     return [r["file"] for r in results if r.get("resultType") == result_type]
 
 
-def is_batch_successful(
-    results: List[Dict[str, Any]], hook_error: Any = None
-) -> bool:
+def is_batch_successful(results: list[dict[str, Any]], hook_error: Any = None) -> bool:
     """A batch passed when no lifecycle hook failed and every file succeeded."""
     return hook_error is None and all(r["success"] for r in results)
 
 
 def get_results_by_type(
-    results: List[Dict[str, Any]], result_type: str
-) -> List[Dict[str, Any]]:
+    results: list[dict[str, Any]], result_type: str
+) -> list[dict[str, Any]]:
     return [r for r in results if r.get("resultType") == result_type]
 
 
 def _get_results_by_type(
-    results: List[Dict[str, Any]], result_type: str
-) -> List[Dict[str, Any]]:
+    results: list[dict[str, Any]], result_type: str
+) -> list[dict[str, Any]]:
     return get_results_by_type(results, result_type)
 
 
-def get_execution_summary(results: List[Dict[str, Any]]) -> Dict[str, Any]:
+def get_execution_summary(results: list[dict[str, Any]]) -> dict[str, Any]:
     """Aggregate counts for the batch execution summary."""
     return {
         "total": len(results),
@@ -240,11 +233,13 @@ def _relpath(file_path: str, base: Path) -> str:
 def _retry_attempt_report_path(report_file: str, attempt: int) -> Path:
     path = Path(report_file)
     if path.name == "index.html":
-        return path.parent.parent / f"{path.parent.name}-attempt-{attempt}" / "index.html"
+        return (
+            path.parent.parent / f"{path.parent.name}-attempt-{attempt}" / "index.html"
+        )
     return path.parent / f"{path.stem}-attempt-{attempt}{path.suffix}"
 
 
-def preserve_yaml_attempt_report(attempt: Dict[str, Any]) -> Dict[str, Any]:
+def preserve_yaml_attempt_report(attempt: dict[str, Any]) -> dict[str, Any]:
     """Move a completed attempt's report aside before the next retry reuses it."""
     source = attempt.get("report")
     if not source or not Path(source).exists():
@@ -277,7 +272,7 @@ def _create_retry_report_name(file_path: str) -> str:
     return f"{_safe_report_name_part(name)}-{file_hash}-retry-attempts"
 
 
-def _to_test_status(attempt: Dict[str, Any]) -> str:
+def _to_test_status(attempt: dict[str, Any]) -> str:
     if attempt.get("success"):
         return "passed"
     if attempt.get("resultType") == "notExecuted":
@@ -285,7 +280,7 @@ def _to_test_status(attempt: Dict[str, Any]) -> str:
     return "failed"
 
 
-def create_retry_attempt_report(result: Dict[str, Any]) -> Optional[str]:
+def create_retry_attempt_report(result: dict[str, Any]) -> str | None:
     """Merge per-attempt reports into one retry report, if there are several."""
     attempts = [
         attempt
@@ -298,17 +293,14 @@ def create_retry_attempt_report(result: Dict[str, Any]) -> Optional[str]:
     tags = []
     for index, attempt in enumerate(attempts):
         status = _to_test_status(attempt)
-        title = (
-            f"Attempt {attempt['attempt']}: {status} - "
-            f"{Path(result['file']).name}"
-        )
+        title = f"Attempt {attempt['attempt']}: {status} - {Path(result['file']).name}"
         attributes = [
             f'data-group-id="merged-group-{index}"',
             f'playwright_test_duration="{attempt.get("duration") or 0}"',
             f'playwright_test_status="{status}"',
             f'playwright_test_title="{quote(title, safe="")}"',
             f'playwright_test_id="{quote(_safe_report_name_part(Path(result["file"]).name) + "-attempt-" + str(attempt["attempt"]), safe="")}"',
-            "is_merged=\"true\"",
+            'is_merged="true"',
         ]
         try:
             source_html = Path(attempt["report"]).read_text(encoding="utf-8")
@@ -318,7 +310,7 @@ def create_retry_attempt_report(result: Dict[str, Any]) -> Optional[str]:
         dump_content = match.group(1).strip() if match else ""
         tags.append(
             '<script type="midscene_web_dump" type="application/json" '
-            f'{" ".join(attributes)}>\n{dump_content}\n</script>'
+            f"{' '.join(attributes)}>\n{dump_content}\n</script>"
         )
 
     html = "<html><body>\n" + "\n".join(tags) + "\n</body></html>"
@@ -334,9 +326,7 @@ def _warn_retry_report_failure(message: str) -> None:
         log_dir = Path(get_midscene_run_dir("log"))
         log_dir.mkdir(parents=True, exist_ok=True)
         with open(log_dir / "execution-summary.log", "a", encoding="utf-8") as handle:
-            handle.write(
-                f"[{datetime.datetime.now().isoformat()}] {message}\n"
-            )
+            handle.write(f"[{datetime.datetime.now().isoformat()}] {message}\n")
     except Exception:
         # Summary output is more important than warning output.
         pass
@@ -344,25 +334,24 @@ def _warn_retry_report_failure(message: str) -> None:
 
 
 def _create_retry_attempt_report_safely(
-    result: Dict[str, Any],
-) -> Dict[str, Any]:
+    result: dict[str, Any],
+) -> dict[str, Any]:
     try:
         return {"report": create_retry_attempt_report(result), "failed": False}
     except Exception as error:
         _warn_retry_report_failure(
-            "Failed to merge retry attempt report for "
-            f"{result.get('file')}: {error}"
+            f"Failed to merge retry attempt report for {result.get('file')}: {error}"
         )
         return {"failed": True}
 
 
-def _without_none(mapping: Dict[str, Any]) -> Dict[str, Any]:
+def _without_none(mapping: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in mapping.items() if value is not None}
 
 
 def write_execution_summary_file(
-    summary: Any, results: List[Dict[str, Any]]
-) -> Optional[str]:
+    summary: Any, results: list[dict[str, Any]]
+) -> str | None:
     """Write the JSON execution summary and any retry-attempt reports."""
     if not summary:
         return None
@@ -371,7 +360,7 @@ def write_execution_summary_file(
     output_dir = index_path.parent
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    index_data: Dict[str, Any] = {
+    index_data: dict[str, Any] = {
         "summary": {
             **get_execution_summary(results),
             "generatedAt": datetime.datetime.now().isoformat(),
@@ -385,15 +374,13 @@ def write_execution_summary_file(
         if report is None and not retry_report.get("failed"):
             report = result.get("retryReport")
 
-        item: Dict[str, Any] = {
+        item: dict[str, Any] = {
             "script": _relpath(result["file"], output_dir),
             "success": result["success"],
             "resultType": result.get("resultType"),
         }
         if result.get("output"):
-            item["output"] = _to_output_relative_path(
-                output_dir, result["output"]
-            )
+            item["output"] = _to_output_relative_path(output_dir, result["output"])
         if result.get("report"):
             item["report"] = _relpath(result["report"], output_dir)
         if report:
@@ -408,9 +395,7 @@ def write_execution_summary_file(
                             "success": attempt.get("success"),
                             "resultType": attempt.get("resultType"),
                             "output": (
-                                _to_output_relative_path(
-                                    output_dir, attempt["output"]
-                                )
+                                _to_output_relative_path(output_dir, attempt["output"])
                                 if attempt.get("output")
                                 else None
                             ),
@@ -440,7 +425,7 @@ def write_execution_summary_file(
     return str(index_path)
 
 
-def print_execution_plan(config: Dict[str, Any]) -> None:
+def print_execution_plan(config: dict[str, Any]) -> None:
     """Print the batch execution plan (upstream printExecutionPlan)."""
     if config.get("setup"):
         print("   Setup script:")
@@ -464,9 +449,7 @@ def print_execution_finished() -> None:
     print("Execution finished:")
 
 
-def print_execution_summary(
-    results: List[Dict[str, Any]], summary_path: str
-) -> bool:
+def print_execution_summary(results: list[dict[str, Any]], summary_path: str) -> bool:
     """Print the batch execution summary and return whether it passed."""
     summary = get_execution_summary(results)
     successful_files = _get_results_by_type(results, "success")
@@ -555,12 +538,9 @@ def run_report_tool(
                     '"merge-html".[/red]'
                 )
                 return False
-            result = merge_report_files(
-                html_report, output_dir, output_name, overwrite
-            )
+            result = merge_report_files(html_report, output_dir, output_name, overwrite)
             console.print(
-                f"Merged {len(html_report)} report(s) into "
-                f"{result['mergedReportPath']}"
+                f"Merged {len(html_report)} report(s) into {result['mergedReportPath']}"
             )
             return True
 

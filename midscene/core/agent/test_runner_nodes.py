@@ -11,8 +11,9 @@ the Python agent methods they call are snake_case.
 
 import inspect
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any
 
 from midscene.core.agent.observe_node import execute_observe
 from midscene.core.test_runner.errors import NodeExecutionError
@@ -28,12 +29,12 @@ class AgentTestRunnerNodeDefinition:
     """Agent-owned Node description consumed by Test Runner adapters."""
 
     name: str
-    execute: Callable[[Any, Dict[str, Any], AgentTestRunnerNodeExecutionContext], Any]
-    title: Optional[str] = None
-    description: Optional[str] = None
+    execute: Callable[[Any, dict[str, Any], AgentTestRunnerNodeExecutionContext], Any]
+    title: str | None = None
+    description: str | None = None
     # Node input field populated by YAML string shorthand; False disables it.
-    string_input_key: Optional[Union[str, bool]] = None
-    input_schema: Optional[Dict[str, Any]] = None
+    string_input_key: str | bool | None = None
+    input_schema: dict[str, Any] | None = None
 
 
 async def _maybe_await(value: Any) -> Any:
@@ -44,17 +45,17 @@ async def _maybe_await(value: Any) -> Any:
 
 def create_agent_test_runner_node_definition(
     agent_label: str = "an Agent",
-) -> Callable[[Dict[str, Any]], AgentTestRunnerNodeDefinition]:
+) -> Callable[[dict[str, Any]], AgentTestRunnerNodeDefinition]:
     """Create a Node factory whose adapters are checked against an Agent API."""
 
-    def define(options: Dict[str, Any]) -> AgentTestRunnerNodeDefinition:
+    def define(options: dict[str, Any]) -> AgentTestRunnerNodeDefinition:
         method = options["method"]
         to_args = options["to_args"]
         to_result = options.get("to_result")
 
         async def execute(
             agent: Any,
-            input_value: Dict[str, Any],
+            input_value: dict[str, Any],
             context: AgentTestRunnerNodeExecutionContext,
         ) -> Any:
             bound = getattr(agent, method, None) if agent is not None else None
@@ -79,8 +80,10 @@ def create_agent_test_runner_node_definition(
     return define
 
 
-def _schema(properties: Optional[Dict[str, Any]] = None, required: Optional[List[str]] = None) -> Dict[str, Any]:
-    schema: Dict[str, Any] = {
+def _schema(
+    properties: dict[str, Any] | None = None, required: list[str] | None = None
+) -> dict[str, Any]:
+    schema: dict[str, Any] = {
         "type": "object",
         "properties": properties or {},
         "additionalProperties": False,
@@ -90,7 +93,7 @@ def _schema(properties: Optional[Dict[str, Any]] = None, required: Optional[List
     return schema
 
 
-def _text(description: str) -> Dict[str, Any]:
+def _text(description: str) -> dict[str, Any]:
     return {"type": "string", "description": description}
 
 
@@ -214,7 +217,10 @@ AI_INPUT_INPUT_SCHEMA = _schema(
         "options": _schema(
             {
                 **LOCATE_OPTIONS_INPUT_SCHEMA["properties"],
-                "mode": {"type": "string", "enum": ["replace", "clear", "typeOnly", "append"]},
+                "mode": {
+                    "type": "string",
+                    "enum": ["replace", "clear", "typeOnly", "append"],
+                },
                 "autoDismissKeyboard": {"type": "boolean"},
                 "keyboardTypeDelay": {"type": "number", "minimum": 0},
                 "inputStrategy": {"type": "string"},
@@ -239,7 +245,10 @@ AI_SCROLL_INPUT_SCHEMA = _schema(
         "options": _schema(
             {
                 **LOCATE_OPTIONS_INPUT_SCHEMA["properties"],
-                "direction": {"type": "string", "enum": ["down", "up", "right", "left"]},
+                "direction": {
+                    "type": "string",
+                    "enum": ["down", "up", "right", "left"],
+                },
                 "scrollType": {
                     "type": "string",
                     "enum": [
@@ -392,7 +401,7 @@ def _prompt_text(prompt: Any) -> str:
     return ""
 
 
-def _build_locate_param(prompt: Any, options: Optional[Dict[str, Any]]) -> Any:
+def _build_locate_param(prompt: Any, options: dict[str, Any] | None) -> Any:
     # Imported lazily: the YAML package imports this module during its own init.
     from midscene.core.yaml.utils import build_detailed_locate_param
 
@@ -400,8 +409,8 @@ def _build_locate_param(prompt: Any, options: Optional[Dict[str, Any]]) -> Any:
 
 
 def _value_result(
-    value: Any, _input_value: Optional[Dict[str, Any]] = None
-) -> Dict[str, Any]:
+    value: Any, _input_value: dict[str, Any] | None = None
+) -> dict[str, Any]:
     return {"data": value}
 
 
@@ -444,9 +453,10 @@ _AI_TAP_NODE = _define_common(
     }
 )
 
-def _ai_assert_result(output: Any, input_value: Dict[str, Any]) -> Dict[str, Any]:
+
+def _ai_assert_result(output: Any, input_value: dict[str, Any]) -> dict[str, Any]:
     text = _prompt_text(input_value.get("prompt"))
-    result: Dict[str, Any] = {
+    result: dict[str, Any] = {
         "summary": (
             "Assertion "
             f"{'failed' if isinstance(output, dict) and output.get('pass') is False else 'passed'}: "
@@ -492,7 +502,9 @@ _AI_ASSERT_NODE = _define_common(
 )
 
 
-def _locate_action_node(method: str, name: str, description: str) -> AgentTestRunnerNodeDefinition:
+def _locate_action_node(
+    method: str, name: str, description: str
+) -> AgentTestRunnerNodeDefinition:
     return _define_action(
         {
             "method": method,
@@ -511,7 +523,7 @@ def _locate_action_node(method: str, name: str, description: str) -> AgentTestRu
     )
 
 
-_ADDITIONAL_AGENT_NODES: List[AgentTestRunnerNodeDefinition] = [
+_ADDITIONAL_AGENT_NODES: list[AgentTestRunnerNodeDefinition] = [
     _define_action(
         {
             "method": "set_ai_context",
@@ -528,7 +540,9 @@ _ADDITIONAL_AGENT_NODES: List[AgentTestRunnerNodeDefinition] = [
         }
     ),
     _locate_action_node(
-        "ai_hover", "aiHover", "Locate and hover over an element with a Midscene UI Agent."
+        "ai_hover",
+        "aiHover",
+        "Locate and hover over an element with a Midscene UI Agent.",
     ),
     _locate_action_node(
         "ai_double_click",
@@ -560,7 +574,10 @@ _ADDITIONAL_AGENT_NODES: List[AgentTestRunnerNodeDefinition] = [
             "input_schema": AI_INPUT_INPUT_SCHEMA,
             "to_args": lambda input_value, context: [
                 input_value.get("prompt"),
-                {**(input_value.get("options") or {}), "value": input_value.get("value")},
+                {
+                    **(input_value.get("options") or {}),
+                    "value": input_value.get("value"),
+                },
             ],
         }
     ),
@@ -638,8 +655,12 @@ _ADDITIONAL_AGENT_NODES: List[AgentTestRunnerNodeDefinition] = [
             "to_args": lambda input_value, context: [
                 "DragAndDrop",
                 {
-                    "from": _build_locate_param(input_value.get("from"), input_value.get("options")),
-                    "to": _build_locate_param(input_value.get("to"), input_value.get("options")),
+                    "from": _build_locate_param(
+                        input_value.get("from"), input_value.get("options")
+                    ),
+                    "to": _build_locate_param(
+                        input_value.get("to"), input_value.get("options")
+                    ),
                 },
             ],
         }
@@ -739,7 +760,7 @@ _ADDITIONAL_AGENT_NODES: List[AgentTestRunnerNodeDefinition] = [
 
 
 def _insight_node(method: str, name: str) -> AgentTestRunnerNodeDefinition:
-    def to_result(value: Any, input_value: Dict[str, Any]) -> Dict[str, Any]:
+    def to_result(value: Any, input_value: dict[str, Any]) -> dict[str, Any]:
         summary_value = (
             json.dumps(value, ensure_ascii=False)
             if name in ("aiString", "aiAsk")
@@ -780,9 +801,7 @@ _RECORD_TO_REPORT_NODE = _define_common(
             input_value.get("options"),
         ],
         "to_result": lambda _output, input_value: {
-            "summary": (
-                f"Recorded to report: {input_value.get('title') or 'untitled'}"
-            )
+            "summary": (f"Recorded to report: {input_value.get('title') or 'untitled'}")
         },
     }
 )
@@ -790,7 +809,7 @@ _RECORD_TO_REPORT_NODE = _define_common(
 
 async def _execute_observe_node(
     agent: Any,
-    input_value: Dict[str, Any],
+    input_value: dict[str, Any],
     context: AgentTestRunnerNodeExecutionContext,
 ) -> Any:
     parsed = dict(input_value)
@@ -799,7 +818,9 @@ async def _execute_observe_node(
 
 
 def _sleep_node() -> AgentTestRunnerNodeDefinition:
-    def to_args(input_value: Dict[str, Any], context: AgentTestRunnerNodeExecutionContext):
+    def to_args(
+        input_value: dict[str, Any], context: AgentTestRunnerNodeExecutionContext
+    ):
         signal = context.signal
         if signal is not None and getattr(signal, "aborted", False):
             signal.throw_if_aborted()
@@ -821,7 +842,7 @@ def _sleep_node() -> AgentTestRunnerNodeDefinition:
     )
 
 
-COMMON_AGENT_TEST_RUNNER_NODE_DEFINITIONS: List[AgentTestRunnerNodeDefinition] = [
+COMMON_AGENT_TEST_RUNNER_NODE_DEFINITIONS: list[AgentTestRunnerNodeDefinition] = [
     _sleep_node(),
     AgentTestRunnerNodeDefinition(
         name="observe",

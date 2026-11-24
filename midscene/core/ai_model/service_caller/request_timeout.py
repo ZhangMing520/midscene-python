@@ -3,9 +3,10 @@
 Upstream: ``ai-model/service-caller/request-timeout.ts``.
 """
 
-from typing import Any, Callable, Coroutine, NamedTuple, Optional, TypeVar
 import asyncio
 import threading
+from collections.abc import Callable, Coroutine
+from typing import Any, NamedTuple, TypeVar
 
 from midscene.shared.types import AbortError, AbortSignal
 
@@ -28,8 +29,7 @@ class AIRequestTimeoutError(Exception):
             else timeout_ms
         )
         super().__init__(
-            f"AI call hard timeout after {display}ms "
-            "(full request time exceeded)"
+            f"AI call hard timeout after {display}ms (full request time exceeded)"
         )
         self.timeout_ms = timeout_ms
 
@@ -45,7 +45,7 @@ class RequestAbortSignal(NamedTuple):
     cleanup: Callable[[], None]
 
 
-def resolve_effective_timeout_ms(timeout: Optional[float]) -> Optional[float]:
+def resolve_effective_timeout_ms(timeout: float | None) -> float | None:
     """Per-request hard timeout in milliseconds.
 
     ``None`` (not configured) uses the default; ``0`` explicitly disables the
@@ -67,8 +67,7 @@ def is_hard_timeout_error(err: Any) -> bool:
         return True
     cause = getattr(err, "__cause__", None)
     return (
-        cause is not None
-        and getattr(cause, "code", None) == AI_CALL_HARD_TIMEOUT_CODE
+        cause is not None and getattr(cause, "code", None) == AI_CALL_HARD_TIMEOUT_CODE
     )
 
 
@@ -119,8 +118,8 @@ def _remove_abort_listener(signal: Any, callback: Callable[[], None]) -> None:
 
 
 def build_request_abort_signal(
-    timeout_ms: Optional[float],
-    user_signal: Optional[Any] = None,
+    timeout_ms: float | None,
+    user_signal: Any | None = None,
 ) -> RequestAbortSignal:
     """Compose a hard-timeout signal with the caller's cancellation signal.
 
@@ -134,7 +133,7 @@ def build_request_abort_signal(
         controller.abort(_signal_reason(user_signal))
         return RequestAbortSignal(controller, lambda: None)
 
-    timer: Optional[threading.Timer] = None
+    timer: threading.Timer | None = None
     if timeout_ms is not None:
         timer = threading.Timer(
             timeout_ms / 1000,
@@ -143,7 +142,7 @@ def build_request_abort_signal(
         timer.daemon = True
         timer.start()
 
-    on_user_abort: Optional[Callable[[], None]] = None
+    on_user_abort: Callable[[], None] | None = None
     if user_signal is not None:
 
         def on_user_abort() -> None:
@@ -173,7 +172,7 @@ async def run_with_abort_signal(
     _throw_if_aborted(signal)
 
     loop = asyncio.get_running_loop()
-    aborted: "asyncio.Future[Any]" = loop.create_future()
+    aborted: asyncio.Future[Any] = loop.create_future()
 
     def on_abort() -> None:
         def resolve() -> None:
@@ -208,7 +207,7 @@ async def run_with_abort_signal(
             task.add_done_callback(_consume_task_exception)
 
 
-async def wait_for_retry(ms: float, signal: Optional[Any] = None) -> None:
+async def wait_for_retry(ms: float, signal: Any | None = None) -> None:
     """Wait between retries; aborting stops the wait without another request."""
     if signal is None:
         await asyncio.sleep(ms / 1000)
@@ -217,7 +216,7 @@ async def wait_for_retry(ms: float, signal: Optional[Any] = None) -> None:
     _throw_if_aborted(signal)
 
     loop = asyncio.get_running_loop()
-    aborted: "asyncio.Future[Any]" = loop.create_future()
+    aborted: asyncio.Future[Any] = loop.create_future()
 
     def on_abort() -> None:
         def resolve() -> None:
@@ -229,7 +228,7 @@ async def wait_for_retry(ms: float, signal: Optional[Any] = None) -> None:
     _add_abort_listener(signal, on_abort)
     try:
         reason = await asyncio.wait_for(aborted, timeout=ms / 1000)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return
     finally:
         _remove_abort_listener(signal, on_abort)

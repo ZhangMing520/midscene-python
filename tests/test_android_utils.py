@@ -42,9 +42,7 @@ def _install_factory(monkeypatch, fakes):
         calls.append(kwargs)
         return fakes[len(calls) - 1]
 
-    monkeypatch.setattr(
-        android_utils, "create_android_adb", fake_create_android_adb
-    )
+    monkeypatch.setattr(android_utils, "create_android_adb", fake_create_android_adb)
     return calls
 
 
@@ -105,9 +103,7 @@ class TestGetConnectedDevicesWithDetails:
     async def test_should_enrich_devices_with_model_resolution_and_density_when_available(
         self, monkeypatch
     ):
-        discovery = _FakeAdb(
-            devices=[{"udid": "device-1", "state": "device"}]
-        )
+        discovery = _FakeAdb(devices=[{"udid": "device-1", "state": "device"}])
         detail = _FakeAdb(
             shell_results=[
                 "Pixel 8\n",
@@ -145,9 +141,7 @@ class TestGetConnectedDevicesWithDetails:
             "remoteAdbHost": "localhost",
             "remoteAdbPort": 5038,
         }
-        discovery = _FakeAdb(
-            devices=[{"udid": "device-1", "state": "device"}]
-        )
+        discovery = _FakeAdb(devices=[{"udid": "device-1", "state": "device"}])
         detail = _FakeAdb(shell_results=["", "", ""], density=None)
         calls = _install_factory(monkeypatch, [discovery, detail])
 
@@ -179,9 +173,7 @@ class TestGetConnectedDevicesWithDetails:
     async def test_should_timeout_slow_detail_lookups_and_still_return_the_basic_device_entry(
         self, monkeypatch
     ):
-        monkeypatch.setattr(
-            android_utils, "DETAIL_LOOKUP_STEP_TIMEOUT_MS", 10
-        )
+        monkeypatch.setattr(android_utils, "DETAIL_LOOKUP_STEP_TIMEOUT_MS", 10)
         mock_devices = [{"udid": "device-1", "state": "device"}]
         discovery = _FakeAdb(devices=mock_devices)
 

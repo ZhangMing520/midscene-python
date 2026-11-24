@@ -1,7 +1,7 @@
 """OpenAI request diagnostics (upstream openai/openai-request-context.ts)."""
 
-from typing import Any, Dict, Optional, TypedDict
 import json
+from typing import Any, TypedDict
 
 import httpx
 from loguru import logger
@@ -14,8 +14,8 @@ class OpenAIRequestContext(TypedDict, total=False):
     recordEvent: Any
     rawResponseBody: str
     fetchError: str
-    responseRequestId: Dict[str, Any]
-    httpResponse: Dict[str, Any]
+    responseRequestId: dict[str, Any]
+    httpResponse: dict[str, Any]
 
 
 def truncate_text(text: str, max_length: int) -> str:
@@ -28,7 +28,7 @@ def truncate_error_response_body(body: str) -> str:
     return truncate_text(body, MAX_ERROR_RESPONSE_BODY_LENGTH)
 
 
-def _get_error_code(error: Any) -> Optional[str]:
+def _get_error_code(error: Any) -> str | None:
     code = getattr(error, "code", None)
     return code if isinstance(code, str) else None
 
@@ -83,11 +83,11 @@ def format_open_aiapi_error_details(
 format_openai_api_error_details = format_open_aiapi_error_details
 
 
-def request_id_from_headers(headers: Any) -> Optional[str]:
+def request_id_from_headers(headers: Any) -> str | None:
     return headers.get("x-request-id") or headers.get("x-model-request-id")
 
 
-def _request_body(init: Dict[str, Any]) -> Optional[str]:
+def _request_body(init: dict[str, Any]) -> str | None:
     body = init.get("body")
     if body is not None:
         return body if isinstance(body, str) else str(body)
@@ -97,7 +97,7 @@ def _request_body(init: Dict[str, Any]) -> Optional[str]:
     return None
 
 
-async def _default_fetch(input: Any, init: Optional[Dict[str, Any]] = None):
+async def _default_fetch(input: Any, init: dict[str, Any] | None = None):
     """Python transport used when no base fetch is injected."""
     init = dict(init or {})
     method = (init.get("method") or "GET").upper()
@@ -119,7 +119,7 @@ _base_fetch = _default_fetch
 def wrap_open_ai_compatible_fetch(context: OpenAIRequestContext):
     """Return a fetch-analog that records request/response diagnostics."""
 
-    async def wrapped(input: Any, init: Optional[Dict[str, Any]] = None):
+    async def wrapped(input: Any, init: dict[str, Any] | None = None):
         init = dict(init or {})
         url = input if isinstance(input, str) else str(input)
         method = init.get("method") or "GET"
@@ -160,7 +160,7 @@ def wrap_open_ai_compatible_fetch(context: OpenAIRequestContext):
         if record_event:
             content_type = response.headers.get("content-type") or ""
             is_stream = "text/event-stream" in content_type
-            http_response: Dict[str, Any] = {
+            http_response: dict[str, Any] = {
                 "status": status,
                 "ok": ok,
                 "headers": list(response.headers.items()),

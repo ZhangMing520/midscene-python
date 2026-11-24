@@ -83,7 +83,6 @@ tasks:
         assert interface.dragged == [((100, 50), (300, 50))]
 
 
-
 def _make_agent(interface):
     from midscene.core.agent.agent import Agent
     from midscene.core.agent.agent_options import AgentOptions

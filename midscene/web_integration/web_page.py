@@ -4,7 +4,7 @@ import asyncio
 import inspect
 import re
 import sys
-from typing import Any, Dict, List, Optional, Protocol, Union
+from typing import Any, Protocol
 
 from midscene.core.device import (
     DeviceAction,
@@ -105,7 +105,7 @@ def _get_key_definition(key: str) -> str:
     return key
 
 
-def _transform_hotkey_input(key_input: str) -> List[str]:
+def _transform_hotkey_input(key_input: str) -> list[str]:
     """Expand aliases and normalize key names (upstream transformHotkeyInput)."""
     lowered = key_input.lower()
     whole_phrase = _KEY_ALIASES.get(lowered)
@@ -117,9 +117,9 @@ def _transform_hotkey_input(key_input: str) -> List[str]:
     ]
 
 
-def _normalize_key_inputs(value: Union[str, List[str]]) -> List[str]:
+def _normalize_key_inputs(value: str | list[str]) -> list[str]:
     inputs = value if isinstance(value, list) else [value]
-    result: List[str] = []
+    result: list[str] = []
 
     for item in inputs:
         if not isinstance(item, str):
@@ -151,19 +151,19 @@ def _normalize_key_inputs(value: Union[str, List[str]]) -> List[str]:
 
 
 def get_key_commands(
-    value: Union[str, List[str]],
-) -> List[Dict[str, Any]]:
+    value: str | list[str],
+) -> list[dict[str, Any]]:
     """Expand a key or key list into ``{key, command?}`` objects."""
     keys = _normalize_key_inputs(value)
     include_meta = "Meta" in keys or "Control" in keys
-    commands: List[Dict[str, Any]] = []
+    commands: list[dict[str, Any]] = []
     for key in keys:
         command = _EDIT_COMMANDS.get(key.lower()) if include_meta else None
         commands.append({"key": key, "command": command} if command else {"key": key})
     return commands
 
 
-def build_key_commands(key_name: str) -> List[Dict[str, Any]]:
+def build_key_commands(key_name: str) -> list[dict[str, Any]]:
     """Historical single-key wrapper around :func:`get_key_commands`."""
     return get_key_commands(key_name)
 
@@ -176,83 +176,64 @@ class AbstractWebPage(Protocol):
     :func:`common_web_actions_for_web_page`.
     """
 
-    keyboard_type_delay: Optional[float]
-    input_strategy: Optional[str]
+    keyboard_type_delay: float | None
+    input_strategy: str | None
 
-    async def navigate(self, url: str) -> None:
-        ...
+    async def navigate(self, url: str) -> None: ...
 
-    async def reload(self) -> None:
-        ...
+    async def reload(self) -> None: ...
 
-    async def go_back(self) -> None:
-        ...
+    async def go_back(self) -> None: ...
 
-    async def go_forward(self) -> None:
-        ...
+    async def go_forward(self) -> None: ...
 
-    async def stop_loading(self) -> None:
-        ...
+    async def stop_loading(self) -> None: ...
 
-    async def navigation_state(self) -> Dict[str, Any]:
-        ...
+    async def navigation_state(self) -> dict[str, Any]: ...
 
-    async def flush_pending_visual_update(self, force: bool = False) -> None:
-        ...
+    async def flush_pending_visual_update(self, force: bool = False) -> None: ...
 
-    def schedule_pending_visual_update(self, force: bool = False) -> None:
-        ...
+    def schedule_pending_visual_update(self, force: bool = False) -> None: ...
 
-    async def wait_for_dom_quiet(self, options: Optional[Dict[str, Any]] = None) -> None:
-        ...
+    async def wait_for_dom_quiet(
+        self, options: dict[str, Any] | None = None
+    ) -> None: ...
 
-    async def clear_input(self, element: Any = None) -> None:
-        ...
+    async def clear_input(self, element: Any = None) -> None: ...
 
-    async def select_all_input(self, element: Any = None) -> None:
-        ...
+    async def select_all_input(self, element: Any = None) -> None: ...
 
-    async def scroll_until_top(self, starting_point: Any = None) -> None:
-        ...
+    async def scroll_until_top(self, starting_point: Any = None) -> None: ...
 
-    async def scroll_until_bottom(self, starting_point: Any = None) -> None:
-        ...
+    async def scroll_until_bottom(self, starting_point: Any = None) -> None: ...
 
-    async def scroll_until_left(self, starting_point: Any = None) -> None:
-        ...
+    async def scroll_until_left(self, starting_point: Any = None) -> None: ...
 
-    async def scroll_until_right(self, starting_point: Any = None) -> None:
-        ...
+    async def scroll_until_right(self, starting_point: Any = None) -> None: ...
 
     async def scroll_up(
-        self, distance: Optional[float] = None, starting_point: Any = None
-    ) -> None:
-        ...
+        self, distance: float | None = None, starting_point: Any = None
+    ) -> None: ...
 
     async def scroll_down(
-        self, distance: Optional[float] = None, starting_point: Any = None
-    ) -> None:
-        ...
+        self, distance: float | None = None, starting_point: Any = None
+    ) -> None: ...
 
     async def scroll_left(
-        self, distance: Optional[float] = None, starting_point: Any = None
-    ) -> None:
-        ...
+        self, distance: float | None = None, starting_point: Any = None
+    ) -> None: ...
 
     async def scroll_right(
-        self, distance: Optional[float] = None, starting_point: Any = None
-    ) -> None:
-        ...
+        self, distance: float | None = None, starting_point: Any = None
+    ) -> None: ...
 
     async def long_press(
-        self, x: float, y: float, duration: Optional[float] = None
-    ) -> None:
-        ...
+        self, x: float, y: float, duration: float | None = None
+    ) -> None: ...
 
     async def swipe(
-        self, from_point: Any, to_point: Any, duration: Optional[float] = None
-    ) -> None:
-        ...
+        self, from_point: Any, to_point: Any, duration: float | None = None
+    ) -> None: ...
 
     async def pinch(
         self,
@@ -260,9 +241,8 @@ class AbstractWebPage(Protocol):
         center_y: float,
         start_distance: float,
         end_distance: float,
-        duration: Optional[float] = None,
-    ) -> None:
-        ...
+        duration: float | None = None,
+    ) -> None: ...
 
 
 async def _invoke(fn: Any, *args: Any, **kwargs: Any) -> Any:
@@ -326,25 +306,25 @@ def _point_to_xy(point: Any) -> tuple:
     return point[0], point[1]
 
 
-def create_web_input_primitives(page: Any) -> Dict[str, Any]:
+def create_web_input_primitives(page: Any) -> dict[str, Any]:
     """Build the low-level browser input primitives for a web page."""
 
-    async def tap(point: Dict[str, Any]) -> None:
+    async def tap(point: dict[str, Any]) -> None:
         x, y = _point_to_xy(point)
         await page.mouse.click(x, y, button="left")
         await _schedule_web_visual_update(page)
 
-    async def middle_click(point: Dict[str, Any]) -> None:
+    async def middle_click(point: dict[str, Any]) -> None:
         x, y = _point_to_xy(point)
         await page.mouse.click(x, y, button="middle")
         await _schedule_web_visual_update(page)
 
-    async def right_click(point: Dict[str, Any]) -> None:
+    async def right_click(point: dict[str, Any]) -> None:
         x, y = _point_to_xy(point)
         await page.mouse.click(x, y, button="right")
         await _schedule_web_visual_update(page)
 
-    async def double_click(point: Dict[str, Any]) -> None:
+    async def double_click(point: dict[str, Any]) -> None:
         x, y = _point_to_xy(point)
         double_click_fn = getattr(page.mouse, "dblclick", None)
         if callable(double_click_fn):
@@ -353,7 +333,7 @@ def create_web_input_primitives(page: Any) -> Dict[str, Any]:
             await page.mouse.click(x, y, button="left", count=2)
         await _schedule_web_visual_update(page)
 
-    async def hover(point: Dict[str, Any]) -> None:
+    async def hover(point: dict[str, Any]) -> None:
         x, y = _point_to_xy(point)
         await page.mouse.move(x, y)
         await _schedule_web_visual_update(page)
@@ -369,10 +349,14 @@ def create_web_input_primitives(page: Any) -> Dict[str, Any]:
                 {"x": to_xy[0], "y": to_xy[1]},
             )
         else:
-            await _invoke(page.drag_and_drop, _point_to_xy(from_point), _point_to_xy(to_point))
+            await _invoke(
+                page.drag_and_drop, _point_to_xy(from_point), _point_to_xy(to_point)
+            )
         await _schedule_web_visual_update(page)
 
-    async def long_press(point: Dict[str, Any], opts: Optional[Dict[str, Any]] = None) -> None:
+    async def long_press(
+        point: dict[str, Any], opts: dict[str, Any] | None = None
+    ) -> None:
         x, y = _point_to_xy(point)
         duration = (opts or {}).get("duration")
         long_press_fn = getattr(page, "long_press", None)
@@ -387,7 +371,7 @@ def create_web_input_primitives(page: Any) -> Dict[str, Any]:
                 await page.mouse.up()
         await _schedule_web_visual_update(page)
 
-    async def type_text(value: str, opts: Optional[Dict[str, Any]] = None) -> None:
+    async def type_text(value: str, opts: dict[str, Any] | None = None) -> None:
         options = opts or {}
         element = options.get("target")
         focus_only = bool(options.get("focusOnly"))
@@ -448,8 +432,8 @@ def create_web_input_primitives(page: Any) -> Dict[str, Any]:
         await _schedule_web_visual_update(page)
 
     async def keyboard_press(
-        key_name: Union[str, List[str]],
-        opts: Optional[Dict[str, Any]] = None,
+        key_name: str | list[str],
+        opts: dict[str, Any] | None = None,
     ) -> None:
         element = (opts or {}).get("target")
         if element:
@@ -476,7 +460,7 @@ def create_web_input_primitives(page: Any) -> Dict[str, Any]:
             else:
                 await _invoke(clear_input_fn)
 
-    async def pinch(point: Dict[str, Any], opts: Dict[str, Any]) -> None:
+    async def pinch(point: dict[str, Any], opts: dict[str, Any]) -> None:
         x, y = _point_to_xy(point)
         await _invoke(
             page.pinch,
@@ -486,7 +470,9 @@ def create_web_input_primitives(page: Any) -> Dict[str, Any]:
             opts.get("duration"),
         )
 
-    async def swipe(from_point: Any, to_point: Any, opts: Optional[Dict[str, Any]] = None) -> None:
+    async def swipe(
+        from_point: Any, to_point: Any, opts: dict[str, Any] | None = None
+    ) -> None:
         duration = (opts or {}).get("duration")
         swipe_points = getattr(page, "swipe_points", None)
         if callable(swipe_points):
@@ -499,7 +485,7 @@ def create_web_input_primitives(page: Any) -> Dict[str, Any]:
         elif callable(getattr(page, "swipe", None)):
             await _invoke(page.swipe, from_point, to_point, duration)
 
-    async def scroll(param: Optional[Dict[str, Any]] = None) -> None:
+    async def scroll(param: dict[str, Any] | None = None) -> None:
         param = param or {}
         element = param.get("locate")
         center = None
@@ -516,7 +502,7 @@ def create_web_input_primitives(page: Any) -> Dict[str, Any]:
         ):
             await _invoke(
                 page.scroll,
-                scroll_type[len("scrollTo"):].lower(),
+                scroll_type[len("scrollTo") :].lower(),
                 None,
                 scroll_type=scroll_type,
                 point=center,
@@ -585,13 +571,13 @@ def _navigation_action(
     name: str,
     description: str,
     method_name: str,
-    param_schema: Optional[Dict[str, Any]] = None,
-    sample: Optional[Dict[str, Any]] = None,
-    interface_alias: Optional[str] = None,
+    param_schema: dict[str, Any] | None = None,
+    sample: dict[str, Any] | None = None,
+    interface_alias: str | None = None,
     supported_by_system_one: bool = False,
 ) -> DeviceAction:
     async def execute(
-        param: Optional[Dict[str, Any]] = None,
+        param: dict[str, Any] | None = None,
         device: Any = None,
         locate_fn: Any = None,
     ) -> None:
@@ -599,9 +585,7 @@ def _navigation_action(
         if not callable(method) and method_name == "navigate":
             method = getattr(page, "navigate_to", None)
         if not callable(method):
-            raise ValueError(
-                f"{name} operation is not supported on this page type"
-            )
+            raise ValueError(f"{name} operation is not supported on this page type")
         if param and param.get("url") is not None:
             await _invoke(method, param["url"])
         else:
@@ -623,7 +607,7 @@ def _navigation_action(
 def common_web_actions_for_web_page(
     page: Any,
     include_touch_events: bool = False,
-) -> List[DeviceAction]:
+) -> list[DeviceAction]:
     """Build the web action space from a page's input primitives."""
     input_primitives = create_web_input_primitives(page)
 

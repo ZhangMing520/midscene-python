@@ -1,11 +1,11 @@
 """YAML report policy (upstream yaml/report-policy.ts)."""
 
-from typing import Any, Dict
+from typing import Any
 
 from loguru import logger
 
 
-def is_yaml_report_enabled(script: Dict[str, Any]) -> bool:
+def is_yaml_report_enabled(script: dict[str, Any]) -> bool:
     """Whether a YAML script should publish a report."""
     web_target = (
         script.get("page")

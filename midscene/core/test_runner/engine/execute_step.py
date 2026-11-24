@@ -4,7 +4,8 @@ import asyncio
 import copy
 import datetime
 import inspect
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 from midscene.core.test_runner.engine._abort import (
     abort_reason,
@@ -43,7 +44,7 @@ REPORT_SNAPSHOT_TIMEOUT_MS = 5000
 
 
 def _now() -> datetime.datetime:
-    return datetime.datetime.now(datetime.timezone.utc)
+    return datetime.datetime.now(datetime.UTC)
 
 
 def _iso(value: datetime.datetime) -> str:
@@ -65,7 +66,9 @@ def validate_node_output(output: Any, node: str) -> Any:
         return None
     if isinstance(output, NodeResult):
         if output.summary is not None and not isinstance(output.summary, str):
-            raise NodeExecutionError(node, TypeError("Node output summary must be a string."))
+            raise NodeExecutionError(
+                node, TypeError("Node output summary must be a string.")
+            )
         return output
     if not isinstance(output, dict):
         raise NodeExecutionError(
@@ -73,7 +76,9 @@ def validate_node_output(output: Any, node: str) -> Any:
         )
     summary = output.get("summary")
     if summary is not None and not isinstance(summary, str):
-        raise NodeExecutionError(node, TypeError("Node output summary must be a string."))
+        raise NodeExecutionError(
+            node, TypeError("Node output summary must be a string.")
+        )
     return output
 
 
@@ -83,9 +88,9 @@ async def _maybe_await(value: Any) -> Any:
     return value
 
 
-def _trace_payload(trace: Any) -> Dict[str, Any]:
+def _trace_payload(trace: Any) -> dict[str, Any]:
     if isinstance(trace, NodeReportTrace):
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "type": trace.type,
             "executionId": trace.executionId,
         }
@@ -108,8 +113,8 @@ class _NodeReportCollector:
 
     def __init__(self, node: str) -> None:
         self._node = node
-        self._traces: Dict[str, Dict[str, Any]] = {}
-        self._captures: List[Callable[..., Any]] = []
+        self._traces: dict[str, dict[str, Any]] = {}
+        self._captures: list[Callable[..., Any]] = []
         self._accepting = True
 
     def on_snapshot(self, capture: Callable[..., Any]) -> None:
@@ -141,7 +146,7 @@ class _NodeReportCollector:
             raise NodeExecutionError(
                 self._node, TypeError("Report trace executionId must be non-empty.")
             )
-        normalized: Dict[str, Any] = {
+        normalized: dict[str, Any] = {
             "type": "midscene-execution",
             "executionId": execution_id,
         }
@@ -192,9 +197,9 @@ class _NodeReportCollector:
         self,
         capture: Callable[..., Any],
         signal: Any,
-        traces: List[Dict[str, Any]],
+        traces: list[dict[str, Any]],
         expired: "asyncio.Future[Any]",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         task = asyncio.ensure_future(_maybe_await(capture(signal, traces)))
         try:
             done, _ = await asyncio.wait(
@@ -210,7 +215,7 @@ class _NodeReportCollector:
             if not task.done():
                 task.cancel()
 
-    async def close(self) -> Dict[str, Any]:
+    async def close(self) -> dict[str, Any]:
         self._accepting = False
         closed_traces = list(self._traces.values())
         if not self._captures:
@@ -220,7 +225,7 @@ class _NodeReportCollector:
         from midscene.core.types import AbortSignal
 
         controller = AbortSignal()
-        expired: "asyncio.Future[Any]" = loop.create_future()
+        expired: asyncio.Future[Any] = loop.create_future()
 
         def on_expired() -> None:
             if expired.done():
@@ -250,7 +255,7 @@ class _NodeReportCollector:
 
         sources = [outcome["source"] for outcome in outcomes if "source" in outcome]
         errors = [outcome["error"] for outcome in outcomes if "error" in outcome]
-        report: Dict[str, Any] = {"traces": closed_traces}
+        report: dict[str, Any] = {"traces": closed_traces}
         if sources:
             report["sources"] = sources
         if errors:
@@ -258,9 +263,7 @@ class _NodeReportCollector:
         return report
 
 
-async def parse_node_input(
-    node: NodeDefinition, input_value: Dict[str, Any]
-) -> Any:
+async def parse_node_input(node: NodeDefinition, input_value: dict[str, Any]) -> Any:
     """Validate the raw YAML input using the node's declared schema."""
     schema = node.input_schema
     if schema is None or isinstance(schema, dict):
@@ -273,14 +276,16 @@ async def parse_node_input(
         try:
             return validator(input_value)
         except Exception as error:
-            issues: List[Dict[str, Any]] = []
+            issues: list[dict[str, Any]] = []
             errors_fn = getattr(error, "errors", None)
             if callable(errors_fn):
                 try:
                     for item in errors_fn():
                         issues.append(
                             {
-                                "path": ".".join(str(part) for part in item.get("loc", [])),
+                                "path": ".".join(
+                                    str(part) for part in item.get("loc", [])
+                                ),
                                 "message": item.get("msg", str(error)),
                             }
                         )
@@ -304,8 +309,8 @@ async def execute_node(
     execute: Callable[[Any], Any],
     phase: str,
     step_index: int,
-    options: Dict[str, Any],
-) -> Dict[str, Any]:
+    options: dict[str, Any],
+) -> dict[str, Any]:
     started_at = _now()
     meta = step.get("meta") or {}
     from midscene.core.types import AbortSignal
@@ -314,11 +319,9 @@ async def execute_node(
     parent_signal = options.get("parentSignal")
     link_resource_signal(controller, parent_signal)
     set_resource_operation_identity(controller, options["identity"])
-    stop_observing = observe_resource_operations(
-        controller, options["onEvent"]
-    )
+    stop_observing = observe_resource_operations(controller, options["onEvent"])
 
-    parent_disposer: Optional[Callable[[], None]] = None
+    parent_disposer: Callable[[], None] | None = None
     if parent_signal is not None:
         parent_disposer = link_abort(controller, parent_signal)
 
@@ -337,7 +340,7 @@ async def execute_node(
     )
 
     returned_status = "failed"
-    abort_future: "asyncio.Future[Any]" = loop.create_future()
+    abort_future: asyncio.Future[Any] = loop.create_future()
 
     def on_abort() -> None:
         if not abort_future.done():
@@ -345,7 +348,7 @@ async def execute_node(
 
     abort_disposer = add_abort_listener(controller, on_abort)
 
-    timeout_future: Optional["asyncio.Future[Any]"] = None
+    timeout_future: asyncio.Future[Any] | None = None
     timer = None
     if timeout_ms is not None:
 
@@ -380,7 +383,7 @@ async def execute_node(
             output = validate_node_output(output, step.get("node"))
             returned_status = "success"
             ended_at = _now()
-            result: Dict[str, Any] = {
+            result: dict[str, Any] = {
                 "node": step.get("node"),
                 "phase": phase,
                 "stepIndex": step_index,
@@ -388,9 +391,7 @@ async def execute_node(
                 "meta": meta,
                 "startedAt": _iso(started_at),
                 "endedAt": _iso(ended_at),
-                "durationMs": max(
-                    0.0, (ended_at - started_at).total_seconds() * 1000
-                ),
+                "durationMs": max(0.0, (ended_at - started_at).total_seconds() * 1000),
                 "status": "success",
                 "continuedAfterError": False,
             }
@@ -402,7 +403,7 @@ async def execute_node(
                 raise
             if is_resource_admission_error(error):
                 returned_status = "not-run"
-                not_run: Dict[str, Any] = {
+                not_run: dict[str, Any] = {
                     "node": step.get("node"),
                     "phase": phase,
                     "stepIndex": step_index,
@@ -420,13 +421,16 @@ async def execute_node(
 
             output = None
             failure: Any = error
-            if is_node_execution_error(error) and getattr(error, "output", None) is not None:
+            if (
+                is_node_execution_error(error)
+                and getattr(error, "output", None) is not None
+            ):
                 try:
                     output = validate_node_output(error.output, step.get("node"))
                 except Exception as validation_error:
                     failure = validation_error
             ended_at = _now()
-            failed: Dict[str, Any] = {
+            failed: dict[str, Any] = {
                 "node": step.get("node"),
                 "phase": phase,
                 "stepIndex": step_index,
@@ -434,9 +438,7 @@ async def execute_node(
                 "meta": meta,
                 "startedAt": _iso(started_at),
                 "endedAt": _iso(ended_at),
-                "durationMs": max(
-                    0.0, (ended_at - started_at).total_seconds() * 1000
-                ),
+                "durationMs": max(0.0, (ended_at - started_at).total_seconds() * 1000),
                 "status": "failed",
                 "continuedAfterError": bool(meta.get("continueOnError")),
                 "error": normalize_node_execution_error(failure, step.get("node")),
@@ -462,10 +464,10 @@ async def execute_node(
 async def execute_step(
     step: NormalizedStep,
     node: NodeDefinition,
-    target: Dict[str, Any],
+    target: dict[str, Any],
     context: Any,
-    execution: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    execution: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     execution = execution or {}
     scope = target["scope"]
     if scope == "case":
@@ -482,8 +484,8 @@ async def execute_step(
         case = None
 
     collector = _NodeReportCollector(step.get("node"))
-    events: List[Dict[str, Any]] = []
-    result: Optional[Dict[str, Any]] = None
+    events: list[dict[str, Any]] = []
+    result: dict[str, Any] | None = None
 
     async def run_node(signal: Any) -> Any:
         input_value = await parse_node_input(node, step.get("input") or {})

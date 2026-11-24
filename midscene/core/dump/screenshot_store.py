@@ -10,8 +10,9 @@ import base64
 import hashlib
 import re
 import shutil
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any
 
 from midscene.core.dump.html_utils import (
     anti_escape_script_tag,
@@ -43,13 +44,13 @@ def detect_format(base64_data: str) -> str:
     return "png"
 
 
-def _has_valid_storage(record: Dict[str, Any]) -> bool:
+def _has_valid_storage(record: dict[str, Any]) -> bool:
     if record.get("storage") not in ("inline", "file"):
         return False
     return record.get("storage") != "file" or isinstance(record.get("path"), str)
 
 
-def normalize_screenshot_ref(value: Any) -> Optional[Dict[str, Any]]:
+def normalize_screenshot_ref(value: Any) -> dict[str, Any] | None:
     """Validate and normalize a serialized screenshot reference."""
     if not isinstance(value, dict):
         return None
@@ -66,7 +67,7 @@ def normalize_screenshot_ref(value: Any) -> Optional[Dict[str, Any]]:
     return None
 
 
-def extract_image_by_id_sync(html_path: str, image_id: str) -> Optional[str]:
+def extract_image_by_id_sync(html_path: str, image_id: str) -> str | None:
     """Extract an inline `<script type="midscene-image">` payload by id."""
     html = Path(html_path).read_text(encoding="utf-8")
     pattern = re.compile(
@@ -81,7 +82,7 @@ def extract_image_by_id_sync(html_path: str, image_id: str) -> Optional[str]:
     return anti_escape_script_tag(match.group(1))
 
 
-def parse_base64_image_data_url(image_url: str) -> Dict[str, str]:
+def parse_base64_image_data_url(image_url: str) -> dict[str, str]:
     """Parse and normalize a base64 image data URL for report persistence."""
     match = _BASE64_IMAGE_DATA_URL_PATTERN.match(image_url)
     if not match:
@@ -111,13 +112,13 @@ def report_image_file_name(extension: str, data: bytes) -> str:
 
 def resolve_image_source(
     ref_input: Any,
-    options: Optional[Dict[str, Any]] = None,
+    options: dict[str, Any] | None = None,
     *,
-    report_path: Optional[str] = None,
-    image_directory: Optional[str] = None,
-    fallback_id: Optional[str] = None,
-    fallback_mime_type: Optional[str] = None,
-) -> Dict[str, str]:
+    report_path: str | None = None,
+    image_directory: str | None = None,
+    fallback_id: str | None = None,
+    fallback_mime_type: str | None = None,
+) -> dict[str, str]:
     """Resolve any stored report image reference to a data URI or file path.
 
     ``options`` mirrors the upstream options object (``reportPath``,
@@ -130,9 +131,7 @@ def resolve_image_source(
     fallback_id = options.get("fallbackId", fallback_id)
     fallback_mime_type = options.get("fallbackMimeType", fallback_mime_type)
     if not report_path:
-        raise ValueError(
-            "ReportImageStore: reportPath is required to resolve an image"
-        )
+        raise ValueError("ReportImageStore: reportPath is required to resolve an image")
     ref = normalize_stored_image_ref(ref_input)
     image_id = ref.get("id") if ref else fallback_id
     mime_type = ref.get("mimeType") if ref else fallback_mime_type
@@ -200,18 +199,16 @@ def resolve_image_source(
 
 def resolve_screenshot_source(
     ref_input: Any,
-    options: Optional[Dict[str, Any]] = None,
+    options: dict[str, Any] | None = None,
     **kwargs: Any,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Resolve a serialized screenshot reference to a data URI or file path."""
-    return resolve_image_source(
-        normalize_screenshot_ref(ref_input), options, **kwargs
-    )
+    return resolve_image_source(normalize_screenshot_ref(ref_input), options, **kwargs)
 
 
-def _collect_image_script_ids(file_path: str) -> List[str]:
+def _collect_image_script_ids(file_path: str) -> list[str]:
     """Collect the inline `<script type="midscene-image">` ids in a report."""
-    image_ids: List[str] = []
+    image_ids: list[str] = []
 
     def visit(image_id: str, _data: str) -> bool:
         image_ids.append(image_id)
@@ -227,9 +224,9 @@ class ReportImageStore:
     def __init__(
         self,
         mode: str,
-        report_path: Union[str, Path],
-        screenshots_dir: Optional[Union[str, Path]] = None,
-        write_inline_image: Optional[Callable[[str, str], None]] = None,
+        report_path: str | Path,
+        screenshots_dir: str | Path | None = None,
+        write_inline_image: Callable[[str, str], None] | None = None,
         also_write_file_copy: bool = False,
         ensure_file_copy: bool = False,
         reuse_existing_report: bool = False,
@@ -241,15 +238,13 @@ class ReportImageStore:
         )
         self.write_inline_image = write_inline_image
         # `ensureFileCopy` is the deprecated alias for `alsoWriteFileCopy`.
-        self.also_write_file_copy = bool(
-            also_write_file_copy or ensure_file_copy
-        )
+        self.also_write_file_copy = bool(also_write_file_copy or ensure_file_copy)
         self.should_reuse_existing_inline_report = bool(
             reuse_existing_report and mode == "inline"
         )
         self._written_inline_ids: set = set()
         self._written_file_ids: set = set()
-        self._file_locations: Dict[str, Dict[str, str]] = {}
+        self._file_locations: dict[str, dict[str, str]] = {}
         self._existing_inline_image_ids_loaded = False
 
     def enable_file_copies(self) -> None:
@@ -264,17 +259,15 @@ class ReportImageStore:
             )
         return location["relativePath"]
 
-    def persist_file_copy(self, screenshot: Any) -> Dict[str, Any]:
+    def persist_file_copy(self, screenshot: Any) -> dict[str, Any]:
         """Keep diagnostic bytes without changing the report location."""
         return self._persist_to_shared_file_if_needed(
             screenshot, mark_as_persisted=False
         )
 
-    def persist(self, screenshot: Any) -> Dict[str, Any]:
+    def persist(self, screenshot: Any) -> dict[str, Any]:
         self._ensure_existing_inline_image_ids_loaded()
-        should_write_file_copy = (
-            self.mode == "directory" or self.also_write_file_copy
-        )
+        should_write_file_copy = self.mode == "directory" or self.also_write_file_copy
         file_ref = (
             self._persist_to_shared_file_if_needed(
                 screenshot,
@@ -300,7 +293,7 @@ class ReportImageStore:
             )
         return file_ref
 
-    def persist_reference_image(self, image_url: str) -> Dict[str, Any]:
+    def persist_reference_image(self, image_url: str) -> dict[str, Any]:
         """Persist a base64 prompt image and return its content-addressed ref."""
         self._ensure_existing_inline_image_ids_loaded()
         parsed = parse_base64_image_data_url(image_url)
@@ -313,13 +306,9 @@ class ReportImageStore:
         digest.update(base64.b64decode(raw_base64))
         image_id = f"reference-{digest.hexdigest()}"
 
-        should_write_file_copy = (
-            self.mode == "directory" or self.also_write_file_copy
-        )
+        should_write_file_copy = self.mode == "directory" or self.also_write_file_copy
         file_location = (
-            self._write_image_file_if_needed(
-                image_id, extension, raw_base64
-            )
+            self._write_image_file_if_needed(image_id, extension, raw_base64)
             if should_write_file_copy
             else None
         )
@@ -373,7 +362,7 @@ class ReportImageStore:
         self,
         screenshot: Any,
         mark_as_persisted: bool,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         location = self._file_locations.get(screenshot.id) or (
             self._write_image_file_if_needed(
                 screenshot.id,
@@ -391,7 +380,7 @@ class ReportImageStore:
 
     def _write_image_file_if_needed(
         self, image_id: str, extension: str, raw_base64: str
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         if self.screenshots_dir is None:
             raise ValueError(
                 "ReportImageStore: screenshotsDir is required when file "
@@ -445,9 +434,7 @@ class ReportImageStore:
         """Deprecated alias for `load_data_uri` that requires a screenshot ref."""
         screenshot_ref = normalize_screenshot_ref(ref_input)
         if not screenshot_ref:
-            raise ValueError(
-                "ReportImageStore: invalid screenshot reference"
-            )
+            raise ValueError("ReportImageStore: invalid screenshot reference")
         return self.load_data_uri(screenshot_ref)
 
     def cleanup(self) -> None:

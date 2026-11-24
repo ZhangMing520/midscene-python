@@ -6,7 +6,7 @@ upstream module becomes simple field-list lookups here.
 """
 
 import math
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from midscene.core.ai_model.shared.multimodal_prompt import user_prompt_to_string
 from midscene.core.device import find_action_in_action_space_or_throw
@@ -21,7 +21,7 @@ def _field(value: Any, key: str, default: Any = None) -> Any:
     return getattr(value, key, default)
 
 
-def user_prompt_to_multimodal_prompt(prompt: Any) -> Optional[Dict[str, Any]]:
+def user_prompt_to_multimodal_prompt(prompt: Any) -> dict[str, Any] | None:
     if isinstance(prompt, str) or not isinstance(prompt, dict):
         return None
     images = prompt.get("images")
@@ -45,14 +45,14 @@ def if_midscene_locator_field(field: Any) -> bool:
 
 def find_all_midscene_locator_field(
     schema: Any, required_only: bool = False
-) -> List[str]:
+) -> list[str]:
     """Return locator field names from a DeviceAction or schema mapping."""
     fields = _field(schema, "locate_fields")
     if isinstance(fields, list):
         if not required_only:
             return list(fields)
         param_schema = _field(schema, "param_schema")
-        required: List[str] = []
+        required: list[str] = []
         for name in fields:
             field = param_schema.get(name) if isinstance(param_schema, dict) else None
             if isinstance(field, dict) and field.get("optional") is True:
@@ -71,8 +71,8 @@ def find_all_midscene_locator_field(
 
 
 def _screenshot_distances_to_logical(
-    param: Dict[str, Any], schema: Any, ratio: float
-) -> Dict[str, Any]:
+    param: dict[str, Any], schema: Any, ratio: float
+) -> dict[str, Any]:
     fields = list(_field(schema, "distance_fields") or [])
     if not fields:
         return param
@@ -82,7 +82,12 @@ def _screenshot_distances_to_logical(
         value = param.get(name)
         if value is None:
             continue
-        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(value)
+            or value < 0
+        ):
             raise ValueError(f"{name} must be a finite non-negative distance")
         if not math.isfinite(ratio) or ratio <= 0:
             raise ValueError("Invalid screenshot-to-logical coordinate ratio")
@@ -90,7 +95,7 @@ def _screenshot_distances_to_logical(
     return result
 
 
-def _format_prompt_with_images(prompt_obj: Dict[str, Any]) -> str:
+def _format_prompt_with_images(prompt_obj: dict[str, Any]) -> str:
     prompt_string = str(prompt_obj.get("prompt", ""))
     images = prompt_obj.get("images")
     if isinstance(images, list) and images:
@@ -99,9 +104,7 @@ def _format_prompt_with_images(prompt_obj: Dict[str, Any]) -> str:
     return prompt_string
 
 
-def dump_action_param(
-    json_object: Dict[str, Any], schema: Any
-) -> Dict[str, Any]:
+def dump_action_param(json_object: dict[str, Any], schema: Any) -> dict[str, Any]:
     """Flatten locator fields to strings for YAML output (upstream dumpActionParam)."""
     if not isinstance(json_object, dict):
         return {}
@@ -123,7 +126,7 @@ def dump_action_param(
     return result
 
 
-def _param_field_schemas(schema: Any) -> Dict[str, Any]:
+def _param_field_schemas(schema: Any) -> dict[str, Any]:
     if isinstance(schema, dict):
         properties = schema.get("properties")
         if isinstance(properties, dict):
@@ -147,10 +150,10 @@ def _apply_field_rules(name: str, field: Any, value: Any) -> Any:
 
 
 def parse_action_param(
-    raw_param: Optional[Dict[str, Any]],
+    raw_param: dict[str, Any] | None,
     schema: Any = None,
-    options: Optional[Dict[str, Any]] = None,
-) -> Optional[Dict[str, Any]]:
+    options: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
     """Validate/normalize action params (upstream parseActionParam).
 
     Locator fields are excluded from schema parsing and restored afterwards,
@@ -174,9 +177,7 @@ def parse_action_param(
         if name in param:
             parsed[name] = _apply_field_rules(name, field, param[name])
         elif isinstance(field, dict) and "default" in field:
-            parsed[name] = _apply_field_rules(
-                name, field, field["default"]
-            )
+            parsed[name] = _apply_field_rules(name, field, field["default"])
 
     if ratio is not None:
         for field_name in locate_fields:
@@ -193,9 +194,7 @@ def parse_action_param(
     return parsed
 
 
-def validate_required_locate_fields(
-    param: Optional[Dict[str, Any]], schema: Any
-) -> None:
+def validate_required_locate_fields(param: dict[str, Any] | None, schema: Any) -> None:
     for field in find_all_midscene_locator_field(schema, True):
         value = (param or {}).get(field)
         # Match JS truthiness: empty objects/arrays are truthy, unlike Python.
@@ -204,7 +203,7 @@ def validate_required_locate_fields(
             raise ValueError(f"{field}: Required locate field is not provided")
 
 
-def _shortcut_field(action: Any) -> Optional[str]:
+def _shortcut_field(action: Any) -> str | None:
     name = _field(action, "name")
     alias = _field(action, "interface_alias")
     if name == "Launch" or alias == "launch":
@@ -222,12 +221,12 @@ def _shortcut_field(action: Any) -> Optional[str]:
 
 
 def build_yaml_flow_from_plans(
-    plans: List[Dict[str, Any]],
-    action_space: List[Any],
-    shrunk_shot_to_logical_ratio: Optional[float] = None,
-) -> List[Dict[str, Any]]:
+    plans: list[dict[str, Any]],
+    action_space: list[Any],
+    shrunk_shot_to_logical_ratio: float | None = None,
+) -> list[dict[str, Any]]:
     """Serialize planned actions as legacy YAML flow items."""
-    flow: List[Dict[str, Any]] = []
+    flow: list[dict[str, Any]] = []
 
     for plan in plans:
         verb = plan.get("type")
@@ -262,7 +261,7 @@ def build_yaml_flow_from_plans(
 
 
 def get_readable_time_string(
-    format: str = "YYYY-MM-DD HH:mm:ss", timestamp: Optional[float] = None
+    format: str = "YYYY-MM-DD HH:mm:ss", timestamp: float | None = None
 ) -> str:
     return format_timestamp(format, timestamp)
 

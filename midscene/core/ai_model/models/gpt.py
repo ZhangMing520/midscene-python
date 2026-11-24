@@ -1,6 +1,6 @@
 """GPT-5 / GPT-6 adapters (upstream ai-model/models/gpt.ts)."""
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from midscene.core.ai_model.model_adapter.chat_completion import (
     _json_object_config,
@@ -18,7 +18,8 @@ from midscene.core.ai_model.models.default import (
 )
 from midscene.core.ai_model.models.utils.intent import is_locate_intent
 
-def _resolve_gpt5_reasoning_effort(user_config: ReasoningInput) -> Optional[str]:
+
+def _resolve_gpt5_reasoning_effort(user_config: ReasoningInput) -> str | None:
     reasoning_enabled = user_config.get("reasoningEnabled")
     if reasoning_enabled == "default":
         return None
@@ -27,7 +28,7 @@ def _resolve_gpt5_reasoning_effort(user_config: ReasoningInput) -> Optional[str]
     return "none"
 
 
-def _resolve_gpt6_reasoning_effort(user_config: ReasoningInput) -> Optional[str]:
+def _resolve_gpt6_reasoning_effort(user_config: ReasoningInput) -> str | None:
     reasoning_enabled = user_config.get("reasoningEnabled")
     if reasoning_enabled == "default":
         return None
@@ -38,11 +39,11 @@ def _resolve_gpt6_reasoning_effort(user_config: ReasoningInput) -> Optional[str]
 
 
 def _build_gpt5_chat_params(
-    midscene_defaults: Dict[str, Any],
+    midscene_defaults: dict[str, Any],
     user_config: ModelRequestUserConfig,
     expected_json_object_response: bool = False,
-) -> Dict[str, Any]:
-    config: Dict[str, Any] = dict(midscene_defaults)
+) -> dict[str, Any]:
+    config: dict[str, Any] = dict(midscene_defaults)
     _apply_temperature(config, user_config)
     config.update(_json_object_config(user_config, expected_json_object_response))
     effort = _resolve_gpt5_reasoning_effort(user_config)
@@ -52,11 +53,11 @@ def _build_gpt5_chat_params(
 
 
 def _build_gpt6_chat_params(
-    midscene_defaults: Dict[str, Any],
+    midscene_defaults: dict[str, Any],
     user_config: ModelRequestUserConfig,
     expected_json_object_response: bool = False,
-) -> Dict[str, Any]:
-    config: Dict[str, Any] = dict(midscene_defaults)
+) -> dict[str, Any]:
+    config: dict[str, Any] = dict(midscene_defaults)
     # GPT-6 does not support temperature; omit it from the serialized request.
     _apply_temperature(config, user_config, allow_override=False)
     config.update(_json_object_config(user_config, expected_json_object_response))
@@ -67,11 +68,11 @@ def _build_gpt6_chat_params(
 
 
 def _build_gpt5_responses_params(
-    midscene_defaults: Dict[str, Any],
+    midscene_defaults: dict[str, Any],
     user_config: ModelRequestUserConfig,
     expected_json_object_response: bool = False,
-) -> Dict[str, Any]:
-    config: Dict[str, Any] = dict(midscene_defaults)
+) -> dict[str, Any]:
+    config: dict[str, Any] = dict(midscene_defaults)
     _apply_temperature(config, user_config)
     if user_config.get("responseFormat") != "none" and expected_json_object_response:
         config["text"] = {"format": {"type": "json_object"}}
@@ -83,11 +84,11 @@ def _build_gpt5_responses_params(
 
 
 def _build_gpt6_responses_params(
-    midscene_defaults: Dict[str, Any],
+    midscene_defaults: dict[str, Any],
     user_config: ModelRequestUserConfig,
     expected_json_object_response: bool = False,
-) -> Dict[str, Any]:
-    config: Dict[str, Any] = dict(midscene_defaults)
+) -> dict[str, Any]:
+    config: dict[str, Any] = dict(midscene_defaults)
     _apply_temperature(config, user_config, allow_override=False)
     effort = _resolve_gpt6_reasoning_effort(user_config)
     if effort is not None:
@@ -108,7 +109,7 @@ GPT_LOCATE_FORMAT = {
 }
 
 
-def _resolve_gpt_image_detail(input_data: Dict[str, Any]) -> str:
+def _resolve_gpt_image_detail(input_data: dict[str, Any]) -> str:
     if is_locate_intent(input_data.get("intent")) or input_data.get(
         "requiresOriginalImageDetail"
     ):
@@ -119,7 +120,7 @@ def _resolve_gpt_image_detail(input_data: Dict[str, Any]) -> str:
 def _build_gpt_codex_params(
     disabled_effort: str,
 ):
-    def build(input_data: Dict[str, Any]) -> Dict[str, Any]:
+    def build(input_data: dict[str, Any]) -> dict[str, Any]:
         effort = (
             _resolve_gpt5_reasoning_effort(input_data.get("userConfig") or {})
             if disabled_effort == "none"
@@ -130,7 +131,7 @@ def _build_gpt_codex_params(
     return build
 
 
-def _create_gpt_adapter_config(family: str) -> Dict[str, Any]:
+def _create_gpt_adapter_config(family: str) -> dict[str, Any]:
     is_gpt6 = family == "gpt-6"
     return {
         "supported_protocols": ["openai-chat", "openai-responses"],

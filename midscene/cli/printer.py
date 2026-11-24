@@ -3,7 +3,8 @@
 import os
 import sys
 import time
-from typing import Any, List, Mapping, Optional
+from collections.abc import Mapping
+from typing import Any
 
 indent = "  "
 spinner_interval = 80
@@ -33,8 +34,8 @@ def _red(text: str) -> str:
 
 
 def resolve_is_tty(
-    env: Optional[Mapping[str, str]] = None,
-    stdout_is_tty: Optional[bool] = None,
+    env: Mapping[str, str] | None = None,
+    stdout_is_tty: bool | None = None,
 ) -> bool:
     """Decide whether the interactive spinner renderer is safe to use.
 
@@ -43,9 +44,7 @@ def resolve_is_tty(
     """
     env = os.environ if env is None else env
     if stdout_is_tty is None:
-        stdout_is_tty = bool(
-            getattr(sys.stdout, "isatty", lambda: False)()
-        )
+        stdout_is_tty = bool(getattr(sys.stdout, "isatty", lambda: False)())
     if (
         env.get("MIDSCENE_CLI_LOG_ON_NON_TTY")
         or env.get("NO_COLOR")
@@ -107,10 +106,7 @@ def context_info(context: Mapping[str, Any]) -> dict:
     if error_in_setup:
         message = _field(error_in_setup, "message", default=str(error_in_setup))
         stack = _field(error_in_setup, "stack", default="")
-        error_text = (
-            f"\n{indent}{_red('error:')} {message}"
-            f"\n{indent}{indent}{stack}"
-        )
+        error_text = f"\n{indent}{_red('error:')} {message}\n{indent}{indent}{stack}"
 
     output_file = _field(player, "output", "output_path")
     player_result = _field(player, "result", default={})
@@ -121,9 +117,7 @@ def context_info(context: Mapping[str, Any]) -> dict:
     )
 
     report_file = _field(player, "reportFile", "report_file")
-    report_text = (
-        f"\n{indent}{_gray(f'report: {report_file}')}" if report_file else ""
-    )
+    report_text = f"\n{indent}{_gray(f'report: {report_file}')}" if report_file else ""
 
     agent_status_tip = _field(player, "agentStatusTip", "agent_status_tip")
     agent_status_text = (
@@ -160,9 +154,7 @@ def single_task_info(task: Any) -> dict:
             step_text = _gray("(navigating)")
         elif isinstance(current_step, int):
             total_steps = _field(task, "totalSteps", "total_steps")
-            step_text = _gray(
-                f"(task {current_step + 1}/{total_steps})".strip()
-            )
+            step_text = _gray(f"(task {current_step + 1}/{total_steps})".strip())
         else:
             step_text = _gray("(unknown task)")
 
@@ -170,9 +162,7 @@ def single_task_info(task: Any) -> dict:
     error_text = ""
     if status == "error":
         error_message = _field(error, "message", default=error or "")
-        error_text = (
-            f"\n{indent}{_gray('error:')}\n{indent}{indent}{error_message}"
-        )
+        error_text = f"\n{indent}{_gray('error:')}\n{indent}{indent}{error_message}"
 
     status_text = _indicator_for_status(status)
     merged_line = f"{status_text} {name} {step_text}{error_text}"
@@ -185,19 +175,19 @@ def single_task_info(task: Any) -> dict:
     }
 
 
-def _padding_lines(lines: List[str]) -> List[str]:
+def _padding_lines(lines: list[str]) -> list[str]:
     return [f"{indent}{line}" for line in lines]
 
 
 def context_task_list_summary(
-    task_status_array: List[Any], context: Mapping[str, Any]
+    task_status_array: list[Any], context: Mapping[str, Any]
 ) -> str:
     """Render a file header plus its task lines (upstream contextTaskListSummary)."""
     player = context.get("player")
     status = _field(player, "status", default="init")
-    prefix_lines: List[str] = []
-    current_line: List[str] = []
-    suffix_text: List[str] = []
+    prefix_lines: list[str] = []
+    current_line: list[str] = []
+    suffix_text: list[str] = []
 
     file_info = context_info(context)["mergedText"]
     if not _field(player, "errorInSetup", "error_in_setup"):

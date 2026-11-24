@@ -1,19 +1,19 @@
 """Planning response examples (upstream prompt/planning/planning-response-example.ts)."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 def build_planning_response_example(
-    prefix: Optional[str] = None,
-    planning: Optional[str] = None,
-    update_sub_goals: Optional[List[Dict[str, Any]]] = None,
-    mark_sub_goals_done: Optional[List[int]] = None,
-    memory: Optional[str] = None,
-    complete: Optional[Dict[str, Any]] = None,
-    log: Optional[str] = None,
-    action_output_example: Optional[str] = None,
+    prefix: str | None = None,
+    planning: str | None = None,
+    update_sub_goals: list[dict[str, Any]] | None = None,
+    mark_sub_goals_done: list[int] | None = None,
+    memory: str | None = None,
+    complete: dict[str, Any] | None = None,
+    log: str | None = None,
+    action_output_example: str | None = None,
 ) -> str:
-    sections: List[str] = []
+    sections: list[str] = []
     if prefix:
         sections.append(prefix)
 
@@ -23,7 +23,7 @@ def build_planning_response_example(
     if update_sub_goals:
         lines = "\n".join(
             f'  <sub-goal index="{goal["index"]}" status="{goal["status"]}">'
-            f'{goal["description"]}</sub-goal>'
+            f"{goal['description']}</sub-goal>"
             for goal in update_sub_goals
         )
         sections.append(f"<update-plan-content>\n{lines}\n</update-plan-content>")
@@ -41,7 +41,7 @@ def build_planning_response_example(
     if complete:
         sections.append(
             f'<complete success="{str(complete["success"]).lower()}">'
-            f'{complete.get("message", "")}</complete>'
+            f"{complete.get('message', '')}</complete>"
         )
     else:
         if not action_output_example:

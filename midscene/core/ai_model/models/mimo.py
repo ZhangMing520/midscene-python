@@ -1,6 +1,6 @@
 """Xiaomi MiMo adapter (upstream ai-model/models/mimo.ts)."""
 
-from typing import Any, Dict
+from typing import Any
 
 from midscene.core.ai_model.model_adapter.chat_completion import (
     _json_object_config,
@@ -22,12 +22,13 @@ from midscene.core.ai_model.models.default import (
     build_chat_completion_params_from_context,
 )
 
+
 def _build_mimo_params(
-    midscene_defaults: Dict[str, Any],
+    midscene_defaults: dict[str, Any],
     user_config: ModelRequestUserConfig,
     expected_json_object_response: bool = False,
-) -> Dict[str, Any]:
-    config: Dict[str, Any] = dict(midscene_defaults)
+) -> dict[str, Any]:
+    config: dict[str, Any] = dict(midscene_defaults)
     config.update(_json_object_config(user_config, expected_json_object_response))
     _apply_temperature(config, user_config)
     reasoning_enabled = _reasoning_enabled(user_config)

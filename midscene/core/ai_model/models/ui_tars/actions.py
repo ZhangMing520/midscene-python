@@ -1,7 +1,7 @@
 """UI-TARS action transformation (upstream ai-model/models/ui-tars/actions.ts)."""
 
 import json
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 from loguru import logger
 
@@ -21,7 +21,7 @@ _UI_TARS_KEY_MAP = {
 }
 
 
-def _transform_hotkey_input(key_input: str) -> List[str]:
+def _transform_hotkey_input(key_input: str) -> list[str]:
     lower = key_input.lower()
     if lower in _UI_TARS_KEY_MAP:
         return [_UI_TARS_KEY_MAP[lower]]
@@ -30,7 +30,7 @@ def _transform_hotkey_input(key_input: str) -> List[str]:
     ]
 
 
-def _get_ui_tars_point(start_box: str) -> Tuple[float, float]:
+def _get_ui_tars_point(start_box: str) -> tuple[float, float]:
     values = json.loads(start_box)
     x, y = values[0], values[1]
     if not isinstance(x, (int, float)) or not isinstance(y, (int, float)):
@@ -39,12 +39,12 @@ def _get_ui_tars_point(start_box: str) -> Tuple[float, float]:
 
 
 def transform_ui_tars_actions(
-    parsed_response: Dict[str, Any],
-) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    parsed_response: dict[str, Any],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Map parsed UI-TARS actions to Midscene planning actions.
     Returns (transformed_actions, unhandled_actions)."""
-    transformed: List[Dict[str, Any]] = []
-    unhandled: List[Dict[str, Any]] = []
+    transformed: list[dict[str, Any]] = []
+    unhandled: list[dict[str, Any]] = []
 
     for action in parsed_response["actions"]:
         action_type = (action.get("action_type") or "").lower()
@@ -101,7 +101,11 @@ def transform_ui_tars_actions(
             )
         elif action_type == "type":
             transformed.append(
-                {"type": "Input", "param": {"value": action_inputs.get("content")}, "thought": thought}
+                {
+                    "type": "Input",
+                    "param": {"value": action_inputs.get("content")},
+                    "thought": thought,
+                }
             )
         elif action_type == "scroll":
             transformed.append(
@@ -121,7 +125,9 @@ def transform_ui_tars_actions(
             )
         elif action_type == "hotkey":
             if not action_inputs.get("key"):
-                logger.warning("No key found in action: hotkey. Will not perform action.")
+                logger.warning(
+                    "No key found in action: hotkey. Will not perform action."
+                )
                 continue
             keys = _transform_hotkey_input(action_inputs["key"])
             transformed.append(

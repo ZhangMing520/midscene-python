@@ -1,8 +1,9 @@
 """Agent options (upstream agent/agent-options.ts)."""
 
 import copy
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any
 
 from midscene.core.agent.common import AGENT_AI_CONTEXT_KEYS
 from midscene.core.dump.report_session import assert_report_generation_options
@@ -11,22 +12,23 @@ from midscene.core.dump.report_session import assert_report_generation_options
 @dataclass
 class AgentOptions:
     """Agent configuration options"""
-    test_id: Optional[str] = None
-    cache_id: Optional[str] = None
+
+    test_id: str | None = None
+    cache_id: str | None = None
     group_name: str = "Midscene Report"
     group_description: str = ""
     generate_report: bool = True
     auto_print_report_msg: bool = True
-    ai_action_context: Optional[str] = None
-    report_file_name: Optional[str] = None
+    ai_action_context: str | None = None
+    report_file_name: str | None = None
     # Model configuration. Either an env-style dict (MIDSCENE_MODEL_NAME,
     # MIDSCENE_MODEL_API_KEY, MIDSCENE_MODEL_BASE_URL, MIDSCENE_MODEL_FAMILY,
     # MIDSCENE_PLANNING_MODEL_* ...), or a legacy callable returning such a dict.
-    model_config: Optional[Union[Dict[str, str], Callable]] = None
+    model_config: dict[str, str] | Callable | None = None
     # Callback fired at the start of each execution task: (tip: str) -> None
-    on_task_start_tip: Optional[Callable] = None
+    on_task_start_tip: Callable | None = None
     # Override the replanning cycle limit (default: adapter value, 20 standard)
-    replanning_cycle_limit: Optional[int] = None
+    replanning_cycle_limit: int | None = None
     # Downscale the captured screenshot before sending it to the model
     # (>= 1; coordinates are mapped back afterwards, upstream
     # AgentOpt.screenshotShrinkFactor)
@@ -34,30 +36,30 @@ class AgentOptions:
     # Cache configuration: False disables, a string is the cache id, a dict is
     # {id, strategy: 'read-only'|'read-write'|'write-only', cacheDir} (upstream
     # AgentOpt.cache)
-    cache: Optional[Union[bool, str, Dict[str, Any]]] = None
+    cache: bool | str | dict[str, Any] | None = None
     # Milliseconds to wait after each executed action (upstream waitAfterAction)
     wait_after_action_ms: int = 300
     # Async callback awaited after each successful action:
     # (context: {'action': dict}) -> None (upstream waitForActionReady)
-    wait_for_action_ready: Optional[Callable] = None
+    wait_for_action_ready: Callable | None = None
     # Default AI context text per API key, seeded into agent.ai_contexts
     # (upstream AgentOpt.aiContexts)
-    ai_contexts: Optional[Dict[str, str]] = None
+    ai_contexts: dict[str, str] | None = None
     # Callback receiving each AIUsageInfo (upstream AgentOpt.onLLMUsage)
-    on_llm_usage: Optional[Callable] = None
+    on_llm_usage: Callable | None = None
     # Extra attributes merged into the report dump top level
-    report_attributes: Optional[Dict[str, Any]] = None
+    report_attributes: dict[str, Any] | None = None
     # Directory that receives a directory report artifact (report.json +
     # data/<reportId>/*.json) on every report flush, in addition to the
     # single-file HTML/JSON report (upstream report artifact store)
-    report_artifact_dir: Optional[str] = None
+    report_artifact_dir: str | None = None
     # Output format hint forwarded to model runtimes (upstream
     # AgentOpt.outputFormat: 'string' | 'object')
-    output_format: Optional[Any] = None
+    output_format: Any | None = None
     # Custom OpenAI client factory (upstream AgentOpt.createOpenAIClient)
-    create_openai_client: Optional[Callable] = None
+    create_openai_client: Callable | None = None
     # Extra context text used by aiAct only (upstream AgentOpt.aiActContext)
-    ai_act_context: Optional[str] = None
+    ai_act_context: str | None = None
     # When False, skip writing the execution dump report file
     # (upstream withAgentDefaults defaults this to false)
     persist_execution_dump: bool = False
@@ -114,9 +116,7 @@ def with_agent_defaults(opts: Any = None):
 
     if isinstance(options, dict):
         report_opts = {
-            "generateReport": _get_option(
-                options, "generateReport", "generate_report"
-            ),
+            "generateReport": _get_option(options, "generateReport", "generate_report"),
             "persistExecutionDump": _get_option(
                 options,
                 "persistExecutionDump",
@@ -125,9 +125,7 @@ def with_agent_defaults(opts: Any = None):
         }
     else:
         report_opts = {
-            "generateReport": _get_option(
-                options, "generate_report", "generateReport"
-            ),
+            "generateReport": _get_option(options, "generate_report", "generateReport"),
             "persistExecutionDump": _get_option(
                 options,
                 "persist_execution_dump",
@@ -141,14 +139,16 @@ def with_agent_defaults(opts: Any = None):
 def normalize_agent_options(options: Any, warn: Callable[[str], None]) -> None:
     """Validate and normalize Agent options in place (upstream helper)."""
     ai_contexts = _get_option(options, "aiContexts", "ai_contexts")
-    if isinstance(options, dict) and ai_contexts is None and (
-        "aiContexts" in options or "ai_contexts" in options
+    if (
+        isinstance(options, dict)
+        and ai_contexts is None
+        and ("aiContexts" in options or "ai_contexts" in options)
     ):
         raise TypeError("opts.aiContexts must be a plain object")
     if ai_contexts is not None and not isinstance(ai_contexts, dict):
         raise TypeError("opts.aiContexts must be a plain object")
 
-    normalized_contexts: Dict[str, Any] = dict(ai_contexts or {})
+    normalized_contexts: dict[str, Any] = dict(ai_contexts or {})
     for key, value in normalized_contexts.items():
         if key not in AGENT_AI_CONTEXT_KEYS:
             raise TypeError(f"Unknown Agent context key: {key}")
@@ -156,9 +156,7 @@ def normalize_agent_options(options: Any, warn: Callable[[str], None]) -> None:
             raise TypeError(f'Agent context "{key}" must be a string')
 
     ai_act_context = _get_option(options, "aiActContext", "ai_act_context")
-    ai_action_context = _get_option(
-        options, "aiActionContext", "ai_action_context"
-    )
+    ai_action_context = _get_option(options, "aiActionContext", "ai_action_context")
     deprecated_option = (
         "aiActContext"
         if ai_act_context is not None
@@ -196,9 +194,7 @@ def normalize_agent_options(options: Any, warn: Callable[[str], None]) -> None:
         _set_option(options, "ai_contexts", normalized_contexts)
         if resolved_ai_act_context is not None:
             _set_option(options, "ai_act_context", resolved_ai_act_context)
-            _set_option(
-                options, "ai_action_context", resolved_ai_act_context
-            )
+            _set_option(options, "ai_action_context", resolved_ai_act_context)
 
     model_config = _get_option(options, "modelConfig", "model_config")
     if (

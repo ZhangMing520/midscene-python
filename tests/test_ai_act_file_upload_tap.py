@@ -1,7 +1,7 @@
 """Synced from upstream
 ``packages/core/tests/unit-test/ai-act-file-upload-tap.test.ts``."""
 
-from typing import Any, List
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -12,7 +12,7 @@ from tests.core_helpers import MockInterface
 class FileChooserInterface(MockInterface):
     def __init__(self):
         super().__init__()
-        self.handlers: List[Any] = []
+        self.handlers: list[Any] = []
 
     async def register_file_chooser_listener(self, handler):
         from midscene.core.types import FileChooserRegistration
@@ -21,7 +21,7 @@ class FileChooserInterface(MockInterface):
             if handler in self.handlers:
                 self.handlers.remove(handler)
 
-        self.accepted_files: List[str] = []
+        self.accepted_files: list[str] = []
         self.handlers.append(handler)
         return FileChooserRegistration(dispose=dispose, get_error=lambda: None)
 
@@ -70,7 +70,7 @@ class TestAiActFileUploadTap:
         upload = tmp_path / "upload.txt"
         upload.write_text("payload")
         agent = _file_chooser_agent()
-        calls: List[tuple] = []
+        calls: list[tuple] = []
 
         async def fake_call(action_type, param):
             calls.append((action_type, param))
@@ -81,9 +81,7 @@ class TestAiActFileUploadTap:
             await agent.interface.handlers[0](FileChooserHandler(accept=accept))
 
         with patch.object(agent, "_call_action_in_action_space", new=fake_call):
-            await agent.ai_tap(
-                "the upload button", {"fileChooserAccept": str(upload)}
-            )
+            await agent.ai_tap("the upload button", {"fileChooserAccept": str(upload)})
 
         assert calls == [("Tap", {"locate": {"prompt": "the upload button"}})]
         assert agent.interface.accepted_files == [str(upload.resolve())]
@@ -113,9 +111,7 @@ class TestAiActFileUploadTap:
 
         agent = _file_chooser_agent()
         action = next(
-            a
-            for a in agent.action_space
-            if a.name == "RegisterFileChooserAccept"
+            a for a in agent.action_space if a.name == "RegisterFileChooserAccept"
         )
 
         agent._active_file_chooser_accepter = _FileChooserAccepter(agent.interface)
@@ -135,16 +131,14 @@ class TestAiActFileUploadTap:
         (tmp_path / "doc.pdf").write_text("pdf")
         agent = _file_chooser_agent()
         action = next(
-            a
-            for a in agent.action_space
-            if a.name == "RegisterFileChooserAccept"
+            a for a in agent.action_space if a.name == "RegisterFileChooserAccept"
         )
         agent._active_file_chooser_accepter = _FileChooserAccepter(agent.interface)
         agent._active_file_chooser_allowed_dir = str(tmp_path)
         await action.execute({"files": "doc.pdf"}, agent.interface, None)
         assert len(agent.interface.handlers) == 1
 
-        recorded: List[str] = []
+        recorded: list[str] = []
 
         async def accept(files):
             recorded.extend(files)

@@ -1,7 +1,7 @@
 """Locate result validation (upstream shared/model-locate-result/validation.ts)."""
 
 import math
-from typing import Any, Dict, List
+from typing import Any
 
 from midscene.core.ai_model.shared.model_locate_result.coordinates import (
     resolve_bounds_type,
@@ -9,7 +9,7 @@ from midscene.core.ai_model.shared.model_locate_result.coordinates import (
 )
 
 
-def assert_locate_result_structure(result: Dict[str, Any]) -> None:
+def assert_locate_result_structure(result: dict[str, Any]) -> None:
     if not isinstance(result, dict):
         raise ValueError(
             f"invalid parsed locate result: expected object, got {result!r}"
@@ -25,8 +25,7 @@ def assert_locate_result_structure(result: Dict[str, Any]) -> None:
         expected_length = 0
     if not expected_length:
         raise ValueError(
-            "invalid parsed locate result: unsupported coordinatesMeta.shape "
-            f"{shape!r}"
+            f"invalid parsed locate result: unsupported coordinatesMeta.shape {shape!r}"
         )
 
     coordinates = result.get("coordinates")
@@ -34,9 +33,7 @@ def assert_locate_result_structure(result: Dict[str, Any]) -> None:
         not isinstance(coordinates, (list, tuple))
         or len(coordinates) != expected_length
         or not all(
-            isinstance(v, (int, float))
-            and not isinstance(v, bool)
-            and math.isfinite(v)
+            isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
             for v in coordinates
         )
     ):
@@ -65,8 +62,8 @@ def assert_locate_result_structure(result: Dict[str, Any]) -> None:
 
 
 def _resolve_coordinate_limits(
-    result: Dict[str, Any], max_x: float, max_y: float
-) -> List[float]:
+    result: dict[str, Any], max_x: float, max_y: float
+) -> list[float]:
     resolved = result["coordinatesMeta"]
     normalized_by = resolved.get("normalizedBy")
     if normalized_by is not None:
@@ -79,7 +76,7 @@ def _resolve_coordinate_limits(
 
 
 def assert_locate_result_coordinate_range_and_order(
-    result: Dict[str, Any], max_x: float, max_y: float
+    result: dict[str, Any], max_x: float, max_y: float
 ) -> None:
     coordinates_meta = result["coordinatesMeta"]
     normalized_by = coordinates_meta.get("normalizedBy")
@@ -106,6 +103,4 @@ def assert_locate_result_coordinate_range_and_order(
     if coordinates_meta["shape"] == "bbox":
         coordinates = result["coordinates"]
         if coordinates[2] < coordinates[0] or coordinates[3] < coordinates[1]:
-            raise ValueError(
-                f"invalid locate bbox coordinate order: {coordinates!r}"
-            )
+            raise ValueError(f"invalid locate bbox coordinate order: {coordinates!r}")

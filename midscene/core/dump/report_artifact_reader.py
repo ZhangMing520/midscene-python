@@ -5,8 +5,9 @@ merge that back into one in-memory dump for export.
 """
 
 import json
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any
 
 from midscene.core.dump.html_utils import (
     extract_report_artifact_path_sync,
@@ -20,7 +21,7 @@ from midscene.core.dump.report_artifact_store import (
 )
 
 
-def _load_report_dump_for_export(input_path: Path) -> Dict[str, Any]:
+def _load_report_dump_for_export(input_path: Path) -> dict[str, Any]:
     """Read a directory artifact or a single-file HTML report into one dump."""
     from midscene.core.dump.report_dump_compactor import (
         _dedupe_executions,
@@ -42,7 +43,7 @@ def _load_report_dump_for_export(input_path: Path) -> Dict[str, Any]:
             for entry in artifact["executions"]
         ]
         merged = dict(dumps[0])
-        executions: List[Dict[str, Any]] = []
+        executions: list[dict[str, Any]] = []
         for dump in dumps:
             executions.extend(dump.get("executions") or [])
         merged["executions"] = _dedupe_executions(executions)
@@ -56,25 +57,21 @@ def _load_report_dump_for_export(input_path: Path) -> Dict[str, Any]:
     return _inline_file_images(dump, [input_path.parent])
 
 
-def read_report_artifact(root: Union[str, Path]) -> Dict[str, Any]:
+def read_report_artifact(root: str | Path) -> dict[str, Any]:
     """Read the manifest plus every execution dump of a directory report."""
     base = Path(root)
     manifest_path = base / "report.json"
     if not manifest_path.exists():
         raise ReportArtifactError(f"No report artifact manifest at {manifest_path}")
-    manifest = validate_manifest(
-        json.loads(manifest_path.read_text(encoding="utf-8"))
-    )
-    executions: List[Dict[str, Any]] = []
+    manifest = validate_manifest(json.loads(manifest_path.read_text(encoding="utf-8")))
+    executions: list[dict[str, Any]] = []
     for group in manifest["groups"]:
         for dump_path in group["dumps"]:
             executions.append(
                 {
                     "group": group["id"],
                     "path": dump_path,
-                    "dump": json.loads(
-                        (base / dump_path).read_text(encoding="utf-8")
-                    ),
+                    "dump": json.loads((base / dump_path).read_text(encoding="utf-8")),
                 }
             )
     runner = None
@@ -86,8 +83,8 @@ def read_report_artifact(root: Union[str, Path]) -> Dict[str, Any]:
 
 
 async def read_report_artifact_manifest_async(
-    report_path: Union[str, Path],
-) -> Optional[Dict[str, Any]]:
+    report_path: str | Path,
+) -> dict[str, Any] | None:
     """Async counterpart for servers; inline HTML has no manifest."""
     # Python's filesystem helpers are synchronous, so the async entry point
     # shares the exact validation logic instead of duplicating it.
@@ -95,8 +92,8 @@ async def read_report_artifact_manifest_async(
 
 
 def read_report_artifact_manifest(
-    report_path: Union[str, Path],
-) -> Optional[Dict[str, Any]]:
+    report_path: str | Path,
+) -> dict[str, Any] | None:
     """Read the versioned directory manifest declared by a report entry."""
     entry_path = Path(report_path)
     manifest_path = entry_path.parent / "report.json"
@@ -109,15 +106,13 @@ def read_report_artifact_manifest(
         json.loads((entry_path.parent / declared).read_text(encoding="utf-8"))
     )
     if manifest.get("entry") != entry_path.name:
-        raise ReportArtifactError(
-            "Report entry does not match its artifact manifest"
-        )
+        raise ReportArtifactError("Report entry does not match its artifact manifest")
     return manifest
 
 
 def stream_report_dump_scripts(
-    report_path: Union[str, Path],
-    visitor: Callable[[Dict[str, str]], bool],
+    report_path: str | Path,
+    visitor: Callable[[dict[str, str]], bool],
 ) -> None:
     """Stream inline HTML dumps or external directory dumps one at a time."""
     entry_path = Path(report_path)
@@ -125,9 +120,7 @@ def stream_report_dump_scripts(
     if manifest is None:
         stream_dump_scripts_sync(
             str(entry_path),
-            lambda dump: (
-                visitor(dump) if "data-group-id" in dump["openTag"] else False
-            ),
+            lambda dump: visitor(dump) if "data-group-id" in dump["openTag"] else False,
         )
         return
     for group in manifest.get("groups") or []:
@@ -138,25 +131,21 @@ def stream_report_dump_scripts(
                 content,
                 {"data-group-id": group["id"], **(group.get("attributes") or {})},
             )
-            if visitor(
-                {"openTag": tag[: tag.index(">") + 1], "content": content}
-            ):
+            if visitor({"openTag": tag[: tag.index(">") + 1], "content": content}):
                 return
 
 
 def read_report_dump_scripts(
-    report_path: Union[str, Path],
-) -> List[Dict[str, str]]:
-    dumps: List[Dict[str, str]] = []
-    stream_report_dump_scripts(
-        report_path, lambda dump: dumps.append(dump) or False
-    )
+    report_path: str | Path,
+) -> list[dict[str, str]]:
+    dumps: list[dict[str, str]] = []
+    stream_report_dump_scripts(report_path, lambda dump: dumps.append(dump) or False)
     return dumps
 
 
 def read_report_runner_dump(
-    report_path: Union[str, Path],
-) -> Optional[Dict[str, Any]]:
+    report_path: str | Path,
+) -> dict[str, Any] | None:
     """Read the test-run summary stored next to a report, when present."""
     entry_path = Path(report_path)
     manifest = read_report_artifact_manifest(entry_path)
@@ -172,9 +161,7 @@ def read_report_runner_dump(
                 continue
             from midscene.core.dump.html_utils import anti_escape_script_tag
 
-            parsed = json.loads(
-                anti_escape_script_tag(content[tag_end + 1 :])
-            )
+            parsed = json.loads(anti_escape_script_tag(content[tag_end + 1 :]))
             if (
                 parsed.get("schemaVersion") != 1
                 or parsed.get("kind") != "test-runner"
@@ -194,19 +181,19 @@ def read_report_runner_dump(
     return json.loads(runner_file.read_text(encoding="utf-8"))
 
 
-def _iter_script_contents(entry_path: Path) -> List[str]:
+def _iter_script_contents(entry_path: Path) -> list[str]:
     """Read script bodies once; only used for small summary tags."""
     from midscene.core.dump.html_utils import _iter_tag_contents
 
     return list(_iter_tag_contents(str(entry_path), "<script", "</script>"))
 
 
-def read_report_action_dump(report_path: Union[str, Path]) -> Dict[str, Any]:
+def read_report_action_dump(report_path: str | Path) -> dict[str, Any]:
     """Read the complete replay, keeping the latest state per execution."""
     entry_path = Path(report_path)
     manifest = read_report_artifact_manifest(entry_path)
-    base: Optional[Dict[str, Any]] = None
-    executions: Dict[str, Dict[str, Any]] = {}
+    base: dict[str, Any] | None = None
+    executions: dict[str, dict[str, Any]] = {}
     anonymous = 0
 
     def collect(content: str) -> None:
@@ -215,9 +202,7 @@ def read_report_action_dump(report_path: Union[str, Path]) -> Dict[str, Any]:
         if not isinstance(parsed, dict) or not isinstance(
             parsed.get("executions"), list
         ):
-            raise ReportArtifactError(
-                f"Invalid report execution data: {entry_path}"
-            )
+            raise ReportArtifactError(f"Invalid report execution data: {entry_path}")
         base = parsed
         for execution in parsed["executions"]:
             key = (
@@ -232,16 +217,13 @@ def read_report_action_dump(report_path: Union[str, Path]) -> Dict[str, Any]:
     if manifest is not None:
         for group in manifest.get("groups") or []:
             for dump_path in group.get("dumps") or []:
-                collect(
-                    (entry_path.parent / dump_path).read_text(encoding="utf-8")
-                )
+                collect((entry_path.parent / dump_path).read_text(encoding="utf-8"))
     else:
         from midscene.core.dump.html_utils import anti_escape_script_tag
 
         stream_dump_scripts_sync(
             str(entry_path),
-            lambda dump: collect(anti_escape_script_tag(dump["content"]))
-            or False,
+            lambda dump: collect(anti_escape_script_tag(dump["content"])) or False,
         )
     if base is None:
         raise ReportArtifactError(f"No replay dump found in report: {entry_path}")

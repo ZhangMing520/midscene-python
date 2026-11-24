@@ -6,7 +6,7 @@ client drives sessions, screenshots and window size over its HTTP endpoints.
 """
 
 import asyncio
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import httpx
 from loguru import logger
@@ -26,8 +26,8 @@ class WebDriverClient:
         self,
         host: str = "localhost",
         port: int = DEFAULT_WDA_PORT,
-        base_url: Optional[str] = None,
-        session_id: Optional[str] = None,
+        base_url: str | None = None,
+        session_id: str | None = None,
         timeout: float = 30.0,
     ):
         self.port = port
@@ -38,13 +38,13 @@ class WebDriverClient:
             if base_url is not None
             else f"http://{host}:{port}"
         )
-        self.session_id: Optional[str] = session_id
+        self.session_id: str | None = session_id
         self.owns_session = session_id is None
-        self._client: Optional[httpx.AsyncClient] = None
-        self._client_loop: Optional[asyncio.AbstractEventLoop] = None
+        self._client: httpx.AsyncClient | None = None
+        self._client_loop: asyncio.AbstractEventLoop | None = None
 
     @property
-    def session_info(self) -> Optional[Dict[str, Any]]:
+    def session_info(self) -> dict[str, Any] | None:
         if not self.session_id:
             return None
         return {"sessionId": self.session_id, "capabilities": {}}
@@ -80,10 +80,10 @@ class WebDriverClient:
         self,
         method: str,
         path: str,
-        body: Optional[Dict[str, Any]] = None,
+        body: dict[str, Any] | None = None,
         *,
-        timeout: Optional[float] = None,
-    ) -> Dict[str, Any]:
+        timeout: float | None = None,
+    ) -> dict[str, Any]:
         url = f"{self.base_url}{path}"
         client = await self._http()
         if timeout is None:
@@ -115,8 +115,8 @@ class WebDriverClient:
     # -- session management --------------------------------------------------
 
     async def create_session(
-        self, capabilities: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, capabilities: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         response = await self.make_request(
             "POST",
             "/session",
@@ -161,7 +161,7 @@ class WebDriverClient:
             )
         return payload
 
-    async def get_window_size(self) -> Tuple[int, int]:
+    async def get_window_size(self) -> tuple[int, int]:
         self._ensure_session()
         try:
             response = await self.make_request(
@@ -177,7 +177,7 @@ class WebDriverClient:
             size = response.get("value") or response
             return int(size["width"]), int(size["height"])
 
-    async def get_device_info(self) -> Optional[Dict[str, str]]:
+    async def get_device_info(self) -> dict[str, str] | None:
         try:
             status = await self.make_request("GET", "/status")
             device = (status or {}).get("device")

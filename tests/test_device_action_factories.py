@@ -1,13 +1,13 @@
 """Port of upstream packages/core/tests/unit-test/device/*.test.ts."""
 
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
 
 SCREEN_SIZE = {"width": 1000, "height": 800}
 
 
-def _located_at(x: float, y: float) -> Dict[str, Any]:
+def _located_at(x: float, y: float) -> dict[str, Any]:
     return {"center": [x, y]}
 
 
@@ -21,7 +21,7 @@ class TestDefineActionsFromInputPrimitives:
         """executes middle click at the located point when supported"""
         from midscene.core.device import define_actions_from_input_primitives
 
-        calls: List[Dict[str, Any]] = []
+        calls: list[dict[str, Any]] = []
 
         actions = define_actions_from_input_primitives(
             {
@@ -45,9 +45,7 @@ class TestDefineActionsFromInputPrimitives:
         """omits middle click on devices without the primitive"""
         from midscene.core.device import define_actions_from_input_primitives
 
-        actions = define_actions_from_input_primitives(
-            {"pointer": {"tap": _noop}}
-        )
+        actions = define_actions_from_input_primitives({"pointer": {"tap": _noop}})
         assert not any(action.name == "MiddleClick" for action in actions)
 
     @pytest.mark.asyncio
@@ -55,7 +53,7 @@ class TestDefineActionsFromInputPrimitives:
         """uses desktop guidance for a pointer swipe"""
         from midscene.core.device import define_actions_from_input_primitives
 
-        calls: List[tuple] = []
+        calls: list[tuple] = []
 
         actions = define_actions_from_input_primitives(
             {
@@ -87,8 +85,8 @@ class TestDefineActionsFromInputPrimitives:
         """keeps touch swipe behavior and guidance when both inputs exist"""
         from midscene.core.device import define_actions_from_input_primitives
 
-        pointer_calls: List[tuple] = []
-        touch_calls: List[tuple] = []
+        pointer_calls: list[tuple] = []
+        touch_calls: list[tuple] = []
 
         actions = define_actions_from_input_primitives(
             {
@@ -126,7 +124,7 @@ class TestDefineActionsFromInputPrimitives:
         """should expose configured system input primitives as actions"""
         from midscene.core.device import define_actions_from_input_primitives
 
-        calls: List[str] = []
+        calls: list[str] = []
 
         actions = define_actions_from_input_primitives(
             {
@@ -279,15 +277,13 @@ class TestDefineActionsFromInputPrimitives:
 
 class TestInputActionWithModeOption:
     @staticmethod
-    def _create_input_action(clear_calls: List[Any], type_calls: List[tuple]):
+    def _create_input_action(clear_calls: list[Any], type_calls: list[tuple]):
         from midscene.core.device import define_action_input
 
         return define_action_input(
             {
                 "clearInput": lambda target: clear_calls.append(target),
-                "typeText": lambda value, options: type_calls.append(
-                    (value, options)
-                ),
+                "typeText": lambda value, options: type_calls.append((value, options)),
                 "keyboardPress": _noop,
             }
         )
@@ -295,8 +291,8 @@ class TestInputActionWithModeOption:
     @pytest.mark.asyncio
     async def test_should_request_replace_when_mode_is_replace(self):
         """should request replace when mode is replace"""
-        clear_calls: List[Any] = []
-        type_calls: List[tuple] = []
+        clear_calls: list[Any] = []
+        type_calls: list[tuple] = []
         input_action = self._create_input_action(clear_calls, type_calls)
 
         await input_action.execute(
@@ -314,8 +310,8 @@ class TestInputActionWithModeOption:
     @pytest.mark.asyncio
     async def test_should_only_clear_input_when_mode_is_clear(self):
         """should only clear input when mode is clear"""
-        clear_calls: List[Any] = []
-        type_calls: List[tuple] = []
+        clear_calls: list[Any] = []
+        type_calls: list[tuple] = []
         input_action = self._create_input_action(clear_calls, type_calls)
 
         await input_action.execute(
@@ -332,8 +328,8 @@ class TestInputActionWithModeOption:
     @pytest.mark.asyncio
     async def test_should_skip_clear_input_when_mode_is_type_only(self):
         """should skip clearInput when mode is typeOnly"""
-        clear_calls: List[Any] = []
-        type_calls: List[tuple] = []
+        clear_calls: list[Any] = []
+        type_calls: list[tuple] = []
         input_action = self._create_input_action(clear_calls, type_calls)
 
         await input_action.execute(
@@ -351,13 +347,11 @@ class TestInputActionWithModeOption:
     @pytest.mark.asyncio
     async def test_should_request_replace_by_default_when_mode_is_not_specified(self):
         """should request replace by default when mode is not specified"""
-        clear_calls: List[Any] = []
-        type_calls: List[tuple] = []
+        clear_calls: list[Any] = []
+        type_calls: list[tuple] = []
         input_action = self._create_input_action(clear_calls, type_calls)
 
-        await input_action.execute(
-            {"value": "test value", "locate": {"id": "test-id"}}
-        )
+        await input_action.execute({"value": "test value", "locate": {"id": "test-id"}})
 
         assert clear_calls == []
         assert type_calls[0][0] == "test value"
@@ -450,9 +444,7 @@ class TestNormalizeMobileSwipeParam:
             "repeat_count": 2,
         }
 
-    @pytest.mark.parametrize(
-        "case", cases, ids=[case["name"] for case in cases]
-    )
+    @pytest.mark.parametrize("case", cases, ids=[case["name"] for case in cases])
     def test_rejects_invalid_parameters(self, case):
         """rejects invalid swipe parameters"""
         from midscene.core.device import normalize_mobile_swipe_param

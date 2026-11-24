@@ -18,9 +18,7 @@ class TestOpenRouterBudget:
             "reasoningEffort": "high",
             "reasoningBudget": 64,
         }
-        params = get_model_adapter("qwen4").build_chat_completion_params(
-            {}, openrouter
-        )
+        params = get_model_adapter("qwen4").build_chat_completion_params({}, openrouter)
         assert params["reasoning"] == {
             "enabled": True,
             "effort": "high",
@@ -52,4 +50,3 @@ class TestOpenRouterBudget:
         )
         assert "reasoning" not in native
         assert native["enable_thinking"] is True
-

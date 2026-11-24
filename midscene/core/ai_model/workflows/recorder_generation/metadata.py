@@ -1,7 +1,7 @@
 """Recorder session metadata generation (upstream recorder-generation/metadata.ts)."""
 
-from typing import Any, Dict, List, Optional
 import json
+from typing import Any
 
 from midscene.core.ai_model.service_caller.model_call import (
     call_ai_with_object_response,
@@ -22,7 +22,7 @@ Summary:
 Respond with a JSON object containing exactly "title" and "description"."""
 
 
-def _event_screenshot(event: Dict[str, Any]) -> Optional[str]:
+def _event_screenshot(event: dict[str, Any]) -> str | None:
     for key in ("screenshot", "imageBase64", "screenshotBase64"):
         value = event.get(key)
         if isinstance(value, str) and value:
@@ -35,12 +35,10 @@ def _event_screenshot(event: Dict[str, Any]) -> Optional[str]:
     return None
 
 
-def get_screenshots_for_llm(
-    events: List[Dict[str, Any]], limit: int = 1
-) -> List[str]:
+def get_screenshots_for_llm(events: list[dict[str, Any]], limit: int = 1) -> list[str]:
     if limit <= 0:
         return []
-    shots: List[str] = []
+    shots: list[str] = []
     for event in events:
         shot = _event_screenshot(event)
         if shot:
@@ -51,10 +49,10 @@ def get_screenshots_for_llm(
 
 
 def summarize_recorder_events(
-    target: Dict[str, Any],
-    events: List[Dict[str, Any]],
-    fallback_name: Optional[str] = None,
-) -> Dict[str, Any]:
+    target: dict[str, Any],
+    events: list[dict[str, Any]],
+    fallback_name: str | None = None,
+) -> dict[str, Any]:
     navigation = [event for event in events if event.get("type") == "navigation"]
     clicks = [event for event in events if event.get("type") == "click"]
     inputs = [event for event in events if event.get("type") == "input"]
@@ -95,7 +93,7 @@ def summarize_recorder_events(
     }
 
 
-def _event_description(event: Dict[str, Any]) -> str:
+def _event_description(event: dict[str, Any]) -> str:
     semantic = event.get("semantic") or {}
     if semantic.get("status") == "ready" and semantic.get("elementDescription"):
         return semantic["elementDescription"]
@@ -107,30 +105,26 @@ def normalize_metadata_value(value: Any) -> str:
 
 
 async def generate_recorder_session_metadata(
-    target: Dict[str, Any],
-    events: List[Dict[str, Any]],
+    target: dict[str, Any],
+    events: list[dict[str, Any]],
     model_runtime: Any,
-    fallback_name: Optional[str] = None,
+    fallback_name: str | None = None,
     max_screenshots: int = 1,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Generate a title/description pair for a recorded session."""
     if not events:
-        raise ValueError(
-            "generate_recorder_session_metadata: events are required."
-        )
+        raise ValueError("generate_recorder_session_metadata: events are required.")
     if not model_runtime.config.get("modelName"):
         raise ValueError(
             "generate_recorder_session_metadata: modelConfig.modelName is required."
         )
 
     summary = summarize_recorder_events(target, events, fallback_name)
-    content: List[Dict[str, Any]] = [
+    content: list[dict[str, Any]] = [
         {
             "type": "text",
             "text": SESSION_METADATA_PROMPT.format(
-                summary=json.dumps(
-                    summary, indent=2, ensure_ascii=False, default=str
-                )
+                summary=json.dumps(summary, indent=2, ensure_ascii=False, default=str)
             ),
         }
     ]

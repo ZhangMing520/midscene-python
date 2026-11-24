@@ -108,9 +108,18 @@ def test_uses_directory_mode_and_rejects_ambiguous_executions_in_one_scope():
     pass
 
 
-@pytest.mark.parametrize("mode", ["sync", pytest.param("async", marks=pytest.mark.skip(
-    reason="Python report publication is synchronous; there is no assembleAsync"
-))])
+@pytest.mark.parametrize(
+    "mode",
+    [
+        "sync",
+        pytest.param(
+            "async",
+            marks=pytest.mark.skip(
+                reason="Python report publication is synchronous; there is no assembleAsync"
+            ),
+        ),
+    ],
+)
 @pytest.mark.parametrize("output_format", ["single-html", "html-and-external-assets"])
 def test_preserves_unrelated_sibling_files_when_sync_assembly_publishes_either_format(
     tmp_path, mode, output_format
@@ -123,9 +132,7 @@ def test_preserves_unrelated_sibling_files_when_sync_assembly_publishes_either_f
         if output_format == "single-html"
         else output_dir / "run.html"
     )
-    sentinel = (
-        sibling / "user-notes.txt" if output_format == "single-html" else sibling
-    )
+    sentinel = sibling / "user-notes.txt" if output_format == "single-html" else sibling
     if output_format == "single-html":
         sibling.mkdir()
     sentinel.write_text("unrelated", encoding="utf-8")
@@ -190,8 +197,6 @@ def test_preserves_the_sibling_artifact_when_overwrite_switches_output_modes(tmp
     assert Path(standalone).exists()
     assert Path(directory).exists()
 
-    restored = export_report_artifact(
-        source, output_dir, "mode-switch", overwrite=True
-    )
+    restored = export_report_artifact(source, output_dir, "mode-switch", overwrite=True)
     assert (output_dir / "mode-switch").exists()
     assert Path(restored).exists()

@@ -7,11 +7,11 @@ runtime does not depend on Zod. Only the value-shape semantics are ported.
 
 import json
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 _CLI_NUMBER_PATTERN = re.compile(r"^-?\d+(\.\d+)?$")
 
-Field = Dict[str, Any]
+Field = dict[str, Any]
 
 
 def _parse_json_value(raw: str) -> Any:
@@ -33,14 +33,14 @@ def parse_value(raw: str) -> Any:
     return raw
 
 
-def _type_names(field: Field) -> List[str]:
+def _type_names(field: Field) -> list[str]:
     raw = field.get("type", "any")
     if isinstance(raw, (list, tuple)):
         return [str(item).strip() for item in raw]
     return [part.strip() for part in str(raw).split("|")]
 
 
-def _union_options(field: Field) -> Optional[List[Field]]:
+def _union_options(field: Field) -> list[Field] | None:
     """Return the structured alternatives of a union descriptor."""
     options = field.get("options")
     if not isinstance(options, (list, tuple)):
@@ -49,7 +49,7 @@ def _union_options(field: Field) -> Optional[List[Field]]:
     return alternatives or None
 
 
-def _accepts_type(type_name: str, field: Field, value: Any) -> Optional[bool]:
+def _accepts_type(type_name: str, field: Field, value: Any) -> bool | None:
     name = type_name.strip().lower()
     if name.endswith("[]"):
         if not isinstance(value, list):
@@ -89,7 +89,7 @@ def _accepts_type(type_name: str, field: Field, value: Any) -> Optional[bool]:
     return None
 
 
-def _accepts_value(field: Field, value: Any) -> Optional[bool]:
+def _accepts_value(field: Field, value: Any) -> bool | None:
     """Only inspect scalar constraints; collections keep full validation."""
     options = _union_options(field)
     if options is not None:
@@ -116,20 +116,20 @@ def _uses_legacy_inference(field: Field) -> bool:
     return any(name.lower() in ("any", "unknown") for name in _type_names(field))
 
 
-def _get_input_fields(field: Field) -> List[Field]:
+def _get_input_fields(field: Field) -> list[Field]:
     # Keep the actual alternatives: a string literal is not an arbitrary
     # string, and a repeated tuple argument must retain its position-specific
     # schema.
     options = _union_options(field)
     if options is None:
         return [field]
-    flattened: List[Field] = []
+    flattened: list[Field] = []
     for option in options:
         flattened.extend(_get_input_fields(option))
     return flattened
 
 
-def _collection_kind(field: Field) -> Optional[str]:
+def _collection_kind(field: Field) -> str | None:
     for name in _type_names(field):
         lowered = name.lower()
         if lowered == "tuple":
@@ -139,7 +139,7 @@ def _collection_kind(field: Field) -> Optional[str]:
     return None
 
 
-def _get_repeated_input_fields(fields: List[Field], index: int) -> List[Field]:
+def _get_repeated_input_fields(fields: list[Field], index: int) -> list[Field]:
     collections = [
         (field, kind)
         for field in fields
@@ -147,7 +147,7 @@ def _get_repeated_input_fields(fields: List[Field], index: int) -> List[Field]:
     ]
     if not collections:
         return fields
-    repeated: List[Field] = []
+    repeated: list[Field] = []
     for field, kind in collections:
         if kind == "tuple":
             items = field.get("items")
@@ -178,7 +178,7 @@ def _get_repeated_input_fields(fields: List[Field], index: int) -> List[Field]:
 
 
 def parse_cli_value(
-    raw: str, field: Optional[Field] = None, index: Optional[int] = None
+    raw: str, field: Field | None = None, index: int | None = None
 ) -> Any:
     """Decode one CLI token; index is supplied only for repeated options."""
     if not field:
@@ -186,8 +186,7 @@ def parse_cli_value(
     parsed_json = _parse_json_value(raw)
     whole_fields = _get_input_fields(field)
     if parsed_json != raw and any(
-        _accepts_value(input_field, parsed_json) is True
-        for input_field in whole_fields
+        _accepts_value(input_field, parsed_json) is True for input_field in whole_fields
     ):
         return parsed_json
 
@@ -196,13 +195,15 @@ def parse_cli_value(
         if index is None
         else _get_repeated_input_fields(whole_fields, index)
     )
-    candidates: List[Any] = [parsed_json, raw] if parsed_json != raw else [raw]
+    candidates: list[Any] = [parsed_json, raw] if parsed_json != raw else [raw]
     if _CLI_NUMBER_PATTERN.match(raw):
         candidates.append(int(raw) if "." not in raw else float(raw))
     if raw in ("true", "false"):
         candidates.append(raw == "true")
     for candidate in candidates:
-        if any(_accepts_value(input_field, candidate) is True for input_field in fields):
+        if any(
+            _accepts_value(input_field, candidate) is True for input_field in fields
+        ):
             return candidate
     if any(_uses_legacy_inference(input_field) for input_field in fields):
         return parse_value(raw)

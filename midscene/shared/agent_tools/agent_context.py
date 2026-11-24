@@ -1,8 +1,8 @@
 """Agent-level AI context keys (upstream agent-tools/agent-context.ts)."""
 
-from typing import Any, List
+from typing import Any
 
-AI_API_NAMES: List[str] = [
+AI_API_NAMES: list[str] = [
     "aiAct",
     "aiTap",
     "aiRightClick",
@@ -25,7 +25,7 @@ AI_API_NAMES: List[str] = [
     "aiWaitFor",
 ]
 
-AGENT_AI_CONTEXT_KEYS: List[str] = ["default", *AI_API_NAMES]
+AGENT_AI_CONTEXT_KEYS: list[str] = ["default", *AI_API_NAMES]
 
 
 def is_agent_ai_context_key(value: Any) -> bool:

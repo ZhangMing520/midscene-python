@@ -1,6 +1,6 @@
 """WDA connection option validation (upstream wda-options.ts)."""
 
-from typing import Any, Dict, Optional
+from typing import Any
 from urllib.parse import urlparse
 
 
@@ -22,7 +22,7 @@ def normalize_mjpeg_stream_url(value: str) -> str:
 
 
 def assert_wda_connection_options(
-    options: Optional[Dict[str, Any]] = None,
+    options: dict[str, Any] | None = None,
 ) -> None:
     """Reject mutually exclusive WDA connection settings (upstream)."""
     options = options or {}

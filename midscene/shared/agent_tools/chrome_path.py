@@ -2,7 +2,6 @@
 
 import os
 import sys
-from typing import List, Optional
 
 from midscene.shared.logger import get_logger
 
@@ -11,10 +10,10 @@ MIDSCENE_MCP_CHROME_PATH = "MIDSCENE_MCP_CHROME_PATH"
 
 _logger = get_logger("agent-tools:chrome-path")
 _has_warned_legacy_chrome_path = False
-_cached_system_chrome_path: Optional[str] = None
+_cached_system_chrome_path: str | None = None
 
 
-def get_system_chrome_path() -> Optional[str]:
+def get_system_chrome_path() -> str | None:
     global _cached_system_chrome_path
     if _cached_system_chrome_path is not None:
         return _cached_system_chrome_path
@@ -35,7 +34,7 @@ def get_system_chrome_path() -> Optional[str]:
         ],
     }
     if platform.startswith("linux"):
-        paths: List[str] = [
+        paths: list[str] = [
             "/opt/google/chrome/chrome",
             "/opt/google/chrome/google-chrome",
             "/usr/bin/google-chrome-stable",
@@ -59,14 +58,9 @@ def resolve_chrome_path() -> str:
     primary_env_path = os.environ.get(MIDSCENE_CHROME_PATH)
     legacy_env_path = os.environ.get(MIDSCENE_MCP_CHROME_PATH)
     env_path = primary_env_path or legacy_env_path
-    if (
-        not primary_env_path
-        and legacy_env_path
-        and not _has_warned_legacy_chrome_path
-    ):
+    if not primary_env_path and legacy_env_path and not _has_warned_legacy_chrome_path:
         _logger.warning(
-            "MIDSCENE_MCP_CHROME_PATH is deprecated. "
-            "Use MIDSCENE_CHROME_PATH instead."
+            "MIDSCENE_MCP_CHROME_PATH is deprecated. Use MIDSCENE_CHROME_PATH instead."
         )
         _has_warned_legacy_chrome_path = True
     if env_path and env_path != "auto" and os.path.exists(env_path):

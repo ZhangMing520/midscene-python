@@ -2,7 +2,6 @@
 
 import re
 
-
 # Task types for model-fallback resolution (upstream ModelTaskType)
 TASK_TYPE_PLANNING = "planning"
 

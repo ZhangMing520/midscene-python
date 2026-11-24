@@ -5,17 +5,18 @@ Upstream declares Zod schemas; the Python port uses plain field descriptors
 framework has no runtime dependency on a schema library.
 """
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable, Dict, List, Optional, TypedDict
+from typing import Any, TypedDict
 
 # Default timeout constants for app loading verification.
 DEFAULT_APP_LOADING_TIMEOUT_MS = 10000
 DEFAULT_APP_LOADING_CHECK_INTERVAL_MS = 2000
 
-ToolSchema = Dict[str, Dict[str, Any]]
-ToolCliOption = Dict[str, Any]
-ToolCliMetadata = Dict[str, Any]
-ToolDefaults = Dict[str, Dict[str, Any]]
+ToolSchema = dict[str, dict[str, Any]]
+ToolCliOption = dict[str, Any]
+ToolCliMetadata = dict[str, Any]
+ToolDefaults = dict[str, dict[str, Any]]
 
 
 class ToolResult:
@@ -23,16 +24,16 @@ class ToolResult:
 
     def __init__(
         self,
-        content: Optional[List[Dict[str, Any]]] = None,
+        content: list[dict[str, Any]] | None = None,
         is_error: bool = False,
-        meta: Optional[Dict[str, Any]] = None,
+        meta: dict[str, Any] | None = None,
     ) -> None:
         self.content = content or []
         self.is_error = is_error
         self._meta = meta
 
-    def to_dict(self) -> Dict[str, Any]:
-        payload: Dict[str, Any] = {"content": self.content}
+    def to_dict(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {"content": self.content}
         if self.is_error:
             payload["isError"] = True
         if self._meta is not None:
@@ -40,7 +41,7 @@ class ToolResult:
         return payload
 
 
-ToolHandler = Callable[[Dict[str, Any]], Awaitable[ToolResult]]
+ToolHandler = Callable[[dict[str, Any]], Awaitable[ToolResult]]
 
 
 @dataclass
@@ -51,7 +52,7 @@ class ToolDefinition:
     description: str
     schema: ToolSchema
     handler: ToolHandler
-    cli: Optional[ToolCliMetadata] = None
+    cli: ToolCliMetadata | None = None
 
 
 # Structural placeholders. Platform agents/devices are duck-typed in Python.
@@ -68,9 +69,9 @@ class ActionSpaceItem:
     name: str
     description: str = ""
     param_schema: ToolSchema = field(default_factory=dict)
-    locate_fields: List[str] = field(default_factory=list)
-    sample: Optional[Dict[str, Any]] = None
-    interface_alias: Optional[str] = None
+    locate_fields: list[str] = field(default_factory=list)
+    sample: dict[str, Any] | None = None
+    interface_alias: str | None = None
 
 
 class UIObservationFrame(TypedDict):
@@ -88,8 +89,8 @@ class UIObservationRecord(TypedDict):
     version: int
     startedAt: float
     endedAt: float
-    frames: List[UIObservationFrame]
-    shotSize: Dict[str, float]
+    frames: list[UIObservationFrame]
+    shotSize: dict[str, float]
     shrunkShotToLogicalRatio: float
 
 
@@ -97,12 +98,12 @@ def schema_field(
     type_name: str = "any",
     description: str = "",
     optional: bool = False,
-    enum: Optional[List[Any]] = None,
-    items: Optional[Dict[str, Any]] = None,
+    enum: list[Any] | None = None,
+    items: dict[str, Any] | None = None,
     value: Any = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Build a plain schema field descriptor (small stand-in for ``z.*``)."""
-    result: Dict[str, Any] = {"type": type_name}
+    result: dict[str, Any] = {"type": type_name}
     if description:
         result["description"] = description
     if optional:

@@ -1,6 +1,6 @@
 """DeepSeek adapter (upstream ai-model/models/deepseek/adapter.ts)."""
 
-from typing import Any, Dict
+from typing import Any
 
 from midscene.core.ai_model.model_adapter.chat_completion import (
     _json_object_config,
@@ -18,23 +18,23 @@ from midscene.core.ai_model.model_adapter.temperature_with_semantic_retry import
 from midscene.core.ai_model.model_adapter.types import (
     ModelRequestUserConfig,
 )
-from midscene.core.ai_model.models.default import (
-    build_chat_completion_params_from_context,
-)
 from midscene.core.ai_model.models.deepseek.locate_protocol import (
     DEEPSEEK_ELEMENT_LOCATE_FORMAT,
     DEEPSEEK_ELEMENT_LOCATE_PROTOCOL,
     DEEPSEEK_SEARCH_AREA_LOCATE_FORMAT,
     DEEPSEEK_SEARCH_AREA_LOCATE_PROTOCOL,
 )
+from midscene.core.ai_model.models.default import (
+    build_chat_completion_params_from_context,
+)
 
 
 def _build_deepseek_params(
-    midscene_defaults: Dict[str, Any],
+    midscene_defaults: dict[str, Any],
     user_config: ModelRequestUserConfig,
     expected_json_object_response: bool = False,
-) -> Dict[str, Any]:
-    config: Dict[str, Any] = dict(midscene_defaults)
+) -> dict[str, Any]:
+    config: dict[str, Any] = dict(midscene_defaults)
     reasoning_enabled = _reasoning_enabled(user_config)
     is_thinking_mode = reasoning_enabled is True or reasoning_enabled == "default"
     # DeepSeek thinking mode does not support temperature; omit it.

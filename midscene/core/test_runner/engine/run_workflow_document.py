@@ -1,7 +1,8 @@
 """Run a whole workflow document (upstream engine/run-workflow-document.ts)."""
 
 import inspect
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 from midscene.core.test_runner.engine.document_runtime import (
     create_document_runtime,
@@ -14,11 +15,14 @@ from midscene.core.test_runner.engine.execution_failure import (
 from midscene.core.test_runner.engine.result_metadata import decide_retry
 from midscene.core.test_runner.engine.run_collected_case import run_collected_case
 from midscene.core.test_runner.errors import is_resource_recovery_error
-from midscene.core.test_runner.parser.types import CollectedCase, CollectedWorkflowDocument
+from midscene.core.test_runner.parser.types import (
+    CollectedCase,
+    CollectedWorkflowDocument,
+)
 from midscene.core.types import AbortSignal
 
 
-async def _call(callback: Optional[Callable[..., Any]], *args: Any) -> Any:
+async def _call(callback: Callable[..., Any] | None, *args: Any) -> Any:
     if callback is None:
         return None
     result = callback(*args)
@@ -31,9 +35,9 @@ def _as_not_run(
     collected_case: CollectedCase,
     project_name: str,
     reason: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     definition = collected_case["definition"]
-    outcome: Dict[str, Any] = {
+    outcome: dict[str, Any] = {
         "caseId": collected_case["caseId"],
         "projectName": project_name,
         "name": definition.get("name"),
@@ -51,11 +55,11 @@ def _case_outcome(
     collected_case: CollectedCase,
     project_name: str,
     status: str,
-    run: Dict[str, Any],
-    attempts: List[Dict[str, Any]],
-) -> Dict[str, Any]:
+    run: dict[str, Any],
+    attempts: list[dict[str, Any]],
+) -> dict[str, Any]:
     definition = collected_case["definition"]
-    outcome: Dict[str, Any] = {
+    outcome: dict[str, Any] = {
         "caseId": collected_case["caseId"],
         "projectName": project_name,
         "name": definition.get("name"),
@@ -72,16 +76,14 @@ def _case_outcome(
 
 async def run_workflow_document(
     document: CollectedWorkflowDocument,
-    options: Dict[str, Any],
-) -> Dict[str, Any]:
+    options: dict[str, Any],
+) -> dict[str, Any]:
     signal = options.get("signal") or AbortSignal()
     create_document_run_id = options.get("createDocumentRunId")
     create_case_run_id = options.get("createCaseRunId")
     project = options.get("project") or {}
     project_name = project.get("name") or document.get("projectId")
-    retry = options.get(
-        "retry", project.get("retry", 0)
-    )
+    retry = options.get("retry", project.get("retry", 0))
     if not isinstance(retry, int) or isinstance(retry, bool) or retry < 0:
         raise TypeError("Workflow document retry must be a non-negative integer.")
 
@@ -108,7 +110,7 @@ async def run_workflow_document(
         },
     )
 
-    async def on_document_result(result: Dict[str, Any]) -> None:
+    async def on_document_result(result: dict[str, Any]) -> None:
         setup = options.get("documentSetup")
         if setup is not None:
             on_document_result_fn = (
@@ -122,26 +124,24 @@ async def run_workflow_document(
 
     runtime._options["onResult"] = on_document_result
 
-    cases: List[Dict[str, Any]] = []
+    cases: list[dict[str, Any]] = []
     runtime_started = False
-    document_result: Optional[Dict[str, Any]] = None
-    execution_errors: List[Any] = []
+    document_result: dict[str, Any] | None = None
+    execution_errors: list[Any] = []
     fatal_error = False
-    document_stop_reason: Optional[str] = None
+    document_stop_reason: str | None = None
 
     def stop_reason() -> str:
-        return options.get("stopReason")() if options.get("stopReason") else "interrupted"
+        return (
+            options.get("stopReason")() if options.get("stopReason") else "interrupted"
+        )
 
     try:
         runtime_started = True
         started_document = await runtime.start()
 
         if not runtime.can_run_cases:
-            reason = (
-                stop_reason()
-                if signal.aborted
-                else "document-start-failed"
-            )
+            reason = stop_reason() if signal.aborted else "document-start-failed"
             for collected_case in document["cases"]:
                 cases.append(_as_not_run(collected_case, project_name, reason))
         else:
@@ -159,21 +159,19 @@ async def run_workflow_document(
                         reason = "fatal-error"
                     else:
                         reason = document_stop_reason or stop_reason()
-                    outcome = _as_not_run(
-                        collected_case, project_name, reason
-                    )
+                    outcome = _as_not_run(collected_case, project_name, reason)
                     cases.append(outcome)
                     await _call(options.get("onCaseOutcome"), outcome)
                     continue
 
                 await _call(options.get("onCaseStart"), collected_case)
-                attempts: List[Dict[str, Any]] = []
+                attempts: list[dict[str, Any]] = []
                 for attempt_index in range(retry + 1):
                     attempt_fatal_error = False
-                    attempt_failure: Optional[WorkflowExecutionFailure] = None
+                    attempt_failure: WorkflowExecutionFailure | None = None
 
                     def make_on_result(index: int):
-                        async def on_result(result: Dict[str, Any]) -> None:
+                        async def on_result(result: dict[str, Any]) -> None:
                             nonlocal attempt_fatal_error
                             is_fatal = options.get("isFatalError")
                             attempt_fatal_error = (
@@ -191,15 +189,11 @@ async def run_workflow_document(
                                     "operationPending": bool(
                                         result.get("pendingOperations")
                                     ),
-                                    "cleanupFailed": cleanup.get("status")
-                                    == "failed"
+                                    "cleanupFailed": cleanup.get("status") == "failed"
                                     or bool(result.get("teardownErrors")),
                                     "infrastructureError": any(
                                         not is_resource_recovery_error(error)
-                                        for error in result.get(
-                                            "executionErrors"
-                                        )
-                                        or []
+                                        for error in result.get("executionErrors") or []
                                     ),
                                     "fatalError": attempt_fatal_error,
                                     "interrupted": signal.aborted,
@@ -226,12 +220,8 @@ async def run_workflow_document(
                                 "projectName": project_name,
                                 "attemptIndex": attempt_index,
                                 "signal": runtime.signal,
-                                "defaultTimeoutMs": options.get(
-                                    "defaultTimeoutMs"
-                                ),
-                                "teardownTimeoutMs": options.get(
-                                    "teardownTimeoutMs"
-                                ),
+                                "defaultTimeoutMs": options.get("defaultTimeoutMs"),
+                                "teardownTimeoutMs": options.get("teardownTimeoutMs"),
                                 "onStepStart": options.get("onStepStart"),
                                 "onStepResult": options.get("onStepResult"),
                                 "onResult": make_on_result(attempt_index),
@@ -246,8 +236,10 @@ async def run_workflow_document(
                                 ),
                                 "createRunId": (
                                     (
-                                        lambda: create_case_run_id(
-                                            collected_case, attempt_index
+                                        lambda collected_case=collected_case, attempt_index=attempt_index: (
+                                            create_case_run_id(
+                                                collected_case, attempt_index
+                                            )
                                         )
                                     )
                                     if create_case_run_id
@@ -292,13 +284,10 @@ async def run_workflow_document(
                             "retryCount": retry,
                             "attemptIndex": attempt_index,
                             "status": run.get("status"),
-                            "cleanupPending": cleanup.get("status")
-                            == "pending",
+                            "cleanupPending": cleanup.get("status") == "pending",
                             "cleanupFailed": cleanup.get("status") == "failed"
                             or bool(run.get("teardownErrors")),
-                            "operationPending": bool(
-                                run.get("pendingOperations")
-                            ),
+                            "operationPending": bool(run.get("pendingOperations")),
                             "fatalError": fatal_error
                             or any(
                                 is_resource_recovery_error(error)
@@ -324,9 +313,7 @@ async def run_workflow_document(
                     attempts,
                 )
                 cases.append(outcome)
-                retry_stop_reason = (run.get("retryDecision") or {}).get(
-                    "reason"
-                )
+                retry_stop_reason = (run.get("retryDecision") or {}).get("reason")
                 if retry_stop_reason in (
                     "cleanup-pending",
                     "cleanup-failed",
@@ -336,8 +323,7 @@ async def run_workflow_document(
                     document_stop_reason = retry_stop_reason
                 elif (
                     outcome.get("status") == "failed"
-                    and collected_case["definition"].get("onFailure")
-                    == "stop-document"
+                    and collected_case["definition"].get("onFailure") == "stop-document"
                 ):
                     document_stop_reason = "bail"
                 else:
@@ -380,9 +366,7 @@ async def run_workflow_document(
                     _as_not_run(
                         item,
                         project_name,
-                        "operation-pending"
-                        if all_resource_recovery
-                        else "interrupted",
+                        "operation-pending" if all_resource_recovery else "interrupted",
                     )
                 )
         document_result["status"] = "failed"

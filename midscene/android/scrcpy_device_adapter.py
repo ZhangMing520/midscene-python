@@ -13,8 +13,9 @@ import contextlib
 import inspect
 import math
 import time
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Mapping, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -47,9 +48,7 @@ def format_scrcpy_fresh_frame_failure(
     timeout_ms = getattr(error, "timeout_ms", None)
     if not isinstance(timeout_ms, (int, float)) or not math.isfinite(timeout_ms):
         timeout_ms = (
-            5_000
-            if getattr(error, "failure_kind", None) == "stream-startup"
-            else 300
+            5_000 if getattr(error, "failure_kind", None) == "stream-startup" else 300
         )
 
     if getattr(error, "failure_kind", None) == "stream-startup":
@@ -61,9 +60,7 @@ def format_scrcpy_fresh_frame_failure(
         )
 
     bit_rate_description = ""
-    if isinstance(video_bit_rate, (int, float)) and math.isfinite(
-        video_bit_rate
-    ):
+    if isinstance(video_bit_rate, (int, float)) and math.isfinite(video_bit_rate):
         bit_rate_description = (
             f" Current videoBitRate: {_format_js_number(video_bit_rate)} bps "
             f"({_format_js_number(video_bit_rate / 1_000_000)} Mbps)."
@@ -85,7 +82,7 @@ class ResolvedScrcpyConfig:
     idle_timeout_ms: int
     video_bit_rate: int
     video_reset_frame_timeout_ms: int
-    frame_rate: Optional[int] = None
+    frame_rate: int | None = None
 
     # camelCase aliases for upstream parity
     @property
@@ -105,13 +102,11 @@ class ResolvedScrcpyConfig:
         return self.video_reset_frame_timeout_ms
 
     @property
-    def frameRate(self) -> Optional[int]:
+    def frameRate(self) -> int | None:
         return self.frame_rate
 
 
-def _config_value(
-    config: Any, snake_name: str, camel_name: str, default: Any
-) -> Any:
+def _config_value(config: Any, snake_name: str, camel_name: str, default: Any) -> Any:
     if config is not None:
         for name in (snake_name, camel_name):
             if isinstance(config, Mapping):
@@ -123,7 +118,7 @@ def _config_value(
     return default
 
 
-def _as_js_integer(value: Any) -> Optional[int]:
+def _as_js_integer(value: Any) -> int | None:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
     if isinstance(value, float):
@@ -133,10 +128,7 @@ def _as_js_integer(value: Any) -> Optional[int]:
 
 
 def _image_base64(mime_type: str, payload: bytes) -> str:
-    return (
-        f"data:image/{mime_type};base64,"
-        f"{base64.b64encode(payload).decode('ascii')}"
-    )
+    return f"data:image/{mime_type};base64,{base64.b64encode(payload).decode('ascii')}"
 
 
 def _default_manager_factory(backend: Any, options: Mapping[str, Any]) -> Any:
@@ -153,39 +145,34 @@ class ScrcpyDeviceAdapter:
     def __init__(
         self,
         device_id: str,
-        scrcpy_config: Optional[Mapping[str, Any]] = None,
-        resolve_adb_backend: Optional[Callable[[], Any]] = None,
+        scrcpy_config: Mapping[str, Any] | None = None,
+        resolve_adb_backend: Callable[[], Any] | None = None,
         *,
-        manager_factory: Optional[
-            Callable[[Any, Mapping[str, Any]], Any]
-        ] = None,
-        monotonic_time_us: Optional[Callable[[], int]] = None,
-        now_ms: Optional[Callable[[], float]] = None,
-        adb_path: Optional[str] = None,
+        manager_factory: Callable[[Any, Mapping[str, Any]], Any] | None = None,
+        monotonic_time_us: Callable[[], int] | None = None,
+        now_ms: Callable[[], float] | None = None,
+        adb_path: str | None = None,
     ) -> None:
         self.device_id = device_id
         self._scrcpy_config = scrcpy_config
         self._adb_path = adb_path
-        self._resolve_adb_backend = (
-            resolve_adb_backend or self._create_default_backend
-        )
+        self._resolve_adb_backend = resolve_adb_backend or self._create_default_backend
         self._manager_factory = manager_factory or _default_manager_factory
-        self._monotonic_time_us_fn = (
-            monotonic_time_us
-            or (lambda: time.monotonic_ns() // 1000)
+        self._monotonic_time_us_fn = monotonic_time_us or (
+            lambda: time.monotonic_ns() // 1000
         )
         self._now_ms = now_ms or (lambda: time.time() * 1000)
 
         self._manager: Any = None
-        self._manager_task: Optional[asyncio.Task] = None
-        self._resolved_config: Optional[ResolvedScrcpyConfig] = None
-        self._last_error: Optional[str] = None
-        self._retry_after: Optional[float] = None
-        self._freshness_restart_task: Optional[asyncio.Task] = None
+        self._manager_task: asyncio.Task | None = None
+        self._resolved_config: ResolvedScrcpyConfig | None = None
+        self._last_error: str | None = None
+        self._retry_after: float | None = None
+        self._freshness_restart_task: asyncio.Task | None = None
         self._lifecycle_generation = 0
-        self._pending_action_barrier_at_host_us: Optional[int] = None
+        self._pending_action_barrier_at_host_us: int | None = None
         self._keyframe_listeners: set = set()
-        self._keyframe_unsubscribers: Dict[Any, Dict[str, Any]] = {}
+        self._keyframe_unsubscribers: dict[Any, dict[str, Any]] = {}
         self._backend: Any = None
 
     # -- configuration ----------------------------------------------------
@@ -193,7 +180,7 @@ class ScrcpyDeviceAdapter:
     @staticmethod
     async def create_android_adb(
         adb_exec_timeout: float = 60_000,
-        device_id: Optional[str] = None,
+        device_id: str | None = None,
     ) -> Any:
         """Create the ADB client used by the scrcpy backend (upstream)."""
         from midscene.android.adb import create_android_adb
@@ -308,9 +295,7 @@ class ScrcpyDeviceAdapter:
         if self._retry_after is None or self._now_ms() >= self._retry_after:
             return
         timestamp = (
-            time.strftime(
-                "%Y-%m-%dT%H:%M:%S", time.gmtime(self._retry_after / 1000)
-            )
+            time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(self._retry_after / 1000))
             + "Z"
         )
         raise RuntimeError(
@@ -363,8 +348,7 @@ class ScrcpyDeviceAdapter:
 
             if generation != self._lifecycle_generation:
                 raise RuntimeError(
-                    "Scrcpy manager initialization was superseded by device "
-                    "cleanup"
+                    "Scrcpy manager initialization was superseded by device cleanup"
                 )
 
             self._manager = manager
@@ -386,8 +370,7 @@ class ScrcpyDeviceAdapter:
                             await result
             except Exception as cleanup_error:  # noqa: BLE001
                 logger.debug(
-                    "Failed to clean up Scrcpy manager initialization: "
-                    f"{cleanup_error}"
+                    f"Failed to clean up Scrcpy manager initialization: {cleanup_error}"
                 )
             logger.debug(f"Failed to initialize Scrcpy manager: {error}")
             raise RuntimeError(
@@ -422,7 +405,7 @@ class ScrcpyDeviceAdapter:
         self,
         device_info: Any = None,
         *,
-        fallback: Optional[Callable[[], Any]] = None,
+        fallback: Callable[[], Any] | None = None,
     ) -> str:
         """Capture via scrcpy, falling back to the ADB path when unavailable.
 
@@ -453,13 +436,9 @@ class ScrcpyDeviceAdapter:
                 f"stream once before ADB fallback: {error}"
             )
             try:
-                screenshot_buffer = await self._restart_and_capture_once(
-                    device_info
-                )
+                screenshot_buffer = await self._restart_and_capture_once(device_info)
                 self._clear_failure()
-                logger.debug(
-                    "Scrcpy screenshot recovered on a new stream epoch"
-                )
+                logger.debug("Scrcpy screenshot recovered on a new stream epoch")
                 return self._jpeg_buffer_to_base64(screenshot_buffer)
             except Exception as retry_error:  # noqa: BLE001 - fallback path
                 self._keyframe_unsubscribers.clear()
@@ -468,14 +447,12 @@ class ScrcpyDeviceAdapter:
                     "Scrcpy screenshot failed after restart, falling back to "
                     f"standard ADB method. Error: {retry_error}"
                 )
-                return await self._fallback_screenshot(
-                    fallback, retry_error
-                )
+                return await self._fallback_screenshot(fallback, retry_error)
 
     async def _fallback_screenshot(
         self,
-        fallback: Optional[Callable[[], Any]] = None,
-        error: Optional[BaseException] = None,
+        fallback: Callable[[], Any] | None = None,
+        error: BaseException | None = None,
     ) -> str:
         if fallback is not None:
             result = fallback()
@@ -491,7 +468,7 @@ class ScrcpyDeviceAdapter:
                 self._backend = backend_result
             except Exception:
                 if error is not None:
-                    raise error
+                    raise error from None
                 raise
 
         screencap = getattr(self._backend, "screencap_png", None)
@@ -516,9 +493,7 @@ class ScrcpyDeviceAdapter:
             manager = await self._ensure_connected_manager(device_info)
             await self._apply_pending_action_barrier(manager)
             if generation != self._lifecycle_generation:
-                raise RuntimeError(
-                    "Scrcpy freshness restart was cancelled by cleanup"
-                )
+                raise RuntimeError("Scrcpy freshness restart was cancelled by cleanup")
             return await manager.get_screenshot_jpeg()
 
         task = asyncio.ensure_future(restart())
@@ -547,9 +522,7 @@ class ScrcpyDeviceAdapter:
 
             def unsubscribe() -> None:
                 self._keyframe_listeners.discard(listener)
-                subscription = self._keyframe_unsubscribers.pop(
-                    listener, None
-                )
+                subscription = self._keyframe_unsubscribers.pop(listener, None)
                 if subscription is not None:
                     subscription["unsubscribe"]()
 
@@ -562,7 +535,7 @@ class ScrcpyDeviceAdapter:
             self._record_failure(error)
             raise
 
-    def get_latest_raw_keyframe(self) -> Optional[RawKeyframe]:
+    def get_latest_raw_keyframe(self) -> RawKeyframe | None:
         if self._manager is None:
             return None
         return self._manager.get_latest_raw_keyframe()
@@ -580,15 +553,11 @@ class ScrcpyDeviceAdapter:
             "unsubscribe": manager.subscribe_keyframes(listener),
         }
 
-    def _attach_keyframe_listeners(
-        self, manager: Any, force: bool
-    ) -> None:
+    def _attach_keyframe_listeners(self, manager: Any, force: bool) -> None:
         for listener in list(self._keyframe_listeners):
             self._attach_keyframe_listener(manager, listener, force)
 
-    async def decode_raw_keyframe_to_jpeg_base64(
-        self, frame: RawKeyframe
-    ) -> str:
+    async def decode_raw_keyframe_to_jpeg_base64(self, frame: RawKeyframe) -> str:
         if self._manager is None:
             raise RuntimeError("scrcpy manager is not initialized")
         jpeg_buffer = await self._manager.decode_raw_keyframe_to_jpeg(frame)
@@ -604,10 +573,7 @@ class ScrcpyDeviceAdapter:
             "completed input action while scrcpy was unavailable",
             {"host_monotonic_us": action_completed_at_host_us},
         )
-        if (
-            self._pending_action_barrier_at_host_us
-            == action_completed_at_host_us
-        ):
+        if self._pending_action_barrier_at_host_us == action_completed_at_host_us:
             self._pending_action_barrier_at_host_us = None
 
     def _monotonic_time_us(self) -> int:
@@ -616,8 +582,7 @@ class ScrcpyDeviceAdapter:
     def _defer_action_barrier(self, action_completed_at_host_us: int) -> None:
         if (
             self._pending_action_barrier_at_host_us is None
-            or action_completed_at_host_us
-            > self._pending_action_barrier_at_host_us
+            or action_completed_at_host_us > self._pending_action_barrier_at_host_us
         ):
             self._pending_action_barrier_at_host_us = action_completed_at_host_us
 
@@ -644,8 +609,7 @@ class ScrcpyDeviceAdapter:
             self._defer_action_barrier(action_completed_at_host_us)
             self._record_failure(error)
             logger.debug(
-                "Unable to mark scrcpy action barrier; disabling this stream: "
-                f"{error}"
+                f"Unable to mark scrcpy action barrier; disabling this stream: {error}"
             )
             try:
                 await manager.dispose()
@@ -660,28 +624,27 @@ class ScrcpyDeviceAdapter:
 
     # -- size -------------------------------------------------------------
 
-    def get_resolution(self) -> Optional[Dict[str, int]]:
+    def get_resolution(self) -> dict[str, int] | None:
         if self._manager is None:
             return None
         return self._manager.get_resolution()
 
-    def get_size(self, device_info: Any = None) -> Optional[Dict[str, int]]:
+    def get_size(self, device_info: Any = None) -> dict[str, int] | None:
         resolution = self.get_resolution()
         if resolution is None:
             return None
         logger.debug(
-            f"Using scrcpy resolution: {resolution['width']}x"
-            f"{resolution['height']}"
+            f"Using scrcpy resolution: {resolution['width']}x{resolution['height']}"
         )
         return {"width": resolution["width"], "height": resolution["height"]}
 
-    def get_scaling_ratio(self, physical_width: int) -> Optional[float]:
+    def get_scaling_ratio(self, physical_width: int) -> float | None:
         resolution = self.get_resolution()
         if resolution is None or physical_width == 0:
             return None
         return resolution["width"] / physical_width
 
-    async def size(self, device_info: Any = None) -> Dict[str, int]:
+    async def size(self, device_info: Any = None) -> dict[str, int]:
         size = self.get_size(device_info)
         if size is not None:
             return size

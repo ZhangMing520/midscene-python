@@ -2,7 +2,9 @@
 task-cache-poisoning.test.ts and ai-act-plan-cache-fallback.test.ts."""
 
 
-def test_should_return_cache_when_yaml_workflow_has_non_empty_flow(tmp_path, monkeypatch):
+def test_should_return_cache_when_yaml_workflow_has_non_empty_flow(
+    tmp_path, monkeypatch
+):
     from midscene.core.agent.task_cache import TaskCache
 
     monkeypatch.setenv("MIDSCENE_RUN_DIR", str(tmp_path))
@@ -44,9 +46,7 @@ def test_should_release_a_consumed_plan_cache_after_a_failed_replay(
     assert cache.match_plan_cache("do something") is not None
 
 
-def test_appends_a_new_locate_entry_when_nothing_was_consumed(
-    tmp_path, monkeypatch
-):
+def test_appends_a_new_locate_entry_when_nothing_was_consumed(tmp_path, monkeypatch):
     from midscene.core.agent.task_cache import TaskCache
 
     monkeypatch.setenv("MIDSCENE_RUN_DIR", str(tmp_path))
@@ -87,9 +87,7 @@ def test_replaces_in_memory_but_does_not_flush_to_file_in_read_only_mode(
     from midscene.core.agent.task_cache import TaskCache
 
     monkeypatch.setenv("MIDSCENE_RUN_DIR", str(tmp_path))
-    cache = TaskCache(
-        cache_id="locate-readonly", enabled=True, read_only_mode=True
-    )
+    cache = TaskCache(cache_id="locate-readonly", enabled=True, read_only_mode=True)
     cache.append_locate_cache("the button", {"xpaths": ["/x"]})
 
     cache2 = TaskCache(cache_id="locate-readonly", enabled=True)

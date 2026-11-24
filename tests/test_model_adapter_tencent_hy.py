@@ -90,9 +90,7 @@ def test_maps_openrouter_reasoning_enabled_state(reasoning_enabled):
     }
 
 
-@pytest.mark.parametrize(
-    "reasoning_enabled", [None, False], ids=["undefined", "false"]
-)
+@pytest.mark.parametrize("reasoning_enabled", [None, False], ids=["undefined", "false"])
 def test_omits_openrouter_effort_and_budget_when_thinking_is_disabled(
     reasoning_enabled,
 ):

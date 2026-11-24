@@ -2,7 +2,7 @@
 
 import asyncio
 import math
-from typing import Any, Dict, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -17,7 +17,7 @@ from midscene.shared.img.transform import (
 SCREENSHOT_JPEG_QUALITY = 90
 
 
-def _assert_valid_size(size: Dict[str, float], label: str) -> None:
+def _assert_valid_size(size: dict[str, float], label: str) -> None:
     width = size.get("width")
     height = size.get("height")
     if (
@@ -39,8 +39,8 @@ def _assert_valid_size(size: Dict[str, float], label: str) -> None:
 
 async def prepare_raw_screenshot(
     screenshot_base64: str,
-    options: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    options: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Prepare one raw screenshot for model context or persistence.
 
     Each raw screenshot passes through this pipeline at most once.
@@ -64,12 +64,8 @@ async def prepare_raw_screenshot(
 
     if shrink_factor > 1:
         shot_size = {
-            "width": int(
-                math.floor(original_size["width"] / shrink_factor + 0.5)
-            ),
-            "height": int(
-                math.floor(original_size["height"] / shrink_factor + 0.5)
-            ),
+            "width": int(math.floor(original_size["width"] / shrink_factor + 0.5)),
+            "height": int(math.floor(original_size["height"] / shrink_factor + 0.5)),
         }
     else:
         shot_size = dict(original_size)
@@ -92,17 +88,16 @@ async def prepare_raw_screenshot(
 
 async def prepare_screenshot_for_persistence(
     screenshot_base64: str,
-    options: Optional[Dict[str, Any]] = None,
+    options: dict[str, Any] | None = None,
 ) -> str:
     """Prepare a screenshot for persistence when only JPEG output is needed."""
     options = options or {}
     shrink_factor = options.get("shrinkFactor", options.get("shrink_factor", 1))
     if shrink_factor == 1:
-        return convert_base64_image_to_jpeg(
-            screenshot_base64, SCREENSHOT_JPEG_QUALITY
-        )
+        return convert_base64_image_to_jpeg(screenshot_base64, SCREENSHOT_JPEG_QUALITY)
     prepared = await prepare_raw_screenshot(screenshot_base64, options)
     return prepared["base64"]
+
 
 async def get_ui_context(agent, action: str = "locate") -> UIContext:
     if agent._frozen and agent.frozen_context is not None:
@@ -113,10 +108,7 @@ async def get_ui_context(agent, action: str = "locate") -> UIContext:
             context = await agent.interface.get_context()
             break
         except Exception as e:
-            if (
-                attempt < CONTEXT_RETRY_MAX
-                and agent.is_retryable_context_error(e)
-            ):
+            if attempt < CONTEXT_RETRY_MAX and agent.is_retryable_context_error(e):
                 logger.debug(
                     "retryable context error "
                     f"(attempt {attempt + 1}/{CONTEXT_RETRY_MAX}), "
@@ -155,9 +147,7 @@ def apply_screenshot_shrink(agent, context: UIContext) -> UIContext:
         if factor <= 1:
             if ratio == 1.0:
                 return context
-            return context.model_copy(
-                update={"shrunk_shot_to_logical_ratio": ratio}
-            )
+            return context.model_copy(update={"shrunk_shot_to_logical_ratio": ratio})
         target_width = max(1, round(physical_width / factor))
         target_height = max(1, round(physical_height / factor))
         shrunk = image.resize((target_width, target_height))

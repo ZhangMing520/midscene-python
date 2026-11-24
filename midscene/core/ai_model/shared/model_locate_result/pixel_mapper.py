@@ -1,7 +1,8 @@
 """Pixel coordinate mapping (upstream shared/model-locate-result/pixel-mapper.ts)."""
 
 import math
-from typing import Any, Dict, List, Sequence, Tuple
+from collections.abc import Sequence
+from typing import Any
 
 from midscene.core.ai_model.shared.model_locate_result.coordinates import (
     resolve_bounds_type,
@@ -46,8 +47,8 @@ def round_pixel_coordinate(pixel: float, rounding: CoordinateRounding) -> float:
 
 
 def clamp_pixel_point_to_size(
-    point: Sequence[float], size: Dict[str, float]
-) -> Tuple[float, float]:
+    point: Sequence[float], size: dict[str, float]
+) -> tuple[float, float]:
     x, y = point
     return (
         _clamp(x, 0, max_pixel_coordinate(size["width"])),
@@ -57,9 +58,9 @@ def clamp_pixel_point_to_size(
 
 def clamp_pixel_bbox_to_size(
     pixel_bbox: Sequence[float],
-    size: Dict[str, float],
+    size: dict[str, float],
     bounds_type: BboxBoundsType = "closed",
-) -> List[float]:
+) -> list[float]:
     left, top, right, bottom = pixel_bbox
     if resolve_bounds_type(bounds_type) == "left-closed-right-open":
         return [
@@ -104,7 +105,7 @@ def pixel_interval_center(
 
 def pixel_bbox_to_rect(
     pixel_bbox: Sequence[float], bounds_type: BboxBoundsType = "closed"
-) -> Dict[str, float]:
+) -> dict[str, float]:
     left, top, right, bottom = pixel_bbox
     return {
         "left": left,
@@ -117,36 +118,30 @@ def pixel_bbox_to_rect(
 def round_pixel_bbox(
     pixel_bbox: Sequence[float],
     rounding: CoordinateRounding,
-) -> List[float]:
+) -> list[float]:
     """Round all four bbox endpoints with the configured policy."""
-    return [
-        round_pixel_coordinate(value, rounding) for value in pixel_bbox
-    ]
+    return [round_pixel_coordinate(value, rounding) for value in pixel_bbox]
 
 
 def map_locate_result_to_unrounded_pixel_bbox(
-    result: Dict[str, Any], size: Dict[str, float]
-) -> List[float]:
+    result: dict[str, Any], size: dict[str, float]
+) -> list[float]:
     meta = result["coordinatesMeta"]
     normalized_by = meta.get("normalizedBy")
     order = meta["order"]
     first, second, third, fourth = result["coordinates"]
-    xy_bbox: List[float] = (
+    xy_bbox: list[float] = (
         [second, first, fourth, third] if order == "yx" else list(result["coordinates"])
     )
     if normalized_by is None:
         return xy_bbox
     basis = resolve_normalization_basis(meta.get("normalizationBasis"))
     return [
-        normalized_coordinate_to_pixel(
-            xy_bbox[0], normalized_by, size["width"], basis
-        ),
+        normalized_coordinate_to_pixel(xy_bbox[0], normalized_by, size["width"], basis),
         normalized_coordinate_to_pixel(
             xy_bbox[1], normalized_by, size["height"], basis
         ),
-        normalized_coordinate_to_pixel(
-            xy_bbox[2], normalized_by, size["width"], basis
-        ),
+        normalized_coordinate_to_pixel(xy_bbox[2], normalized_by, size["width"], basis),
         normalized_coordinate_to_pixel(
             xy_bbox[3], normalized_by, size["height"], basis
         ),
@@ -154,8 +149,8 @@ def map_locate_result_to_unrounded_pixel_bbox(
 
 
 def map_locate_result_to_pixel_bbox(
-    result: Dict[str, Any], size: Dict[str, float]
-) -> List[float]:
+    result: dict[str, Any], size: dict[str, float]
+) -> list[float]:
     rounding = result["coordinatesMeta"]["rounding"]
     return round_pixel_bbox(
         map_locate_result_to_unrounded_pixel_bbox(result, size), rounding
@@ -163,8 +158,8 @@ def map_locate_result_to_pixel_bbox(
 
 
 def map_locate_result_to_pixel_rect(
-    result: Dict[str, Any], context: Dict[str, Dict[str, float]]
-) -> Dict[str, float]:
+    result: dict[str, Any], context: dict[str, dict[str, float]]
+) -> dict[str, float]:
     """Build the original bbox rect independently from the click center."""
     prepared_size = context["preparedSize"]
     content_size = context.get("contentSize") or prepared_size
@@ -188,8 +183,8 @@ def map_locate_result_to_pixel_rect(
 
 
 def map_locate_result_to_pixel_point(
-    result: Dict[str, Any], size: Dict[str, float]
-) -> Tuple[float, float]:
+    result: dict[str, Any], size: dict[str, float]
+) -> tuple[float, float]:
     meta = result["coordinatesMeta"]
     order = meta["order"]
     normalized_by = meta.get("normalizedBy")
@@ -210,15 +205,11 @@ def map_locate_result_to_pixel_point(
     basis = resolve_normalization_basis(meta.get("normalizationBasis"))
     return (
         round_pixel_coordinate(
-            normalized_coordinate_to_pixel(
-                x, normalized_by, size["width"], basis
-            ),
+            normalized_coordinate_to_pixel(x, normalized_by, size["width"], basis),
             rounding,
         ),
         round_pixel_coordinate(
-            normalized_coordinate_to_pixel(
-                y, normalized_by, size["height"], basis
-            ),
+            normalized_coordinate_to_pixel(y, normalized_by, size["height"], basis),
             rounding,
         ),
     )

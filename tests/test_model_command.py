@@ -206,7 +206,9 @@ async def test_runs_model_verify_with_model_configs():
             "insightModelConfig": configs["insight"],
         }
     ]
-    assert "Model verify started. This usually completes within 30 seconds." in io["out"]
+    assert (
+        "Model verify started. This usually completes within 30 seconds." in io["out"]
+    )
     assert "" in io["out"]
     assert "✅ Model verify passed." in io["out"]
 
@@ -246,9 +248,7 @@ async def test_loads_dotenv_with_override_enabled_for_model_verify(monkeypatch):
     )
 
     assert exit_code == 0
-    assert load_dotenv_calls == [
-        {"override": True, "debug": True, "log": io["stdout"]}
-    ]
+    assert load_dotenv_calls == [{"override": True, "debug": True, "log": io["stdout"]}]
 
 
 @pytest.mark.asyncio
@@ -369,9 +369,7 @@ async def test_explains_when_a_generated_curl_command_uses_the_default_base_url(
     )
 
     output = io["err"][0]
-    assert (
-        "# default (base URL not configured; using OpenAI SDK default)" in output
-    )
+    assert "# default (base URL not configured; using OpenAI SDK default)" in output
     assert "curl -X POST 'https://api.openai.com/v1/chat/completions'" in output
 
 

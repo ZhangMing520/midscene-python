@@ -4,11 +4,11 @@ The upstream implementation keeps per-player state in a module-level WeakMap so
 CJS and ESM copies share it. Python uses a WeakKeyDictionary keyed by the player.
 """
 
-from typing import Any, Dict
+from typing import Any
 from weakref import WeakKeyDictionary
 
 
-class LegacyYamlPlayerState(Dict[str, Any]):
+class LegacyYamlPlayerState(dict[str, Any]):
     """Includes executionResult / executionRecord / fallbackReportFileName."""
 
 

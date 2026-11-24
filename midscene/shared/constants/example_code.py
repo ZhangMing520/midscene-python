@@ -76,7 +76,7 @@ test('ai shop', async ({
 
   // add to cart
   await aiTap('click add to cart button');
-  
+
   await aiTap('click right top cart icon');
   await aiAssert('The cart icon shows the number 1');
 });

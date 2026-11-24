@@ -5,8 +5,9 @@ Logging configuration for Midscene Python
 import contextvars
 import inspect
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -21,11 +22,11 @@ _console_scope: contextvars.ContextVar = contextvars.ContextVar(
 )
 
 
-_log_directory_resolver: Optional[Callable[[], str]] = None
+_log_directory_resolver: Callable[[], str] | None = None
 
 
 def set_log_directory_resolver(
-    resolver: Optional[Callable[[], str]],
+    resolver: Callable[[], str] | None,
 ) -> None:
     """Override the directory used by file logs in the current process.
 
@@ -65,10 +66,11 @@ def _format_args(args: Any) -> str:
 
 
 def run_with_console_log_handler(
-    handler: Callable[[Dict[str, Any]], None], run: Callable[[], Any]
+    handler: Callable[[dict[str, Any]], None], run: Callable[[], Any]
 ) -> Any:
     """Route SDK console messages within one run (upstream runWithConsoleLogHandler)."""
     if inspect.iscoroutinefunction(run):
+
         async def _run_async():
             token = _console_handler.set(handler)
             try:
@@ -85,12 +87,11 @@ def run_with_console_log_handler(
         _console_handler.reset(token)
 
 
-def run_with_console_log_scope(
-    scope: Dict[str, Any], run: Callable[[], Any]
-) -> Any:
+def run_with_console_log_scope(scope: dict[str, Any], run: Callable[[], Any]) -> Any:
     """Capture the actual async execution scope, including late logs."""
+
     def wrap(base_handler):
-        def _wrapped(entry: Dict[str, Any]) -> None:
+        def _wrapped(entry: dict[str, Any]) -> None:
             merged = dict(scope)
             merged.update(entry.get("scope") or {})
             base_handler({**entry, "scope": merged})
@@ -98,6 +99,7 @@ def run_with_console_log_scope(
         return _wrapped
 
     if inspect.iscoroutinefunction(run):
+
         async def _run_async():
             handler = _console_handler.get()
             if handler is None:
@@ -131,11 +133,11 @@ def log_report(message: str) -> None:
 def _print_console_warning(
     topic: str,
     args: Any,
-    warning: Optional[Dict[str, Any]] = None,
+    warning: dict[str, Any] | None = None,
 ) -> None:
     handler = _console_handler.get()
     if handler is not None:
-        entry: Dict[str, Any] = {
+        entry: dict[str, Any] = {
             "type": "warning",
             "topic": topic,
             "message": _format_args(args),
@@ -154,7 +156,7 @@ def _print_console_warning(
 
 def get_debug(
     topic: str,
-    options: Optional[Dict[str, Any]] = None,
+    options: dict[str, Any] | None = None,
 ) -> Callable[..., None]:
     """Create a debug logger for `topic` (upstream getDebug)."""
     full_topic = f"midscene:{topic}"
@@ -162,6 +164,7 @@ def get_debug(
     warning = options.get("warning") if options else None
 
     if with_console:
+
         def debug_log(*args: Any) -> None:
             _debug_fn(*args)
             _print_console_warning(full_topic, args, warning)
@@ -174,16 +177,15 @@ def get_debug(
     return debug_log
 
 
-
 def setup_logger(
     level: str = "INFO",
-    log_file: Optional[str] = None,
+    log_file: str | None = None,
     rotation: str = "10 MB",
     retention: str = "7 days",
-    format_string: Optional[str] = None
+    format_string: str | None = None,
 ) -> None:
     """Setup logging configuration
-    
+
     Args:
         level: Log level (DEBUG, INFO, WARNING, ERROR)
         log_file: Log file path
@@ -193,7 +195,7 @@ def setup_logger(
     """
     # Remove default logger
     logger.remove()
-    
+
     # Default format
     if not format_string:
         format_string = (
@@ -202,7 +204,7 @@ def setup_logger(
             "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> | "
             "<level>{message}</level>"
         )
-    
+
     # Add console handler
     logger.add(
         sys.stderr,
@@ -210,14 +212,14 @@ def setup_logger(
         format=format_string,
         colorize=True,
         backtrace=True,
-        diagnose=True
+        diagnose=True,
     )
-    
+
     # Add file handler if specified
     if log_file:
         log_path = Path(log_file)
         log_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         logger.add(
             log_path,
             level=level,
@@ -225,18 +227,18 @@ def setup_logger(
             rotation=rotation,
             retention=retention,
             backtrace=True,
-            diagnose=True
+            diagnose=True,
         )
-    
+
     logger.info(f"Logger configured with level: {level}")
 
 
 def get_logger(name: str):
     """Get logger instance
-    
+
     Args:
         name: Logger name
-        
+
     Returns:
         Logger instance
     """

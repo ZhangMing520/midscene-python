@@ -1,7 +1,5 @@
 """Create a ScriptPlayer-compatible agent from YAML (upstream create-yaml-player.ts)."""
 
-from typing import Optional
-
 from rich.console import Console
 
 from midscene.cli.cli_utils import _resolve_served_url
@@ -12,9 +10,9 @@ from midscene.web_integration.common.viewport import parse_viewport_dimension
 async def create_agent_for_script(
     script: dict,
     headed: bool,
-    device_id: Optional[str],
+    device_id: str | None,
     shared_page=None,
-    console: Optional[Console] = None,
+    console: Console | None = None,
 ):
     """Build an agent from the script's target section (web, android, ios,
     harmony, or computer)."""
@@ -77,7 +75,13 @@ async def create_agent_for_script(
         device = ComputerDevice(display_id=computer_section.get("displayId"))
         return ComputerAgent(device, _build_agent_options(computer_section))
 
-    web_section = script.get("web") or script.get("browser") or script.get("page") or script.get("target") or {}
+    web_section = (
+        script.get("web")
+        or script.get("browser")
+        or script.get("page")
+        or script.get("target")
+        or {}
+    )
     from midscene.web_integration import PlaywrightWebPage
 
     url = web_section.get("url")
@@ -91,19 +95,13 @@ async def create_agent_for_script(
     chrome_options = {}
     if web_section.get("viewportWidth") and web_section.get("viewportHeight"):
         chrome_options["viewport_size"] = (
-            parse_viewport_dimension(
-                web_section["viewportWidth"], "viewportWidth"
-            ),
-            parse_viewport_dimension(
-                web_section["viewportHeight"], "viewportHeight"
-            ),
+            parse_viewport_dimension(web_section["viewportWidth"], "viewportWidth"),
+            parse_viewport_dimension(web_section["viewportHeight"], "viewportHeight"),
         )
     if web_section.get("userAgent"):
         chrome_options["user_agent"] = web_section["userAgent"]
     if web_section.get("deviceScaleFactor") is not None:
-        chrome_options["device_scale_factor"] = float(
-            web_section["deviceScaleFactor"]
-        )
+        chrome_options["device_scale_factor"] = float(web_section["deviceScaleFactor"])
     if web_section.get("acceptInsecureCerts"):
         chrome_options["accept_insecure_certs"] = True
     if web_section.get("cookie"):
@@ -113,9 +111,7 @@ async def create_agent_for_script(
     if web_section.get("chromeArgs"):
         chrome_options["args"] = [str(arg) for arg in web_section["chromeArgs"]]
     if web_section.get("keyboardTypeDelay") is not None:
-        chrome_options["keyboard_type_delay"] = float(
-            web_section["keyboardTypeDelay"]
-        )
+        chrome_options["keyboard_type_delay"] = float(web_section["keyboardTypeDelay"])
     if web_section.get("inputStrategy"):
         chrome_options["input_strategy"] = str(web_section["inputStrategy"])
     if web_section.get("forceSameTabNavigation") is not None:
@@ -123,9 +119,7 @@ async def create_agent_for_script(
             web_section["forceSameTabNavigation"]
         )
     if web_section.get("autoFollowNewPage") is not None:
-        chrome_options["auto_follow_new_page"] = bool(
-            web_section["autoFollowNewPage"]
-        )
+        chrome_options["auto_follow_new_page"] = bool(web_section["autoFollowNewPage"])
     if web_section.get("forceChromeSelectRendering") is not None:
         chrome_options["force_chrome_select_rendering"] = bool(
             web_section["forceChromeSelectRendering"]

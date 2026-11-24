@@ -6,15 +6,18 @@ model to describe "the element indicated by the marker".
 """
 
 import math
-from typing import Any, Dict, List, Optional, Sequence, Union
+from collections.abc import Sequence
+from typing import Any
 
-from midscene.shared.img import box_select, transform
-from midscene.core.ai_model.service_caller.types import AIResponseParseError
-from midscene.core.ai_model.service_caller.call_ai import call_generative_ai
-from midscene.core.ai_model.shared.json import parse_model_response_json
-from midscene.core.ai_model.prompt.describe import element_describer_instruction
-from midscene.core.ai_model.service_caller.semantic_retry import call_ai_and_parse_with_retry, with_semantic_retry_feedback
 from midscene.core.ai_model.models.registry import ModelRuntime
+from midscene.core.ai_model.prompt.describe import element_describer_instruction
+from midscene.core.ai_model.service_caller.call_ai import call_generative_ai
+from midscene.core.ai_model.service_caller.semantic_retry import (
+    call_ai_and_parse_with_retry,
+    with_semantic_retry_feedback,
+)
+from midscene.core.ai_model.service_caller.types import AIResponseParseError
+from midscene.core.ai_model.shared.json import parse_model_response_json
 from midscene.core.ai_model.shared.multimodal_prompt import (
     ensure_data_url,
     get_screenshot_base64,
@@ -27,13 +30,14 @@ from midscene.core.service.utils import (
     get_rect_in_crop,
     recover_describe_response_from_parse_error,
 )
+from midscene.shared.img import box_select, transform
 
 DESCRIBE_DEFAULT_RECT_SIZE = 30
 DESCRIBE_CROP_MAX_LONG_EDGE = 1000
 DESCRIBE_CROP_UPSCALE_MAX_RATIO = 2.0
 
 
-def _rect_from_point(point: Sequence[float]) -> Dict[str, float]:
+def _rect_from_point(point: Sequence[float]) -> dict[str, float]:
     half = DESCRIBE_DEFAULT_RECT_SIZE / 2
     return {
         "left": math.floor(float(point[0]) - half),
@@ -46,8 +50,8 @@ def _rect_from_point(point: Sequence[float]) -> Dict[str, float]:
 def _marked_payload(
     screenshot: str,
     is_point: bool,
-    point: Optional[Dict[str, float]],
-    rect: Dict[str, float],
+    point: dict[str, float] | None,
+    rect: dict[str, float],
 ) -> str:
     if is_point and point is not None:
         return box_select.composite_point_marker(screenshot, point)
@@ -60,11 +64,11 @@ def _marked_payload(
 
 def _deep_context_images(
     screenshot: str,
-    rect: Dict[str, float],
-    shot_size: Dict[str, int],
+    rect: dict[str, float],
+    shot_size: dict[str, int],
     is_point: bool,
-    point: Optional[Dict[str, float]],
-) -> List[Dict[str, Any]]:
+    point: dict[str, float] | None,
+) -> list[dict[str, Any]]:
     """Focused crop around the target, marked again and upscaled when small."""
     area = get_describe_deep_context_areas(rect, shot_size)[0]["rect"]
     cropped, crop_size = transform.crop_by_rect(screenshot, area)
@@ -97,10 +101,10 @@ def _deep_context_images(
 
 def build_describe_messages(
     screenshot: str,
-    target: Union[Sequence[float], Dict[str, float]],
-    shot_size: Dict[str, int],
+    target: Sequence[float] | dict[str, float],
+    shot_size: dict[str, int],
     deep_describe: bool = False,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Messages for one describe call (upstream service.describe)."""
     is_point = not isinstance(target, dict)
     if is_point:
@@ -117,7 +121,7 @@ def build_describe_messages(
 
     payload = _marked_payload(screenshot, is_point, point, rect)
     if deep_describe:
-        user_content: List[Dict[str, Any]] = [
+        user_content: list[dict[str, Any]] = [
             {
                 "type": "text",
                 "text": (
@@ -158,21 +162,19 @@ def build_describe_messages(
 
 async def ai_describe_element(
     context: Any,
-    target: Union[Sequence[float], Dict[str, float]],
+    target: Sequence[float] | dict[str, float],
     model_runtime: ModelRuntime,
     deep_describe: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Describe the element at a point or rect (upstream Service.describe).
 
     Returns {description, usage, raw_response, thought?}.
     """
     screenshot = ensure_data_url(get_screenshot_base64(context))
     shot_size = get_shot_size(context)
-    messages = build_describe_messages(
-        screenshot, target, shot_size, deep_describe
-    )
+    messages = build_describe_messages(screenshot, target, shot_size, deep_describe)
 
-    async def call_ai(retry_attempt: int, previous_parse_error: Optional[Any] = None):
+    async def call_ai(retry_attempt: int, previous_parse_error: Any | None = None):
         try:
             return await call_generative_ai(
                 with_semantic_retry_feedback(messages, previous_parse_error),
@@ -190,7 +192,7 @@ async def ai_describe_element(
                 raise
             return {"_recovered": recovered}
 
-    def parse_response(response: Dict[str, Any]) -> Dict[str, Any]:
+    def parse_response(response: dict[str, Any]) -> dict[str, Any]:
         if "_recovered" in response:
             return response["_recovered"]
         raw_response = response["content"]
@@ -202,7 +204,7 @@ async def ai_describe_element(
         description = parsed.get("description")
         if not isinstance(description, str) or not description.strip():
             raise ValueError("failed to describe the element")
-        result: Dict[str, Any] = {
+        result: dict[str, Any] = {
             "description": description.strip(),
             "usage": response.get("usage"),
             "raw_response": raw_response,
@@ -211,7 +213,7 @@ async def ai_describe_element(
             result["reasoning_content"] = response["reasoning_content"]
         return result
 
-    def to_parse_error(error: Any, response: Dict[str, Any]) -> AIResponseParseError:
+    def to_parse_error(error: Any, response: dict[str, Any]) -> AIResponseParseError:
         return AIResponseParseError(
             f"Failed to parse describe result: {error}",
             response.get("content", ""),

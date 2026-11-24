@@ -1,6 +1,6 @@
 """Report input types (upstream test-runner/reporting/types.ts)."""
 
-from typing import Any, Dict, List, TypedDict
+from typing import Any, TypedDict
 
 
 class RunReportCaseInput(TypedDict, total=False):
@@ -12,7 +12,7 @@ class RunReportCaseInput(TypedDict, total=False):
     onFailure: str
     status: str
     run: Any
-    attempts: List[Any]
+    attempts: list[Any]
     notRunReason: str
     documentId: str
     documentRunId: str
@@ -25,19 +25,19 @@ class RunReportProjectInput(TypedDict, total=False):
     status: str
     retry: int
     lifecycle: Any
-    cases: List[RunReportCaseInput]
-    plans: List[Any]
-    documents: List[Any]
-    collectionErrors: List[Dict[str, Any]]
+    cases: list[RunReportCaseInput]
+    plans: list[Any]
+    documents: list[Any]
+    collectionErrors: list[dict[str, Any]]
 
 
 class RunReportInput(TypedDict, total=False):
-    operationLog: Dict[str, str]
+    operationLog: dict[str, str]
     runId: str
     status: str
     startedAt: str
     endedAt: str
     durationMs: float
     summary: Any
-    projects: List[RunReportProjectInput]
-    errors: List[Any]
+    projects: list[RunReportProjectInput]
+    errors: list[Any]

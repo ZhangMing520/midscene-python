@@ -8,7 +8,10 @@ import pytest
 class TestConnectivity:
     @pytest.mark.asyncio
     async def test_text_check_passes_on_token(self):
-        from midscene.core.ai_model.connectivity.run_connectivity_test import _run_check, _text_check
+        from midscene.core.ai_model.connectivity.run_connectivity_test import (
+            _run_check,
+            _text_check,
+        )
 
         async def fake_call(messages, runtime, options=None):
             return {"content": "CONNECTIVITY_OK", "usage": None}
@@ -24,7 +27,10 @@ class TestConnectivity:
 
     @pytest.mark.asyncio
     async def test_text_check_fails_on_wrong_token(self):
-        from midscene.core.ai_model.connectivity.run_connectivity_test import _run_check, _text_check
+        from midscene.core.ai_model.connectivity.run_connectivity_test import (
+            _run_check,
+            _text_check,
+        )
 
         async def fake_call(messages, runtime, options=None):
             return {"content": "HELLO", "usage": None}
@@ -51,15 +57,19 @@ class TestConnectivity:
             "planningModelConfig": {"modelName": "m"},
             "insightModelConfig": {"modelName": "m"},
         }
-        with patch(
-            "midscene.core.ai_model.connectivity.run_connectivity_test.call_generative_ai",
-            new=fake_call,
-        ), patch(
-            "midscene.core.ai_model.connectivity.run_connectivity_test._vision_check",
-            new=AsyncMock(return_value={"passed": True, "content": ""}),
-        ), patch(
-            "midscene.core.ai_model.connectivity.run_connectivity_test._ai_locate_check",
-            new=AsyncMock(return_value={"passed": True, "content": ""}),
+        with (
+            patch(
+                "midscene.core.ai_model.connectivity.run_connectivity_test.call_generative_ai",
+                new=fake_call,
+            ),
+            patch(
+                "midscene.core.ai_model.connectivity.run_connectivity_test._vision_check",
+                new=AsyncMock(return_value={"passed": True, "content": ""}),
+            ),
+            patch(
+                "midscene.core.ai_model.connectivity.run_connectivity_test._ai_locate_check",
+                new=AsyncMock(return_value={"passed": True, "content": ""}),
+            ),
         ):
             result = await run_connectivity_test(config)
         assert result["passed"] is True

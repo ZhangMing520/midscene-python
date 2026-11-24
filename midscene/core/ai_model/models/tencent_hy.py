@@ -1,6 +1,6 @@
 """Tencent Hunyuan adapter (upstream ai-model/models/tencent-hy.ts)."""
 
-from typing import Any, Dict
+from typing import Any
 
 from midscene.core.ai_model.model_adapter.is_openrouter import (
     _is_openrouter,
@@ -19,12 +19,13 @@ from midscene.core.ai_model.models.default import (
     build_chat_completion_params_from_context,
 )
 
+
 def _build_tencent_hy_params(
-    midscene_defaults: Dict[str, Any],
+    midscene_defaults: dict[str, Any],
     user_config: ModelRequestUserConfig,
     expected_json_object_response: bool = False,
-) -> Dict[str, Any]:
-    config: Dict[str, Any] = dict(midscene_defaults)
+) -> dict[str, Any]:
+    config: dict[str, Any] = dict(midscene_defaults)
     _apply_temperature(config, user_config)
     reasoning_enabled = _reasoning_enabled(user_config)
     if _is_openrouter(user_config.get("baseURL")):

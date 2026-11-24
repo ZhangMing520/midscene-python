@@ -1,6 +1,7 @@
 """Action space description (upstream prompt/planning/action-space-description.ts)."""
 
-from typing import Any, Dict, List, Optional, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 import yaml
 
@@ -35,7 +36,7 @@ def _strip_undefined(value: Any) -> Any:
 
 
 def serialize_action_descriptions(
-    action_descriptions: List[Any], action_space_format: str = "yaml"
+    action_descriptions: list[Any], action_space_format: str = "yaml"
 ) -> str:
     if action_space_format == "jsonl":
         import json as _json
@@ -62,11 +63,11 @@ def serialize_action_descriptions(
 def build_planning_action_space_description(
     action_space: Sequence[Any],
     planning_protocol,
-    locate_prompt_spec: Optional[Dict[str, Any]] = None,
+    locate_prompt_spec: dict[str, Any] | None = None,
 ) -> str:
-    locate_field_description = planning_protocol[
-        "action_space_protocol"
-    ]["build_locate_field_description"](locate_prompt_spec)
+    locate_field_description = planning_protocol["action_space_protocol"][
+        "build_locate_field_description"
+    ](locate_prompt_spec)
 
     action_output_protocol = planning_protocol["action_output_protocol"]
     include_example = planning_protocol["action_space_protocol"][
@@ -101,7 +102,7 @@ def build_planning_action_space_description(
 
 
 def build_locate_field_description(
-    locate_prompt_spec: Optional[Dict[str, Any]] = None,
+    locate_prompt_spec: dict[str, Any] | None = None,
 ) -> str:
     if locate_prompt_spec:
         return (

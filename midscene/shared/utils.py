@@ -4,7 +4,8 @@ import hashlib
 import json
 import re
 import uuid as _uuid_module
-from typing import Any, Awaitable, Callable, Dict, Mapping, Optional
+from collections.abc import Awaitable, Callable, Mapping
+from typing import Any
 
 _UNSET = object()
 
@@ -25,7 +26,7 @@ def sha256_hex(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
-_hash_map: Dict[str, str] = {}  # id - combined
+_hash_map: dict[str, str] = {}  # id - combined
 
 
 def _to_js_json_value(value: Any) -> Any:
@@ -61,9 +62,7 @@ def generate_hash_id(rect: Any, content: str = "") -> str:
     hash_hex = hashlib.sha256(combined.encode("utf-8")).hexdigest()
 
     def to_letters(hex_value: str) -> str:
-        return "".join(
-            chr(97 + int(char, 16) % 26) for char in hex_value
-        )
+        return "".join(chr(97 + int(char, 16) % 26) for char in hex_value)
 
     hash_letters = to_letters(hash_hex)
 
@@ -77,7 +76,7 @@ def generate_hash_id(rect: Any, content: str = "") -> str:
     return sliced_hash
 
 
-def assert_(condition: Any, message: Optional[str] = None) -> None:
+def assert_(condition: Any, message: str | None = None) -> None:
     """Raise when ``condition`` is falsy (upstream assert).
 
     ``assert`` is a Python keyword, so the function is exposed as ``assert_``
@@ -136,16 +135,21 @@ def normalize_for_comparison(value: str) -> str:
 
 def merge_and_normalize_app_name_mapping(
     default_mapping: Mapping[str, str],
-    user_mapping: Optional[Mapping[str, str]] = None,
-) -> Dict[str, str]:
+    user_mapping: Mapping[str, str] | None = None,
+) -> dict[str, str]:
     """Merge app name mappings with normalized keys; user entries win.
 
     Matches upstream mergeAndNormalizeAppNameMapping.
     """
-    result = {normalize_for_comparison(key): value for key, value in default_mapping.items()}
+    result = {
+        normalize_for_comparison(key): value for key, value in default_mapping.items()
+    }
     if user_mapping:
         result.update(
-            {normalize_for_comparison(key): value for key, value in user_mapping.items()}
+            {
+                normalize_for_comparison(key): value
+                for key, value in user_mapping.items()
+            }
         )
     return result
 

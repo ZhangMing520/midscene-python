@@ -7,8 +7,9 @@ lifecycle.
 
 import inspect
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 from midscene.shared.agent_tools.cli_report_session import (
     generate_cli_report_session,
@@ -49,15 +50,15 @@ class InitArgSpec:
 
     namespace: str
     shape: ToolSchema
-    cli: Optional[Dict[str, Any]] = None
-    adapt: Optional[Callable[[Optional[Dict[str, Any]]], Any]] = None
+    cli: dict[str, Any] | None = None
+    adapt: Callable[[dict[str, Any] | None], Any] | None = None
 
 
 async def _maybe_await(value: Any) -> Any:
     return await value if inspect.isawaitable(value) else value
 
 
-async def resolve_device_action_space(device: Any) -> List[Any]:
+async def resolve_device_action_space(device: Any) -> list[Any]:
     """Read an action space from a temporary device.
 
     Platform devices may expose primitive method names instead of
@@ -85,7 +86,7 @@ async def resolve_device_action_space(device: Any) -> List[Any]:
     return matched or full
 
 
-def _action_space_for_interface(device: Any) -> List[Any]:
+def _action_space_for_interface(device: Any) -> list[Any]:
     interface_type = getattr(device, "interface_type", None)
     if interface_type is None:
         return []
@@ -102,21 +103,19 @@ def _action_space_for_interface(device: Any) -> List[Any]:
 class BaseMidsceneTools(ABC):
     """Base class for platform-specific Midscene tools."""
 
-    init_arg_spec: Optional[InitArgSpec] = None
+    init_arg_spec: InitArgSpec | None = None
 
     def __init__(self) -> None:
-        self.agent: Optional[BaseAgent] = None
-        self.tool_definitions: List[ToolDefinition] = []
+        self.agent: BaseAgent | None = None
+        self.tool_definitions: list[ToolDefinition] = []
         self.tool_defaults: ToolDefaults = {}
 
     # -- init args ---------------------------------------------------------
 
-    def _get_init_arg_keys(self) -> List[str]:
+    def _get_init_arg_keys(self) -> list[str]:
         return list(self.init_arg_spec.shape) if self.init_arg_spec else []
 
-    def extract_agent_init_param(
-        self, args: Dict[str, Any]
-    ) -> Any:
+    def extract_agent_init_param(self, args: dict[str, Any]) -> Any:
         if not self.init_arg_spec:
             return None
         extracted = extract_namespaced_args(
@@ -126,9 +125,7 @@ class BaseMidsceneTools(ABC):
             return self.init_arg_spec.adapt(extracted)
         return extracted
 
-    def sanitize_tool_args(
-        self, args: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def sanitize_tool_args(self, args: dict[str, Any]) -> dict[str, Any]:
         if not self.init_arg_spec:
             return args
         return sanitize_namespaced_args(
@@ -144,14 +141,14 @@ class BaseMidsceneTools(ABC):
 
     def get_agent_init_arg_cli_metadata(
         self,
-    ) -> Optional[ToolCliMetadata]:
+    ) -> ToolCliMetadata | None:
         if not self.init_arg_spec or not self.init_arg_spec.cli:
             return None
 
         cli = self.init_arg_spec.cli
         prefer_bare_keys = bool(cli.get("preferBareKeys"))
         preferred_names = cli.get("preferredNames") or {}
-        options: Dict[str, Any] = {}
+        options: dict[str, Any] = {}
 
         for key in self._get_init_arg_keys():
             canonical_key = f"{self.init_arg_spec.namespace}.{key}"
@@ -184,27 +181,25 @@ class BaseMidsceneTools(ABC):
     def create_temporary_device(self) -> BaseDevice:
         """Create a temporary device to read the action space."""
 
-    def prepare_platform_tools(self) -> List[ToolDefinition]:
+    def prepare_platform_tools(self) -> list[ToolDefinition]:
         return []
 
-    def get_cli_report_session_name(self) -> Optional[str]:
+    def get_cli_report_session_name(self) -> str | None:
         return None
 
     def create_new_cli_report_session(
-        self, target_identity: Optional[str] = None
-    ) -> Optional[Dict[str, Any]]:
+        self, target_identity: str | None = None
+    ) -> dict[str, Any] | None:
         session_name = self.get_cli_report_session_name()
         if not session_name:
             return None
         return generate_cli_report_session(session_name, target_identity)
 
-    def commit_cli_report_session(
-        self, session: Optional[Dict[str, Any]]
-    ) -> None:
+    def commit_cli_report_session(self, session: dict[str, Any] | None) -> None:
         if session:
             write_cli_report_session(session)
 
-    def read_cli_report_file_name(self) -> Optional[str]:
+    def read_cli_report_file_name(self) -> str | None:
         session_name = self.get_cli_report_session_name()
         if not session_name:
             return None
@@ -213,7 +208,7 @@ class BaseMidsceneTools(ABC):
 
     def read_cli_report_agent_options(
         self,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         report_file_name = self.read_cli_report_file_name()
         if not report_file_name:
             return None
@@ -258,10 +253,8 @@ class BaseMidsceneTools(ABC):
                 ),
             )
 
-        async def get_agent(args: Optional[Dict[str, Any]] = None) -> BaseAgent:
-            return await self.ensure_agent(
-                self.extract_agent_init_param(args or {})
-            )
+        async def get_agent(args: dict[str, Any] | None = None) -> BaseAgent:
+            return await self.ensure_agent(self.extract_agent_init_param(args or {}))
 
         action_tools = generate_tools_from_action_space(
             action_space,
@@ -287,17 +280,15 @@ class BaseMidsceneTools(ABC):
             if destroy is not None:
                 await _maybe_await(destroy())
 
-    def get_tool_definitions(self) -> List[ToolDefinition]:
+    def get_tool_definitions(self) -> list[ToolDefinition]:
         return self.tool_definitions
 
-    def get_cli_tool_definitions(self) -> List[ToolDefinition]:
+    def get_cli_tool_definitions(self) -> list[ToolDefinition]:
         """Commands that exist only on the foreground CLI surface."""
         from midscene.shared.cli.record_command import create_record_cli_command
 
-        async def get_agent(args: Optional[Dict[str, Any]] = None) -> BaseAgent:
-            return await self.ensure_agent(
-                self.extract_agent_init_param(args or {})
-            )
+        async def get_agent(args: dict[str, Any] | None = None) -> BaseAgent:
+            return await self.ensure_agent(self.extract_agent_init_param(args or {}))
 
         return [
             create_record_cli_command(
@@ -311,13 +302,11 @@ class BaseMidsceneTools(ABC):
         self.agent = agent
 
     def set_tool_defaults(self, tool_defaults: ToolDefaults) -> None:
-        self.tool_defaults = merge_tool_defaults(
-            self.tool_defaults, tool_defaults
-        )
+        self.tool_defaults = merge_tool_defaults(self.tool_defaults, tool_defaults)
 
     # -- helpers -----------------------------------------------------------
 
-    def build_screenshot_content(self, screenshot: str) -> List[Dict[str, Any]]:
+    def build_screenshot_content(self, screenshot: str) -> list[dict[str, Any]]:
         parsed = parse_base64(screenshot)
         return [
             {
@@ -331,11 +320,9 @@ class BaseMidsceneTools(ABC):
         return ToolResult([{"type": "text", "text": text}])
 
     def create_disconnect_handler(self, platform_name: str) -> Any:
-        async def handler(_args: Optional[Dict[str, Any]] = None) -> ToolResult:
+        async def handler(_args: dict[str, Any] | None = None) -> ToolResult:
             if self.agent is None:
-                return self.build_text_result(
-                    "No active connection to disconnect"
-                )
+                return self.build_text_result("No active connection to disconnect")
             try:
                 destroy = getattr(self.agent, "destroy", None)
                 if destroy is not None:

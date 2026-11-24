@@ -1,6 +1,6 @@
 """OpenAI protocol dispatch (upstream openai/call-openai.ts)."""
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from midscene.core.ai_model.service_caller.openai.chat_completion.non_stream import (
     call_chat_completion_non_streaming,
@@ -24,9 +24,9 @@ from midscene.core.ai_model.service_caller.openai.responses.stream import (
 
 
 async def call_open_ai(
-    context: Dict[str, Any],
-    prepared: Dict[str, Any],
-) -> Dict[str, Any]:
+    context: dict[str, Any],
+    prepared: dict[str, Any],
+) -> dict[str, Any]:
     """Upstream-shaped entry point over the shared OpenAI transport.
 
     ``context`` carries the model runtime, call options, execution id and
@@ -34,9 +34,7 @@ async def call_open_ai(
     """
     model_runtime = _context_value(context, "modelRuntime", "model_runtime")
     options = _context_value(context, "options") or {}
-    abort_signal = _context_value(
-        context, "requestSignal", "request_signal"
-    )
+    abort_signal = _context_value(context, "requestSignal", "request_signal")
     if abort_signal is not None:
         abort_signal.throw_if_aborted()
 
@@ -66,9 +64,7 @@ async def call_open_ai(
     )
 
 
-def _context_value(
-    context: Dict[str, Any], *keys: str, default: Any = None
-) -> Any:
+def _context_value(context: dict[str, Any], *keys: str, default: Any = None) -> Any:
     for key in keys:
         if key in context:
             return context[key]
@@ -78,13 +74,13 @@ def _context_value(
 async def call_openai(
     model_runtime: Any,
     protocol: str,
-    prepared: Dict[str, Any],
+    prepared: dict[str, Any],
     stream: bool,
-    on_chunk: Optional[Any] = None,
-    effective_timeout: Optional[float] = None,
-    execution_id: Optional[str] = None,
-    record_event: Optional[Any] = None,
-) -> Dict[str, Any]:
+    on_chunk: Any | None = None,
+    effective_timeout: float | None = None,
+    execution_id: str | None = None,
+    record_event: Any | None = None,
+) -> dict[str, Any]:
     """Send a prepared request and return the parsed model result."""
     model_config = model_runtime.config
     url = resolve_endpoint(model_config, protocol)

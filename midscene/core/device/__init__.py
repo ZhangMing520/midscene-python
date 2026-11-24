@@ -9,8 +9,9 @@ import asyncio
 import inspect
 import math
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Optional
 
 from midscene.core.device.device_options import (
     _accepts_keyword,
@@ -37,19 +38,19 @@ class DeviceAction:
 
     name: str
     description: str
-    param_schema: Dict[str, Dict[str, Any]] = field(default_factory=dict)
-    locate_fields: List[str] = field(default_factory=list)
-    distance_fields: List[str] = field(default_factory=list)
-    sample: Optional[Dict[str, Any]] = None
-    interface_alias: Optional[str] = None
+    param_schema: dict[str, dict[str, Any]] = field(default_factory=dict)
+    locate_fields: list[str] = field(default_factory=list)
+    distance_fields: list[str] = field(default_factory=list)
+    sample: dict[str, Any] | None = None
+    interface_alias: str | None = None
     supported_by_system_one: bool = False
-    primitive: Optional[str] = None  # device method the action requires
-    execute: Optional[Callable[..., Any]] = None  # async (param, device, locate_fn)
-    delay_before_runner: Optional[float] = None
-    delay_after_runner: Optional[float] = None
-    planning_feedback_max_length: Optional[Any] = None  # int | "unlimited"
+    primitive: str | None = None  # device method the action requires
+    execute: Callable[..., Any] | None = None  # async (param, device, locate_fn)
+    delay_before_runner: float | None = None
+    delay_after_runner: float | None = None
+    planning_feedback_max_length: Any | None = None  # int | "unlimited"
 
-    def to_prompt_dict(self) -> Dict[str, Any]:
+    def to_prompt_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "description": self.description,
@@ -63,7 +64,7 @@ class DeviceAction:
 
 
 def find_action_in_action_space_or_throw(
-    action_type: str, action_space: List[Any]
+    action_type: str, action_space: list[Any]
 ) -> Any:
     for action in action_space:
         name = action["name"] if isinstance(action, dict) else action.name
@@ -80,8 +81,8 @@ def find_action_in_action_space_or_throw(
 
 
 def scale_action_distances(
-    param: Dict[str, Any], definition: Any, ratio: float
-) -> Dict[str, Any]:
+    param: dict[str, Any], definition: Any, ratio: float
+) -> dict[str, Any]:
     """Convert model-input-image-pixel distances to device-logical units."""
     distance_fields = (
         definition.get("distance_fields")
@@ -125,7 +126,7 @@ def _js_round(value: float) -> int:
     return int(math.floor(value + 0.5))
 
 
-def _swipe_center(locate: Any, name: str) -> Dict[str, float]:
+def _swipe_center(locate: Any, name: str) -> dict[str, float]:
     center = locate.get("center") if isinstance(locate, dict) else None
     if not center or len(center) < 2:
         raise ValueError(f'Swipe "{name}" requires a located center point')
@@ -133,8 +134,8 @@ def _swipe_center(locate: Any, name: str) -> Dict[str, float]:
 
 
 def normalize_swipe_param(
-    param: Dict[str, Any], screen_size: Dict[str, Any]
-) -> Dict[str, Any]:
+    param: dict[str, Any], screen_size: dict[str, Any]
+) -> dict[str, Any]:
     """Resolve Swipe params into points, duration and repeat count.
 
     Mirrors upstream `normalizeSwipeParam`: `end` is mutually exclusive with
@@ -181,7 +182,7 @@ def normalize_swipe_param(
     else:
         if direction not in _SWIPE_DIRECTIONS or distance is None:
             raise ValueError(
-                'Invalid Swipe parameters: a relative swipe requires both '
+                "Invalid Swipe parameters: a relative swipe requires both "
                 '"direction" and a positive "distance".'
             )
         if not _is_finite_number(distance) or distance <= 0:
@@ -193,13 +194,17 @@ def normalize_swipe_param(
             + (
                 distance
                 if direction == "right"
-                else -distance if direction == "left" else 0
+                else -distance
+                if direction == "left"
+                else 0
             ),
             "y": start_point["y"]
             + (
                 distance
                 if direction == "down"
-                else -distance if direction == "up" else 0
+                else -distance
+                if direction == "up"
+                else 0
             ),
         }
 
@@ -215,8 +220,8 @@ def normalize_swipe_param(
 
 
 def normalize_pinch_param(
-    param: Dict[str, Any], screen_size: Dict[str, Any]
-) -> Dict[str, Any]:
+    param: dict[str, Any], screen_size: dict[str, Any]
+) -> dict[str, Any]:
     """Resolve Pinch params into a center point and finger distances.
 
     Mirrors upstream `normalizePinchParam`: the center defaults to the middle
@@ -418,10 +423,10 @@ ACTION_SCROLL_PARAM_SCHEMA = {
         "type": '"down" | "up" | "right" | "left"',
         "description": (
             "The direction toward the off-screen content to reveal. Quick "
-            'mapping: want to see content below the current viewport -> '
+            "mapping: want to see content below the current viewport -> "
             '"down"; above -> "up"; to the left -> "left"; to the right -> '
             '"right". This does not describe the movement direction of the '
-            'content currently visible on the screen. Only effective when '
+            "content currently visible on the screen. Only effective when "
             'scrollType is "singleAction".'
         ),
         "optional": True,
@@ -558,7 +563,7 @@ def _field(source: Any, name: str, default: Any = None) -> Any:
 
 
 def _option(
-    options: Any, snake_name: str, camel_name: Optional[str] = None, default: Any = None
+    options: Any, snake_name: str, camel_name: str | None = None, default: Any = None
 ) -> Any:
     value = _field(options, snake_name, None)
     if value is not None:
@@ -576,7 +581,7 @@ async def _invoke(fn: Any, *args: Any) -> Any:
     return result
 
 
-def _point_from_locate(locate: Any, missing_message: str) -> Dict[str, Any]:
+def _point_from_locate(locate: Any, missing_message: str) -> dict[str, Any]:
     center = (
         locate.get("center")
         if isinstance(locate, dict)
@@ -591,21 +596,21 @@ def _define_action(
     *,
     name: str,
     description: str,
-    call: Callable[[Dict[str, Any], Any], Any],
-    param_schema: Optional[Dict[str, Any]] = None,
-    locate_fields: Optional[List[str]] = None,
-    distance_fields: Optional[List[str]] = None,
-    sample: Optional[Dict[str, Any]] = None,
-    interface_alias: Optional[str] = None,
+    call: Callable[[dict[str, Any], Any], Any],
+    param_schema: dict[str, Any] | None = None,
+    locate_fields: list[str] | None = None,
+    distance_fields: list[str] | None = None,
+    sample: dict[str, Any] | None = None,
+    interface_alias: str | None = None,
     supported_by_system_one: bool = False,
-    delay_before_runner: Optional[float] = None,
-    delay_after_runner: Optional[float] = None,
+    delay_before_runner: float | None = None,
+    delay_after_runner: float | None = None,
 ) -> DeviceAction:
     """Build a descriptor whose executor resolves locate params then calls `call`."""
     locate_field_names = list(locate_fields or [])
 
     async def execute(
-        param: Optional[Dict[str, Any]] = None,
+        param: dict[str, Any] | None = None,
         device: Any = None,
         locate_fn: Any = None,
     ) -> Any:
@@ -641,15 +646,15 @@ def _define_located_point_action(
     *,
     name: str,
     description: str,
-    primitive: Callable[[Dict[str, Any]], Any],
-    param_schema: Dict[str, Any],
-    sample: Dict[str, Any],
+    primitive: Callable[[dict[str, Any]], Any],
+    param_schema: dict[str, Any],
+    sample: dict[str, Any],
     missing_locate_message: str,
-    interface_alias: Optional[str] = None,
+    interface_alias: str | None = None,
     supported_by_system_one: bool = False,
-    call_with_param: Optional[Callable[[Dict[str, Any], Dict[str, Any]], Any]] = None,
+    call_with_param: Callable[[dict[str, Any], dict[str, Any]], Any] | None = None,
 ) -> DeviceAction:
-    async def call(param: Dict[str, Any], context: Any = None) -> None:
+    async def call(param: dict[str, Any], context: Any = None) -> None:
         point = _point_from_locate(param.get("locate"), missing_locate_message)
         if call_with_param is not None:
             await call_with_param(point, param)
@@ -669,7 +674,7 @@ def _define_located_point_action(
 
 
 def define_action_tap(
-    tap: Callable[[Dict[str, Any]], Any],
+    tap: Callable[[dict[str, Any]], Any],
 ) -> DeviceAction:
     return _define_located_point_action(
         name="Tap",
@@ -686,7 +691,7 @@ def define_action_tap(
 def define_action_register_file_chooser_accept(
     register: Callable[[Any], Any],
 ) -> DeviceAction:
-    async def call(param: Dict[str, Any], context: Any = None) -> None:
+    async def call(param: dict[str, Any], context: Any = None) -> None:
         await _invoke(register, param.get("files"))
 
     return _define_action(
@@ -703,7 +708,7 @@ def define_action_register_file_chooser_accept(
 
 
 def define_action_right_click(
-    right_click: Callable[[Dict[str, Any]], Any],
+    right_click: Callable[[dict[str, Any]], Any],
 ) -> DeviceAction:
     return _define_located_point_action(
         name="RightClick",
@@ -718,7 +723,7 @@ def define_action_right_click(
 
 
 def define_action_middle_click(
-    middle_click: Callable[[Dict[str, Any]], Any],
+    middle_click: Callable[[dict[str, Any]], Any],
 ) -> DeviceAction:
     return _define_located_point_action(
         name="MiddleClick",
@@ -732,7 +737,7 @@ def define_action_middle_click(
 
 
 def define_action_double_click(
-    double_click: Callable[[Dict[str, Any]], Any],
+    double_click: Callable[[dict[str, Any]], Any],
 ) -> DeviceAction:
     return _define_located_point_action(
         name="DoubleClick",
@@ -747,7 +752,7 @@ def define_action_double_click(
 
 
 def define_action_hover(
-    hover: Callable[[Dict[str, Any]], Any],
+    hover: Callable[[dict[str, Any]], Any],
 ) -> DeviceAction:
     return _define_located_point_action(
         name="Hover",
@@ -762,7 +767,7 @@ def define_action_hover(
 
 
 def define_action_input(keyboard: Any) -> DeviceAction:
-    async def call(param: Dict[str, Any], context: Any = None) -> None:
+    async def call(param: dict[str, Any], context: Any = None) -> None:
         mode = param.get("mode") or "replace"
         # Backward compat: convert the deprecated 'append' to 'typeOnly'.
         if mode == "append":
@@ -776,7 +781,7 @@ def define_action_input(keyboard: Any) -> DeviceAction:
         if not value:
             return
 
-        options: Dict[str, Any] = {
+        options: dict[str, Any] = {
             "target": param.get("locate"),
             "replace": mode != "typeOnly",
             "auto_dismiss_keyboard": param.get("autoDismissKeyboard"),
@@ -801,9 +806,9 @@ def define_action_input(keyboard: Any) -> DeviceAction:
 
 
 def define_action_keyboard_press(
-    keyboard_press: Callable[[str, Dict[str, Any]], Any],
+    keyboard_press: Callable[[str, dict[str, Any]], Any],
 ) -> DeviceAction:
-    async def call(param: Dict[str, Any], context: Any = None) -> None:
+    async def call(param: dict[str, Any], context: Any = None) -> None:
         await _invoke(
             keyboard_press,
             param.get("keyName"),
@@ -829,7 +834,7 @@ def define_action_keyboard_press(
 def define_action_scroll(
     scroll: Callable[..., Any],
 ) -> DeviceAction:
-    async def call(param: Dict[str, Any], context: Any = None) -> None:
+    async def call(param: dict[str, Any], context: Any = None) -> None:
         if _field(context, "skipDefaultWait", False):
             await _invoke(scroll, param, {"skip_default_wait": True})
         else:
@@ -862,9 +867,9 @@ def define_action_scroll(
 
 
 def define_action_drag_and_drop(
-    drag_and_drop: Callable[[Dict[str, Any], Dict[str, Any]], Any],
+    drag_and_drop: Callable[[dict[str, Any], dict[str, Any]], Any],
 ) -> DeviceAction:
-    async def call(param: Dict[str, Any], context: Any = None) -> None:
+    async def call(param: dict[str, Any], context: Any = None) -> None:
         from_locate = param.get("from")
         to_locate = param.get("to")
         if not from_locate:
@@ -898,7 +903,7 @@ def define_action_drag_and_drop(
 def define_action_long_press(
     long_press: Callable[..., Any],
 ) -> DeviceAction:
-    async def press(point: Dict[str, Any], param: Dict[str, Any]) -> None:
+    async def press(point: dict[str, Any], param: dict[str, Any]) -> None:
         await _invoke(long_press, point, {"duration": param.get("duration")})
 
     return _define_located_point_action(
@@ -913,7 +918,7 @@ def define_action_long_press(
     )
 
 
-def _create_swipe_param_schema(input_mode: str) -> Dict[str, Any]:
+def _create_swipe_param_schema(input_mode: str) -> dict[str, Any]:
     movement_source = "finger" if input_mode == "touch" else "pointer"
 
     return {
@@ -931,7 +936,7 @@ def _create_swipe_param_schema(input_mode: str) -> Dict[str, Any]:
             "description": (
                 f"{'Finger' if movement_source == 'finger' else 'Pointer'} "
                 f"movement direction. Quick mapping: move the "
-                f"{movement_source} or content upward -> \"up\"; downward -> "
+                f'{movement_source} or content upward -> "up"; downward -> '
                 '"down"; leftward -> "left"; rightward -> "right". Required '
                 "together with a positive distance for a relative swipe. "
                 "Omit when using end."
@@ -976,8 +981,8 @@ ACTION_SWIPE_PARAM_SCHEMA = _create_swipe_param_schema("touch")
 
 
 def normalize_mobile_swipe_param(
-    param: Dict[str, Any], screen_size: Dict[str, Any]
-) -> Dict[str, Any]:
+    param: dict[str, Any], screen_size: dict[str, Any]
+) -> dict[str, Any]:
     """Deprecated alias for `normalize_swipe_param` (upstream name)."""
     return normalize_swipe_param(param, screen_size)
 
@@ -987,7 +992,7 @@ def define_action_swipe(config: Any) -> DeviceAction:
     size = _field(config, "size")
     input_mode = _field(config, "inputMode", "touch") or "touch"
 
-    async def call(param: Dict[str, Any], context: Any = None) -> None:
+    async def call(param: dict[str, Any], context: Any = None) -> None:
         normalized = normalize_swipe_param(param, await _invoke(size))
         start_point = normalized["start_point"]
         end_point = normalized["end_point"]
@@ -1048,7 +1053,7 @@ def define_action_swipe(config: Any) -> DeviceAction:
 def define_action_clear_input(
     clear_input: Callable[..., Any],
 ) -> DeviceAction:
-    async def call(param: Dict[str, Any], context: Any = None) -> None:
+    async def call(param: dict[str, Any], context: Any = None) -> None:
         await _invoke(clear_input, param.get("locate"))
 
     return _define_action(
@@ -1067,7 +1072,7 @@ def define_action_cursor_move(config: Any) -> DeviceAction:
     keyboard = _field(config, "keyboard")
     sleep = _field(config, "sleep")
 
-    async def call(param: Dict[str, Any], context: Any = None) -> None:
+    async def call(param: dict[str, Any], context: Any = None) -> None:
         direction = param.get("direction")
         times = param.get("times")
         if times is None:
@@ -1102,13 +1107,13 @@ def define_action_cursor_move(config: Any) -> DeviceAction:
     )
 
 
-def define_action_pinch(config: Any) -> Optional[DeviceAction]:
+def define_action_pinch(config: Any) -> DeviceAction | None:
     pinch = _field(config, "pinch")
     if pinch is None:
         return None
     size = _field(config, "size")
 
-    async def call(param: Dict[str, Any], context: Any = None) -> None:
+    async def call(param: dict[str, Any], context: Any = None) -> None:
         normalized = normalize_pinch_param(param, await _invoke(size))
         await _invoke(
             pinch,
@@ -1123,8 +1128,8 @@ def define_action_pinch(config: Any) -> Optional[DeviceAction]:
     return _define_action(
         name="Pinch",
         description=(
-            "Perform a two-finger pinch gesture. Use direction \"in\" to "
-            "pinch fingers together (zoom out), or \"out\" to spread fingers "
+            'Perform a two-finger pinch gesture. Use direction "in" to '
+            'pinch fingers together (zoom out), or "out" to spread fingers '
             "apart (zoom in). Optionally specify distance for the amount by "
             "which the distance between the two fingers changes."
         ),
@@ -1142,7 +1147,7 @@ def define_action_pinch(config: Any) -> Optional[DeviceAction]:
 
 
 def define_action_sleep(abort_signal: Any = None) -> DeviceAction:
-    async def call(param: Dict[str, Any], context: Any = None) -> None:
+    async def call(param: dict[str, Any], context: Any = None) -> None:
         signal = abort_signal or _field(context, "signal")
         duration = param.get("timeMs")
         if duration is None:
@@ -1167,7 +1172,7 @@ def define_action_sleep(abort_signal: Any = None) -> DeviceAction:
 
 def resolve_swipe_input_primitive(
     input: Any,
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Resolve the canonical swipe primitive; touch is preferred over mouse."""
     pointer = _field(input, "pointer")
     touch = _field(input, "touch")
@@ -1185,7 +1190,7 @@ def resolve_swipe_input_primitive(
 
 def _define_system_input_action(config: Any, primitive: Any) -> DeviceAction:
     async def execute(
-        param: Optional[Dict[str, Any]] = None,
+        param: dict[str, Any] | None = None,
         device: Any = None,
         locate_fn: Any = None,
     ) -> None:
@@ -1207,9 +1212,9 @@ def _define_system_input_action(config: Any, primitive: Any) -> DeviceAction:
 def define_actions_from_input_primitives(
     input: Any,
     options: Any = None,
-) -> List[DeviceAction]:
+) -> list[DeviceAction]:
     """Build the planning action set from low-level input primitives."""
-    actions: List[Optional[DeviceAction]] = []
+    actions: list[DeviceAction | None] = []
     pointer = _field(input, "pointer")
     keyboard = _field(input, "keyboard")
     scroll = _field(input, "scroll")
@@ -1239,12 +1244,8 @@ def define_actions_from_input_primitives(
 
     if keyboard is not None:
         actions.append(define_action_input(keyboard))
-        actions.append(
-            define_action_clear_input(_field(keyboard, "clearInput"))
-        )
-        actions.append(
-            define_action_keyboard_press(_field(keyboard, "keyboardPress"))
-        )
+        actions.append(define_action_clear_input(_field(keyboard, "clearInput")))
+        actions.append(define_action_keyboard_press(_field(keyboard, "keyboardPress")))
         actions.append(
             define_action_cursor_move(
                 {"keyboard": keyboard, "sleep": _option(options, "sleep")}
@@ -1255,9 +1256,7 @@ def define_actions_from_input_primitives(
         actions.append(define_action_scroll(_field(scroll, "scroll")))
 
     size = _option(options, "size")
-    swipe_config = resolve_swipe_input_primitive(
-        {"pointer": pointer, "touch": touch}
-    )
+    swipe_config = resolve_swipe_input_primitive({"pointer": pointer, "touch": touch})
     if (
         swipe_config is not None
         and size is not None
@@ -1284,7 +1283,7 @@ def define_actions_from_input_primitives(
     return [action for action in actions if action is not None]
 
 
-def create_default_mobile_actions(context: Any) -> List[DeviceAction]:
+def create_default_mobile_actions(context: Any) -> list[DeviceAction]:
     """The default mobile action set built from `context.input` primitives."""
     return define_actions_from_input_primitives(
         _field(context, "input"),
@@ -1301,14 +1300,17 @@ def create_default_mobile_actions(context: Any) -> List[DeviceAction]:
 # locate param ({prompt, locatedPixelResult?}) to {'center': (x, y), 'rect'?}.
 # ---------------------------------------------------------------------------
 
-async def _resolve_locate_point(locate_param: Dict[str, Any], locate_fn) -> Dict[str, Any]:
+
+async def _resolve_locate_point(
+    locate_param: dict[str, Any], locate_fn
+) -> dict[str, Any]:
     if not isinstance(locate_param, dict) or not locate_param.get("prompt"):
         raise ValueError("locate parameter requires a prompt")
     return await locate_fn(locate_param)
 
 
 def _make_tap(executor: str) -> Callable[..., Any]:
-    async def execute(param: Dict[str, Any], device: Any, locate_fn) -> None:
+    async def execute(param: dict[str, Any], device: Any, locate_fn) -> None:
         locate = param.get("locate")
         if locate is None:
             raise ValueError(f"{executor} requires a locate parameter")
@@ -1323,7 +1325,7 @@ def _make_tap(executor: str) -> Callable[..., Any]:
     return execute
 
 
-async def _execute_input(param: Dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_input(param: dict[str, Any], device: Any, locate_fn) -> None:
     mode = param.get("mode") or "replace"
     # Backward compat: upstream converts the deprecated 'append' to 'typeOnly'.
     if mode == "append":
@@ -1362,7 +1364,9 @@ async def _execute_input(param: Dict[str, Any], device: Any, locate_fn) -> None:
     )
 
 
-async def _execute_keyboard_press(param: Dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_keyboard_press(
+    param: dict[str, Any], device: Any, locate_fn
+) -> None:
     key_name = param.get("keyName")
     if not key_name:
         raise ValueError("KeyboardPress requires keyName")
@@ -1375,11 +1379,11 @@ async def _execute_keyboard_press(param: Dict[str, Any], device: Any, locate_fn)
     await device.keyboard_press(str(key_name))
 
 
-async def _execute_scroll(param: Dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_scroll(param: dict[str, Any], device: Any, locate_fn) -> None:
     direction = param.get("direction") or "down"
     distance = param.get("distance")
     scroll_type = param.get("scrollType") or "singleAction"
-    kwargs: Dict[str, Any] = {"scroll_type": scroll_type}
+    kwargs: dict[str, Any] = {"scroll_type": scroll_type}
     if distance is not None:
         kwargs["distance"] = distance
     locate = param.get("locate")
@@ -1389,7 +1393,7 @@ async def _execute_scroll(param: Dict[str, Any], device: Any, locate_fn) -> None
     await device.scroll(direction, **_scroll_supported_kwargs(device, kwargs))
 
 
-async def _execute_clear_input(param: Dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_clear_input(param: dict[str, Any], device: Any, locate_fn) -> None:
     locate = param.get("locate")
     if locate is not None:
         point = await _resolve_locate_point(locate, locate_fn)
@@ -1403,7 +1407,7 @@ async def _execute_clear_input(param: Dict[str, Any], device: Any, locate_fn) ->
         await device.keyboard_press("Delete")
 
 
-async def _execute_sleep(param: Dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_sleep(param: dict[str, Any], device: Any, locate_fn) -> None:
     time_ms = param.get("timeMs") or 1000
     try:
         time_ms = max(0, min(int(time_ms), 5 * 60 * 1000))
@@ -1412,7 +1416,7 @@ async def _execute_sleep(param: Dict[str, Any], device: Any, locate_fn) -> None:
     await asyncio.sleep(time_ms / 1000)
 
 
-async def _execute_cursor_move(param: Dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_cursor_move(param: dict[str, Any], device: Any, locate_fn) -> None:
     direction = param.get("direction")
     if direction not in ("left", "right"):
         raise ValueError('CursorMove direction must be "left" or "right"')
@@ -1430,7 +1434,7 @@ async def _execute_cursor_move(param: Dict[str, Any], device: Any, locate_fn) ->
         await asyncio.sleep(0.1)
 
 
-async def _execute_navigate(param: Dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_navigate(param: dict[str, Any], device: Any, locate_fn) -> None:
     url = param.get("url")
     if not url or not str(url).strip():
         raise ValueError("Navigate requires a non-empty url parameter")
@@ -1439,25 +1443,25 @@ async def _execute_navigate(param: Dict[str, Any], device: Any, locate_fn) -> No
     await device.navigate_to(str(url))
 
 
-async def _execute_reload(param: Dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_reload(param: dict[str, Any], device: Any, locate_fn) -> None:
     if not _supports(device, "reload"):
         raise NotImplementedError("Reload is not supported on this interface")
     await device.reload()
 
 
-async def _execute_go_back(param: Dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_go_back(param: dict[str, Any], device: Any, locate_fn) -> None:
     if not _supports(device, "go_back"):
         raise NotImplementedError("GoBack is not supported on this interface")
     await device.go_back()
 
 
-async def _execute_go_forward(param: Dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_go_forward(param: dict[str, Any], device: Any, locate_fn) -> None:
     if not _supports(device, "go_forward"):
         raise NotImplementedError("GoForward is not supported on this interface")
     await device.go_forward()
 
 
-async def _resolve_screen_size(device: Any) -> Dict[str, float]:
+async def _resolve_screen_size(device: Any) -> dict[str, float]:
     """Logical screen size used to normalize swipe points."""
     size_fn = getattr(device, "size", None)
     if size_fn is not None:
@@ -1472,7 +1476,7 @@ async def _resolve_screen_size(device: Any) -> Dict[str, float]:
     }
 
 
-async def _execute_swipe(param: Dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_swipe(param: dict[str, Any], device: Any, locate_fn) -> None:
     resolved = dict(param)
     if resolved.get("start"):
         point = await _resolve_locate_point(resolved["start"], locate_fn)
@@ -1487,8 +1491,8 @@ async def _execute_swipe(param: Dict[str, Any], device: Any, locate_fn) -> None:
     duration = int(normalized["duration"])
     repeat_count = normalized["repeat_count"]
 
-    def _swipe_kwargs() -> Dict[str, Any]:
-        kwargs: Dict[str, Any] = {"distance": distance}
+    def _swipe_kwargs() -> dict[str, Any]:
+        kwargs: dict[str, Any] = {"distance": distance}
         if _accepts_keyword(device.swipe, "duration"):
             kwargs["duration"] = duration
         return kwargs
@@ -1505,7 +1509,7 @@ async def _execute_swipe(param: Dict[str, Any], device: Any, locate_fn) -> None:
         return
 
     if _supports(device, "swipe_points"):
-        point_kwargs: Dict[str, Any] = {}
+        point_kwargs: dict[str, Any] = {}
         if _accepts_keyword(device.swipe_points, "duration"):
             point_kwargs["duration"] = duration
         start_point = [
@@ -1526,12 +1530,10 @@ async def _execute_swipe(param: Dict[str, Any], device: Any, locate_fn) -> None:
         await device.scroll(direction, distance=distance)
         return
 
-    raise NotImplementedError(
-        "Swipe endpoint form is not supported on this interface"
-    )
+    raise NotImplementedError("Swipe endpoint form is not supported on this interface")
 
 
-async def _execute_pull_gesture(param: Dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_pull_gesture(param: dict[str, Any], device: Any, locate_fn) -> None:
     if not _supports(device, "pull_gesture"):
         raise NotImplementedError("PullGesture is not supported on this interface")
     direction = param.get("direction")
@@ -1550,7 +1552,7 @@ async def _execute_pull_gesture(param: Dict[str, Any], device: Any, locate_fn) -
     )
 
 
-async def _execute_drag_and_drop(param: Dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_drag_and_drop(param: dict[str, Any], device: Any, locate_fn) -> None:
     from_locate = param.get("from")
     to_locate = param.get("to")
     if not from_locate:
@@ -1564,7 +1566,7 @@ async def _execute_drag_and_drop(param: Dict[str, Any], device: Any, locate_fn) 
     await device.drag_and_drop(from_point["center"], to_point["center"])
 
 
-async def _execute_long_press(param: Dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_long_press(param: dict[str, Any], device: Any, locate_fn) -> None:
     if not _supports(device, "long_press"):
         raise NotImplementedError("LongPress is not supported on this interface")
     locate = param.get("locate")
@@ -1579,7 +1581,7 @@ async def _execute_long_press(param: Dict[str, Any], device: Any, locate_fn) -> 
         await device.long_press(x, y)
 
 
-def build_web_action_space() -> List[DeviceAction]:
+def build_web_action_space() -> list[DeviceAction]:
     """The web/desktop action space (upstream web-integration default set)."""
     return [
         DeviceAction(
@@ -1704,8 +1706,11 @@ def build_web_action_space() -> List[DeviceAction]:
             },
             locate_fields=["locate"],
             distance_fields=["distance"],
-            sample={"direction": "out", "distance": 200,
-                    "locate": {"prompt": "the map area"}},
+            sample={
+                "direction": "out",
+                "distance": 200,
+                "locate": {"prompt": "the map area"},
+            },
             interface_alias="aiPinch",
             primitive="pinch",
             execute=_execute_pinch,
@@ -1793,7 +1798,10 @@ def build_web_action_space() -> List[DeviceAction]:
                 },
             },
             locate_fields=["locate"],
-            sample={"value": "test@example.com", "locate": {"prompt": "the email input field"}},
+            sample={
+                "value": "test@example.com",
+                "locate": {"prompt": "the email input field"},
+            },
             interface_alias="aiInput",
             primitive="input_text",
             execute=_execute_input,
@@ -1851,7 +1859,7 @@ def build_web_action_space() -> List[DeviceAction]:
                         'The scroll behavior: "singleAction" for a single scroll '
                         'action, "scrollToBottom" for scrolling all the way to the '
                         "bottom by rapidly scrolling 5-10 times (skipping "
-                        'intermediate content until reaching the bottom), '
+                        "intermediate content until reaching the bottom), "
                         '"scrollToTop" for scrolling all the way to the top by '
                         "rapidly scrolling 5-10 times (skipping intermediate "
                         'content until reaching the top), "scrollToRight" for '
@@ -1864,8 +1872,8 @@ def build_web_action_space() -> List[DeviceAction]:
                 "direction": {
                     "type": '"down" | "up" | "right" | "left"',
                     "description": (
-                        'The direction toward the off-screen content to reveal. '
-                        'Quick mapping: want to see content below the current '
+                        "The direction toward the off-screen content to reveal. "
+                        "Quick mapping: want to see content below the current "
                         'viewport -> "down"; above -> "up"; to the left -> '
                         '"left"; to the right -> "right". This does not describe '
                         "the movement direction of the content currently visible "
@@ -2013,7 +2021,7 @@ def build_web_action_space() -> List[DeviceAction]:
     ]
 
 
-async def _execute_run_adb_shell(param: Dict[str, Any], device: Any, locate_fn) -> Any:
+async def _execute_run_adb_shell(param: dict[str, Any], device: Any, locate_fn) -> Any:
     command = param.get("command")
     if not command:
         raise ValueError("RunAdbShell requires a command parameter")
@@ -2025,21 +2033,21 @@ async def _execute_run_adb_shell(param: Dict[str, Any], device: Any, locate_fn) 
     return await device.run_adb_shell(str(command))
 
 
-async def _execute_launch(param: Dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_launch(param: dict[str, Any], device: Any, locate_fn) -> None:
     uri = param.get("uri")
     if not uri or not str(uri).strip():
         raise ValueError("Launch requires a non-empty uri parameter")
     await device.launch_app(str(uri))
 
 
-async def _execute_terminate(param: Dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_terminate(param: dict[str, Any], device: Any, locate_fn) -> None:
     uri = param.get("uri")
     if not uri or not str(uri).strip():
         raise ValueError("Terminate requires a non-empty uri parameter")
     await device.stop_app(str(uri))
 
 
-async def _execute_pinch(param: Dict[str, Any], device: Any, locate_fn) -> None:
+async def _execute_pinch(param: dict[str, Any], device: Any, locate_fn) -> None:
     if not _supports(device, "pinch"):
         raise NotImplementedError("Pinch is not supported on this interface")
     resolved = dict(param)
@@ -2055,7 +2063,7 @@ async def _execute_pinch(param: Dict[str, Any], device: Any, locate_fn) -> None:
     )
 
 
-async def _execute_run_hdc_shell(param: Dict[str, Any], device: Any, locate_fn) -> Any:
+async def _execute_run_hdc_shell(param: dict[str, Any], device: Any, locate_fn) -> Any:
     command = param.get("command")
     if not command or not str(command).strip():
         raise RuntimeError("RunHdcShell requires a non-empty command")
@@ -2067,7 +2075,9 @@ async def _execute_run_hdc_shell(param: Dict[str, Any], device: Any, locate_fn) 
 _WDA_HTTP_METHODS = ("GET", "POST", "DELETE", "PUT")
 
 
-async def _execute_run_wda_request(param: Dict[str, Any], device: Any, locate_fn) -> Any:
+async def _execute_run_wda_request(
+    param: dict[str, Any], device: Any, locate_fn
+) -> Any:
     method = str(param.get("method") or "").upper()
     if method not in _WDA_HTTP_METHODS:
         raise ValueError(
@@ -2082,14 +2092,14 @@ async def _execute_run_wda_request(param: Dict[str, Any], device: Any, locate_fn
 
 
 def _make_harmony_system_action(method_name: str) -> Callable[..., Any]:
-    async def execute(param: Dict[str, Any], device: Any, locate_fn) -> None:
+    async def execute(param: dict[str, Any], device: Any, locate_fn) -> None:
         await getattr(device, method_name)()
 
     return execute
 
 
 def _make_system_action(method_name: str) -> Callable[..., Any]:
-    async def execute(param: Dict[str, Any], device: Any, locate_fn) -> None:
+    async def execute(param: dict[str, Any], device: Any, locate_fn) -> None:
         await getattr(device, method_name)()
 
     return execute
@@ -2132,7 +2142,7 @@ def _swipe_action(input_mode: str = "touch") -> DeviceAction:
             "between paged cards or images, follow an on-screen swipe gesture "
             "to continue or dismiss, or swipe an item to delete it. For "
             "browsing off-screen content in a page or scrollable region, use "
-            'Scroll instead. Choose exactly one movement form: (1) relative '
+            "Scroll instead. Choose exactly one movement form: (1) relative "
             'swipe — provide "direction" and a positive "distance"; or '
             '(2) endpoint swipe — provide "end". "start" is optional for both '
             "forms and defaults to the center of the page. Do not combine "
@@ -2267,7 +2277,7 @@ def _long_press_action() -> DeviceAction:
     )
 
 
-def build_android_action_space() -> List[DeviceAction]:
+def build_android_action_space() -> list[DeviceAction]:
     """Android action space: only primitives the device interface implements."""
     actions = [
         action
@@ -2355,7 +2365,7 @@ def build_android_action_space() -> List[DeviceAction]:
     return actions
 
 
-def _build_harmony_action_space() -> List[DeviceAction]:
+def _build_harmony_action_space() -> list[DeviceAction]:
     """Harmony action space: mobile set plus system buttons and HDC shell
     (upstream packages/harmony/src/device.ts systemActions). Keyboard combos
     are unsupported on HarmonyOS uitest."""
@@ -2429,7 +2439,7 @@ def _build_harmony_action_space() -> List[DeviceAction]:
     return mobile + harmony_system
 
 
-def _build_ios_action_space() -> List[DeviceAction]:
+def _build_ios_action_space() -> list[DeviceAction]:
     """iOS action space (upstream packages/ios/src/device.ts actionSpace()):
     the touch-mobile set plus the WDA-specific actions. Mouse-only actions are
     absent because a touch screen has no pointer buttons; ClearInput is
@@ -2508,13 +2518,12 @@ def _build_ios_action_space() -> List[DeviceAction]:
     mobile = [
         action
         for action in build_web_action_space()
-        if action.name
-        not in ("RightClick", "MiddleClick", "Hover", "DragAndDrop")
+        if action.name not in ("RightClick", "MiddleClick", "Hover", "DragAndDrop")
     ]
     return mobile + ios_specific
 
 
-def build_action_space_for(interface_type: str) -> List[DeviceAction]:
+def build_action_space_for(interface_type: str) -> list[DeviceAction]:
     if interface_type == "android":
         return build_android_action_space()
     if interface_type == "harmony":
@@ -2528,9 +2537,9 @@ def build_action_space_for(interface_type: str) -> List[DeviceAction]:
         # primitive.
         # TODO(computer): ComputerDevice.long_press stays a direct-API helper
         # until upstream advertises LongPress for this platform.
-        return [
-            a for a in build_web_action_space() if a.name != "Pinch"
-        ] + [_swipe_action("pointer")]
+        return [a for a in build_web_action_space() if a.name != "Pinch"] + [
+            _swipe_action("pointer")
+        ]
     if interface_type == "web":
         # Upstream web integration exposes the pointer swipe; the Playwright page
         # implements it as a mouse drag with an explicit duration.

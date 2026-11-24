@@ -10,8 +10,9 @@ import base64
 import math
 import re
 import tempfile
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any
 
 from loguru import logger
 
@@ -19,12 +20,12 @@ from midscene.core.device.mobile_scroll import resolve_default_mobile_scroll
 from midscene.core.types import (
     AbstractInterface,
     InterfaceType,
+    NodeType,
     Rect,
     Size,
     UIContext,
-    UITree,
     UINode,
-    NodeType,
+    UITree,
 )
 from midscene.harmony.hdc import HdcClient
 from midscene.harmony.keycode import resolve_harmony_key_codes
@@ -42,7 +43,7 @@ def _assert_scroll_direction(
     start: Sequence[float],
     end: Sequence[float],
     direction: str,
-    size: Dict[str, int],
+    size: dict[str, int],
 ) -> None:
     """Keep the located origin and reject reverse or stationary gestures."""
     start_x, start_y = float(start[0]), float(start[1])
@@ -64,6 +65,8 @@ def _assert_scroll_direction(
             f"No space to scroll {direction} from the located point; "
             "choose a point farther from the screen edge"
         )
+
+
 MAX_SCROLL_DISTANCE = 9999999
 
 
@@ -73,28 +76,26 @@ class HarmonyDevice(AbstractInterface):
     def __init__(
         self,
         device_id: str = "",
-        options: Optional[Any] = None,
-        hdc_path: Optional[str] = None,
+        options: Any | None = None,
+        hdc_path: str | None = None,
         hdc_timeout: float = 60.0,
     ):
         if isinstance(options, str):
             hdc_path = options
         elif isinstance(options, dict):
             hdc_path = options.get("hdcPath", options.get("hdc_path", hdc_path))
-            timeout_value = options.get(
-                "hdcTimeout", options.get("hdc_timeout")
-            )
+            timeout_value = options.get("hdcTimeout", options.get("hdc_timeout"))
             if timeout_value is not None:
                 hdc_timeout = float(timeout_value)
         self.device_id = device_id or ""
         self._hdc_path = hdc_path
         self._hdc_timeout = hdc_timeout
-        self.hdc: Optional[HdcClient] = None
+        self.hdc: HdcClient | None = None
         self._connected = False
-        self.cached_screen_size: Optional[Dict[str, int]] = None
+        self.cached_screen_size: dict[str, int] | None = None
         self._remote_screenshot_path = "/data/local/tmp/midscene-screenshot.jpeg"
-        self._local_screenshot_path: Optional[Path] = None
-        self._app_name_mapping: Dict[str, str] = {}
+        self._local_screenshot_path: Path | None = None
+        self._app_name_mapping: dict[str, str] = {}
 
     @property
     def interface_type(self) -> InterfaceType:
@@ -109,9 +110,7 @@ class HarmonyDevice(AbstractInterface):
         # sanity check: device reachable
         targets = await self.hdc.list_targets()
         if self.device_id and targets and self.device_id not in targets:
-            logger.warning(
-                f"device {self.device_id} not in hdc targets: {targets}"
-            )
+            logger.warning(f"device {self.device_id} not in hdc targets: {targets}")
         self._connected = True
         return self.hdc
 
@@ -138,17 +137,19 @@ class HarmonyDevice(AbstractInterface):
             content=[],
             tree=UITree(
                 node=UINode(
-                    id="root", content="",
+                    id="root",
+                    content="",
                     rect=Rect(left=0, top=0, width=0, height=0),
-                    center=(0, 0), node_type=NodeType.CONTAINER,
+                    center=(0, 0),
+                    node_type=NodeType.CONTAINER,
                 )
             ),
         )
 
-    async def action_space(self) -> List[str]:
+    async def action_space(self) -> list[str]:
         return ["tap", "input", "key_press", "scroll", "swipe", "long_press", "drag"]
 
-    async def size(self) -> Dict[str, int]:
+    async def size(self) -> dict[str, int]:
         """Cached screen size; snapshot output is the source of truth
         (foldables may report a stale hidumper size)."""
         if self.cached_screen_size:
@@ -162,9 +163,10 @@ class HarmonyDevice(AbstractInterface):
         cached screen size from the snapshot output (upstream)."""
         hdc = await self._get_hdc()
         if not self._local_screenshot_path:
-            self._local_screenshot_path = Path(
-                tempfile.gettempdir()
-            ) / f"midscene-harmony-screenshot-{self.device_id or 'local'}.jpeg"
+            self._local_screenshot_path = (
+                Path(tempfile.gettempdir())
+                / f"midscene-harmony-screenshot-{self.device_id or 'local'}.jpeg"
+            )
 
         for attempt in (1, 2):
             snapshot_output = await hdc.screenshot(self._remote_screenshot_path)
@@ -183,7 +185,9 @@ class HarmonyDevice(AbstractInterface):
                     )
                 self.cached_screen_size = {"width": w, "height": h}
 
-            await hdc.file_recv(self._remote_screenshot_path, str(self._local_screenshot_path))
+            await hdc.file_recv(
+                self._remote_screenshot_path, str(self._local_screenshot_path)
+            )
             data = self._local_screenshot_path.read_bytes()
             if data:
                 return base64.b64encode(data).decode("ascii")
@@ -237,7 +241,7 @@ class HarmonyDevice(AbstractInterface):
     # -- scroll / swipe -----------------------------------------------------------
 
     async def scroll(
-        self, direction: str, distance: Optional[int] = None, **kwargs
+        self, direction: str, distance: int | None = None, **kwargs
     ) -> None:
         """Scroll in direction (content direction, upstream scrollInDirection).
 
@@ -259,9 +263,7 @@ class HarmonyDevice(AbstractInterface):
                 for value in point[:2]
             )
         ):
-            raise ValueError(
-                "Scroll origin must be a finite point inside the viewport"
-            )
+            raise ValueError("Scroll origin must be a finite point inside the viewport")
         if scroll_type.startswith("scrollTo"):
             boundary = {
                 "scrollToTop": "up",
@@ -280,15 +282,16 @@ class HarmonyDevice(AbstractInterface):
                 direction, {"width": width, "height": height}
             )
             await hdc.fling(
-                fx, fy, tx, ty,
+                fx,
+                fy,
+                tx,
+                ty,
                 resolve_swipe_speed({"x": fx, "y": fy}, {"x": tx, "y": ty}, 1000),
             )
             return
 
         vertical = direction in ("up", "down")
-        scroll_distance = int(distance) if distance else (
-            height if vertical else width
-        )
+        scroll_distance = int(distance) if distance else (height if vertical else width)
         if point:
             sx, sy = int(point[0]), int(point[1])
             endpoints = {
@@ -312,9 +315,7 @@ class HarmonyDevice(AbstractInterface):
         }
         dx, dy = deltas[direction]
         cx, cy = width // 2, height // 2
-        await hdc.fling(
-            cx, cy, cx - dx, cy - dy, DEFAULT_FAST_SWIPE_SPEED
-        )
+        await hdc.fling(cx, cy, cx - dx, cy - dy, DEFAULT_FAST_SWIPE_SPEED)
 
     async def _scroll_until_edge(
         self,
@@ -322,14 +323,10 @@ class HarmonyDevice(AbstractInterface):
         direction: str,
         width: int,
         height: int,
-        point: Optional[List[float]],
+        point: list[float] | None,
     ) -> None:
         """Upstream scrollUntilEdge: 10 flings + 1s settle."""
-        sx, sy = (
-            (int(point[0]), int(point[1]))
-            if point
-            else (width // 2, height // 2)
-        )
+        sx, sy = (int(point[0]), int(point[1])) if point else (width // 2, height // 2)
         targets = {
             "up": (sx, height - SCREEN_EDGE_MARGIN),
             "down": (sx, SCREEN_EDGE_MARGIN),
@@ -354,9 +351,7 @@ class HarmonyDevice(AbstractInterface):
         for _ in range(max(1, int(times))):
             await self.keyboard_press(arrow_key)
 
-    async def swipe(
-        self, direction: str, distance: Optional[int] = None
-    ) -> None:
+    async def swipe(self, direction: str, distance: int | None = None) -> None:
         """Finger-movement convention swipe (content follows the finger)."""
         size = await self.size()
         distance = distance or size["width"] // 4
@@ -364,8 +359,10 @@ class HarmonyDevice(AbstractInterface):
         # Finger-movement convention: for "up" the finger moves upward,
         # so the start point is below the end point.
         offsets = {
-            "up": (0, distance), "down": (0, -distance),
-            "right": (-distance, 0), "left": (distance, 0),
+            "up": (0, distance),
+            "down": (0, -distance),
+            "right": (-distance, 0),
+            "left": (distance, 0),
         }
         if direction not in offsets:
             raise ValueError(f"Invalid swipe direction: {direction}")
@@ -383,9 +380,9 @@ class HarmonyDevice(AbstractInterface):
 
     async def swipe_points(
         self,
-        start: List[float],
-        end: List[float],
-        duration: Optional[int] = None,
+        start: list[float],
+        end: list[float],
+        duration: int | None = None,
     ) -> None:
         """Endpoint swipe between two logical points (upstream swipe(start, end))."""
         hdc = await self._get_hdc()
@@ -398,10 +395,14 @@ class HarmonyDevice(AbstractInterface):
     async def drag_and_drop(self, from_point, to_point) -> None:
         hdc = await self._get_hdc()
         await hdc.drag(
-            from_point[0], from_point[1], to_point[0], to_point[1],
+            from_point[0],
+            from_point[1],
+            to_point[0],
+            to_point[1],
             resolve_swipe_speed(
                 {"x": from_point[0], "y": from_point[1]},
-                {"x": to_point[0], "y": to_point[1]}, 600,
+                {"x": to_point[0], "y": to_point[1]},
+                600,
             ),
         )
 
@@ -420,12 +421,12 @@ class HarmonyDevice(AbstractInterface):
         # upstream recentApps gesture-free path: API 18+ Recent keycode
         await hdc.key_event("10011")
 
-    def set_app_name_mapping(self, mapping: Dict[str, str]) -> None:
+    def set_app_name_mapping(self, mapping: dict[str, str]) -> None:
         """Set the friendly app name -> bundle/ability mapping (upstream
         setAppNameMapping)."""
         self._app_name_mapping = merge_and_normalize_app_name_mapping({}, mapping)
 
-    def _resolve_mapped_app_target(self, app_name: str) -> Optional[str]:
+    def _resolve_mapped_app_target(self, app_name: str) -> str | None:
         return self._app_name_mapping.get(normalize_for_comparison(app_name))
 
     def _resolve_bundle_name_for_terminate(self, target: str) -> str:
@@ -439,11 +440,7 @@ class HarmonyDevice(AbstractInterface):
 
     async def launch_app(self, uri: str) -> None:
         """Launch an app by friendly name, bundle, bundle/ability or URI."""
-        target = (
-            uri
-            if "://" in uri
-            else (self._resolve_mapped_app_target(uri) or uri)
-        )
+        target = uri if "://" in uri else (self._resolve_mapped_app_target(uri) or uri)
         hdc = await self._get_hdc()
         if "://" in target:
             sanitized = re.sub(r"[`$\\;\"'|&<>(){}]", "", target)
@@ -454,7 +451,7 @@ class HarmonyDevice(AbstractInterface):
         else:
             await hdc.launch(target)
 
-    async def launch(self, uri: str) -> 'HarmonyDevice':
+    async def launch(self, uri: str) -> "HarmonyDevice":
         """Launch an app or URI and return this device (upstream launch)."""
         await self.launch_app(uri)
         return self

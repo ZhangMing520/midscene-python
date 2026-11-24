@@ -1,6 +1,6 @@
 """System One entry point and OpenAI dispatch helpers."""
 
-from typing import Any, Dict, List
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -62,16 +62,14 @@ class TestCallSystemOneAI:
             RuntimeError,
             match="System One currently only supports the Jev model family",
         ):
-            await call_system_one_ai(
-                {"state": {}, "questions": {}}, _runtime()
-            )
+            await call_system_one_ai({"state": {}, "questions": {}}, _runtime())
 
     @pytest.mark.asyncio
     async def test_retries_malformed_responses_without_changing_the_model(self):
         from midscene.core.ai_model.service_caller.call_ai import call_system_one_ai
         from midscene.core.ai_model.service_caller.types import AIResponseParseError
 
-        calls: List[Dict[str, Any]] = []
+        calls: list[dict[str, Any]] = []
 
         async def fake_call_system_one(model_runtime, request):
             calls.append(request)
@@ -132,7 +130,7 @@ class TestOpenAIDispatch:
             "midscene.core.ai_model.service_caller.openai.call_openai"
         )
         assert module is not call_openai
-        captured: Dict[str, Any] = {}
+        captured: dict[str, Any] = {}
         runtime = _runtime()
 
         async def fake_call_openai(*args, **kwargs):
@@ -158,15 +156,13 @@ class TestOpenAIDispatch:
         assert captured["kwargs"]["effective_timeout"] == 1000
 
     @pytest.mark.asyncio
-    async def test_call_chat_completion_selects_stream_or_payload(
-        self, monkeypatch
-    ):
+    async def test_call_chat_completion_selects_stream_or_payload(self, monkeypatch):
         from midscene.core.ai_model.service_caller.openai.chat_completion import (
             chat_completion,
         )
 
-        non_stream_calls: List[Any] = []
-        stream_calls: List[Any] = []
+        non_stream_calls: list[Any] = []
+        stream_calls: list[Any] = []
 
         def fake_non_stream(payload, adapter):
             non_stream_calls.append((payload, adapter))
@@ -179,9 +175,7 @@ class TestOpenAIDispatch:
         monkeypatch.setattr(
             chat_completion, "call_chat_completion_non_streaming", fake_non_stream
         )
-        monkeypatch.setattr(
-            chat_completion, "call_chat_completion_stream", fake_stream
-        )
+        monkeypatch.setattr(chat_completion, "call_chat_completion_stream", fake_stream)
 
         payload = {"choices": []}
         lines = object()
@@ -202,8 +196,8 @@ class TestOpenAIDispatch:
     async def test_call_responses_selects_stream_or_payload(self, monkeypatch):
         from midscene.core.ai_model.service_caller.openai.responses import responses
 
-        non_stream_calls: List[Any] = []
-        stream_calls: List[Any] = []
+        non_stream_calls: list[Any] = []
+        stream_calls: list[Any] = []
         monkeypatch.setattr(
             responses,
             "call_responses_non_streaming",

@@ -4,7 +4,7 @@ import asyncio
 import inspect
 import uuid
 import webbrowser
-from typing import Any, Dict, Optional
+from typing import Any
 from urllib.parse import urlsplit
 
 from rich.console import Console
@@ -13,10 +13,10 @@ from midscene.cli.openai.errors import SiwcError, with_siwc_stage
 
 
 def _normalize_options(
-    options: Optional[Dict[str, Any]], legacy: Dict[str, Any]
-) -> Dict[str, Any]:
+    options: dict[str, Any] | None, legacy: dict[str, Any]
+) -> dict[str, Any]:
     """Merge the upstream-style option mapping with legacy keyword options."""
-    merged: Dict[str, Any] = dict(options or {})
+    merged: dict[str, Any] = dict(options or {})
     merged.update({key: value for key, value in legacy.items() if value is not None})
     return merged
 
@@ -72,13 +72,13 @@ def _write_response(
     payload = body.encode("utf-8")
     writer.write(
         (
-            f"HTTP/1.1 {status} { _reason(status) }\r\n"
+            f"HTTP/1.1 {status} {_reason(status)}\r\n"
             f"Content-Type: {content_type}\r\n"
             "Cache-Control: no-store\r\n"
             "Referrer-Policy: no-referrer\r\n"
             f"Content-Length: {len(payload)}\r\n"
             "Connection: close\r\n\r\n"
-        ).encode("utf-8")
+        ).encode()
         + payload
     )
 
@@ -105,10 +105,10 @@ async def _wait_with_signal(future: asyncio.Future, signal: Any) -> Any:
 
 
 async def login_with_openai(
-    options: Optional[Dict[str, Any]] = None,
+    options: dict[str, Any] | None = None,
     dependencies: Any = None,
     **legacy_options: Any,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run the loopback OpenAI (SIWC) login and return verified credentials.
 
     ``options`` mirrors the upstream ``LoginOptions`` mapping: ``hostId``,
@@ -122,7 +122,7 @@ async def login_with_openai(
     )
 
     opts = _normalize_options(options, legacy_options)
-    console: Optional[Console] = opts.get("console")
+    console: Console | None = opts.get("console")
     streamlit_console = console or Console()
 
     host_id = opts.get("host_id") or opts.get("hostId")
@@ -148,7 +148,7 @@ async def login_with_openai(
 
         on_authorization = _default_authorization
 
-    state: Dict[str, Any] = {"attempt": None}
+    state: dict[str, Any] = {"attempt": None}
     consumed = {"value": False}
     callback_future: asyncio.Future = asyncio.get_running_loop().create_future()
 
@@ -234,25 +234,21 @@ async def login_with_openai(
         if _aborted(signal):
             raise SiwcError("OpenAI login cancelled or timed out.")
 
-        async def await_callback() -> Dict[str, str]:
+        async def await_callback() -> dict[str, str]:
             return await _wait_with_signal(callback_future, signal)
 
-        callback = await with_siwc_stage(
-            "Authorization callback", await_callback
-        )
-        return await exchange_siwc_code(
-            authorization["attempt"], callback
-        )
+        callback = await with_siwc_stage("Authorization callback", await_callback)
+        return await exchange_siwc_code(authorization["attempt"], callback)
     finally:
         server.close()
         await server.wait_closed()
 
 
 async def login_with_open_ai(
-    options: Optional[Dict[str, Any]] = None,
+    options: dict[str, Any] | None = None,
     dependencies: Any = None,
     **legacy_options: Any,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Upstream-named alias (loginWithOpenAI -> login_with_open_ai)."""
     return await login_with_openai(options, dependencies, **legacy_options)
 

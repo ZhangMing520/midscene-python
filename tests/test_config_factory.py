@@ -24,9 +24,7 @@ def _sequence(values):
 
 
 @pytest.mark.asyncio
-async def test_should_parse_valid_config_yaml_with_all_options(
-    tmp_path, monkeypatch
-):
+async def test_should_parse_valid_config_yaml_with_all_options(tmp_path, monkeypatch):
     """should parse valid config YAML with all options."""
     content = """
 files:
@@ -47,9 +45,7 @@ harmony:
 summary: "yaml-summary.json"
 """
     path = _write_config(tmp_path, content)
-    monkeypatch.setattr(
-        config_factory, "match_yaml_files", lambda *_: ["file1.yml"]
-    )
+    monkeypatch.setattr(config_factory, "match_yaml_files", lambda *_: ["file1.yml"])
 
     result = await config_factory.parse_config_yaml(path)
 
@@ -79,9 +75,7 @@ async def test_should_use_default_values_when_options_are_not_specified(
 ):
     """should use default values when options are not specified."""
     path = _write_config(tmp_path, 'files: ["*.yml"]')
-    monkeypatch.setattr(
-        config_factory, "match_yaml_files", lambda *_: ["test.yml"]
-    )
+    monkeypatch.setattr(config_factory, "match_yaml_files", lambda *_: ["test.yml"])
 
     result = await config_factory.parse_config_yaml(path)
 
@@ -101,9 +95,7 @@ async def test_should_parse_the_retry_option_from_the_config_yaml(
 ):
     """should parse the retry option from the config YAML."""
     path = _write_config(tmp_path, 'files: ["*.yml"]\nretry: 2')
-    monkeypatch.setattr(
-        config_factory, "match_yaml_files", lambda *_: ["test.yml"]
-    )
+    monkeypatch.setattr(config_factory, "match_yaml_files", lambda *_: ["test.yml"])
 
     result = await config_factory.parse_config_yaml(path)
 
@@ -120,9 +112,7 @@ async def test_should_throw_an_error_if_files_is_not_an_array(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_should_throw_an_error_if_no_files_are_found(
-    tmp_path, monkeypatch
-):
+async def test_should_throw_an_error_if_no_files_are_found(tmp_path, monkeypatch):
     """should throw an error if no files are found."""
     path = _write_config(tmp_path, 'files: ["*.yml"]')
     monkeypatch.setattr(config_factory, "match_yaml_files", lambda *_: [])
@@ -158,14 +148,10 @@ files:
 
 
 @pytest.mark.asyncio
-async def test_should_leave_setup_undefined_when_absent(
-    tmp_path, monkeypatch
-):
+async def test_should_leave_setup_undefined_when_absent(tmp_path, monkeypatch):
     """should leave setup undefined when absent."""
     path = _write_config(tmp_path, 'files: ["*.yml"]')
-    monkeypatch.setattr(
-        config_factory, "match_yaml_files", lambda *_: ["test.yml"]
-    )
+    monkeypatch.setattr(config_factory, "match_yaml_files", lambda *_: ["test.yml"])
 
     result = await config_factory.parse_config_yaml(path)
 
@@ -248,9 +234,7 @@ keepWindow: true
 headed: false
 """
     path = _write_config(tmp_path, content)
-    monkeypatch.setattr(
-        config_factory, "match_yaml_files", lambda *_: ["file1.yml"]
-    )
+    monkeypatch.setattr(config_factory, "match_yaml_files", lambda *_: ["file1.yml"])
 
     result1 = await config_factory.create_config(path)
     assert result1["keepWindow"] is True
@@ -289,9 +273,7 @@ harmony:
   autoDismissKeyboard: false
 """
     path = _write_config(tmp_path, content)
-    monkeypatch.setattr(
-        config_factory, "match_yaml_files", lambda *_: ["file1.yml"]
-    )
+    monkeypatch.setattr(config_factory, "match_yaml_files", lambda *_: ["file1.yml"])
 
     cmd_line_options = {
         "concurrent": 5,
@@ -394,14 +376,10 @@ concurrent: 2
     monkeypatch.setattr(
         config_factory,
         "match_yaml_files",
-        _sequence(
-            [["config-file1.yml"], ["config-file2.yml"], ["cmd-file.yml"]]
-        ),
+        _sequence([["config-file1.yml"], ["config-file2.yml"], ["cmd-file.yml"]]),
     )
 
-    result = await config_factory.create_config(
-        path, {"files": ["cmd-file.yml"]}
-    )
+    result = await config_factory.create_config(path, {"files": ["cmd-file.yml"]})
 
     assert result["files"] == ["cmd-file.yml"]
     assert result["concurrent"] == 2
@@ -412,9 +390,7 @@ async def test_create_files_config_enables_headed_when_keep_window_is_true(
     monkeypatch,
 ):
     """should automatically enable headed when keepWindow is true."""
-    monkeypatch.setattr(
-        config_factory, "match_yaml_files", lambda *_: ["test.yml"]
-    )
+    monkeypatch.setattr(config_factory, "match_yaml_files", lambda *_: ["test.yml"])
 
     result1 = await config_factory.create_files_config(
         ["test.yml"], {"keepWindow": True, "headed": False}
@@ -528,9 +504,7 @@ async def test_should_forward_the_retry_option_through_create_files_config(
     monkeypatch,
 ):
     """should forward the retry option through createFilesConfig."""
-    monkeypatch.setattr(
-        config_factory, "match_yaml_files", lambda *_: ["file1.yml"]
-    )
+    monkeypatch.setattr(config_factory, "match_yaml_files", lambda *_: ["file1.yml"])
 
     result = await config_factory.create_files_config(["*.yml"], {"retry": 3})
 

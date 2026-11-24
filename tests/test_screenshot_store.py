@@ -97,9 +97,7 @@ async def test_round_trips_screenshots_through_dump_companion_files(tmp_path):
     )
 
     dump.serialize_to_files(str(dump_path))
-    restored = json.loads(
-        ReportActionDump.from_files_as_inline_json(str(dump_path))
-    )
+    restored = json.loads(ReportActionDump.from_files_as_inline_json(str(dump_path)))
 
     assert (
         restored["executions"][0]["tasks"][0]["uiContext"]["screenshot"]["base64"]
@@ -118,16 +116,13 @@ async def test_deduplicates_same_screenshot_persistence_by_id(tmp_path):
     item = ScreenshotItem.create(PNG_BASE64, 100)
 
     first = store.persist(item)
-    (tmp_path / store.get_file_path(item.id)).write_text(
-        "marker", encoding="utf-8"
-    )
+    (tmp_path / store.get_file_path(item.id)).write_text("marker", encoding="utf-8")
     second = store.persist(item)
 
     assert first["id"] == second["id"]
-    assert (
-        (tmp_path / store.get_file_path(item.id)).read_text(encoding="utf-8")
-        == "marker"
-    )
+    assert (tmp_path / store.get_file_path(item.id)).read_text(
+        encoding="utf-8"
+    ) == "marker"
 
 
 @pytest.mark.asyncio
@@ -138,9 +133,7 @@ async def test_deduplicates_inline_reference_images_by_content(tmp_path):
     store = ReportImageStore(
         "inline",
         report_path,
-        write_inline_image=lambda image_id, image: appended.append(
-            (image_id, image)
-        ),
+        write_inline_image=lambda image_id, image: appended.append((image_id, image)),
     )
     reference_image = "data:image/webp;base64,QUJDRA=="
 
@@ -247,9 +240,7 @@ async def test_supports_inline_mode_persistence_lazy_restore(tmp_path):
             encoding="utf-8",
         )
 
-    store = ReportImageStore(
-        "inline", report_path, write_inline_image=append_inline
-    )
+    store = ReportImageStore("inline", report_path, write_inline_image=append_inline)
     item = ScreenshotItem.create(PNG_BASE64, 100)
 
     ref = store.persist(item)
@@ -335,6 +326,4 @@ def test_throws_on_non_screenshotref_inputs(tmp_path):
     with pytest.raises(ValueError, match="invalid screenshot reference"):
         store.load_base64({"$screenshot": "legacy-id", "capturedAt": 1})
     with pytest.raises(ValueError, match="invalid screenshot reference"):
-        store.load_base64(
-            {"base64": "./screenshots/legacy.png", "capturedAt": 1}
-        )
+        store.load_base64({"base64": "./screenshots/legacy.png", "capturedAt": 1})

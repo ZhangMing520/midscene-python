@@ -7,7 +7,7 @@ against the real node definitions in ``midscene.core.agent.test_runner_nodes``
 (the legacy YAML module re-exports the same executions).
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import pytest
 
@@ -25,15 +25,17 @@ _BY_NAME = {
 }
 
 
-def _context(signal: Optional[AbortSignal] = None) -> AgentTestRunnerNodeExecutionContext:
+def _context(
+    signal: AbortSignal | None = None,
+) -> AgentTestRunnerNodeExecutionContext:
     return AgentTestRunnerNodeExecutionContext(signal=signal or AbortSignal())
 
 
 class _Recorder:
     """Duck-typed Agent recording every method call made by a node."""
 
-    def __init__(self, results: Optional[Dict[str, Any]] = None) -> None:
-        self.calls: List[Any] = []
+    def __init__(self, results: dict[str, Any] | None = None) -> None:
+        self.calls: list[Any] = []
         self.results = results or {}
 
     def __getattr__(self, name: str):
@@ -361,8 +363,8 @@ async def test_forwards_cancellation_and_timing_options_to_wait_and_gherkin_call
 async def test_defers_custom_action_validation_to_the_executing_actionspace():
     class _ActionAgent:
         def __init__(self) -> None:
-            self.calls: List[Any] = []
-            self.error: Optional[Exception] = None
+            self.calls: list[Any] = []
+            self.error: Exception | None = None
 
         async def _call_action_in_action_space(self, name, params=None):
             self.calls.append((name, params))
@@ -395,7 +397,9 @@ async def test_defers_custom_action_validation_to_the_executing_actionspace():
     assert agent.calls[-1] == ("CustomStringAction", "text")
 
     agent.error = ValueError("Invalid parameters for action CustomPlatformAction")
-    with pytest.raises(ValueError, match="Invalid parameters for action CustomPlatformAction"):
+    with pytest.raises(
+        ValueError, match="Invalid parameters for action CustomPlatformAction"
+    ):
         await _BY_NAME["action"].execute(agent, input_value, context)
 
 

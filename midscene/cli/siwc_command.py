@@ -7,7 +7,8 @@ import re
 import time
 import uuid
 import webbrowser
-from typing import Any, Callable, Dict, Optional
+from collections.abc import Callable
+from typing import Any
 
 from rich.console import Console
 
@@ -51,7 +52,7 @@ def _format_expires_at(expires_at_ms: float) -> str:
     import datetime
 
     moment = datetime.datetime.fromtimestamp(
-        expires_at_ms / 1000, tz=datetime.timezone.utc
+        expires_at_ms / 1000, tz=datetime.UTC
     ).astimezone()
     return moment.strftime("%d %b %Y, %H:%M:%S %Z")
 
@@ -65,8 +66,8 @@ def _format_remaining(expires_at_ms: float) -> str:
 
 async def run_siwc_command(
     args: list,
-    io: Optional[Dict[str, Callable[[str], None]]] = None,
-    credentials_path: Optional[str] = None,
+    io: dict[str, Callable[[str], None]] | None = None,
+    credentials_path: str | None = None,
 ) -> int:
     """Run `midscene model siwc login|refresh` (upstream runSiwcCommand)."""
     if io is None:
@@ -88,11 +89,7 @@ async def run_siwc_command(
     index = 0
     while index < len(options):
         option = options[index]
-        if (
-            action != "login"
-            or option in seen
-            or option not in ("--port", "--no-open")
-        ):
+        if action != "login" or option in seen or option not in ("--port", "--no-open"):
             io["stderr"](f"Invalid midscene model siwc arguments.\n{USAGE}")
             return 1
         seen.add(option)
@@ -122,25 +119,20 @@ async def run_siwc_command(
                 refresh_siwc_credentials(require_credentials(saved))
             )
         else:
-            registration = saved or {
-                "ext_agent_host_id": f"urn:uuid:{uuid.uuid4()}"
-            }
+            registration = saved or {"ext_agent_host_id": f"urn:uuid:{uuid.uuid4()}"}
             # Persist the host ID before authorization, including failed attempts.
             if saved is None:
                 save_registration(credentials_path, registration)
 
             def on_authorization(url: str) -> None:
                 io["stderr"](
-                    f"\nContinue with ChatGPT:\n{url}\n\n"
-                    "Waiting for authorization..."
+                    f"\nContinue with ChatGPT:\n{url}\n\nWaiting for authorization..."
                 )
                 if not no_open:
                     try:
                         webbrowser.open(url)
                     except Exception:
-                        io["stderr"](
-                            "Open the URL above in your browser to continue."
-                        )
+                        io["stderr"]("Open the URL above in your browser to continue.")
 
             result = await _maybe_await(
                 login_with_openai(
@@ -155,9 +147,7 @@ async def run_siwc_command(
                 registration.get("subject")
                 and result.get("subject") != registration["subject"]
             ):
-                raise SiwcError(
-                    "Login identity does not match the saved account."
-                )
+                raise SiwcError("Login identity does not match the saved account.")
             credentials = result
 
         save_registration(credentials_path, credentials)
@@ -179,9 +169,7 @@ async def run_siwc_command(
         )
         return 0
     except Exception as error:
-        io["stderr"](
-            f"OpenAI {action} failed.\n{describe_siwc_error(error)}"
-        )
+        io["stderr"](f"OpenAI {action} failed.\n{describe_siwc_error(error)}")
         return 1
     finally:
         await unlock()
@@ -189,8 +177,8 @@ async def run_siwc_command(
 
 def run_siwc_login(
     console: Console,
-    port: Optional[int] = None,
-    client_id: Optional[str] = None,
+    port: int | None = None,
+    client_id: str | None = None,
 ) -> bool:
     """Sign in with your ChatGPT plan (SIWC) and store credentials."""
     _load_dotenv()
@@ -208,11 +196,7 @@ def run_siwc_login(
             "credentials": credentials,
         }
     )
-    masked = (
-        credentials["access_token"][:8]
-        + "..."
-        + credentials["access_token"][-4:]
-    )
+    masked = credentials["access_token"][:8] + "..." + credentials["access_token"][-4:]
     console.print(
         f"[green]Signed in "
         f"({credentials.get('email', credentials.get('subject'))})[/green]"
@@ -230,8 +214,12 @@ def run_siwc_refresh(console: Console) -> bool:
     _load_dotenv()
     from midscene.core.siwc import (
         SiwcError as CoreSiwcError,
+    )
+    from midscene.core.siwc import (
         _read_credentials,
         _save_credentials,
+    )
+    from midscene.core.siwc import (
         refresh_siwc_credentials as core_refresh,
     )
 

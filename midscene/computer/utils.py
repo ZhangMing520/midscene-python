@@ -1,7 +1,7 @@
 """Computer helpers (upstream utils.ts)."""
 
 import platform
-from typing import Any, Dict, List
+from typing import Any
 
 
 def version() -> str:
@@ -28,17 +28,14 @@ def _load_application_services():
     import ctypes
 
     return ctypes.CDLL(
-        "/System/Library/Frameworks/ApplicationServices.framework/"
-        "ApplicationServices"
+        "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices"
     )
 
 
 def _load_core_graphics():
     import ctypes
 
-    return ctypes.CDLL(
-        "/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics"
-    )
+    return ctypes.CDLL("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics")
 
 
 def _open_privacy_pane(anchor: str) -> None:
@@ -47,8 +44,7 @@ def _open_privacy_pane(anchor: str) -> None:
     subprocess.run(
         [
             "open",
-            "x-apple.systempreferences:com.apple.preference.security?"
-            f"Privacy_{anchor}",
+            f"x-apple.systempreferences:com.apple.preference.security?Privacy_{anchor}",
         ],
         check=False,
     )
@@ -56,7 +52,7 @@ def _open_privacy_pane(anchor: str) -> None:
 
 def check_accessibility_permission(
     prompt_if_needed: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Check the macOS Accessibility permission (always granted elsewhere)."""
     system = _platform_name()
     if system != "darwin":
@@ -92,7 +88,7 @@ def check_accessibility_permission(
 
 def check_screen_recording_permission(
     prompt_if_needed: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Check the macOS Screen Recording permission (granted elsewhere)."""
     system = _platform_name()
     if system != "darwin":
@@ -127,7 +123,7 @@ def check_screen_recording_permission(
         }
 
 
-async def check_computer_environment() -> Dict[str, Any]:
+async def check_computer_environment() -> dict[str, Any]:
     """Check whether the desktop automation backend can capture the screen."""
     from midscene.computer.device import ComputerDevice
     from midscene.computer.input_driver import load_pyautogui
@@ -158,7 +154,7 @@ async def check_computer_environment() -> Dict[str, Any]:
         }
 
 
-async def get_connected_displays() -> List[Dict[str, Any]]:
+async def get_connected_displays() -> list[dict[str, Any]]:
     """Get all connected displays."""
     from midscene.computer.device import ComputerDevice
 

@@ -132,11 +132,7 @@ def _plain(value):
     if isinstance(value, RestoredScreenshotReference):
         value = value.to_dict()
     if isinstance(value, dict):
-        return {
-            key: _plain(item)
-            for key, item in value.items()
-            if key != "sourceRef"
-        }
+        return {key: _plain(item) for key, item in value.items() if key != "sourceRef"}
     if isinstance(value, list):
         return [_plain(item) for item in value]
     return value
@@ -168,9 +164,7 @@ async def test_preserves_the_same_facts_and_images_in_standalone_html_and_direct
         await generator.finalize()
         store = ReportImageStore(mode=mode, report_path=str(path))
         dump = json.loads(read_report_dump_scripts(path)[0]["content"])
-        restored.append(
-            _plain(restore_image_references(dump, store.load_data_uri))
-        )
+        restored.append(_plain(restore_image_references(dump, store.load_data_uri)))
 
     assert restored[0] == restored[1]
     assert "Login button is missing" in json.dumps(restored[0])
@@ -210,16 +204,12 @@ async def test_preserves_exact_screenshot_pixels_in_portable_external_assets(
     generator = _generator_at(report_path)
     data_uri, expected_image = _create_patterned_png_fixture()
     screenshot = ScreenshotItem.create(data_uri, 100)
-    generator.on_execution_update(
-        _create_execution([screenshot]), DEFAULT_REPORT_META
-    )
+    generator.on_execution_update(_create_execution([screenshot]), DEFAULT_REPORT_META)
     await generator.finalize()
 
     assert (
         _decode_image_pixels(
-            Path(
-                _screenshot_file_path(report_path.parent, screenshot)
-            ).read_bytes()
+            Path(_screenshot_file_path(report_path.parent, screenshot)).read_bytes()
         )
         == expected_image
     )
@@ -320,18 +310,12 @@ async def test_replaces_progress_facts_preserves_independent_observations_and_pu
     assert attributes["playwright_test_title"] == "final"
     assert attributes["playwright_test_duration"] == "456"
     assert (
-        json.loads(scripts[0]["content"])["executions"][0]["name"]
-        == "login finished"
+        json.loads(scripts[0]["content"])["executions"][0]["name"] == "login finished"
     )
-    assert read_report_artifact_manifest(str(path))["groups"][0]["dumps"] == [
-        data_path
-    ]
+    assert read_report_artifact_manifest(str(path))["groups"][0]["dumps"] == [data_path]
     assert len(os.listdir(path.parent / "screenshots")) == 1
     assert (
-        any(
-            name.endswith(".execution.json")
-            for name in os.listdir(path.parent)
-        )
+        any(name.endswith(".execution.json") for name in os.listdir(path.parent))
         is False
     )
     assert first.id != second.id
@@ -378,9 +362,7 @@ async def test_completes_a_shared_report_only_after_all_published_writers_finali
         "running",
     ]
 
-    b.on_execution_update(
-        _create_execution([], "b updated", "b"), DEFAULT_REPORT_META
-    )
+    b.on_execution_update(_create_execution([], "b updated", "b"), DEFAULT_REPORT_META)
     await b.flush()
     assert read_report_artifact_manifest(str(path))["status"] == "running"
 

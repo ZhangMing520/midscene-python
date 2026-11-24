@@ -1,6 +1,7 @@
 """Synced from upstream packages/web-integration/tests/unit-test/
 web-actions-navigation.test.ts and bridge/io.test.ts."""
 
+
 def _make_agent(interface):
     from midscene.core.agent.agent import Agent
     from midscene.core.agent.agent_options import AgentOptions
@@ -24,9 +25,20 @@ class TestWebPageActions:
 
         names = {action.name for action in _make_agent(BridgeWebPage()).action_space}
         assert {
-            "Tap", "RightClick", "MiddleClick", "DoubleClick", "Hover",
-            "DragAndDrop", "KeyboardPress", "Scroll", "Input", "Pinch",
-            "ClearInput", "CursorMove", "Navigate", "Reload", "GoBack",
+            "Tap",
+            "RightClick",
+            "MiddleClick",
+            "DoubleClick",
+            "Hover",
+            "DragAndDrop",
+            "KeyboardPress",
+            "Scroll",
+            "Input",
+            "Pinch",
+            "ClearInput",
+            "CursorMove",
+            "Navigate",
+            "Reload",
+            "GoBack",
             "GoForward",
         } <= names
-

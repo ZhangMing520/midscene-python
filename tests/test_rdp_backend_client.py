@@ -169,15 +169,11 @@ def test_parses_successful_helper_responses():
 
     def handler(request):
         assert request["payload"]["type"] == "connect"
-        child.write_response(
-            {"id": request["id"], "ok": True, "payload": _connected()}
-        )
+        child.write_response({"id": request["id"], "ok": True, "payload": _connected()})
 
     on_next_request(child, handler)
 
-    result = asyncio.run(
-        client.connect({"host": "10.75.166.249", "username": "Admin"})
-    )
+    result = asyncio.run(client.connect({"host": "10.75.166.249", "username": "Admin"}))
 
     assert result == {
         "sessionId": "session-1",
@@ -208,9 +204,7 @@ def test_normalizes_bracketed_ipv6_hosts_before_sending_helper_connect_requests(
     on_next_request(child, handler)
 
     result = asyncio.run(
-        client.connect(
-            {"host": "[2001:db8::42]", "port": 3390, "username": "Admin"}
-        )
+        client.connect({"host": "[2001:db8::42]", "port": 3390, "username": "Admin"})
     )
 
     assert result["sessionId"] == "session-ipv6"
@@ -268,9 +262,7 @@ def test_rejects_structured_helper_errors():
     on_next_request(child, handler)
 
     with pytest.raises(RuntimeError, match="Authentication failed") as info:
-        asyncio.run(
-            client.connect({"host": "10.75.166.249", "username": "Admin"})
-        )
+        asyncio.run(client.connect({"host": "10.75.166.249", "username": "Admin"}))
     assert info.value.code == "connect_failed"
 
 
@@ -301,9 +293,7 @@ def test_rejects_pending_requests_if_the_helper_stdin_pipe_breaks():
     with pytest.raises(
         RuntimeError, match="RDP helper stdin stream error: write EPIPE"
     ):
-        asyncio.run(
-            client.connect({"host": "10.75.166.249", "username": "Admin"})
-        )
+        asyncio.run(client.connect({"host": "10.75.166.249", "username": "Admin"}))
     assert child.killed is True
 
 
@@ -325,9 +315,7 @@ def test_includes_helper_diagnostics_when_the_first_connect_write_fails_after_ea
             ),
         )
         with pytest.raises(RuntimeError) as info:
-            await client.connect(
-                {"host": "10.75.166.249", "username": "Admin"}
-            )
+            await client.connect({"host": "10.75.166.249", "username": "Admin"})
         return str(info.value)
 
     message = asyncio.run(scenario())
@@ -379,9 +367,7 @@ def test_rejects_old_helper_pending_requests_after_a_reconnect_starts_a_new_help
             )
 
         on_next_request(second_child, second_handler)
-        result = await client.connect(
-            {"host": "10.75.166.249", "username": "Admin"}
-        )
+        result = await client.connect({"host": "10.75.166.249", "username": "Admin"})
         with pytest.raises(
             RuntimeError, match="RDP helper exited unexpectedly"
         ) as info:

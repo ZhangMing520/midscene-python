@@ -110,9 +110,7 @@ def test_normalizes_alias_to_codes(key_name, expected):
 def test_rejects_unknown_key(key_name):
     """rejects unknown key %s."""
 
-    with pytest.raises(
-        RuntimeError, match="Unsupported HarmonyOS keyboardPress key"
-    ):
+    with pytest.raises(RuntimeError, match="Unsupported HarmonyOS keyboardPress key"):
         resolve_harmony_key_codes(key_name)
 
 

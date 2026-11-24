@@ -1,10 +1,10 @@
 """Node scope teardown result parsing (upstream engine/scope-teardown.ts)."""
 
 import os
-from typing import Any, List
+from typing import Any
 
 
-def report_paths_from_teardown(result: Any) -> List[str]:
+def report_paths_from_teardown(result: Any) -> list[str]:
     if result is None:
         return []
     if not isinstance(result, dict):
@@ -14,7 +14,7 @@ def report_paths_from_teardown(result: Any) -> List[str]:
         return []
     if not isinstance(paths, (list, tuple)):
         raise TypeError("Node teardown reportPaths must be an array.")
-    checked: List[str] = []
+    checked: list[str] = []
     for index, path in enumerate(paths):
         if not isinstance(path, str) or not path.strip():
             raise TypeError(

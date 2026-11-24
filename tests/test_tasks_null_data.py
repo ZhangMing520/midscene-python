@@ -1,7 +1,7 @@
 """Synced from upstream packages/core/tests/unit-test/tasks-null-data.test.ts."""
 
 import json
-from typing import Any, List
+from typing import Any
 
 import pytest
 
@@ -28,7 +28,7 @@ def _make_agent(interface):
 class TestTypedQueryParity:
     @pytest.mark.asyncio
     async def test_boolean_query_uses_type_key(self):
-        calls: List[Any] = []
+        calls: list[Any] = []
 
         async def handler(*args, **kwargs):
             calls.append(args[0])
@@ -49,7 +49,7 @@ class TestTypedQueryParity:
 
     @pytest.mark.asyncio
     async def test_wait_for_uses_statement_key(self):
-        calls: List[Any] = []
+        calls: list[Any] = []
 
         async def handler(*args, **kwargs):
             calls.append(args[0])
@@ -86,4 +86,3 @@ class TestTypedQueryParity:
             result = await agent.ai_query("list every row")
 
         assert result == [{"name": "a"}, {"name": "b"}]
-

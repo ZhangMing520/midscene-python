@@ -1,21 +1,25 @@
 """Jev boolean workflow (upstream models/jev/boolean.ts)."""
 
-from typing import Any, Dict, Optional
-from midscene.core.ai_model.models.registry import ModelRuntime
-from midscene.core.ai_model.service_caller.system_one import SystemOneError, call_system_one
-from midscene.core.ai_model.shared.multimodal_prompt import get_screenshot_base64
+from typing import Any
 
 from midscene.core.ai_model.models.jev.image import (
     prepare_jev_image,
 )
+from midscene.core.ai_model.models.registry import ModelRuntime
+from midscene.core.ai_model.service_caller.system_one import (
+    SystemOneError,
+    call_system_one,
+)
+from midscene.core.ai_model.shared.multimodal_prompt import get_screenshot_base64
+
 
 async def jev_boolean(
     statement: str,
     context: Any,
     model_runtime: ModelRuntime,
     page_description: str = "",
-    context_text: Optional[str] = None,
-) -> Dict[str, Any]:
+    context_text: str | None = None,
+) -> dict[str, Any]:
     """Jev boolean: returns {value, raw_response, usage}."""
     screenshot = prepare_jev_image(get_screenshot_base64(context))
     result = await call_system_one(

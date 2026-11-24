@@ -6,7 +6,6 @@ one wheel event per detent, aimed at the target point.
 """
 
 import sys
-from typing import List
 from unittest.mock import MagicMock
 
 import pytest
@@ -14,7 +13,7 @@ import pytest
 
 class FakePyAutoGUI:
     def __init__(self):
-        self.calls: List[tuple] = []
+        self.calls: list[tuple] = []
         self.size_result = MagicMock(width=1920, height=1080)
 
     def __getattr__(self, name):
@@ -52,9 +51,7 @@ def _calls(fake, name):
 
 
 @pytest.mark.asyncio
-async def test_emits_one_libnut_scrollmouse_call_per_detent(
-    fake_pyautogui, fast_wheel
-):
+async def test_emits_one_libnut_scrollmouse_call_per_detent(fake_pyautogui, fast_wheel):
     """emits one libnut.scrollMouse call per detent.
 
     The pyautogui driver emits one wheel call per 100 px detent instead of

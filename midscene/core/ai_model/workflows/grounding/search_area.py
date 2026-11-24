@@ -6,7 +6,7 @@ Synced from upstream packages/core/src/ai-model/workflows/grounding/
 
 import base64
 import io
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from midscene.core.ai_model.shared.multimodal_prompt import (
     get_screenshot_base64,
@@ -23,8 +23,8 @@ EXPAND_SIZE = 100
 
 
 def merge_search_area_results(
-    target: Dict[str, Any], references: Optional[List[Dict[str, Any]]] = None
-) -> Dict[str, float]:
+    target: dict[str, Any], references: list[dict[str, Any]] | None = None
+) -> dict[str, float]:
     """Merge target and reference regions into one rect (point results cover
     one pixel)."""
     bounds = []
@@ -45,7 +45,9 @@ def merge_search_area_results(
     return {"left": left, "top": top, "width": right - left, "height": bottom - top}
 
 
-def expand_search_area(rect: Dict[str, float], screen_size: Dict[str, Any]) -> Dict[str, float]:
+def expand_search_area(
+    rect: dict[str, float], screen_size: dict[str, Any]
+) -> dict[str, float]:
     """Expand the search region toward a minimum area of 160,000 square pixels.
 
     Step 1: extend 100px on each side (clamped to screen boundaries).
@@ -91,7 +93,7 @@ def expand_search_area(rect: Dict[str, float], screen_size: Dict[str, Any]) -> D
 
 
 def _crop_and_scale(
-    image_base64: str, rect: Dict[str, float], scale_ratio: float
+    image_base64: str, rect: dict[str, float], scale_ratio: float
 ) -> Any:
     from PIL import Image
 
@@ -117,16 +119,14 @@ def _crop_and_scale(
 
 
 def build_search_area_config(
-    context: Any, base_rect: Dict[str, float]
-) -> Dict[str, Any]:
+    context: Any, base_rect: dict[str, float]
+) -> dict[str, Any]:
     """Crop the section from the screenshot and upscale it for the second pass."""
     scale_ratio = 2
     section_rect = expand_search_area(base_rect, get_shot_size(context))
     screenshot = get_screenshot_base64(context)
 
-    width, height, image_base64 = _crop_and_scale(
-        screenshot, section_rect, scale_ratio
-    )
+    width, height, image_base64 = _crop_and_scale(screenshot, section_rect, scale_ratio)
     return {
         "source_rect": section_rect,
         "image": {

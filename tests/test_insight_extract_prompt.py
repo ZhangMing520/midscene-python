@@ -19,4 +19,3 @@ class TestInsightExtractPrompt:
         )
         assert "wait for" in build_type_query_demand_value("WaitFor", "加载完成")
         assert build_type_query_demand_value("Number", "count").startswith("Number, ")
-

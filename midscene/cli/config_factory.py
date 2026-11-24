@@ -8,7 +8,7 @@ to them here so the CLI keeps a single config module.
 import os
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any
 
 import yaml
 from loguru import logger
@@ -28,7 +28,7 @@ def _build_agent_options(section: dict) -> "AgentOptions":
     agent_section = section.get("agent") or {}
     init_args = get_agent_init_args(agent_section) or {}
 
-    options: Dict[str, Any] = {
+    options: dict[str, Any] = {
         "group_name": agent_section.get("groupName", "Midscene Report"),
         "group_description": agent_section.get("groupDescription", ""),
         "generate_report": agent_section.get("generateReport", True),
@@ -54,7 +54,7 @@ def _build_agent_options(section: dict) -> "AgentOptions":
     return AgentOptions(**options)
 
 
-def _extract_cache_id(cache: object) -> Optional[str]:
+def _extract_cache_id(cache: object) -> str | None:
     if isinstance(cache, str):
         return cache
     if isinstance(cache, dict):
@@ -66,7 +66,7 @@ def _or_default(value: Any, default: Any) -> Any:
     return default if value is None else value
 
 
-def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
     """Recursively merge ``override`` over ``base`` (upstream lodash.merge)."""
     merged = dict(base)
     for key, value in override.items():
@@ -89,15 +89,11 @@ async def expand_file_patterns(patterns: list, base_path: str) -> list:
             yaml_files = match_yaml_files(pattern, {"cwd": base_path})
             all_files.extend(yaml_files)
         except Exception as error:
-            logger.warning(
-                f'Warning: Failed to expand pattern "{pattern}": {error}'
-            )
+            logger.warning(f'Warning: Failed to expand pattern "{pattern}": {error}')
     return all_files
 
 
-async def resolve_setup_file(
-    setup: Optional[str], base_path: str
-) -> Optional[str]:
+async def resolve_setup_file(setup: str | None, base_path: str) -> str | None:
     """Resolve the optional single setup file (upstream resolveSetupFile)."""
     if not setup:
         return None
@@ -112,7 +108,7 @@ async def resolve_setup_file(
     return matched[0]
 
 
-async def parse_config_yaml(config_yaml_path: str) -> Dict[str, Any]:
+async def parse_config_yaml(config_yaml_path: str) -> dict[str, Any]:
     """Parse a batch config YAML file (upstream parseConfigYaml)."""
     base_path = os.path.dirname(os.path.abspath(config_yaml_path))
     config_content = Path(config_yaml_path).read_text(encoding="utf-8")
@@ -159,9 +155,7 @@ async def parse_config_yaml(config_yaml_path: str) -> Dict[str, Any]:
         "patterns": config_yaml["files"],
         "files": files,
         "setup": setup,
-        "headed": _or_default(
-            config_yaml.get("headed"), DEFAULT_CONFIG["headed"]
-        ),
+        "headed": _or_default(config_yaml.get("headed"), DEFAULT_CONFIG["headed"]),
         "keepWindow": _or_default(
             config_yaml.get("keepWindow"), DEFAULT_CONFIG["keepWindow"]
         ),
@@ -175,8 +169,8 @@ async def parse_config_yaml(config_yaml_path: str) -> Dict[str, Any]:
 
 
 async def create_config(
-    config_yaml_path: str, options: Optional[Dict[str, Any]] = None
-) -> Dict[str, Any]:
+    config_yaml_path: str, options: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """Merge a batch config file with command-line options (upstream
     createConfig)."""
     options = options or {}
@@ -215,9 +209,7 @@ async def create_config(
             options.get("shareBrowserContext"),
             parsed_config["shareBrowserContext"],
         ),
-        "reusePage": _or_default(
-            options.get("reusePage"), parsed_config["reusePage"]
-        ),
+        "reusePage": _or_default(options.get("reusePage"), parsed_config["reusePage"]),
         "headed": final_headed,
         "keepWindow": keep_window,
         "dotenvOverride": _or_default(
@@ -231,8 +223,8 @@ async def create_config(
 
 
 async def create_files_config(
-    patterns: list, options: Optional[Dict[str, Any]] = None
-) -> Dict[str, Any]:
+    patterns: list, options: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """Build a batch config from CLI patterns (upstream createFilesConfig)."""
     options = options or {}
     base_path = os.getcwd()
@@ -240,9 +232,7 @@ async def create_files_config(
     setup = await resolve_setup_file(options.get("setup"), base_path)
     default_summary = f"summary-{_timestamp_ms()}.json"
 
-    keep_window = _or_default(
-        options.get("keepWindow"), DEFAULT_CONFIG["keepWindow"]
-    )
+    keep_window = _or_default(options.get("keepWindow"), DEFAULT_CONFIG["keepWindow"])
     headed = _or_default(options.get("headed"), DEFAULT_CONFIG["headed"])
     final_headed = bool(keep_window or headed)
 
@@ -261,9 +251,7 @@ async def create_files_config(
             options.get("shareBrowserContext"),
             DEFAULT_CONFIG["shareBrowserContext"],
         ),
-        "reusePage": _or_default(
-            options.get("reusePage"), DEFAULT_CONFIG["reusePage"]
-        ),
+        "reusePage": _or_default(options.get("reusePage"), DEFAULT_CONFIG["reusePage"]),
         "headed": final_headed,
         "keepWindow": keep_window,
         "dotenvOverride": _or_default(

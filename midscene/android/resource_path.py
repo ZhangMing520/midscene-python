@@ -2,7 +2,7 @@
 
 import os
 import re
-from typing import Callable
+from collections.abc import Callable
 
 _ASAR_DIR_PATTERN = re.compile(r"\.asar([/\\])")
 

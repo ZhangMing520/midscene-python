@@ -1,6 +1,6 @@
 """JSON request/response protocol for the RDP helper (upstream protocol.ts)."""
 
-from typing import Any, Dict, Literal, Optional, Protocol, TypedDict
+from typing import Any, Literal, Protocol, TypedDict
 
 from midscene.core.types import Size
 
@@ -30,19 +30,19 @@ class RDPConnectionInfo(TypedDict):
     """Information returned once the helper is connected."""
 
     sessionId: str
-    size: Dict[str, Any]
+    size: dict[str, Any]
     server: str
 
 
 class RDPHelperEnvelope(TypedDict):
     id: str
-    payload: Dict[str, Any]
+    payload: dict[str, Any]
 
 
-RDPProtocolRequest = Dict[str, Any]
-RDPProtocolResponse = Dict[str, Any]
-RDPHelperRequest = Dict[str, Any]
-RDPHelperResponse = Dict[str, Any]
+RDPProtocolRequest = dict[str, Any]
+RDPProtocolResponse = dict[str, Any]
+RDPHelperRequest = dict[str, Any]
+RDPHelperResponse = dict[str, Any]
 
 
 class RDPBackendClient(Protocol):
@@ -66,8 +66,8 @@ class RDPBackendClient(Protocol):
         self,
         direction: RDPScrollDirection,
         amount: int,
-        x: Optional[int] = None,
-        y: Optional[int] = None,
+        x: int | None = None,
+        y: int | None = None,
     ) -> None: ...
 
     async def key_press(self, key_name: str) -> None: ...

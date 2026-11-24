@@ -2,10 +2,9 @@
 
 import os
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import yaml
-
 
 # Legacy scroll-type aliases (upstream normalizeScrollType)
 _SCROLL_TYPE_ALIASES = {
@@ -63,12 +62,10 @@ _TOP_LEVEL_KEY = re.compile(r"[A-Za-z_][\w-]*\s*:")
 _WEB_TARGET_SOURCES = ("page", "browser", "web", "target")
 
 
-def resolve_web_target(config: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def resolve_web_target(config: dict[str, Any]) -> dict[str, Any] | None:
     """Resolve the single web target section (upstream resolveWebTarget)."""
     entries = [
-        (source, config[source])
-        for source in _WEB_TARGET_SOURCES
-        if source in config
+        (source, config[source]) for source in _WEB_TARGET_SOURCES if source in config
     ]
 
     if not entries:
@@ -86,18 +83,16 @@ def resolve_web_target(config: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     explicit_mode = target.get("mode") if isinstance(target, dict) else None
     if explicit_mode not in (None, "page", "browser"):
         raise ValueError(
-            "[midscene] web target mode must be either \"page\" or "
-            f"\"browser\", but got \"{explicit_mode}\"."
+            '[midscene] web target mode must be either "page" or '
+            f'"browser", but got "{explicit_mode}".'
         )
     if source == "page" and explicit_mode == "browser":
         raise ValueError(
-            "[midscene] page target cannot use mode: browser. Use browser: "
-            "instead."
+            "[midscene] page target cannot use mode: browser. Use browser: instead."
         )
     if source == "browser" and explicit_mode == "page":
         raise ValueError(
-            "[midscene] browser target cannot use mode: page. Use page: "
-            "instead."
+            "[midscene] browser target cannot use mode: page. Use page: instead."
         )
 
     mode = (
@@ -114,7 +109,7 @@ def resolve_web_target(config: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     }
 
 
-def resolve_yaml_output_config(script: Dict[str, Any]) -> Dict[str, Any]:
+def resolve_yaml_output_config(script: dict[str, Any]) -> dict[str, Any]:
     """Legacy output settings with target-local values taking priority."""
     resolved = resolve_web_target(script)
     target = (
@@ -140,9 +135,7 @@ def resolve_yaml_output_config(script: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _interpolate_env_var_refs(
-    value: str, keep_unresolved_refs: bool = False
-) -> str:
+def _interpolate_env_var_refs(value: str, keep_unresolved_refs: bool = False) -> str:
     """Replace ``${VAR}`` references in a single line (upstream helper)."""
     result = ""
     last_index = 0
@@ -165,9 +158,7 @@ def _interpolate_env_var_refs(
             if keep_unresolved_refs:
                 result += value[start : end + 1]
             else:
-                raise ValueError(
-                    f'Environment variable "{env_var}" is not defined'
-                )
+                raise ValueError(f'Environment variable "{env_var}" is not defined')
         else:
             result += env_value
         last_index = end + 1
@@ -206,12 +197,12 @@ def _interpolate_env_vars(content: str) -> str:
             elif _TOP_LEVEL_KEY.match(stripped):
                 in_tasks = False
 
-        def replace(match: "re.Match[str]") -> str:
+        def replace(match: "re.Match[str]", _in_tasks: bool = in_tasks) -> str:
             name = match.group(1)
             value = os.environ.get(name)
             if value is not None:
                 return value
-            if in_tasks:
+            if _in_tasks:
                 return match.group(0)
             raise ValueError(f'Environment variable "{name}" is not defined')
 
@@ -219,7 +210,7 @@ def _interpolate_env_vars(content: str) -> str:
     return "\n".join(result_lines)
 
 
-def parse_yaml_script(content: str, file_path: Optional[str] = None) -> Dict[str, Any]:
+def parse_yaml_script(content: str, file_path: str | None = None) -> dict[str, Any]:
     """Parse a YAML automation script (upstream parseYamlScript)."""
     interpolated = _interpolate_env_vars(content)
     try:
@@ -233,8 +224,15 @@ def parse_yaml_script(content: str, file_path: Optional[str] = None) -> Dict[str
     # Upstream counts declared targets by presence, not truthiness, so an empty
     # `computer: {}` still conflicts with a web block.
     target_keys = (
-        "web", "browser", "page", "target",
-        "android", "ios", "harmony", "computer", "interface",
+        "web",
+        "browser",
+        "page",
+        "target",
+        "android",
+        "ios",
+        "harmony",
+        "computer",
+        "interface",
     )
     declared = [key for key in target_keys if obj.get(key) is not None]
     if len(declared) > 1:
@@ -246,7 +244,7 @@ def parse_yaml_script(content: str, file_path: Optional[str] = None) -> Dict[str
     if not isinstance(tasks, list):
         raise ValueError('"tasks" must be a list')
 
-    script: Dict[str, Any] = {
+    script: dict[str, Any] = {
         "tasks": tasks,
         "config": obj.get("config") or {},
         "agent": obj.get("agent") or {},
@@ -259,18 +257,16 @@ def parse_yaml_script(content: str, file_path: Optional[str] = None) -> Dict[str
 
 def parse_legacy_yaml_script(
     content: str,
-    file_path: Optional[str] = None,
-    on_config: Optional[Any] = None,
-) -> Dict[str, Any]:
+    file_path: str | None = None,
+    on_config: Any | None = None,
+) -> dict[str, Any]:
     """Parse a legacy YAML script with an optional collection observer."""
     processed_content = content
     if "android" in content and re.search(r"deviceId:\s*(\d+)", content):
         import sys
 
         matched = re.search(r"deviceId:\s*(\d+)", content)
-        processed_content = re.sub(
-            r"deviceId:\s*(\d+)", r"deviceId: '\1'", content
-        )
+        processed_content = re.sub(r"deviceId:\s*(\d+)", r"deviceId: '\1'", content)
         print(
             "please use string-style deviceId in yaml script, for example: "
             f'deviceId: "{matched.group(1) if matched else ""}"',
@@ -304,20 +300,18 @@ def _snake(name: str) -> str:
 _MULTIMODAL_LOCATE_KEYS = ("images", "convertHttpImage2Base64")
 
 
-def _extract_multimodal_prompt(opt: Any) -> Optional[Dict[str, Any]]:
+def _extract_multimodal_prompt(opt: Any) -> dict[str, Any] | None:
     if not isinstance(opt, dict):
         return None
     entries = {
-        key: opt[key]
-        for key in _MULTIMODAL_LOCATE_KEYS
-        if opt.get(key) is not None
+        key: opt[key] for key in _MULTIMODAL_LOCATE_KEYS if opt.get(key) is not None
     }
     return entries or None
 
 
 def build_detailed_locate_param(
-    locate_prompt: Any, opt: Optional[Dict[str, Any]] = None
-) -> Optional[Dict[str, Any]]:
+    locate_prompt: Any, opt: dict[str, Any] | None = None
+) -> dict[str, Any] | None:
     """Build the canonical locate param (upstream buildDetailedLocateParam)."""
     from midscene.core.agent.prompt_context import (
         build_locate_prompt_with_context,
@@ -362,7 +356,7 @@ def build_detailed_locate_param(
         else:
             prompt = {**prompt, **multimodal}
 
-    result: Dict[str, Any] = {"prompt": prompt}
+    result: dict[str, Any] = {"prompt": prompt}
     if context:
         result["promptDisplay"] = prompt_display
         result["context"] = context
@@ -374,13 +368,13 @@ def build_detailed_locate_param(
 
 def build_detailed_locate_param_and_rest_params(
     locate_prompt: Any,
-    opt: Optional[Dict[str, Any]],
-    exclude_keys: Optional[List[str]] = None,
-) -> Dict[str, Any]:
+    opt: dict[str, Any] | None,
+    exclude_keys: list[str] | None = None,
+) -> dict[str, Any]:
     """Split locate fields from action params (upstream buildDetailedLocateParamAndRestParams)."""
     multimodal = _extract_multimodal_prompt(opt)
     locate_param = build_detailed_locate_param(locate_prompt, opt)
-    rest_params: Dict[str, Any] = {}
+    rest_params: dict[str, Any] = {}
     if isinstance(opt, dict):
         locate_param_keys = set(locate_param or {})
         locate_prompt_value = (locate_param or {}).get("prompt")
@@ -400,7 +394,7 @@ def build_detailed_locate_param_and_rest_params(
     return {"locateParam": locate_param, "restParams": rest_params}
 
 
-def _build_action_param(action_name: str, options: Dict[str, Any]) -> Dict[str, Any]:
+def _build_action_param(action_name: str, options: dict[str, Any]) -> dict[str, Any]:
     param = {k: v for k, v in options.items() if k not in ("name", "prompt", "locate")}
     locate = options.get("locate") or (
         {"prompt": options["prompt"]} if options.get("prompt") else None

@@ -4,7 +4,7 @@ import glob
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from rich.console import Console
 
@@ -33,9 +33,7 @@ def _kebab_to_camel(value: str) -> str:
 
 
 def _camel_to_kebab(value: str) -> str:
-    result = "".join(
-        f"-{char.lower()}" if char.isupper() else char for char in value
-    )
+    result = "".join(f"-{char.lower()}" if char.isupper() else char for char in value)
     return result[1:] if result.startswith("-") else result
 
 
@@ -51,9 +49,7 @@ def _parse_nested_value(raw: str) -> Any:
     return raw
 
 
-def _assign_nested(
-    options: Dict[str, Any], key: str, value: Any
-) -> None:
+def _assign_nested(options: dict[str, Any], key: str, value: Any) -> None:
     path = [part for part in key.split(".") if part]
     if not path:
         return
@@ -67,8 +63,8 @@ def _assign_nested(
     cursor[path[-1]] = value
 
 
-def _ensure_both_formats(section: Dict[str, Any]) -> Dict[str, Any]:
-    result: Dict[str, Any] = {}
+def _ensure_both_formats(section: dict[str, Any]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
     for key, value in section.items():
         camel = _kebab_to_camel(key)
         kebab = _camel_to_kebab(key)
@@ -77,7 +73,7 @@ def _ensure_both_formats(section: Dict[str, Any]) -> Dict[str, Any]:
     return result
 
 
-async def parse_process_args() -> Dict[str, Any]:
+async def parse_process_args() -> dict[str, Any]:
     """Parse ``process.argv`` like the upstream yargs CLI (dot-notation on).
 
     Returns ``{"path": ..., "files": ..., "options": ...}``. Target sections
@@ -85,7 +81,7 @@ async def parse_process_args() -> Dict[str, Any]:
     ``ensureBothFormats`` pass.
     """
     raw = list(sys.argv[1:])
-    options: Dict[str, Any] = {"_": []}
+    options: dict[str, Any] = {"_": []}
     index = 0
     while index < len(raw):
         token = raw[index]
@@ -100,7 +96,7 @@ async def parse_process_args() -> Dict[str, Any]:
             continue
 
         if key == "files":
-            values: List[str] = []
+            values: list[str] = []
             while index < len(raw) and not raw[index].startswith("--"):
                 values.append(raw[index])
                 index += 1
@@ -140,9 +136,7 @@ async def parse_process_args() -> Dict[str, Any]:
     }
 
 
-def match_yaml_files(
-    file_glob: str, options: Optional[dict] = None
-) -> list:
+def match_yaml_files(file_glob: str, options: dict | None = None) -> list:
     """Expand a YAML glob (upstream matchYamlFiles): directories expand to
     ``**/*.yml``/``**/*.yaml``, results are absolute and sorted."""
     base = Path((options or {}).get("cwd") or os.getcwd())
@@ -220,7 +214,7 @@ def _resolve_served_url(serve_root: str, url: str) -> str:
     return f"http://127.0.0.1:{port}{url}"
 
 
-def _keep_window(console: Optional[Console] = None) -> None:
+def _keep_window(console: Console | None = None) -> None:
     """Hang like upstream --keep-window; useful for debugging."""
     import time as time_module
 

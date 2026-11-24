@@ -120,9 +120,7 @@ def test_follows_provider_default_for_glm_v_when_reasoningenabled_default():
 
 def test_ignores_unsupported_reasoning_fields_for_glm_v():
     """ignores unsupported reasoning fields for glm-v"""
-    result = _build(
-        user_config={"reasoningEffort": "high", "reasoningBudget": 1024}
-    )
+    result = _build(user_config={"reasoningEffort": "high", "reasoningBudget": 1024})
     assert result == {
         "temperature": 0,
         "thinking": {"type": "disabled"},

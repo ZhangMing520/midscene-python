@@ -56,15 +56,11 @@ def test_rejects_non_positive_fractional_or_malformed_dimensions():
         resolve_viewport_size({"height": -1})
     with pytest.raises(
         ValueError,
-        match=re.escape(
-            "viewportWidth must be a positive integer, but got 1280.5"
-        ),
+        match=re.escape("viewportWidth must be a positive integer, but got 1280.5"),
     ):
         resolve_viewport_size({"width": 1280.5})
     with pytest.raises(
         ValueError,
-        match=re.escape(
-            "viewportHeight must be a positive integer, but got 720px"
-        ),
+        match=re.escape("viewportHeight must be a positive integer, but got 720px"),
     ):
         resolve_viewport_size({"height": "720px"})

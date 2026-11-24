@@ -12,8 +12,9 @@ Result types: success | failed | partialFailed | notExecuted.
 
 import asyncio
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 import yaml
 from loguru import logger
@@ -32,7 +33,7 @@ from midscene.cli.yaml_batch_error import YamlBatchExecutionError
 RESULT_TYPES = ("success", "failed", "partialFailed", "notExecuted")
 
 
-def parse_batch_config(config: Dict[str, Any]) -> Dict[str, Any]:
+def parse_batch_config(config: dict[str, Any]) -> dict[str, Any]:
     """Validate a MidsceneYamlConfig mapping (upstream schema subset)."""
     files = config.get("files")
     if not files:
@@ -58,7 +59,7 @@ def parse_batch_config(config: Dict[str, Any]) -> Dict[str, Any]:
     if retry < 0:
         raise ValueError('"retry" must be >= 0')
 
-    def _hook(name: str) -> Optional[str]:
+    def _hook(name: str) -> str | None:
         value = config.get(name)
         if value is None:
             return None
@@ -96,7 +97,7 @@ def parse_batch_config(config: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _web_overrides(config: Dict[str, Any]) -> Dict[str, Any]:
+def _web_overrides(config: dict[str, Any]) -> dict[str, Any]:
     """Partial web-env overrides deep-merged into each script
     (web/page/browser/target keys, upstream MidsceneYamlTargetConfig)."""
     for key in _WEB_TARGET_KEYS:
@@ -105,7 +106,7 @@ def _web_overrides(config: Dict[str, Any]) -> Dict[str, Any]:
     return {}
 
 
-def _native_overrides(config: Dict[str, Any]) -> Dict[str, Any]:
+def _native_overrides(config: dict[str, Any]) -> dict[str, Any]:
     """Batch-level native target sections merged into each script
     (upstream globalConfig merge for android/ios/harmony/computer)."""
     return {
@@ -115,7 +116,7 @@ def _native_overrides(config: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def load_batch_config(path: str) -> Dict[str, Any]:
+def load_batch_config(path: str) -> dict[str, Any]:
     """Load a batch config from a YAML file."""
     content = Path(path).read_text(encoding="utf-8")
     try:
@@ -146,8 +147,8 @@ def _deep_merge(base: Any, override: Any) -> Any:
 
 
 def merge_web_overrides(
-    script: Dict[str, Any], overrides: Dict[str, Any]
-) -> Dict[str, Any]:
+    script: dict[str, Any], overrides: dict[str, Any]
+) -> dict[str, Any]:
     """Deep-merge the batch-level web env into a script's own web env; the
     global config wins (upstream lodash merge order)."""
     if not overrides:
@@ -169,9 +170,9 @@ def merge_web_overrides(
 
 
 async def run_yaml_batch(
-    config: Dict[str, Any],
-    options: Optional[Any] = None,
-) -> List[Dict[str, Any]]:
+    config: dict[str, Any],
+    options: Any | None = None,
+) -> list[dict[str, Any]]:
     """Execute every file of a batch config and return the result list.
 
     ``options`` is either the upstream-style options mapping (which may carry
@@ -195,8 +196,8 @@ async def run_yaml_batch(
         )
     state = options.get("state") or {}
     cfg = parse_batch_config(config)
-    results: List[Dict[str, Any]] = []
-    hook_error: Optional[str] = None
+    results: list[dict[str, Any]] = []
+    hook_error: str | None = None
 
     try:
         # beforeAll (alias: setup): failure aborts the whole batch. Retries use
@@ -219,7 +220,7 @@ async def run_yaml_batch(
         if cfg["concurrent"] > 1:
             semaphore = asyncio.Semaphore(cfg["concurrent"])
 
-            async def bounded(file_path: str) -> Dict[str, Any]:
+            async def bounded(file_path: str) -> dict[str, Any]:
                 async with semaphore:
                     return await _run_file(
                         cfg,
@@ -230,9 +231,7 @@ async def run_yaml_batch(
                         native_overrides=cfg["native_overrides"],
                     )
 
-            outcomes = await asyncio.gather(
-                *(bounded(f) for f in cfg["files"])
-            )
+            outcomes = await asyncio.gather(*(bounded(f) for f in cfg["files"]))
             results.extend(outcomes)
         else:
             shared_page = None
@@ -250,7 +249,7 @@ async def run_yaml_batch(
                 if cfg["share_browser_context"]:
                     shared_page = result.get("_shared_page") or shared_page
                 if not result["success"] and not cfg["continueOnError"]:
-                    for remaining_path in cfg["files"][index + 1:]:
+                    for remaining_path in cfg["files"][index + 1 :]:
                         results.append(_not_executed(remaining_path))
                     break
 
@@ -281,19 +280,17 @@ async def run_yaml_batch(
 
 
 async def run_yaml_batch_with_case_ids(
-    config: Dict[str, Any],
-    case_ids: List[str],
-    options: Optional[Dict[str, Any]] = None,
-) -> List[Dict[str, Any]]:
+    config: dict[str, Any],
+    case_ids: list[str],
+    options: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
     """Run a batch and return results paired with caller-provided case IDs.
 
     The occurrence count covers the setup file (when configured) plus every
     main file; IDs must be unique and in execution order.
     """
     setup_file = config.get("setup") or config.get("beforeAll")
-    occurrence_count = len(config.get("files") or []) + (
-        1 if setup_file else 0
-    )
+    occurrence_count = len(config.get("files") or []) + (1 if setup_file else 0)
     if len(case_ids) != occurrence_count:
         raise ValueError(
             "Batch occurrence identity mismatch: expected "
@@ -310,19 +307,19 @@ async def run_yaml_batch_with_case_ids(
     results = await run_yaml_batch(config, options or {})
     return [
         {"caseId": case_id, "result": result}
-        for case_id, result in zip(case_ids, results)
+        for case_id, result in zip(case_ids, results, strict=False)
     ]
 
 
 async def _run_file(
-    cfg: Dict[str, Any],
+    cfg: dict[str, Any],
     player_factory: Callable[[str, str], Any],
     file_path: str,
     retries: int = 0,
-    overrides: Optional[Dict[str, Any]] = None,
-    native_overrides: Optional[Dict[str, Any]] = None,
+    overrides: dict[str, Any] | None = None,
+    native_overrides: dict[str, Any] | None = None,
     shared_page: Any = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run one file with the beforeEach / afterEach lifecycle hooks."""
     kwargs = {
         "retries": retries,
@@ -363,9 +360,9 @@ async def _run_file(
 def _hook_failure(
     file_path: str,
     hook: str,
-    hook_result: Dict[str, Any],
-    result: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    hook_result: dict[str, Any],
+    result: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     failed = {
         "file": file_path,
         "success": False,
@@ -382,18 +379,18 @@ def _hook_failure(
 
 
 async def _run_one(
-    cfg: Dict[str, Any],
+    cfg: dict[str, Any],
     player_factory: Callable[[str, str], Any],
     file_path: str,
     retries: int = 0,
-    overrides: Optional[Dict[str, Any]] = None,
-    native_overrides: Optional[Dict[str, Any]] = None,
+    overrides: dict[str, Any] | None = None,
+    native_overrides: dict[str, Any] | None = None,
     shared_page: Any = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     start = time.time()
-    attempts: List[Dict[str, Any]] = []
+    attempts: list[dict[str, Any]] = []
     max_attempts = retries + 1
-    last_error: Optional[str] = None
+    last_error: str | None = None
 
     try:
         content = Path(file_path).read_text(encoding="utf-8")
@@ -474,14 +471,12 @@ async def _run_one(
         "duration": int((time.time() - start) * 1000),
         # A task failure without a player-level error is a partial failure.
         "resultType": (
-            "partialFailed"
-            if status != "error" and run_error is None
-            else "failed"
+            "partialFailed" if status != "error" and run_error is None else "failed"
         ),
     }
 
 
-def _apply_web_overrides(content: str, overrides: Dict[str, Any]) -> str:
+def _apply_web_overrides(content: str, overrides: dict[str, Any]) -> str:
     """Merge the batch-level web env into a script; the global config wins on
     conflicting keys (upstream merge order) while script-only keys survive."""
     if not overrides:
@@ -492,9 +487,7 @@ def _apply_web_overrides(content: str, overrides: Dict[str, Any]) -> str:
         return content
     if not isinstance(doc, dict):
         return content
-    web_key = next(
-        (k for k in _WEB_TARGET_KEYS if isinstance(doc.get(k), dict)), None
-    )
+    web_key = next((k for k in _WEB_TARGET_KEYS if isinstance(doc.get(k), dict)), None)
     if web_key:
         doc[web_key] = _deep_merge(doc[web_key], overrides)
     else:
@@ -502,9 +495,7 @@ def _apply_web_overrides(content: str, overrides: Dict[str, Any]) -> str:
     return yaml.safe_dump(doc, allow_unicode=True, sort_keys=False)
 
 
-def _apply_native_overrides(
-    content: str, overrides: Dict[str, Any]
-) -> str:
+def _apply_native_overrides(content: str, overrides: dict[str, Any]) -> str:
     """Deep-merge every batch-level native target section into a script; the
     global config wins on conflict (upstream merge order) while script-only
     keys survive."""
@@ -522,18 +513,18 @@ def _apply_native_overrides(
     return yaml.safe_dump(doc, allow_unicode=True, sort_keys=False)
 
 
-def _not_executed(file_path: str) -> Dict[str, Any]:
+def _not_executed(file_path: str) -> dict[str, Any]:
     return create_not_executed_yaml_result(file_path)
 
 
-def _write_summary(cfg: Dict[str, Any], results: List[Dict[str, Any]]) -> None:
+def _write_summary(cfg: dict[str, Any], results: list[dict[str, Any]]) -> None:
     write_execution_summary_file(cfg.get("summary"), results)
 
 
 def _write_artifact(
-    cfg: Dict[str, Any],
-    results: List[Dict[str, Any]],
-    hook_error: Optional[str],
+    cfg: dict[str, Any],
+    results: list[dict[str, Any]],
+    hook_error: str | None,
 ) -> None:
     """Publish a directory report artifact when artifactDir is configured."""
     artifact_dir = cfg.get("artifact_dir")
@@ -567,8 +558,6 @@ def _write_artifact(
     except Exception as error:
         # The run itself already finished; do not turn a failed artifact
         # write (permissions, lock timeout) into a crash after the results.
-        logger.warning(
-            f"Failed to write report artifact to {artifact_dir}: {error}"
-        )
+        logger.warning(f"Failed to write report artifact to {artifact_dir}: {error}")
         return
     logger.info(f"Batch report artifact written to {artifact_dir}")

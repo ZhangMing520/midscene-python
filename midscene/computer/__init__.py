@@ -1,12 +1,12 @@
 """Computer automation (upstream packages/computer)."""
 
-from midscene.computer.device import ComputerDevice
 from midscene.computer.agent import (
     ComputerAgent,
     agent_for_computer,
     agent_for_rdp_computer,
     agent_from_computer,
 )
+from midscene.computer.device import ComputerDevice
 from midscene.computer.rdp import (
     HelperProcessRDPBackendClient,
     RDPBackendClient,

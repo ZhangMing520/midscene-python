@@ -1,11 +1,5 @@
 """Model environment configuration (upstream packages/shared/src/env)."""
 
-from midscene.shared.env.types import (
-    TIntent,
-    TModelFamily,
-    TModelProtocol,
-    TModelStreamMode,
-)
 from midscene.shared.env.constants import (
     DEFAULT_MODEL_CONFIG_KEYS,
     DEFAULT_RETRY_INTERVAL_MS,
@@ -105,13 +99,21 @@ from midscene.shared.env.constants import (
     MIDSCENE_USE_GEMINI,
     MIDSCENE_USE_QWEN3_VL,
     MIDSCENE_USE_QWEN_VL,
-    MIDSCENE_USE_VLM_UI_TARS,
     MIDSCENE_USE_VL_MODEL,
+    MIDSCENE_USE_VLM_UI_TARS,
     MODEL_CONFIG_DOC_URL,
     MODEL_FAMILY_VALUES,
     OPENAI_API_KEY,
     OPENAI_BASE_URL,
     PLANNING_MODEL_CONFIG_KEYS,
+)
+from midscene.shared.env.global_config_manager import (
+    get_global_model_config_manager,
+    override_ai_config,
+    reset_global_model_config,
+)
+from midscene.shared.env.model_config_manager import (
+    ModelConfigManager,
 )
 from midscene.shared.env.parse_model_config import (
     decide_model_config_from_intent_config,
@@ -123,13 +125,11 @@ from midscene.shared.env.parse_model_config import (
     planning_model_family_required_for_locate_message,
     validate_model_family,
 )
-from midscene.shared.env.model_config_manager import (
-    ModelConfigManager,
-)
-from midscene.shared.env.global_config_manager import (
-    get_global_model_config_manager,
-    override_ai_config,
-    reset_global_model_config,
+from midscene.shared.env.types import (
+    TIntent,
+    TModelFamily,
+    TModelProtocol,
+    TModelStreamMode,
 )
 from midscene.shared.env.utils import (
     get_midscene_run_dir,

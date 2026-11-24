@@ -6,7 +6,7 @@ image payloads when a dump is externalized.
 """
 
 import re
-from typing import Any, Dict, Optional
+from typing import Any
 from urllib.parse import quote
 
 _DATA_URI_PATTERN = re.compile(
@@ -48,18 +48,18 @@ KNOWN_IMAGE_MIME_TYPES_BY_EXTENSION = {
 }
 
 
-def _has_valid_storage(record: Dict[str, Any]) -> bool:
+def _has_valid_storage(record: dict[str, Any]) -> bool:
     if record.get("storage") not in ("inline", "file"):
         return False
     return record.get("storage") != "file" or isinstance(record.get("path"), str)
 
 
-def _has_valid_image_id(record: Dict[str, Any]) -> bool:
+def _has_valid_image_id(record: dict[str, Any]) -> bool:
     value = record.get("id")
     return isinstance(value, str) and bool(_IMAGE_ID_PATTERN.match(value))
 
 
-def normalize_image_url_ref(value: Any) -> Optional[Dict[str, Any]]:
+def normalize_image_url_ref(value: Any) -> dict[str, Any] | None:
     """Validate a serialized multimodal prompt image reference."""
     if not isinstance(value, dict):
         return None
@@ -75,7 +75,7 @@ def normalize_image_url_ref(value: Any) -> Optional[Dict[str, Any]]:
     return None
 
 
-def normalize_stored_image_ref(value: Any) -> Optional[Dict[str, Any]]:
+def normalize_stored_image_ref(value: Any) -> dict[str, Any] | None:
     # Imported lazily to keep the module free of a screenshot-store cycle.
     from midscene.core.dump.screenshot_store import normalize_screenshot_ref
 
@@ -86,7 +86,7 @@ def image_file_extension_for_mime_type(mime_type: str) -> str:
     known = KNOWN_IMAGE_EXTENSIONS.get(mime_type.lower())
     if known:
         return known
-    subtype = mime_type[len("image/"):].split("+", 1)[0]
+    subtype = mime_type[len("image/") :].split("+", 1)[0]
     sanitized = re.sub(r"[^a-z0-9]+", "-", subtype.lower()).strip("-")[:32]
     if not sanitized:
         raise ValueError(
@@ -95,22 +95,22 @@ def image_file_extension_for_mime_type(mime_type: str) -> str:
     return sanitized
 
 
-def image_mime_type_for_file_extension(extension: str) -> Optional[str]:
+def image_mime_type_for_file_extension(extension: str) -> str | None:
     return KNOWN_IMAGE_MIME_TYPES_BY_EXTENSION.get(extension.lower())
 
 
-def image_ref_file_extension(ref: Dict[str, Any]) -> str:
+def image_ref_file_extension(ref: dict[str, Any]) -> str:
     return image_file_extension_for_mime_type(ref["mimeType"])
 
 
-def report_image_asset_path(ref: Dict[str, Any]) -> str:
+def report_image_asset_path(ref: dict[str, Any]) -> str:
     """Resolve the report-relative asset path for an image reference."""
     if ref.get("storage") == "file" and ref.get("path"):
         return ref["path"]
     return f"./screenshots/{quote(str(ref['id']), safe='')}.{image_ref_file_extension(ref)}"
 
 
-def normalize_screenshot_ref(value: Any) -> Optional[Dict[str, Any]]:
+def normalize_screenshot_ref(value: Any) -> dict[str, Any] | None:
     """Re-export of ``screenshot_store.normalize_screenshot_ref``."""
     from midscene.core.dump.screenshot_store import (
         normalize_screenshot_ref as _normalize_screenshot_ref,
@@ -119,7 +119,7 @@ def normalize_screenshot_ref(value: Any) -> Optional[Dict[str, Any]]:
     return _normalize_screenshot_ref(value)
 
 
-def _is_image_string(value: str, key: Optional[str]) -> bool:
+def _is_image_string(value: str, key: str | None) -> bool:
     if value.startswith("data:image/"):
         return True
     if not key or key.lower() not in _IMAGE_KEYS:

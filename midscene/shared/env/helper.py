@@ -1,7 +1,7 @@
 """Env config helpers (upstream packages/shared/src/env/helper.ts)."""
 
 import json
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 def mask_key(key: str, mask_char: str = "*") -> str:
@@ -20,9 +20,9 @@ def mask_key(key: str, mask_char: str = "*") -> str:
     return f"{prefix}{mask_char * (len(key) - keep_length)}{suffix}"
 
 
-def mask_config(config: Dict[str, Any]) -> Dict[str, Any]:
+def mask_config(config: dict[str, Any]) -> dict[str, Any]:
     """Mask every key-like value in a config mapping (upstream maskConfig)."""
-    result: Dict[str, Any] = {}
+    result: dict[str, Any] = {}
     for key, value in config.items():
         if not value:
             result[key] = value
@@ -39,15 +39,13 @@ def mask_config(config: Dict[str, Any]) -> Dict[str, Any]:
     return result
 
 
-def parse_json(key: str, value: Optional[str]) -> Any:
+def parse_json(key: str, value: str | None) -> Any:
     """Parse a JSON env value, raising a descriptive error on bad input."""
     if value:
         try:
             return json.loads(value)
         except Exception as error:  # noqa: BLE001 - mirror upstream message
-            raise ValueError(
-                f"Failed to parse {key} as a JSON. {error}"
-            ) from error
+            raise ValueError(f"Failed to parse {key} as a JSON. {error}") from error
     return None
 
 

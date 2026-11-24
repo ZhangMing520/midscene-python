@@ -3,7 +3,7 @@
 import datetime
 import json
 import re
-from typing import Any, Dict, List, Set
+from typing import Any
 
 MAX_DEPTH = 6
 MAX_STRING_LENGTH = 2_000
@@ -31,10 +31,10 @@ def sanitize_report_text(value: str, maximum_length: int = MAX_STRING_LENGTH) ->
     return f"{value[:maximum_length]}… [truncated]"
 
 
-def sanitize_report_value(value: Any) -> Dict[str, Any]:
+def sanitize_report_value(value: Any) -> dict[str, Any]:
     """Convert arbitrary node input/output to a bounded, JSON-safe value."""
-    truncated_paths: Set[str] = set()
-    ancestors: Set[int] = set()
+    truncated_paths: set[str] = set()
+    ancestors: set[int] = set()
     remaining = [MAX_SERIALIZED_BYTES]
 
     def consume(path: str, text: str) -> bool:
@@ -88,28 +88,28 @@ def sanitize_report_value(value: Any) -> Dict[str, Any]:
             ancestors.add(marker)
             try:
                 if isinstance(current, (list, tuple)):
-                    output: List[Any] = []
+                    output: list[Any] = []
                     item_count = min(len(current), MAX_ARRAY_ITEMS)
                     for index in range(item_count):
                         if remaining[0] <= 0:
                             break
-                        output.append(visit(current[index], f"{path}[{index}]", depth + 1))
+                        output.append(
+                            visit(current[index], f"{path}[{index}]", depth + 1)
+                        )
                     if len(current) > len(output):
                         truncated_paths.add(path)
                     return output
                 if isinstance(current, set):
                     truncated_paths.add(path)
                     return f"[Unsupported object: {type(current).__name__}]"
-                output_dict: Dict[str, Any] = {}
+                output_dict: dict[str, Any] = {}
                 keys = list(current.keys())
                 for key in keys[:MAX_OBJECT_KEYS]:
                     key_text = str(key)
                     child_path = _object_path(path, key_text)
                     if not consume(child_path, key_text):
                         break
-                    output_dict[key_text] = visit(
-                        current[key], child_path, depth + 1
-                    )
+                    output_dict[key_text] = visit(current[key], child_path, depth + 1)
                     if remaining[0] <= 0:
                         break
                 if len(keys) > len(output_dict):
@@ -128,7 +128,7 @@ def sanitize_report_value(value: Any) -> Dict[str, Any]:
     if _byte_length(serialized) > MAX_SERIALIZED_BYTES:
         return {"value": TRUNCATED_VALUE, "truncatedPaths": ["$"]}
 
-    result: Dict[str, Any] = {"value": sanitized}
+    result: dict[str, Any] = {"value": sanitized}
     if truncated_paths:
         result["truncatedPaths"] = list(truncated_paths)
     return result
@@ -140,12 +140,12 @@ def _error_attr(error: Any, name: str) -> Any:
     return getattr(error, name, None)
 
 
-def sanitize_report_error(error: Any) -> Dict[str, Any]:
-    ancestors: Set[int] = set()
+def sanitize_report_error(error: Any) -> dict[str, Any]:
+    ancestors: set[int] = set()
     remaining = [MAX_SERIALIZED_BYTES - 1024]
     nodes = [0]
 
-    def shortened() -> Dict[str, Any]:
+    def shortened() -> dict[str, Any]:
         return {
             "format": "midscene-error",
             "name": "Error",
@@ -153,7 +153,7 @@ def sanitize_report_error(error: Any) -> Dict[str, Any]:
             "truncated": True,
         }
 
-    def visit(current: Any, depth: int) -> Dict[str, Any]:
+    def visit(current: Any, depth: int) -> dict[str, Any]:
         if depth >= MAX_DEPTH or nodes[0] >= 25 or remaining[0] < 4096:
             nodes[0] += 1
             return shortened()
@@ -174,10 +174,12 @@ def sanitize_report_error(error: Any) -> Dict[str, Any]:
             truncated = _error_attr(current, "truncated") is True
             name_value = _error_attr(current, "name")
             message_value = _error_attr(current, "message")
-            result: Dict[str, Any] = {
+            result: dict[str, Any] = {
                 "format": "midscene-error",
                 "name": sanitize_report_text(
-                    name_value if isinstance(name_value, str) else type(current).__name__,
+                    name_value
+                    if isinstance(name_value, str)
+                    else type(current).__name__,
                     200,
                 ),
                 "message": sanitize_report_text(
@@ -233,7 +235,7 @@ def sanitize_report_error(error: Any) -> Dict[str, Any]:
                 result["cause"] = visit(cause, depth + 1)
             nested_errors = _error_attr(current, "errors")
             if isinstance(nested_errors, (list, tuple)):
-                collected: List[Dict[str, Any]] = []
+                collected: list[dict[str, Any]] = []
                 for item in list(nested_errors)[:10]:
                     if nodes[0] >= 25 or remaining[0] < 4096:
                         result["truncated"] = True
@@ -266,7 +268,10 @@ def sanitize_report_error(error: Any) -> Dict[str, Any]:
             ancestors.discard(marker)
 
     result = visit(error, 0)
-    if _byte_length(json.dumps(result, ensure_ascii=False, default=str)) <= MAX_SERIALIZED_BYTES:
+    if (
+        _byte_length(json.dumps(result, ensure_ascii=False, default=str))
+        <= MAX_SERIALIZED_BYTES
+    ):
         return result
     return {
         "format": "midscene-error",

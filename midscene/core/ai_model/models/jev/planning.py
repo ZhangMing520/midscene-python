@@ -1,10 +1,7 @@
 """Jev planning workflow (upstream models/jev/planning.ts)."""
 
-from typing import Any, Dict, List, Optional
 import json
-from midscene.core.ai_model.models.registry import ModelRuntime
-from midscene.core.ai_model.service_caller.system_one import SystemOneError
-from midscene.core.ai_model.shared.multimodal_prompt import get_shot_size
+from typing import Any
 
 from midscene.core.ai_model.models.jev.planning_action import (
     build_jev_action,
@@ -15,17 +12,21 @@ from midscene.core.ai_model.models.jev.planning_context import (
 from midscene.core.ai_model.models.jev.planning_decision import (
     decide_jev_action,
 )
+from midscene.core.ai_model.models.registry import ModelRuntime
+from midscene.core.ai_model.service_caller.system_one import SystemOneError
+from midscene.core.ai_model.shared.multimodal_prompt import get_shot_size
+
 
 async def jev_plan(
     instruction: str,
     context: Any,
     model_runtime: ModelRuntime,
-    action_space: List[Any],
+    action_space: list[Any],
     conversation_history: Any,
     include_locate_in_planning: bool = False,
-    action_context: Optional[str] = None,
-    reference_images: Optional[List[str]] = None,
-) -> Dict[str, Any]:
+    action_context: str | None = None,
+    reference_images: list[str] | None = None,
+) -> dict[str, Any]:
     """Jev planning via System One choice questions."""
     if len(action_space) + 2 > 255:
         raise SystemOneError(
@@ -48,7 +49,7 @@ async def jev_plan(
     choice = decision["choice"]
     response = decision["response"]
 
-    def yaml_flow_of(actions: List[Dict[str, Any]]) -> str:
+    def yaml_flow_of(actions: list[dict[str, Any]]) -> str:
         import yaml
 
         flow = [
@@ -71,7 +72,9 @@ async def jev_plan(
                     if choice.get("action")
                     else "The previous planner delegated planning of the next step"
                 ),
-                "suggestedAction": choice["action"].name if choice.get("action") else None,
+                "suggestedAction": choice["action"].name
+                if choice.get("action")
+                else None,
             },
         }
 
@@ -100,7 +103,7 @@ async def jev_plan(
         }
     )
     conversation_history.append_historical_log(
-        f"{log}: {json.dumps([{ 'type': a['type'], 'direction': (a.get('param') or {}).get('direction')} for a in actions])}"
+        f"{log}: {json.dumps([{'type': a['type'], 'direction': (a.get('param') or {}).get('direction')} for a in actions])}"
     )
     conversation_history.compress_history(50, 20)
     return {

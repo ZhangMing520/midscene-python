@@ -4,12 +4,12 @@ Python action schemas declare distance fields explicitly, so the zod
 reflection in the upstream module becomes a simple field list lookup.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 DISTANCE_UNITS = ("model-input-image-pixel", "device-logical")
 
 
-def get_midscene_distance_schema() -> Dict[str, Any]:
+def get_midscene_distance_schema() -> dict[str, Any]:
     """Return the distance field schema (upstream getMidsceneDistanceSchema)."""
     return {"type": "number", "midsceneDistance": True}
 
@@ -21,7 +21,7 @@ def is_distance_field(field: Any) -> bool:
     return bool(getattr(field, "distance", False))
 
 
-def find_distance_fields(schema: Optional[Any] = None) -> List[str]:
+def find_distance_fields(schema: Any | None = None) -> list[str]:
     """Return the distance field names of an action schema."""
     if schema is None:
         return []
@@ -36,9 +36,7 @@ def find_distance_fields(schema: Optional[Any] = None) -> List[str]:
         properties = schema.get("properties")
         if isinstance(properties, dict):
             return [
-                name
-                for name, field in properties.items()
-                if is_distance_field(field)
+                name for name, field in properties.items() if is_distance_field(field)
             ]
     return []
 

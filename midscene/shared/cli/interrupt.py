@@ -8,7 +8,7 @@ import asyncio
 import os
 import signal
 import sys
-from typing import Any, Dict, Optional
+from typing import Any
 
 try:  # POSIX only
     import termios
@@ -19,7 +19,7 @@ except ImportError:  # pragma: no cover - non-POSIX
 
 SIGINT_EXIT_CODE = 130
 
-_active_waiters: Dict[Any, int] = {}
+_active_waiters: dict[Any, int] = {}
 _SIGNAL_NAMES = ("SIGINT", "SIGTERM", "SIGHUP")
 
 
@@ -55,9 +55,9 @@ class _TerminalCtrlCGuard:
 
     def __init__(self, on_ctrl_c: Any) -> None:
         self._on_ctrl_c = on_ctrl_c
-        self._thread: Optional[Any] = None
+        self._thread: Any | None = None
         self._stop = False
-        self._fd: Optional[int] = None
+        self._fd: int | None = None
 
     def install(self) -> None:
         if termios is None or not sys.stdin.isatty():
@@ -109,8 +109,8 @@ class CliInterruptWaiter:
         self._future: asyncio.Future = self._loop.create_future()
         self._finished = False
         self._disposed = False
-        self._watchdog_handle: Optional[asyncio.TimerHandle] = None
-        self._previous_handlers: Dict[int, Any] = {}
+        self._watchdog_handle: asyncio.TimerHandle | None = None
+        self._previous_handlers: dict[int, Any] = {}
         self._unregister = _register(source)
         self._force_exit = force_exit or (lambda code: sys.exit(code))
         self._terminal = _TerminalCtrlCGuard(self._on_terminal_ctrl_c)
@@ -138,9 +138,7 @@ class CliInterruptWaiter:
             return
 
         def handler(_signum: int, _frame: Any) -> None:
-            self._loop.call_soon_threadsafe(
-                lambda: self._finish(signal_name.lower())
-            )
+            self._loop.call_soon_threadsafe(lambda: self._finish(signal_name.lower()))
 
         try:
             self._previous_handlers[signal_value] = signal.getsignal(signal_value)
@@ -195,9 +193,7 @@ def create_cli_interrupt_waiter(
 async def wait_for_cli_interrupt(
     watchdog_ms: float, source: Any = None, input: Any = None
 ) -> str:
-    waiter = create_cli_interrupt_waiter(
-        watchdog_ms, source, input_source=input
-    )
+    waiter = create_cli_interrupt_waiter(watchdog_ms, source, input_source=input)
     try:
         return await waiter.result
     finally:

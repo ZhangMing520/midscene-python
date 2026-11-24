@@ -15,11 +15,11 @@ _EXAMPLES_MAP = {
         '"左侧导航栏中当前分组标题右侧的折叠图标"',
     ],
     "English": [
-        '"Login button with text \'Sign In\'"',
-        '"Search input with placeholder \'Enter keywords\'"',
-        '"Navigation link with text \'Home\' in header"',
+        "\"Login button with text 'Sign In'\"",
+        "\"Search input with placeholder 'Enter keywords'\"",
+        "\"Navigation link with text 'Home' in header\"",
         '"Submit button in contact form"',
-        '"Menu icon with aria-label \'Open menu\'"',
+        "\"Menu icon with aria-label 'Open menu'\"",
         '"Collapse icon to the right of the current section title in the left sidebar"',
     ],
 }

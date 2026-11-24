@@ -28,7 +28,9 @@ class TestWebPageScroll:
 
         page = PlaywrightWebPage.__new__(PlaywrightWebPage)
         page.page = Page()
-        with patch("midscene.web_integration.playwright.page.asyncio.sleep", AsyncMock()):
+        with patch(
+            "midscene.web_integration.playwright.page.asyncio.sleep", AsyncMock()
+        ):
             await page.scroll("down")
             await page.scroll("right")
         assert page.page.mouse.calls == [
@@ -61,4 +63,3 @@ class TestWebPageScroll:
             ("mouse.move", [500, 400]),
             ("mouse.wheel", [0, -560.0]),
         ]
-

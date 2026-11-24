@@ -1,9 +1,9 @@
 """AI context rendering (upstream agent/prompt-context.ts)."""
 
-from typing import Any, Optional
+from typing import Any
 
 
-def render_ai_context(context: Optional[str]) -> Optional[str]:
+def render_ai_context(context: str | None) -> str | None:
     """Wrap user guidance in <CONTEXT> tags (upstream renderAIContext).
 
     ``None`` stays ``None`` (omitted), while an explicitly blank string stays
@@ -17,7 +17,7 @@ def render_ai_context(context: Optional[str]) -> Optional[str]:
     return ""
 
 
-def build_prompt_with_context(prompt: Any, context: Optional[str]) -> Any:
+def build_prompt_with_context(prompt: Any, context: str | None) -> Any:
     """Prepend rendered context to a user prompt (upstream buildPromptWithContext)."""
     rendered = render_ai_context(context)
     if not rendered:
@@ -29,7 +29,7 @@ def build_prompt_with_context(prompt: Any, context: Optional[str]) -> Any:
     return {**prompt, "prompt": prompt_with_context}
 
 
-def build_locate_prompt_with_context(prompt: Any, context: Optional[str]) -> Any:
+def build_locate_prompt_with_context(prompt: Any, context: str | None) -> Any:
     """Attach user guidance to a locate prompt (upstream buildLocatePromptWithContext)."""
     rendered = render_ai_context(context)
     if not rendered:
@@ -52,7 +52,7 @@ def format_locate_model_context(model_runtime: Any) -> str:
     return _format(model_runtime)
 
 
-def render_page_element_context(context: Any) -> Optional[str]:
+def render_page_element_context(context: Any) -> str | None:
     """Render a UIContext's visible elements as text for DOM-included calls."""
     elements = getattr(context, "content", None)
     if not elements:

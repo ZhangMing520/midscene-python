@@ -1,10 +1,14 @@
 """YAML execution ownership and action signals (upstream yaml/execution-session.ts)."""
 
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any, Optional
 from weakref import WeakKeyDictionary
 
 from midscene.core.test_runner.errors import WorkflowError
-from midscene.core.yaml.execution_context import create_execution_context, supports_async_context
+from midscene.core.yaml.execution_context import (
+    create_execution_context,
+    supports_async_context,
+)
 
 
 class YamlExecutionOwnershipError(WorkflowError):
@@ -14,7 +18,7 @@ class YamlExecutionOwnershipError(WorkflowError):
 class _Session:
     def __init__(self, agent: Any) -> None:
         self.agent = agent
-        self.children: List[Any] = []
+        self.children: list[Any] = []
         self.finished = False
 
     def finish(self, record: Any = None, parent: Optional["_Session"] = None) -> None:
@@ -36,12 +40,12 @@ class _Session:
 class _Frame:
     def __init__(self, parent: Optional["_Frame"] = None) -> None:
         self.parent = parent
-        self.session: Optional[_Session] = None
-        self.signals: "WeakKeyDictionary[Any, List[Dict[str, Any]]]" = WeakKeyDictionary()
+        self.session: _Session | None = None
+        self.signals: WeakKeyDictionary[Any, list[dict[str, Any]]] = WeakKeyDictionary()
 
 
-_sessions: "WeakKeyDictionary[Any, List[_Session]]" = WeakKeyDictionary()
-_signals: "WeakKeyDictionary[Any, List[Dict[str, Any]]]" = WeakKeyDictionary()
+_sessions: "WeakKeyDictionary[Any, list[_Session]]" = WeakKeyDictionary()
+_signals: "WeakKeyDictionary[Any, list[dict[str, Any]]]" = WeakKeyDictionary()
 _context = create_execution_context()
 
 
@@ -99,7 +103,7 @@ def enter_yaml_execution(agent: Any, allow_independent_overlap: bool = False) ->
         stack = []
         _sessions[agent] = stack
     frame = _context.get() if supports_async_context else None
-    parent: Optional[_Session] = None
+    parent: _Session | None = None
 
     if supports_async_context:
         if frame is None or frame.session is not None:

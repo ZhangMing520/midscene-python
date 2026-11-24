@@ -6,7 +6,7 @@ Port of upstream cli/verbose-screenshot.ts.
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from midscene.shared.cli.screenshot_file import write_cli_screenshot_file
 
@@ -19,7 +19,7 @@ def _is_screenshot_ref(value: Any) -> bool:
     return _is_record(value) and value.get("type") == "midscene_screenshot_ref"
 
 
-def _to_serializable_screenshot(value: Any) -> Optional[Dict[str, Any]]:
+def _to_serializable_screenshot(value: Any) -> dict[str, Any] | None:
     if not isinstance(value, (dict, object)) or value is None:
         return None
 
@@ -34,17 +34,21 @@ def _to_serializable_screenshot(value: Any) -> Optional[Dict[str, Any]]:
     return value if _is_screenshot_ref(value) else None
 
 
-def _get_string_property(value: Any, key: str) -> Optional[str]:
+def _get_string_property(value: Any, key: str) -> str | None:
     if not _is_record(value):
         return None
     try:
         property_value = value.get(key)
-        return property_value if isinstance(property_value, str) and property_value else None
+        return (
+            property_value
+            if isinstance(property_value, str) and property_value
+            else None
+        )
     except Exception:  # noqa: BLE001
         return None
 
 
-def _screenshot_raw_base64(value: Any) -> Optional[str]:
+def _screenshot_raw_base64(value: Any) -> str | None:
     raw_base64 = _get_string_property(value, "rawBase64")
     if raw_base64:
         return raw_base64
@@ -60,10 +64,10 @@ def _screenshot_raw_base64(value: Any) -> Optional[str]:
 
 def _inline_screenshot_cache_key(
     raw_base64: str,
-    serialized: Dict[str, Any],
-    directory_path: Optional[str],
-    directory_name: Optional[str],
-    extension: Optional[str],
+    serialized: dict[str, Any],
+    directory_path: str | None,
+    directory_name: str | None,
+    extension: str | None,
 ) -> str:
     return json.dumps(
         [
@@ -80,9 +84,9 @@ def _inline_screenshot_cache_key(
 
 def _export_inline_screenshot_for_verbose(
     value: Any,
-    serialized: Dict[str, Any],
-    options: Dict[str, Any],
-) -> Optional[str]:
+    serialized: dict[str, Any],
+    options: dict[str, Any],
+) -> str | None:
     if isinstance(serialized.get("path"), str):
         return serialized["path"]
 
@@ -97,9 +101,7 @@ def _export_inline_screenshot_for_verbose(
     report_file = options.get("reportFile")
     directory_path = (
         str(Path(report_file).parent / "screenshots")
-        if export_mode == "report"
-        and isinstance(report_file, str)
-        and report_file
+        if export_mode == "report" and isinstance(report_file, str) and report_file
         else None
     )
     directory_name = None if directory_path else "midscene-cli-screenshots"
@@ -136,10 +138,10 @@ def _export_inline_screenshot_for_verbose(
 
 
 def collect_screenshot_refs(
-    value: Any, options: Optional[Dict[str, Any]] = None
-) -> List[Dict[str, Any]]:
+    value: Any, options: dict[str, Any] | None = None
+) -> list[dict[str, Any]]:
     options = options or {}
-    screenshots: List[Dict[str, Any]] = []
+    screenshots: list[dict[str, Any]] = []
 
     def visit(candidate: Any, timing: Any = None) -> None:
         if isinstance(candidate, list):
@@ -149,7 +151,7 @@ def collect_screenshot_refs(
 
         serialized = _to_serializable_screenshot(candidate)
         if serialized is not None and _is_screenshot_ref(serialized):
-            screenshot: Dict[str, Any] = {
+            screenshot: dict[str, Any] = {
                 "id": serialized.get("id"),
                 "storage": serialized.get("storage"),
             }
@@ -180,9 +182,7 @@ def collect_screenshot_refs(
     return screenshots
 
 
-def path_for_report_screenshot(
-    path: str, report_file: Any = None
-) -> str:
+def path_for_report_screenshot(path: str, report_file: Any = None) -> str:
     resolved_path = (
         str(Path(report_file).parent / path)
         if isinstance(report_file, str)
@@ -198,15 +198,17 @@ def path_for_report_screenshot(
         relative_path = os.path.relpath(resolved_path, os.getcwd())
     except ValueError:
         return resolved_path
-    if relative_path and not relative_path.startswith("..") and not os.path.isabs(
+    if (
         relative_path
+        and not relative_path.startswith("..")
+        and not os.path.isabs(relative_path)
     ):
         return relative_path
     return resolved_path
 
 
 def latest_screenshot_path_for_ai_act(
-    value: Any, options: Optional[Dict[str, Any]] = None
+    value: Any, options: dict[str, Any] | None = None
 ) -> str:
     options = dict(options or {})
     options.setdefault("exportMode", "report")

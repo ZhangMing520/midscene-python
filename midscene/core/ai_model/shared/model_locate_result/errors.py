@@ -3,17 +3,13 @@
 Synced from upstream packages/core/src/ai-model/shared/model-locate-result/errors.ts.
 """
 
-from typing import Optional
-
 from midscene.shared.env.constants import MODEL_CONFIG_DOC_URL
 
 
-def model_family_required_for_locate_message(slot: Optional[str] = None) -> str:
+def model_family_required_for_locate_message(slot: str | None = None) -> str:
     role = "Locate" if slot == "locate" else "Default"
     config_key = (
-        "MIDSCENE_LOCATE_MODEL_FAMILY"
-        if slot == "locate"
-        else "MIDSCENE_MODEL_FAMILY"
+        "MIDSCENE_LOCATE_MODEL_FAMILY" if slot == "locate" else "MIDSCENE_MODEL_FAMILY"
     )
     return (
         f"{role} model family is required for locate. Configure {config_key} so "
@@ -22,7 +18,7 @@ def model_family_required_for_locate_message(slot: Optional[str] = None) -> str:
 
 
 def planning_model_family_required_for_locate_message(
-    slot: Optional[str] = None,
+    slot: str | None = None,
 ) -> str:
     if slot == "planning":
         return (

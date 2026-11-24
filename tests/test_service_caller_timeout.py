@@ -1,6 +1,6 @@
 """Synced from upstream packages/core/tests/unit-test/service-caller-timeout.test.ts."""
 
-from typing import Any, Dict, List
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -8,7 +8,7 @@ import pytest
 from tests.core_helpers import FakeResponse
 
 
-def _chat_completion_payload(content: str = "ok") -> Dict[str, Any]:
+def _chat_completion_payload(content: str = "ok") -> dict[str, Any]:
     return {
         "id": "chatcmpl-1",
         "model": "mock-model",
@@ -41,7 +41,7 @@ class TestServiceCallerTimeout:
     async def test_timeout_passed_to_httpx_in_seconds(self):
         from midscene.core.ai_model.service_caller import model_call
 
-        captured: List[Dict[str, Any]] = []
+        captured: list[dict[str, Any]] = []
 
         class RecordingClient(_StubAsyncClient):
             def __init__(self, *args, **kwargs):
@@ -178,9 +178,7 @@ async def test_keeps_a_request_failure_that_wins_the_race_instead_of_relabelling
     failure = RuntimeError("connection failed")
 
     async def operation():
-        asyncio.get_running_loop().call_soon(
-            signal.abort, AIRequestTimeoutError(10)
-        )
+        asyncio.get_running_loop().call_soon(signal.abort, AIRequestTimeoutError(10))
         raise failure
 
     with pytest.raises(RuntimeError) as exc_info:
@@ -216,4 +214,3 @@ async def test_wait_for_retry_stops_promptly_when_cancelled():
 
     with pytest.raises(AbortError):
         await wait_for_retry(60_000, signal)
-

@@ -5,7 +5,7 @@ Not re-exported from the package entry point - keep consumers within
 """
 
 import re
-from typing import Any, List
+from typing import Any
 
 _KEBAB_TO_CAMEL = re.compile(r"-([a-z])")
 _CAMEL_TO_KEBAB = re.compile(r"[A-Z]")
@@ -20,8 +20,8 @@ def camel_to_kebab(value: str) -> str:
     return result[1:] if result.startswith("-") else result
 
 
-def get_key_aliases(key: str) -> List[str]:
-    aliases: List[str] = [key, kebab_to_camel(key), camel_to_kebab(key)]
+def get_key_aliases(key: str) -> list[str]:
+    aliases: list[str] = [key, kebab_to_camel(key), camel_to_kebab(key)]
     return list(dict.fromkeys(aliases))
 
 

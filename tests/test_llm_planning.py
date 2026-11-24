@@ -2,7 +2,6 @@
 prompt/planning/action-output-example.test.ts."""
 
 import base64
-from typing import List
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -24,8 +23,9 @@ from midscene.core.types import (
 
 
 def make_png_base64(width: int = 320, height: int = 240) -> str:
-    from PIL import Image
     import io
+
+    from PIL import Image
 
     image = Image.new("RGB", (width, height), (200, 200, 200))
     buffer = io.BytesIO()
@@ -49,8 +49,8 @@ class MockInterface:
     def __init__(self):
         self.interface_type = "web"
         self._context = None
-        self.tapped: List[tuple] = []
-        self.typed: List[str] = []
+        self.tapped: list[tuple] = []
+        self.typed: list[str] = []
 
     async def get_context(self) -> UIContext:
         if self._context:
@@ -200,7 +200,7 @@ def _complete_response(success: bool = True) -> str:
     message = "done" if success else "failed"
     return (
         f'<planning>finished</planning>\n<complete success="'
-        f"{'true' if success else 'false'}\">{message}</complete>"
+        f'{"true" if success else "false"}">{message}</complete>'
     )
 
 

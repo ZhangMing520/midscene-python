@@ -40,9 +40,10 @@ def _gemini_locate_element():
 def test_keeps_gemini_bbox_prompt_in_yxyx_order():
     """keeps Gemini bbox prompt in yxyx order"""
     element = _gemini_locate_element()
-    assert "[ymin, xmin, ymax, xmax]" in element["result_codec"].prompt_spec[
-        "resultValueDescription"
-    ]
+    assert (
+        "[ymin, xmin, ymax, xmax]"
+        in element["result_codec"].prompt_spec["resultValueDescription"]
+    )
 
 
 def test_uses_low_thinking_level_for_gemini_when_reasoning_is_unset():

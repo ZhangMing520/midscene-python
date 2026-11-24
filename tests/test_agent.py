@@ -1,7 +1,6 @@
 """Synced from upstream packages/core/tests/unit-test/agent*.test.ts suites."""
 
 import base64
-from typing import List
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -20,8 +19,9 @@ from midscene.core.types import (
 
 
 def make_png_base64(width: int = 320, height: int = 240) -> str:
-    from PIL import Image
     import io
+
+    from PIL import Image
 
     image = Image.new("RGB", (width, height), (200, 200, 200))
     buffer = io.BytesIO()
@@ -45,10 +45,10 @@ class MockInterface:
     def __init__(self):
         self.interface_type = "web"
         self._context = None
-        self.tapped: List[tuple] = []
-        self.typed: List[str] = []
-        self.keys: List[str] = []
-        self.scrolled: List[tuple] = []
+        self.tapped: list[tuple] = []
+        self.typed: list[str] = []
+        self.keys: list[str] = []
+        self.scrolled: list[tuple] = []
 
     async def get_context(self) -> UIContext:
         if self._context:
@@ -126,9 +126,7 @@ async def test_basic_actions(mock_interface):
     agent = Agent(mock_interface)
     await agent.tap(100, 200)
     await agent.input_text("test text")
-    await agent.scroll(
-        ScrollParam(direction="down", scroll_type="once", distance=500)
-    )
+    await agent.scroll(ScrollParam(direction="down", scroll_type="once", distance=500))
 
     assert mock_interface.tapped == [(100, 200)]
     assert mock_interface.typed == ["test text"]
@@ -181,15 +179,16 @@ async def test_ai_action_full_loop(mock_interface):
             "usage": {"total_tokens": 3},
         }
 
-    with patch_model_call(
-        "midscene.core.ai_model.workflows.planning.standard_planning",
-        planning_handler,
-    ), patch_model_call(
-        "midscene.core.ai_model.workflows.grounding.locate", locate_handler
+    with (
+        patch_model_call(
+            "midscene.core.ai_model.workflows.planning.standard_planning",
+            planning_handler,
+        ),
+        patch_model_call(
+            "midscene.core.ai_model.workflows.grounding.locate", locate_handler
+        ),
     ):
-        agent = Agent(
-            mock_interface, AgentOptions(model_config=dict(MODEL_CONFIG))
-        )
+        agent = Agent(mock_interface, AgentOptions(model_config=dict(MODEL_CONFIG)))
         result = await agent.ai_action("tap the test button")
 
     assert result == "finished"  # finalize message from <complete>
@@ -210,9 +209,7 @@ async def test_ai_action_complete_false_raises(mock_interface):
             "usage": None,
         },
     ):
-        agent = Agent(
-            mock_interface, AgentOptions(model_config=dict(MODEL_CONFIG))
-        )
+        agent = Agent(mock_interface, AgentOptions(model_config=dict(MODEL_CONFIG)))
         with pytest.raises(AssertionError) as exc:
             await agent.ai_action("do the impossible")
 
@@ -223,7 +220,7 @@ async def test_ai_action_complete_false_raises(mock_interface):
 async def test_ai_act_passes_context_to_planning(mock_interface):
     from midscene.core.agent.agent import Agent
 
-    prompts: List[str] = []
+    prompts: list[str] = []
 
     async def planning_handler(messages, *args, **kwargs):
         prompts.append(str(messages))
@@ -236,12 +233,8 @@ async def test_ai_act_passes_context_to_planning(mock_interface):
         "midscene.core.ai_model.workflows.planning.standard_planning",
         planning_handler,
     ):
-        agent = Agent(
-            mock_interface, AgentOptions(model_config=dict(MODEL_CONFIG))
-        )
-        result = await agent.ai_act(
-            "do it", {"context": "PREMIUM-ACCOUNT-CONTEXT"}
-        )
+        agent = Agent(mock_interface, AgentOptions(model_config=dict(MODEL_CONFIG)))
+        result = await agent.ai_act("do it", {"context": "PREMIUM-ACCOUNT-CONTEXT"})
 
     assert result == "done"
     assert prompts
@@ -275,15 +268,16 @@ async def test_ai_action_retries_after_execution_error(mock_interface):
             "usage": None,
         }
 
-    with patch_model_call(
-        "midscene.core.ai_model.workflows.planning.standard_planning",
-        planning_handler,
-    ), patch_model_call(
-        "midscene.core.ai_model.workflows.grounding.locate", locate_handler
+    with (
+        patch_model_call(
+            "midscene.core.ai_model.workflows.planning.standard_planning",
+            planning_handler,
+        ),
+        patch_model_call(
+            "midscene.core.ai_model.workflows.grounding.locate", locate_handler
+        ),
     ):
-        agent = Agent(
-            mock_interface, AgentOptions(model_config=dict(MODEL_CONFIG))
-        )
+        agent = Agent(mock_interface, AgentOptions(model_config=dict(MODEL_CONFIG)))
         result = await agent.ai_action("retry flow")
 
     assert result == "done"
@@ -303,9 +297,7 @@ async def test_ai_locate(mock_interface):
             "raw_response": "raw",
         },
     ):
-        agent = Agent(
-            mock_interface, AgentOptions(model_config=dict(MODEL_CONFIG))
-        )
+        agent = Agent(mock_interface, AgentOptions(model_config=dict(MODEL_CONFIG)))
         result = await agent.ai_locate("the test button")
 
     assert list(result.center) == [200, 125]
@@ -339,9 +331,7 @@ async def test_ai_extract(mock_interface):
         "midscene.core.ai_model.workflows.insight.extraction",
         lambda *a, **k: {"content": raw, "usage": None},
     ):
-        agent = Agent(
-            mock_interface, AgentOptions(model_config=dict(MODEL_CONFIG))
-        )
+        agent = Agent(mock_interface, AgentOptions(model_config=dict(MODEL_CONFIG)))
         result = await agent.ai_extract("extract username")
 
     assert result == {"username": "testuser"}

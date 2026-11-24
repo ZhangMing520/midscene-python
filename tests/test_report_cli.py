@@ -50,9 +50,7 @@ def _write_report(directory, name: str, group_name: str, execution_id: str) -> s
 
 
 def test_runs_report_split_through_the_generic_report_command(tmp_path):
-    report_path = _write_report(
-        tmp_path, "input-report", "split-test", "exec-cli-1"
-    )
+    report_path = _write_report(tmp_path, "input-report", "split-test", "exec-cli-1")
     output_dir = tmp_path / "output"
 
     result = CliRunner().invoke(
@@ -81,9 +79,7 @@ def test_runs_report_split_through_the_generic_report_command(tmp_path):
 
 
 def test_supports_split_via_the_sdk_api(tmp_path):
-    report_path = _write_report(
-        tmp_path, "input-report-sdk", "sdk-test", "exec-sdk-1"
-    )
+    report_path = _write_report(tmp_path, "input-report-sdk", "sdk-test", "exec-sdk-1")
     output_dir = tmp_path / "output-sdk"
 
     result = split_report_file(report_path, str(output_dir))
@@ -109,9 +105,7 @@ def test_merges_multiple_reports_via_the_sdk_api(tmp_path):
     report_b = _write_report(tmp_path, "merge-input-b", "group-B", "exec-B")
     output_dir = tmp_path / "merge-output-sdk"
 
-    result = merge_report_files(
-        [report_a, report_b], str(output_dir), "merged-sdk"
-    )
+    result = merge_report_files([report_a, report_b], str(output_dir), "merged-sdk")
 
     assert result["mergedReportPath"].startswith(str(output_dir))
     assert (output_dir / "merged-sdk.html").exists()
@@ -131,12 +125,26 @@ def test_exposes_report_tool_as_the_only_generic_report_command():
     assert not hasattr(commands[0], "aliases")
 
 
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["--help"],
+        ["run", "--help"],
+        ["model", "siwc", "login", "--help"],
+        ["report-tool", "--help"],
+    ],
+)
+def test_cli_help_registers_commands(args):
+    result = CliRunner().invoke(app, args)
+
+    assert result.exit_code == 0, result.output
+    assert "Usage:" in result.output
+
+
 @pytest.mark.asyncio
 async def test_create_report_cli_commands_run_split(tmp_path):
     """runs report split through the generic report command"""
-    report_path = _write_report(
-        tmp_path, "input-report", "split-test", "exec-cli-1"
-    )
+    report_path = _write_report(tmp_path, "input-report", "split-test", "exec-cli-1")
     output_dir = tmp_path / "output-command"
     [command] = create_report_cli_commands()
 
@@ -206,9 +214,7 @@ async def test_create_report_cli_commands_uses_index_html_for_directories(
     """uses index.html when htmlPath points to a directory"""
     report_dir = tmp_path / "input-report-dir"
     report_dir.mkdir()
-    report_path = _write_report(
-        report_dir, "index", "split-dir-test", "exec-dir-1"
-    )
+    report_path = _write_report(report_dir, "index", "split-dir-test", "exec-dir-1")
     assert report_path.startswith(str(report_dir))
     output_dir = tmp_path / "output-dir-command"
     [command] = create_report_cli_commands()
@@ -301,9 +307,7 @@ async def test_create_report_cli_commands_require_html_report_for_merge(tmp_path
     """throws when --htmlReport is missing for the merge action"""
     [command] = create_report_cli_commands()
 
-    with pytest.raises(
-        ValueError, match="report-tool: --htmlReport is required"
-    ):
+    with pytest.raises(ValueError, match="report-tool: --htmlReport is required"):
         await command.definition.handler(
             {"action": "merge-html", "outputDir": str(tmp_path / "merge-missing")}
         )

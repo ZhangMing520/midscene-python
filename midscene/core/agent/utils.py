@@ -4,7 +4,7 @@ import math
 import os
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -59,7 +59,7 @@ def _strip_runtime_locate_result(value: Any) -> Any:
     return value
 
 
-def _get_opt(opt: Dict[str, Any], keys: tuple, default: Any = None) -> Any:
+def _get_opt(opt: dict[str, Any], keys: tuple, default: Any = None) -> Any:
     for key in keys:
         if opt.get(key) is not None:
             return opt[key]
@@ -95,7 +95,7 @@ def _throw_if_aborted(signal: Any) -> None:
     )
 
 
-def _env_number(key: str) -> Optional[int]:
+def _env_number(key: str) -> int | None:
     raw = os.environ.get(key)
     if not raw:
         return None
@@ -158,7 +158,7 @@ def _prompt_text(prompt: Any) -> str:
     return ""
 
 
-def normalize_scroll_type(scroll_type: Optional[str]) -> Optional[str]:
+def normalize_scroll_type(scroll_type: str | None) -> str | None:
     """Map the legacy scroll-type aliases to the current names."""
     if not scroll_type:
         return None
@@ -187,7 +187,7 @@ def _validate_interface_size(width: float, height: float) -> None:
 
 async def common_context_parser(
     interface_instance: Any,
-    _opt: Optional[Dict[str, Any]] = None,
+    _opt: dict[str, Any] | None = None,
 ) -> UIContext:
     """Capture a UIContext from an interface (upstream commonContextParser)."""
     from midscene.core.agent.screenshot_preparation import (
@@ -264,7 +264,7 @@ async def common_context_parser(
 
 async def create_screenshot_bound_ui_context(
     screenshot_base64: str,
-    opt: Optional[Dict[str, Any]] = None,
+    opt: dict[str, Any] | None = None,
 ) -> UIContext:
     """Build a frozen UIContext over a caller-supplied screenshot."""
     opt = opt or {}
@@ -301,23 +301,19 @@ async def create_screenshot_bound_ui_context(
 
 def print_report_msg(filepath: str) -> None:
     """Print the report-updated message unless report output is quiet."""
-    if get_global_config_manager().get_env_config_in_boolean(
-        MIDSCENE_REPORT_QUIET
-    ):
+    if get_global_config_manager().get_env_config_in_boolean(MIDSCENE_REPORT_QUIET):
         return
     log_report(f"Midscene - report file updated: {filepath}")
 
 
 def normalize_file_paths(
     files: Any,
-    options: Optional[Dict[str, Any]] = None,
-) -> List[str]:
+    options: dict[str, Any] | None = None,
+) -> list[str]:
     """Resolve file chooser paths and fail early when a file is missing."""
     options = options or {}
     file_exists = options.get("fileExists", options.get("file_exists"))
-    is_in_browser = options.get(
-        "isInBrowser", options.get("is_in_browser", False)
-    )
+    is_in_browser = options.get("isInBrowser", options.get("is_in_browser", False))
     resolve_path = options.get("resolvePath", options.get("resolve_path"))
     wsl_distro_name = options.get(
         "wslDistroName",
@@ -329,7 +325,7 @@ def normalize_file_paths(
         raise RuntimeError("File chooser is not supported in browser environment")
 
     items = files if isinstance(files, (list, tuple)) else [files]
-    normalized: List[str] = []
+    normalized: list[str] = []
     for item in items:
         if not isinstance(item, str) or not item:
             raise ValueError("File path must be a non-empty string")
@@ -337,9 +333,9 @@ def normalize_file_paths(
             absolute_path = resolve_path(item)
         else:
             absolute_path = str(Path(item).expanduser().resolve())
-        exists = file_exists(absolute_path) if file_exists else Path(
-            absolute_path
-        ).exists()
+        exists = (
+            file_exists(absolute_path) if file_exists else Path(absolute_path).exists()
+        )
         if not exists:
             raise FileNotFoundError(
                 f"File not found: {item}. Resolved to: {absolute_path}. "
@@ -357,8 +353,7 @@ def normalize_file_paths(
             normalized.append(f"{drive}:\\{tail}")
         else:
             normalized.append(
-                f"\\\\wsl$\\{wsl_distro_name}"
-                + absolute_path.replace("/", "\\")
+                f"\\\\wsl$\\{wsl_distro_name}" + absolute_path.replace("/", "\\")
             )
     return normalized
 
@@ -383,7 +378,7 @@ def if_locate_param_has_located_pixel_result(plan_locate_param: Any) -> bool:
     )
 
 
-def match_element_from_plan(plan_locate_param: Any) -> Optional[Dict[str, Any]]:
+def match_element_from_plan(plan_locate_param: Any) -> dict[str, Any] | None:
     """Convert plan coordinates into a locate result element."""
     if not plan_locate_param:
         return None
@@ -393,7 +388,7 @@ def match_element_from_plan(plan_locate_param: Any) -> Optional[Dict[str, Any]]:
     center = located.get("center")
     if not isinstance(center, (list, tuple)) or len(center) != 2:
         return None
-    element: Dict[str, Any] = {
+    element: dict[str, Any] = {
         "center": list(center),
         "description": _prompt_text(plan_locate_param.get("prompt")),
     }
@@ -403,7 +398,7 @@ def match_element_from_plan(plan_locate_param: Any) -> Optional[Dict[str, Any]]:
     return element
 
 
-def _rect_to_dict(rect: Any) -> Optional[Dict[str, float]]:
+def _rect_to_dict(rect: Any) -> dict[str, float] | None:
     if rect is None:
         return None
     if isinstance(rect, dict):
@@ -420,7 +415,7 @@ async def match_element_from_cache(
     context: Any,
     cache_entry: Any,
     cache_prompt: Any,
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Resolve a cached element feature into a locate result element."""
     if not cache_entry:
         return None
@@ -436,13 +431,9 @@ async def match_element_from_cache(
 
     if not task_cache or not getattr(task_cache, "is_cache_result_used", False):
         return None
-    resolver = getattr(
-        interface_instance, "rect_matches_cache_feature", None
-    )
+    resolver = getattr(interface_instance, "rect_matches_cache_feature", None)
     if not callable(resolver):
-        logger.debug(
-            "interface does not implement rectMatchesCacheFeature, skip cache"
-        )
+        logger.debug("interface does not implement rectMatchesCacheFeature, skip cache")
         return None
 
     try:
@@ -450,7 +441,7 @@ async def match_element_from_cache(
         if rect is None:
             return None
         rect_dict = _rect_to_dict(rect)
-        element: Dict[str, Any] = {
+        element: dict[str, Any] = {
             "center": [
                 rect_dict["left"] + rect_dict["width"] / 2,
                 rect_dict["top"] + rect_dict["height"] / 2,
@@ -478,7 +469,7 @@ def get_midscene_version() -> str:
     return version
 
 
-def parse_prompt(prompt: Any) -> Dict[str, Any]:
+def parse_prompt(prompt: Any) -> dict[str, Any]:
     """Split a user prompt into text and optional multimodal parts."""
     if isinstance(prompt, str):
         return {"textPrompt": prompt, "multimodalPrompt": None}
@@ -497,7 +488,10 @@ def parse_prompt(prompt: Any) -> Dict[str, Any]:
                 else None
             ),
         }
-    return {"textPrompt": "" if prompt is None else str(prompt), "multimodalPrompt": None}
+    return {
+        "textPrompt": "" if prompt is None else str(prompt),
+        "multimodalPrompt": None,
+    }
 
 
 def transform_logical_rect_to_screenshot_rect(
@@ -524,14 +518,14 @@ def transform_logical_rect_to_screenshot_rect(
 
 
 def transform_logical_element_to_screenshot(
-    element: Dict[str, Any],
+    element: dict[str, Any],
     shrunk_shot_to_logical_ratio: float,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Scale a logical-space element into screenshot space."""
     if shrunk_shot_to_logical_ratio == 1:
         return element
     center = element.get("center")
-    transformed: Dict[str, Any] = {
+    transformed: dict[str, Any] = {
         **element,
         "center": (
             [

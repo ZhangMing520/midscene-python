@@ -4,11 +4,6 @@ import json
 
 import pytest
 
-from midscene.core.dump.screenshot_restoration import (
-    create_inline_image_resolver,
-    restore_image_references,
-    restore_report_image_references,
-)
 from midscene.core.dump.html_utils import (
     anti_escape_script_tag,
     escape_content,
@@ -19,6 +14,11 @@ from midscene.core.dump.html_utils import (
 )
 from midscene.core.dump.report_artifact_reader import read_report_dump_scripts
 from midscene.core.dump.report_dump_compactor import compact_report_dumps
+from midscene.core.dump.screenshot_restoration import (
+    create_inline_image_resolver,
+    restore_image_references,
+    restore_report_image_references,
+)
 from midscene.core.utils import (
     insert_content_before_closing_html,
     report_html_content,
@@ -46,12 +46,8 @@ def test_compact_report_dumps_merges_repeated_group_tags(tmp_path):
     report_path = tmp_path / "report.html"
     report_path.write_text(
         "<html><body>"
-        + generate_dump_script_tag(
-            json.dumps(first), {"data-group-id": "g"}
-        )
-        + generate_dump_script_tag(
-            json.dumps(second), {"data-group-id": "g"}
-        )
+        + generate_dump_script_tag(json.dumps(first), {"data-group-id": "g"})
+        + generate_dump_script_tag(json.dumps(second), {"data-group-id": "g"})
         + "</body></html>",
         encoding="utf-8",
     )
@@ -62,9 +58,7 @@ def test_compact_report_dumps_merges_repeated_group_tags(tmp_path):
     assert stats["afterDumpCount"] == 1
     scripts = read_report_dump_scripts(report_path)
     assert len(scripts) == 1
-    compacted = json.loads(
-        anti_escape_script_tag(scripts[0]["content"]).strip()
-    )
+    compacted = json.loads(anti_escape_script_tag(scripts[0]["content"]).strip())
     assert [item["name"] for item in compacted["executions"]] == [
         "latest",
         "new",
@@ -132,10 +126,7 @@ def test_should_throw_error_if_no_dump_script_found():
 
 def test_should_parse_attributes_from_dump_script():
     """should parse attributes from dump script"""
-    html = (
-        '<script type="midscene_web_dump" name="test" version="1.0">'
-        "content</script>"
-    )
+    html = '<script type="midscene_web_dump" name="test" version="1.0">content</script>'
     assert parse_dump_script_attributes(html) == {
         "name": "test",
         "version": "1.0",
@@ -158,7 +149,9 @@ def test_should_generate_dump_script_tag_without_attributes():
 
 def test_should_restore_screenshot_references_to_lazy_base64():
     """should restore screenshot references to { base64 } format via lazy getter"""
-    result = restore_image_references({"screenshot": _screenshot_ref("img1")}, _RESOLVER)
+    result = restore_image_references(
+        {"screenshot": _screenshot_ref("img1")}, _RESOLVER
+    )
     assert result["screenshot"].base64 == "data:image/png;base64,abc123"
 
 
@@ -209,9 +202,7 @@ def test_should_use_the_same_resolver_for_both_stored_image_reference_types():
 def test_should_throw_when_an_inline_report_image_is_missing():
     """should throw when an inline report image is missing"""
     missing_image_resolver = create_inline_image_resolver({})
-    with pytest.raises(
-        ValueError, match='Missing inline report image "missing-image"'
-    ):
+    with pytest.raises(ValueError, match='Missing inline report image "missing-image"'):
         missing_image_resolver(
             {
                 "type": "midscene_image_url_ref",
@@ -241,9 +232,7 @@ def test_should_restore_report_image_urls_from_serialized_paths_and_mime_types()
         },
     }
 
-    restored = restore_report_image_references(
-        data, "https://example.com/reports/run/"
-    )
+    restored = restore_report_image_references(data, "https://example.com/reports/run/")
 
     assert (
         restored["screenshot"].base64
@@ -291,7 +280,10 @@ def test_should_throw_lazily_for_unknown_screenshot_ids():
 
 def test_should_support_directory_path_fallback_via_resolver():
     """should support directory-path fallback via resolver"""
-    directory_resolver = lambda ref: f"./screenshots/{ref['id']}.png"
+
+    def directory_resolver(ref):
+        return f"./screenshots/{ref['id']}.png"
+
     result = restore_image_references(
         {"screenshot": _screenshot_ref("uuid-abc-123")}, directory_resolver
     )
@@ -309,14 +301,13 @@ def test_should_preserve_captured_at_when_restoring_screenshot_references():
 
 def test_should_work_correctly_for_directory_mode_report_flow():
     """should work correctly for directory mode report flow"""
-    directory_resolver = lambda ref: f"./screenshots/{ref['id']}.png"
+
+    def directory_resolver(ref):
+        return f"./screenshots/{ref['id']}.png"
+
     data = {
         "executions": [
-            {
-                "tasks": [
-                    {"uiContext": {"screenshot": _screenshot_ref("abc-123-def")}}
-                ]
-            }
+            {"tasks": [{"uiContext": {"screenshot": _screenshot_ref("abc-123-def")}}]}
         ]
     }
     result = restore_image_references(data, directory_resolver)

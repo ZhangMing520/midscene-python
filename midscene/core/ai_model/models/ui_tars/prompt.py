@@ -8,7 +8,7 @@ from midscene.shared.env import get_preferred_language
 def get_ui_tars_planning_prompt() -> str:
     preferred_language = get_preferred_language()
     return f"""
-You are a GUI agent. You are given a task and your action history, with screenshots. You need to perform the next action to complete the task. 
+You are a GUI agent. You are given a task and your action history, with screenshots. You need to perform the next action to complete the task.
 
 ## Output Format
 ```
@@ -23,7 +23,7 @@ left_double(start_box='[x1, y1, x2, y2]')
 right_single(start_box='[x1, y1, x2, y2]')
 drag(start_box='[x1, y1, x2, y2]', end_box='[x3, y3, x4, y4]')
 hotkey(key='')
-type(content='xxx') # Use escape characters \\', \\", and \\n in content part to ensure we can parse the content in normal python string format. If you want to submit your input, use \\n at the end of content. 
+type(content='xxx') # Use escape characters \\', \\", and \\n in content part to ensure we can parse the content in normal python string format. If you want to submit your input, use \\n at the end of content.
 scroll(start_box='[x1, y1, x2, y2]', direction='down or up or right or left')
 wait() #Sleep for 5s and take a screenshot to check for any changes.
 finished(content='xxx') # Use escape characters \\', \\", and \\n in content part to ensure we can parse the content in normal python string format.
@@ -38,7 +38,9 @@ finished(content='xxx') # Use escape characters \\', \\", and \\n in content par
 
 
 def get_summary(prediction: str) -> str:
-    return re.sub(r"Reflection:[\s\S]*?(?=Action_Summary:|Action:|$)", "", prediction).strip()
+    return re.sub(
+        r"Reflection:[\s\S]*?(?=Action_Summary:|Action:|$)", "", prediction
+    ).strip()
 
 
 # Backward-compatible private alias used by the UI-TARS planner.

@@ -4,7 +4,6 @@ Upstream builds an undici ``ProxyAgent``; httpx accepts proxy URLs directly, so
 this module validates/normalizes the configured URL and hands it to httpx.
 """
 
-from typing import Optional
 from urllib.parse import urlparse, urlunparse
 
 from loguru import logger
@@ -23,9 +22,9 @@ def sanitize_proxy_url(url: str) -> str:
 
 
 def resolve_proxy_agent(
-    socks_proxy: Optional[str] = None,
-    http_proxy: Optional[str] = None,
-) -> Optional[str]:
+    socks_proxy: str | None = None,
+    http_proxy: str | None = None,
+) -> str | None:
     """Return the proxy URL for httpx, preferring HTTP over SOCKS."""
     if http_proxy:
         logger.debug(f"using http proxy {sanitize_proxy_url(http_proxy)}")
@@ -34,9 +33,7 @@ def resolve_proxy_agent(
         logger.debug(f"using socks proxy {sanitize_proxy_url(socks_proxy)}")
         parsed = urlparse(socks_proxy)
         if not parsed.hostname:
-            raise ValueError(
-                "SOCKS proxy URL must include a valid hostname"
-            )
+            raise ValueError("SOCKS proxy URL must include a valid hostname")
         try:
             port = int(parsed.port or 0)
         except ValueError:
@@ -48,9 +45,9 @@ def resolve_proxy_agent(
 
 
 def create_proxy_agent_if_needed(
-    socks_proxy: Optional[str] = None,
-    http_proxy: Optional[str] = None,
-) -> Optional[str]:
+    socks_proxy: str | None = None,
+    http_proxy: str | None = None,
+) -> str | None:
     """Return the proxy URL handed to httpx (upstream ProxyAgent equivalent).
 
     httpx accepts proxy URLs directly, so this validates and normalizes the

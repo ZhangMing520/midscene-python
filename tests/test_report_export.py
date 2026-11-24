@@ -31,9 +31,7 @@ def _fake_image_base64(size_bytes: int) -> str:
 
 async def _generator_source(tmp_path, mode: str) -> str:
     """A generator-backed report with two screenshots sharing image bytes."""
-    path = (
-        tmp_path / mode / ("source.html" if mode == "inline" else "index.html")
-    )
+    path = tmp_path / mode / ("source.html" if mode == "inline" else "index.html")
     generator = ReportGenerator(
         report_path=str(path), screenshot_mode=mode, auto_print=False
     )
@@ -91,8 +89,16 @@ def _source(tmp_path) -> str:
                 "id": "search",
                 "name": "failed search",
                 "tasks": [
-                    {"taskId": "task-0", "type": "Insight", "uiContext": {"screenshot": _fake_png(1)}},
-                    {"taskId": "task-1", "type": "Insight", "uiContext": {"screenshot": _fake_png(2)}},
+                    {
+                        "taskId": "task-0",
+                        "type": "Insight",
+                        "uiContext": {"screenshot": _fake_png(1)},
+                    },
+                    {
+                        "taskId": "task-1",
+                        "type": "Insight",
+                        "uiContext": {"screenshot": _fake_png(2)},
+                    },
                 ],
             }
         ],
@@ -101,15 +107,17 @@ def _source(tmp_path) -> str:
 
 
 def _dump_script_count(path) -> int:
-    return Path(path).read_text(encoding="utf-8").count(
-        '<script id="midscene_report_dump"'
+    return (
+        Path(path)
+        .read_text(encoding="utf-8")
+        .count('<script id="midscene_report_dump"')
     )
 
 
 def _group_dump_count(path) -> int:
     """Count merged group dumps written as ``midscene_web_dump`` scripts."""
-    return Path(path).read_text(encoding="utf-8").count(
-        '<script type="midscene_web_dump"'
+    return (
+        Path(path).read_text(encoding="utf-8").count('<script type="midscene_web_dump"')
     )
 
 
@@ -129,9 +137,7 @@ def test_export_preserves_the_source_through_same_name_cross_format_publication(
         overwrite=True,
     )
     assert Path(inline).read_text(encoding="utf-8") == before
-    directory_before = (output_dir / "run" / "index.html").read_text(
-        encoding="utf-8"
-    )
+    directory_before = (output_dir / "run" / "index.html").read_text(encoding="utf-8")
 
     restored = export_report_artifact(external, output_dir, "run", overwrite=True)
     assert restored == inline
@@ -180,9 +186,7 @@ def test_merge_preserves_the_source_through_same_name_cross_format_publication(
 
     external = publish(inline, "html-and-external-assets")
     assert Path(inline).read_text(encoding="utf-8") == before
-    directory_before = (output_dir / "run" / "report.json").read_text(
-        encoding="utf-8"
-    )
+    directory_before = (output_dir / "run" / "report.json").read_text(encoding="utf-8")
 
     restored = publish(external, "single-html")
     assert restored == inline
@@ -207,11 +211,7 @@ def test_allows_publication_beside_another_format_without_overwrite(
         if output_format == "single-html"
         else output_dir / "run.html"
     )
-    sentinel = (
-        sibling / "user-notes.txt"
-        if output_format == "single-html"
-        else sibling
-    )
+    sentinel = sibling / "user-notes.txt" if output_format == "single-html" else sibling
     if output_format == "single-html":
         sibling.mkdir()
     sentinel.write_text("unrelated user data", encoding="utf-8")
@@ -299,9 +299,7 @@ def test_removes_a_repeated_inline_source_once_while_retaining_both_merged_group
 def test_removes_a_repeated_directory_source_once_while_retaining_both_merged_groups(
     tmp_path,
 ):
-    _merge_repeated_source_once(
-        _directory_source(tmp_path), tmp_path, directory=True
-    )
+    _merge_repeated_source_once(_directory_source(tmp_path), tmp_path, directory=True)
 
 
 async def _assert_converts_to_both_formats(tmp_path, mode: str) -> None:
@@ -327,17 +325,12 @@ async def _assert_converts_to_both_formats(tmp_path, mode: str) -> None:
 
         dump = json.loads(read_report_dump_scripts(entry)[0]["content"])
         refs = [
-            task["uiContext"]["screenshot"]
-            for task in dump["executions"][0]["tasks"]
+            task["uiContext"]["screenshot"] for task in dump["executions"][0]["tasks"]
         ]
         assert [ref["capturedAt"] for ref in refs] == [100, 200]
         assert refs[0]["id"] != refs[1]["id"]
         images = ReportImageStore(
-            mode=(
-                "inline"
-                if output_format == "single-html"
-                else "directory"
-            ),
+            mode=("inline" if output_format == "single-html" else "directory"),
             report_path=str(entry),
         )
         assert [images.load_data_uri(ref) for ref in refs] == [
@@ -424,9 +417,7 @@ async def test_preserves_test_runner_metadata_through_directory_and_single_file_
     assert read_report_artifact_manifest(str(directory))["kind"] == "test"
     assert read_report_runner_dump(directory) == runner
 
-    single = export_report_artifact(
-        directory, tmp_path / "exports", "single"
-    )
+    single = export_report_artifact(directory, tmp_path / "exports", "single")
     assert read_report_runner_dump(single) == runner
     assert len(read_report_dump_scripts(single)) == 1
 
@@ -436,24 +427,22 @@ async def test_fails_before_publishing_when_an_image_dependency_is_missing_prese
     tmp_path,
 ):
     input_path = await _generator_source(tmp_path, "directory")
-    ref = json.loads(read_report_dump_scripts(input_path)[0]["content"])[
-        "executions"
-    ][0]["tasks"][0]["uiContext"]["screenshot"]
+    ref = json.loads(read_report_dump_scripts(input_path)[0]["content"])["executions"][
+        0
+    ]["tasks"][0]["uiContext"]["screenshot"]
     Path(input_path).parent.joinpath(ref["path"]).unlink()
 
     out = tmp_path / "exports"
     out.mkdir()
     (out / "broken.html").write_text("previous output", encoding="utf-8")
 
-    with pytest.raises(Exception):
+    with pytest.raises(FileNotFoundError):
         export_report_artifact(input_path, out, "broken", overwrite=True)
     assert Path(input_path).exists()
-    assert (out / "broken.html").read_text(encoding="utf-8") == (
-        "previous output"
-    )
+    assert (out / "broken.html").read_text(encoding="utf-8") == ("previous output")
     assert sorted(os.listdir(out)) == ["broken.html"]
 
-    with pytest.raises(Exception):
+    with pytest.raises(FileNotFoundError):
         export_report_artifact(
             input_path,
             Path(input_path).parent,
@@ -461,9 +450,7 @@ async def test_fails_before_publishing_when_an_image_dependency_is_missing_prese
             output_format="html-and-external-assets",
             overwrite=True,
         )
-    assert (out / "broken.html").read_text(encoding="utf-8") == (
-        "previous output"
-    )
+    assert (out / "broken.html").read_text(encoding="utf-8") == ("previous output")
 
 
 @pytest.mark.asyncio
@@ -492,6 +479,9 @@ async def test_exports_via_the_report_tool_with_an_explicit_format_and_a_self_co
             "outputFormat": "html-and-external-assets",
         }
     )
-    assert read_report_artifact_manifest(
-        str(tmp_path / "cli" / "external" / "index.html")
-    )["status"] == "complete"
+    assert (
+        read_report_artifact_manifest(
+            str(tmp_path / "cli" / "external" / "index.html")
+        )["status"]
+        == "complete"
+    )

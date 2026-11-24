@@ -5,8 +5,8 @@ locate pass lives in workflows/grounding/section_locate.py, matching upstream
 workflows/grounding/section-locate.ts.
 """
 
-from typing import Any, Dict, Optional
 import time
+from typing import Any
 
 from midscene.core.ai_model.models.registry import ModelRuntime
 from midscene.core.ai_model.service_caller.call_ai import call_generative_ai
@@ -27,7 +27,7 @@ async def ai_locate_section(
     context: Any,
     section_description: Any,
     model_runtime: ModelRuntime,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Delegate to the grounding section locate workflow.
 
     `call_generative_ai` is read from this module so callers that patch the
@@ -46,8 +46,8 @@ async def locate_service(
     context: Any,
     model_runtime: ModelRuntime,
     deep_locate: bool = False,
-    plan_located_element: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    plan_located_element: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """The locate orchestration (upstream service.locate).
 
     With deep_locate enabled, the search area is resolved (plan coordinates,
@@ -61,8 +61,8 @@ async def locate_service(
             model_family_required_for_locate_message(model_runtime.config.get("slot"))
         )
 
-    search_area_trace: Dict[str, Any] = {}
-    search_config: Optional[Dict[str, Any]] = None
+    search_area_trace: dict[str, Any] = {}
+    search_config: dict[str, Any] | None = None
 
     if deep_locate:
         if plan_located_element and plan_located_element.get("center"):
@@ -160,20 +160,21 @@ def adapter_has_search_area(model_runtime: ModelRuntime) -> bool:
 class Service:
     """Locate/extract/describe orchestration (upstream ``Service`` class)."""
 
-    def __init__(self, ui_context: Any, opt: Optional[Dict[str, Any]] = None):
+    def __init__(self, ui_context: Any, opt: dict[str, Any] | None = None):
         if ui_context is None:
             raise ValueError("uiContext is required for Service")
         opt = opt or {}
         if callable(ui_context) and not isinstance(ui_context, dict):
             self.context_retriever_fn = ui_context
         else:
+
             async def retrieve() -> Any:
                 return ui_context
 
             self.context_retriever_fn = retrieve
         self.task_info = opt.get("taskInfo")
 
-    async def _resolve_context(self, ui_context: Optional[Any] = None) -> Any:
+    async def _resolve_context(self, ui_context: Any | None = None) -> Any:
         if ui_context is not None:
             return ui_context
         context = self.context_retriever_fn()
@@ -183,11 +184,11 @@ class Service:
 
     async def locate(
         self,
-        query: Dict[str, Any],
-        opt: Optional[Dict[str, Any]] = None,
-        model_runtime: Optional[ModelRuntime] = None,
-        abort_signal: Optional[Any] = None,
-    ) -> Dict[str, Any]:
+        query: dict[str, Any],
+        opt: dict[str, Any] | None = None,
+        model_runtime: ModelRuntime | None = None,
+        abort_signal: Any | None = None,
+    ) -> dict[str, Any]:
         from midscene.core.service.utils import create_service_dump
 
         opt = opt or {}
@@ -236,14 +237,14 @@ class Service:
     async def extract(
         self,
         data_demand: Any,
-        model_runtime: Optional[ModelRuntime],
+        model_runtime: ModelRuntime | None,
         task_type: str,
-        opt: Optional[Dict[str, Any]] = None,
-        page_description: Optional[str] = None,
-        multimodal_prompt: Optional[Dict[str, Any]] = None,
-        ui_context: Optional[Any] = None,
-        execution_options: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        opt: dict[str, Any] | None = None,
+        page_description: str | None = None,
+        multimodal_prompt: dict[str, Any] | None = None,
+        ui_context: Any | None = None,
+        execution_options: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         from midscene.core.ai_model.workflows.insight import (
             ai_extract_element_info,
         )
@@ -264,9 +265,7 @@ class Service:
         parse_result = response.get("parse_result") or {}
         error_log = None
         if parse_result.get("errors"):
-            error_log = "AI response error: \n" + "\n".join(
-                parse_result["errors"]
-            )
+            error_log = "AI response error: \n" + "\n".join(parse_result["errors"])
         task_info = {
             **(self.task_info or {}),
             "durationMs": int(time.time() * 1000) - start_time,
@@ -299,9 +298,9 @@ class Service:
     async def describe(
         self,
         target: Any,
-        model_runtime: Optional[ModelRuntime],
-        opt: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        model_runtime: ModelRuntime | None,
+        opt: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         from midscene.core.service.describe import ai_describe_element
 
         opt = opt or {}

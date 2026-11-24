@@ -1,14 +1,15 @@
 """Workflow node types (upstream test-runner/node/types.ts)."""
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any
 
 
 @dataclass
 class NodeResult:
     """Human-readable summary plus structured step data."""
 
-    summary: Optional[str] = None
+    summary: str | None = None
     data: Any = None
 
 
@@ -16,15 +17,15 @@ class NodeResult:
 class NodeReportTrace:
     type: str
     executionId: str
-    metrics: Optional[Dict[str, Any]] = None
+    metrics: dict[str, Any] | None = None
 
 
 class NodeReportCollector:
     """Collects report references produced while a Step executes."""
 
     def __init__(self) -> None:
-        self.traces: List[NodeReportTrace] = []
-        self.snapshot_callbacks: List[Callable[..., Awaitable[Any]]] = []
+        self.traces: list[NodeReportTrace] = []
+        self.snapshot_callbacks: list[Callable[..., Awaitable[Any]]] = []
 
     def add_trace(self, trace: NodeReportTrace) -> None:
         self.traces.append(trace)
@@ -37,22 +38,22 @@ class NodeReportCollector:
 class NodeDefinition:
     name: str
     execute: Callable[..., Any]
-    title: Optional[str] = None
-    description: Optional[str] = None
-    string_input_key: Optional[str] = None
-    input_schema: Optional[Dict[str, Any]] = None
+    title: str | None = None
+    description: str | None = None
+    string_input_key: str | None = None
+    input_schema: dict[str, Any] | None = None
 
 
 @dataclass
 class NodeExecutionContext:
     """Validated input plus per-step engine services."""
 
-    input: Dict[str, Any]
-    meta: Dict[str, Any]
+    input: dict[str, Any]
+    meta: dict[str, Any]
     signal: Any
     context: Any
     on_teardown: Callable[[Callable[..., Any]], None]
     report: NodeReportCollector
     scope: str = "case"
-    case: Optional[Dict[str, Any]] = None
-    document: Optional[Dict[str, Any]] = None
+    case: dict[str, Any] | None = None
+    document: dict[str, Any] | None = None

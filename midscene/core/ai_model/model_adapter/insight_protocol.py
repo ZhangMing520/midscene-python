@@ -1,10 +1,11 @@
 """Insight protocol types (upstream model-adapter/insight-protocol.ts)."""
 
-from typing import Any, Callable, Optional, Tuple, TypedDict
+from collections.abc import Callable
+from typing import Any, TypedDict
 
 
 class InsightDataOutputProtocol(TypedDict):
-    tag_names: Tuple[str, ...]
+    tag_names: tuple[str, ...]
     rules: str
     placeholder: str
     build_example: Callable[[str], str]
@@ -12,7 +13,7 @@ class InsightDataOutputProtocol(TypedDict):
 
 
 class InsightProtocol(TypedDict):
-    response_prefix: Optional[str]
+    response_prefix: str | None
     data_output: InsightDataOutputProtocol
 
 

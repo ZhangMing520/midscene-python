@@ -1,13 +1,19 @@
 """Retry/parse loop (upstream service-caller/call-ai.ts)."""
 
-from typing import Any, Dict, List, Optional
 import asyncio
 import time
+from typing import Any
+
 from loguru import logger
+
 from midscene.core.ai_model.models.registry import ModelRuntime
 from midscene.core.ai_model.service_caller.codex.call_codex import (
     call_codex,
     prepare_codex_call,
+)
+from midscene.core.ai_model.service_caller.model_call_recorder import (
+    is_model_call_recording_enabled,
+    record_model_call_event,
 )
 from midscene.core.ai_model.service_caller.openai.call_openai import call_openai
 from midscene.core.ai_model.service_caller.openai.chat_completion import (
@@ -21,10 +27,6 @@ from midscene.core.ai_model.service_caller.openai.siwc import (
     prepare_siwc_call,
     siwc_token_manager,
 )
-from midscene.core.ai_model.service_caller.model_call_recorder import (
-    is_model_call_recording_enabled,
-    record_model_call_event,
-)
 from midscene.core.ai_model.service_caller.request_timeout import (
     resolve_effective_timeout_ms,
     run_with_abort_signal,
@@ -32,8 +34,8 @@ from midscene.core.ai_model.service_caller.request_timeout import (
 )
 from midscene.core.ai_model.service_caller.system_one import call_system_one
 from midscene.core.ai_model.service_caller.types import (
-    CodexAppServerNotSupportedError,
     DEFAULT_MODEL_PROTOCOL,
+    CodexAppServerNotSupportedError,
 )
 from midscene.core.ai_model.service_caller.utils import (
     append_ai_request_failure_summary,
@@ -54,10 +56,10 @@ __all__ = [
 
 
 async def call_generative_ai(
-    messages: List[dict],
+    messages: list[dict],
     original_model_runtime: ModelRuntime,
-    options: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    options: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Call the model and return {content, reasoning_content, usage, ...}."""
     options = dict(options or {})
     model_runtime, siwc_options = await prepare_siwc_call(
@@ -85,8 +87,7 @@ async def call_generative_ai(
     internal_call_id = next_internal_call_id()
 
     stream_requested = (
-        options.get("stream") is True
-        or model_config.get("streamMode") == "stream"
+        options.get("stream") is True or model_config.get("streamMode") == "stream"
     )
     on_chunk = options.get("onChunk") or options.get("on_chunk")
     if options.get("stream") is True and on_chunk is None:
@@ -95,7 +96,7 @@ async def call_generative_ai(
         )
     chunk_delivered = False
 
-    def _track_chunk(chunk: Dict[str, Any]) -> Any:
+    def _track_chunk(chunk: dict[str, Any]) -> Any:
         nonlocal chunk_delivered
         chunk_delivered = True
         return on_chunk(chunk)
@@ -111,7 +112,7 @@ async def call_generative_ai(
 
     max_attempts = normalize_retry_count(model_config.get("retryCount")) + 1
     retry_interval = model_config.get("retryInterval") or 2000
-    attempt_errors: List[Dict[str, Any]] = []
+    attempt_errors: list[dict[str, Any]] = []
     start_time = time.time()
     attempt = 0
     siwc_refreshed = False
@@ -121,15 +122,19 @@ async def call_generative_ai(
     while attempt < max_attempts:
         attempt += 1
 
-        def record_event(event: Dict[str, Any], _attempt: int = attempt) -> None:
+        def record_event(
+            event: dict[str, Any],
+            _attempt: int = attempt,
+            _model_config: dict[str, Any] = model_config,
+        ) -> None:
             record_model_call_event(
                 {
                     "executionId": execution_id,
                     "callId": internal_call_id,
                     "semanticRetryAttempt": options.get("semanticRetryAttempt"),
-                    "slot": model_config.get("slot"),
-                    "intent": model_config.get("intent"),
-                    "modelFamily": model_config.get("modelFamily"),
+                    "slot": _model_config.get("slot"),
+                    "intent": _model_config.get("intent"),
+                    "modelFamily": _model_config.get("modelFamily"),
                     "modelFallback": getattr(model_runtime, "model_fallback", None),
                     **event,
                     "attempt": _attempt,
@@ -191,13 +196,13 @@ async def call_generative_ai(
                 "reasoning_content": parsed.get("reasoningContent"),
                 "raw_assistant_output": parsed.get("rawAssistantOutput"),
             }
-        except SiwcTokenExpiredError:
+        except SiwcTokenExpiredError as siwc_error:
             # One authentication retry, independent of the normal retryCount.
             if siwc_refreshed:
-                raise RuntimeError("SIWC token rejected after refresh")
+                raise RuntimeError("SIWC token rejected after refresh") from siwc_error
             current_key = model_config.get("openaiApiKey") or api_key
             if not current_key:
-                raise RuntimeError("Missing rejected SIWC access token")
+                raise RuntimeError("Missing rejected SIWC access token") from siwc_error
             refreshed_key = await siwc_token_manager.refresh_access_token(
                 current_key,
                 {
@@ -224,14 +229,13 @@ async def call_generative_ai(
                 # Public contract: a hard timeout surfaces as RuntimeError so
                 # callers can rely on the retry summary and error type.
                 last_error = RuntimeError(
-                    str(last_error)
-                    or f"AI call timed out after {effective_timeout}ms"
+                    str(last_error) or f"AI call timed out after {effective_timeout}ms"
                 )
             attempt_errors.append({"attempt": attempt, "error": last_error})
             if attempt >= max_attempts:
                 raise append_ai_request_failure_summary(
                     last_error, attempt_errors, max_attempts
-                )
+                ) from last_error
             logger.warning(
                 f"AI call failed (attempt {attempt}/{max_attempts}), retrying in "
                 f"{retry_interval}ms... Error: {last_error}"
@@ -242,10 +246,10 @@ async def call_generative_ai(
 
 
 async def call_system_one_ai(
-    request: Dict[str, Any],
+    request: dict[str, Any],
     model_runtime: ModelRuntime,
-    options: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    options: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Call the System One (Jev) protocol with the shared retry/timeout policy."""
     options = dict(options or {})
     abort_signal = options.get("abortSignal") or options.get("abort_signal")
@@ -258,16 +262,14 @@ async def call_system_one_ai(
             "System One currently only supports the Jev model family in Midscene"
         )
 
-    max_attempts = normalize_retry_count(
-        model_runtime.config.get("retryCount")
-    ) + 1
+    max_attempts = normalize_retry_count(model_runtime.config.get("retryCount")) + 1
     retry_interval = model_runtime.config.get("retryInterval")
     if retry_interval is None:
         retry_interval = 2000
     effective_timeout = resolve_effective_timeout_ms(
         model_runtime.config.get("timeout")
     )
-    attempt_errors: List[Dict[str, Any]] = []
+    attempt_errors: list[dict[str, Any]] = []
     start_time = time.time()
 
     for attempt in range(1, max_attempts + 1):
@@ -301,23 +303,22 @@ async def call_system_one_ai(
                 # Public contract: a hard timeout surfaces as RuntimeError so
                 # callers can rely on the retry summary and error type.
                 last_error = RuntimeError(
-                    str(last_error)
-                    or f"AI call timed out after {effective_timeout}ms"
+                    str(last_error) or f"AI call timed out after {effective_timeout}ms"
                 )
             attempt_errors.append({"attempt": attempt, "error": last_error})
             if attempt >= max_attempts:
                 raise append_ai_request_failure_summary(
                     last_error, attempt_errors, max_attempts
-                )
+                ) from last_error
             await wait_for_retry(retry_interval, abort_signal)
 
     raise RuntimeError("AI model request failed: unknown error")
 
 
 async def call_ai_with_string_response(
-    messages: List[dict],
+    messages: list[dict],
     model_runtime: ModelRuntime,
-    options: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    options: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Call AI expecting a plain-text response (used by custom planners)."""
     return await call_generative_ai(messages, model_runtime, options)

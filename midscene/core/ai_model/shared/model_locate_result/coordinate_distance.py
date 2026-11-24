@@ -1,6 +1,7 @@
 """Distance-to-pixel conversion (upstream shared/model-locate-result/coordinate-distance.ts)."""
 
-from typing import Any, Callable, Dict
+from collections.abc import Callable
+from typing import Any
 
 from midscene.core.ai_model.shared.model_locate_result.pixel_mapper import (
     normalized_coordinate_to_pixel,
@@ -9,7 +10,7 @@ from midscene.core.ai_model.shared.model_locate_result.pixel_mapper import (
 
 
 def create_coordinate_distance_to_pixels(
-    size: Dict[str, float], coordinate_system: Dict[str, Any]
+    size: dict[str, float], coordinate_system: dict[str, Any]
 ) -> Callable[[float, str], float]:
     def distance_to_pixels(delta: float, axis: str) -> float:
         length = size["width"] if axis == "x" else size["height"]

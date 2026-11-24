@@ -1,11 +1,7 @@
 """UI-TARS adapter (upstream ai-model/models/ui-tars/adapter.ts)."""
 
-from typing import Any, Dict, List
+from typing import Any
 
-from midscene.core.ai_model.shared.model_locate_result import (
-    create_locate_result_value,
-    unwrap_coordinate_list_like_input,
-)
 from midscene.core.ai_model.model_adapter.temperature_with_semantic_retry import (
     _apply_temperature,
 )
@@ -15,32 +11,42 @@ from midscene.core.ai_model.model_adapter.types import (
 from midscene.core.ai_model.models.default import (
     build_chat_completion_params_from_context,
 )
+from midscene.core.ai_model.shared.model_locate_result import (
+    create_locate_result_value,
+    unwrap_coordinate_list_like_input,
+)
 
 
 def _build_ui_tars_params(
-    midscene_defaults: Dict[str, Any],
+    midscene_defaults: dict[str, Any],
     user_config: ModelRequestUserConfig,
     expected_json_object_response: bool = False,
-) -> Dict[str, Any]:
-    config: Dict[str, Any] = dict(midscene_defaults)
+) -> dict[str, Any]:
+    config: dict[str, Any] = dict(midscene_defaults)
     _apply_temperature(config, user_config)
     return config
 
 
 UI_TARS_BBOX_COORDS = {
-    "shape": "bbox", "order": "xy", "normalizedBy": 1000, "rounding": "round",
+    "shape": "bbox",
+    "order": "xy",
+    "normalizedBy": 1000,
+    "rounding": "round",
 }
 
 
 UI_TARS_POINT_COORDS = {
-    "shape": "point", "order": "xy", "normalizedBy": 1000, "rounding": "round",
+    "shape": "point",
+    "order": "xy",
+    "normalizedBy": 1000,
+    "rounding": "round",
 }
 
 
 # UI-TARS has not received active updates for a long time, so this parser is
 # intentionally kept separate from Doubao even though the current logic is the
 # same. This avoids coupling UI-TARS behavior to future Doubao adapter changes.
-def _parse_ui_tars_raw_locate_value(input_value: Any) -> Dict[str, Any]:
+def _parse_ui_tars_raw_locate_value(input_value: Any) -> dict[str, Any]:
     import re as _re
 
     bbox = unwrap_coordinate_list_like_input(input_value)
@@ -51,7 +57,7 @@ def _parse_ui_tars_raw_locate_value(input_value: Any) -> Dict[str, Any]:
             UI_TARS_BBOX_COORDS, [float(p) for p in bbox.split()]
         )
 
-    bbox_list: List[float] = []
+    bbox_list: list[float] = []
     if isinstance(bbox, (list, tuple)) and bbox and isinstance(bbox[0], str):
         for item in bbox:
             if isinstance(item, str) and "," in item:
@@ -84,7 +90,7 @@ UI_TARS_LOCATE_FORMAT = {
 }
 
 
-def _create_ui_tars_adapter_config(model_version: str) -> Dict[str, Any]:
+def _create_ui_tars_adapter_config(model_version: str) -> dict[str, Any]:
     return {
         "chat_completion": {
             "build_chat_completion_params": build_chat_completion_params_from_context(

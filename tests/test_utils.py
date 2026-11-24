@@ -6,9 +6,9 @@ import uuid as uuid_module
 import pytest
 
 from midscene.shared.utils import (
+    anti_escape_script_tag,
     assert_,
     escape_script_tag,
-    anti_escape_script_tag,
     generate_hash_id,
     if_in_browser,
     if_in_node,
@@ -202,9 +202,7 @@ class TestReplaceIllegalPathCharsAndSpace:
 
     def test_should_replace_illegal_filename_characters_with_dashes(self):
         assert (
-            replace_illegal_path_chars_and_space(
-                'file:name*with?illegal"chars<>|.txt'
-            )
+            replace_illegal_path_chars_and_space('file:name*with?illegal"chars<>|.txt')
             == "file-name-with-illegal-chars---.txt"
         )
 
@@ -217,7 +215,7 @@ class TestReplaceIllegalPathCharsAndSpace:
     def test_should_handle_mixed_path_and_illegal_characters(self):
         assert (
             replace_illegal_path_chars_and_space(
-                '/path/to/file:with*illegal?chars<>|.txt'
+                "/path/to/file:with*illegal?chars<>|.txt"
             )
             == "/path/to/file-with-illegal-chars---.txt"
         )
@@ -227,7 +225,7 @@ class TestReplaceIllegalPathCharsAndSpace:
             replace_illegal_path_chars_and_space(
                 'C:\\Users\\Documents\\file:name*with?illegal"chars<>|.txt'
             )
-            == 'C-\\Users\\Documents\\file-name-with-illegal-chars---.txt'
+            == "C-\\Users\\Documents\\file-name-with-illegal-chars---.txt"
         )
 
     def test_should_handle_empty_string(self):
@@ -242,8 +240,7 @@ class TestReplaceIllegalPathCharsAndSpace:
     def test_should_handle_complex_real_world_scenario(self):
         assert (
             replace_illegal_path_chars_and_space(
-                '/Users/test/Documents/My Project: "Important File" '
-                "<2024>|backup*.txt"
+                '/Users/test/Documents/My Project: "Important File" <2024>|backup*.txt'
             )
             == "/Users/test/Documents/My-Project---Important-File---2024--backup-.txt"
         )

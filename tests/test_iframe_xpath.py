@@ -90,7 +90,7 @@ async def test_rect_matches_cache_feature_should_throw_for_invalid_compound_xpat
 ):
     web, page = web_page
 
-    with pytest.raises(Exception):
+    with pytest.raises(RuntimeError):
         await web.rect_matches_cache_feature(
             {"xpaths": ["/html/body/iframe[99]|>>|/html/body/button[1]"]}
         )

@@ -5,7 +5,7 @@ The upstream fixture injects a ``request`` function; Python's
 is ported almost verbatim.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import pytest
 
@@ -23,14 +23,14 @@ class Fixture:
         *,
         blur: bool = False,
         stale: bool = False,
-        clear_error: Optional[BaseException] = None,
-        click_error: Optional[BaseException] = None,
+        clear_error: BaseException | None = None,
+        click_error: BaseException | None = None,
         remaining_text: Any = ...,
         input_type: str = "XCUIElementTypeTextView",
-        placeholder: Optional[str] = None,
+        placeholder: str | None = None,
         clear_fails_once: bool = False,
-        initial_matches: Optional[List[str]] = None,
-        final_matches: Optional[List[str]] = None,
+        initial_matches: list[str] | None = None,
+        final_matches: list[str] | None = None,
         recover_focus: bool = True,
     ):
         self.blur = blur
@@ -46,10 +46,10 @@ class Fixture:
         self.recover_focus = recover_focus
         self.cleared = False
         self.clear_count = 0
-        self.active: Optional[str] = "original"
-        self.calls: List[tuple] = []
+        self.active: str | None = "original"
+        self.calls: list[tuple] = []
 
-    async def __call__(self, method: str, path: str, body=None) -> Dict[str, Any]:
+    async def __call__(self, method: str, path: str, body=None) -> dict[str, Any]:
         self.calls.append((method, path, body))
         if path == "/element/active":
             if not self.active:
@@ -62,9 +62,7 @@ class Fixture:
         if path.endswith("/attribute/placeholderValue"):
             return {"value": self.placeholder}
         if path.endswith("/attribute/value"):
-            return {
-                "value": "" if self.remaining_text is ... else self.remaining_text
-            }
+            return {"value": "" if self.remaining_text is ... else self.remaining_text}
         if path == "/elements":
             if self.cleared:
                 matches = (
@@ -98,7 +96,7 @@ class Fixture:
     def called(self, method: str, path: str) -> bool:
         return any(call[0] == method and call[1] == path for call in self.calls)
 
-    def calls_ending(self, suffix: str) -> List[tuple]:
+    def calls_ending(self, suffix: str) -> list[tuple]:
         return [call for call in self.calls if call[1].endswith(suffix)]
 
 

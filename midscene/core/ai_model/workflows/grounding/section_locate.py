@@ -3,10 +3,14 @@
 Synced from upstream packages/core/src/ai-model/workflows/grounding/section-locate.ts.
 """
 
-from typing import Any, Callable, Dict, Optional
+from collections.abc import Callable
+from typing import Any
 
 from loguru import logger
 
+from midscene.core.ai_model.model_adapter.image_preprocess import (
+    prepare_model_image,
+)
 from midscene.core.ai_model.model_adapter.locate_prompt_order import (
     build_locate_messages,
     multimodal_prompt_to_messages,
@@ -19,9 +23,6 @@ from midscene.core.ai_model.service_caller.semantic_retry import (
     with_semantic_retry_feedback,
 )
 from midscene.core.ai_model.service_caller.types import AIResponseParseError
-from midscene.core.ai_model.model_adapter.image_preprocess import (
-    prepare_model_image,
-)
 from midscene.core.ai_model.shared.multimodal_prompt import (
     ensure_data_url,
     get_screenshot_base64,
@@ -39,8 +40,8 @@ async def ai_locate_section(
     section_description: Any,
     model_runtime: ModelRuntime,
     *,
-    call_ai: Optional[Callable[..., Any]] = None,
-) -> Dict[str, Any]:
+    call_ai: Callable[..., Any] | None = None,
+) -> dict[str, Any]:
     """Locate the section containing the target (first DeepLocate pass).
 
     Returns {search_area_config?, error?, raw_response, usage}.
@@ -51,9 +52,7 @@ async def ai_locate_section(
     result_codec = adapter.search_area_result_codec
 
     system_prompt = build_search_area_locate_system_prompt(
-        system_prompt_introduction=search_area_protocol[
-            "system_prompt_introduction"
-        ],
+        system_prompt_introduction=search_area_protocol["system_prompt_introduction"],
         response_instructions=search_area_protocol["build_response_instructions"](
             result_codec.prompt_spec
         ),
@@ -83,7 +82,7 @@ async def ai_locate_section(
         },
     )
 
-    def parse_response(response: Dict[str, Any]) -> Dict[str, Any]:
+    def parse_response(response: dict[str, Any]) -> dict[str, Any]:
         raw_response = response["content"]
         parsed_locate_result = search_area_protocol["parse_raw_response"](
             raw_response, result_codec.prompt_spec
@@ -110,7 +109,7 @@ async def ai_locate_section(
             "merged_rect": merged_rect,
         }
 
-    def to_parse_error(error: Any, response: Dict[str, Any]) -> AIResponseParseError:
+    def to_parse_error(error: Any, response: dict[str, Any]) -> AIResponseParseError:
         return AIResponseParseError(
             f"Failed to parse section locate result: {error}",
             response.get("content", ""),
@@ -152,7 +151,7 @@ async def ai_locate_section(
             "raw_response": error_message,
         }
 
-    response: Dict[str, Any] = parsed["response"]
+    response: dict[str, Any] = parsed["response"]
     section_error = parsed.get("section_error")
     merged_rect = parsed.get("merged_rect")
     base = {
@@ -164,7 +163,11 @@ async def ai_locate_section(
 
     try:
         search_area_config = build_search_area_config(context, merged_rect)
-        return {**base, "search_area_config": search_area_config, "error": section_error}
+        return {
+            **base,
+            "search_area_config": search_area_config,
+            "error": section_error,
+        }
     except Exception as error:
         parse_error_message = f"Failed to parse section locate result: {error}"
         error_message = (

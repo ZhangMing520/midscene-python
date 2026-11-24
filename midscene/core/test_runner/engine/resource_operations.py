@@ -9,7 +9,8 @@ cancel observation and deferred cleanup.
 import asyncio
 import datetime
 import uuid
-from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Set, Tuple
+from collections.abc import Callable, Iterable, Iterator
+from typing import Any
 
 from loguru import logger
 
@@ -28,11 +29,7 @@ RESOURCE_TEARDOWN_GRACE_MS = 10_000
 
 
 def _now_iso() -> str:
-    return (
-        datetime.datetime.now(datetime.timezone.utc)
-        .isoformat()
-        .replace("+00:00", "Z")
-    )
+    return datetime.datetime.now(datetime.UTC).isoformat().replace("+00:00", "Z")
 
 
 class _ResourceOperation:
@@ -42,24 +39,24 @@ class _ResourceOperation:
         self,
         signal: Any,
         operation_id: str,
-        identity: Optional[Dict[str, Any]],
+        identity: dict[str, Any] | None,
     ) -> None:
         self.signal = signal
         self.operation_id = operation_id
         self.identity = identity
         self.settled = False
-        self.blockers: Set["_ResourceOperation"] = set()
+        self.blockers: set[_ResourceOperation] = set()
 
 
 class _CleanupOwner:
     def __init__(self, signal: Any = None) -> None:
-        self.resources: Set[Any] = set()
+        self.resources: set[Any] = set()
         self.signal = signal
-        self.blockers: Set[_ResourceOperation] = set()
+        self.blockers: set[_ResourceOperation] = set()
 
 
 class _CleanupState:
-    def __init__(self, operation_id: Optional[str], blockers: Set[_ResourceOperation]):
+    def __init__(self, operation_id: str | None, blockers: set[_ResourceOperation]):
         self.status = "pending"
         self.operation_id = operation_id
         self.blockers = blockers
@@ -68,10 +65,10 @@ class _CleanupState:
 
 class _ResourceHandle:
     def __init__(self) -> None:
-        self.operations: Dict[Any, _ResourceOperation] = {}
-        self.retiring: Set[_CleanupOwner] = set()
-        self.cleanup: Optional[asyncio.Future] = None
-        self.cleanup_state: Optional[_CleanupState] = None
+        self.operations: dict[Any, _ResourceOperation] = {}
+        self.retiring: set[_CleanupOwner] = set()
+        self.cleanup: asyncio.Future | None = None
+        self.cleanup_state: _CleanupState | None = None
 
 
 class _ResourceEntry:
@@ -87,9 +84,9 @@ class _ScopeEntry:
 
     def __init__(self, signal: Any) -> None:
         self.signal = signal
-        self.operations: Dict[Any, int] = {}
-        self.resources: Optional[Set[Any]] = set()
-        self.cleanup_owner: Optional[_CleanupOwner] = None
+        self.operations: dict[Any, int] = {}
+        self.resources: set[Any] | None = set()
+        self.cleanup_owner: _CleanupOwner | None = None
 
 
 class _SignalEntry:
@@ -100,15 +97,15 @@ class _SignalEntry:
         self.value = value
 
 
-_resources: Dict[int, _ResourceEntry] = {}
-_scopes: Dict[int, _ScopeEntry] = {}
-_parents: Dict[int, _SignalEntry] = {}
-_cleanup_owners: Dict[int, _SignalEntry] = {}
-_identities: Dict[int, _SignalEntry] = {}
-_listeners: Dict[int, _SignalEntry] = {}
+_resources: dict[int, _ResourceEntry] = {}
+_scopes: dict[int, _ScopeEntry] = {}
+_parents: dict[int, _SignalEntry] = {}
+_cleanup_owners: dict[int, _SignalEntry] = {}
+_identities: dict[int, _SignalEntry] = {}
+_listeners: dict[int, _SignalEntry] = {}
 
 
-def _signal_entry(store: Dict[int, _SignalEntry], signal: Any) -> _SignalEntry:
+def _signal_entry(store: dict[int, _SignalEntry], signal: Any) -> _SignalEntry:
     key = id(signal)
     entry = store.get(key)
     if entry is None or entry.signal is not signal:
@@ -135,14 +132,14 @@ def _scope_entry(signal: Any) -> _ScopeEntry:
     return entry
 
 
-def _lookup(store: Dict[int, _SignalEntry], signal: Any) -> Any:
+def _lookup(store: dict[int, _SignalEntry], signal: Any) -> Any:
     entry = store.get(id(signal))
     if entry is None or entry.signal is not signal:
         return None
     return entry.value
 
 
-def _remove_signal(store: Dict[int, _SignalEntry], signal: Any) -> None:
+def _remove_signal(store: dict[int, _SignalEntry], signal: Any) -> None:
     entry = store.get(id(signal))
     if entry is not None and entry.signal is signal:
         del store[id(signal)]
@@ -157,7 +154,7 @@ def anonymous_resource() -> Any:
     return object()
 
 
-def get_resource_cleanup_completion(owner: Any) -> Optional[asyncio.Future]:
+def get_resource_cleanup_completion(owner: Any) -> asyncio.Future | None:
     entry = _resources.get(id(owner))
     if entry is None or entry.resource is not owner:
         return None
@@ -166,16 +163,16 @@ def get_resource_cleanup_completion(owner: Any) -> Optional[asyncio.Future]:
 
 def _blocking_references(
     blockers: Iterable[_ResourceOperation],
-) -> List[Dict[str, Any]]:
-    references: Dict[str, Dict[str, Any]] = {}
-    visited: Set[_ResourceOperation] = set()
+) -> list[dict[str, Any]]:
+    references: dict[str, dict[str, Any]] = {}
+    visited: set[_ResourceOperation] = set()
 
     def visit(record: _ResourceOperation) -> None:
         if record in visited:
             return
         visited.add(record)
         if not record.settled:
-            reference: Dict[str, Any] = {"operationId": record.operation_id}
+            reference: dict[str, Any] = {"operationId": record.operation_id}
             if record.identity:
                 reference.update(record.identity)
             references[record.operation_id] = reference
@@ -187,11 +184,15 @@ def _blocking_references(
     return list(references.values())
 
 
-def get_resource_cleanup_snapshot(owner: Any) -> Dict[str, Any]:
+def get_resource_cleanup_snapshot(owner: Any) -> dict[str, Any]:
     """Read a copy at the publication boundary; never expose live cleanup state."""
     entry = _resources.get(id(owner))
-    state = entry.handle.cleanup_state if entry is not None and entry.resource is owner else None
-    snapshot: Dict[str, Any] = {
+    state = (
+        entry.handle.cleanup_state
+        if entry is not None and entry.resource is owner
+        else None
+    )
+    snapshot: dict[str, Any] = {
         "capturedAt": _now_iso(),
         "status": state.status if state is not None else "not-required",
     }
@@ -204,11 +205,11 @@ def get_resource_cleanup_snapshot(owner: Any) -> Dict[str, Any]:
     return snapshot
 
 
-def get_pending_scope_operations(signal: Any) -> List[Dict[str, Any]]:
+def get_pending_scope_operations(signal: Any) -> list[dict[str, Any]]:
     entry = _scopes.get(id(signal))
     if entry is None or entry.signal is not signal:
         return []
-    operations: List[_ResourceOperation] = []
+    operations: list[_ResourceOperation] = []
     for resource in entry.operations.keys():
         handle = _resources.get(id(resource))
         if handle is not None and handle.resource is resource:
@@ -230,7 +231,7 @@ def link_resource_signal(signal: Any, parent: Any = None) -> None:
 
 
 def _owner_signals(signal: Any) -> Iterator[Any]:
-    seen: Set[int] = set()
+    seen: set[int] = set()
     owner = signal
     while owner is not None and id(owner) not in seen:
         seen.add(id(owner))
@@ -243,7 +244,7 @@ class ResourceScope:
         self.signal = signal
         self._scope = scope
         self._parent = parent
-        self._abort_disposer: Optional[Callable[[], None]] = None
+        self._abort_disposer: Callable[[], None] | None = None
 
     def abort(self, reason: Any = None) -> None:
         self.signal.abort(reason)
@@ -269,7 +270,7 @@ def create_resource_scope(parent: Any = None) -> ResourceScope:
     def abort_from_parent() -> None:
         signal.abort(abort_reason(parent))
 
-    disposer: Optional[Callable[[], None]] = None
+    disposer: Callable[[], None] | None = None
     if parent is not None:
         if is_aborted(parent):
             abort_from_parent()
@@ -316,11 +317,11 @@ def assert_resource_available(
 
 def observe_resource_operations(
     signal: Any,
-    listener: Callable[[Dict[str, Any]], None],
+    listener: Callable[[dict[str, Any]], None],
 ) -> Callable[[], None]:
     """Capture subscribers at registration: late settlement stays with its original run."""
     entry = _signal_entry(_listeners, signal)
-    subscribers: Set[Callable[[Dict[str, Any]], None]] = entry.value
+    subscribers: set[Callable[[dict[str, Any]], None]] = entry.value
     if subscribers is None:
         subscribers = set()
         entry.value = subscribers
@@ -334,7 +335,7 @@ def observe_resource_operations(
     return dispose
 
 
-def set_resource_operation_identity(signal: Any, identity: Dict[str, Any]) -> None:
+def set_resource_operation_identity(signal: Any, identity: dict[str, Any]) -> None:
     _signal_entry(_identities, signal).value = dict(identity)
 
 
@@ -374,12 +375,12 @@ def record_operation(
             identity = found
             break
     record = _ResourceOperation(signal, uuid.uuid4().hex, identity)
-    subscribers: Set[Callable[[Dict[str, Any]], None]] = set()
+    subscribers: set[Callable[[dict[str, Any]], None]] = set()
     for owner in owners:
         subscribers.update(_lookup(_listeners, owner) or set())
 
     def emit(**event: Any) -> None:
-        payload: Dict[str, Any] = {}
+        payload: dict[str, Any] = {}
         if identity:
             payload.update(identity)
         payload.update(
@@ -400,7 +401,7 @@ def record_operation(
         emit(kind="cancel-requested", error=sanitize_report_error(abort_reason(signal)))
 
     emit(kind="started")
-    disposer: Optional[Callable[[], None]] = None
+    disposer: Callable[[], None] | None = None
     if is_aborted(signal):
         abort()
     else:
@@ -410,7 +411,7 @@ def record_operation(
         record.settled = True
         if disposer is not None:
             disposer()
-        payload: Dict[str, Any] = {"kind": "settled", "status": status}
+        payload: dict[str, Any] = {"kind": "settled", "status": status}
         if status != "success":
             payload["error"] = sanitize_report_error(error)
         emit(**payload)
@@ -483,7 +484,7 @@ def admit_resource_operation(
                 if entry is not None and entry.resource is resource
                 else _ResourceHandle()
             )
-            blockers: List[_ResourceOperation] = list(handle.operations.values())
+            blockers: list[_ResourceOperation] = list(handle.operations.values())
             for owner in handle.retiring:
                 blockers.extend(owner.blockers)
             raise ResourceAdmissionError(error.code, blockers) from error
@@ -515,7 +516,7 @@ def track_resource_operation(
     operation: Any,
     signal: Any,
     kind: str = "resource",
-    existing_observation: Optional[ResourceObservation] = None,
+    existing_observation: ResourceObservation | None = None,
 ) -> Any:
     """Track actual completion, not the Runner timeout race."""
     if asyncio.iscoroutine(operation):
@@ -524,7 +525,7 @@ def track_resource_operation(
     active = _resource_handle(resource).operations
     active[operation] = observation.record
 
-    owner_scopes: List[Tuple[Any, _ScopeEntry]] = []
+    owner_scopes: list[tuple[Any, _ScopeEntry]] = []
     retained_by_scope = False
     for owner_signal in _owner_signals(signal):
         scope = _scopes.get(id(owner_signal))
@@ -599,8 +600,8 @@ async def recover_cancelled_scope_resources(
     loop = asyncio.get_event_loop()
     started_at = loop.time()
 
-    def pending_operations() -> List[Tuple[Any, Any, Any, _ResourceOperation]]:
-        pending: List[Tuple[Any, Any, Any, _ResourceOperation]] = []
+    def pending_operations() -> list[tuple[Any, Any, Any, _ResourceOperation]]:
+        pending: list[tuple[Any, Any, Any, _ResourceOperation]] = []
         entry = _scopes.get(id(signal))
         if entry is None or entry.signal is not signal:
             return pending
@@ -620,7 +621,7 @@ async def recover_cancelled_scope_resources(
     if not pending:
         return 0.0
 
-    stopped: "asyncio.Future[Any]" = loop.create_future()
+    stopped: asyncio.Future[Any] = loop.create_future()
 
     def on_abort() -> None:
         if not stopped.done():
@@ -658,9 +659,7 @@ async def recover_cancelled_scope_resources(
     try:
         while pending:
             waiters = [item[0] for item in pending]
-            await asyncio.wait(
-                {*waiters, stopped}, return_when=asyncio.FIRST_COMPLETED
-            )
+            await asyncio.wait({*waiters, stopped}, return_when=asyncio.FIRST_COMPLETED)
             if stopped.done() and not stopped.cancelled():
                 failure = stopped.exception()
                 if failure is not None:
@@ -702,15 +701,13 @@ class ResourceCleanupDeferredError(WorkflowError):
 
 
 async def _run_resource_cleanup(
-    resources: List[Any],
+    resources: list[Any],
     cleanup: Callable[[], Any],
-    options: Dict[str, Any],
-    before_cleanup: Optional[Dict[str, Any]] = None,
+    options: dict[str, Any],
+    before_cleanup: dict[str, Any] | None = None,
 ) -> Any:
     loop = asyncio.get_event_loop()
-    owner = _CleanupOwner(
-        before_cleanup.get("signal") if before_cleanup else None
-    )
+    owner = _CleanupOwner(before_cleanup.get("signal") if before_cleanup else None)
     for resource in resources:
         retain_for_cleanup(owner, resource)
     if owner.signal is not None:
@@ -722,7 +719,7 @@ async def _run_resource_cleanup(
     if owner_scope is not None:
         owner_scope.cleanup_owner = owner
 
-    deferred: "asyncio.Future[Any]" = loop.create_future()
+    deferred: asyncio.Future[Any] = loop.create_future()
 
     def defer() -> None:
         if deferred.done():
@@ -773,9 +770,7 @@ async def _run_resource_cleanup(
         nonlocal grace_ms
         timer = None
         if total_timeout is not None:
-            timer = loop.call_later(
-                max(0.0, total_timeout / 1000.0), defer
-            )
+            timer = loop.call_later(max(0.0, total_timeout / 1000.0), defer)
         try:
             if before_cleanup is not None:
                 await before_cleanup["run"](before_cleanup["signal"])
@@ -795,7 +790,7 @@ async def _run_resource_cleanup(
                 _resource_handle(resource).retiring.discard(owner)
 
     completion = asyncio.ensure_future(run_cleanup())
-    cleanup_observation: Optional[ResourceObservation] = None
+    cleanup_observation: ResourceObservation | None = None
     if option_signal is not None:
         cleanup_observation = record_operation(completion, option_signal, "cleanup")
     owner_key = options.get("owner")
@@ -818,18 +813,14 @@ async def _run_resource_cleanup(
         if future.cancelled() or future.exception() is not None:
             cleanup_state.status = "failed"
             cleanup_state.error = (
-                asyncio.CancelledError()
-                if future.cancelled()
-                else future.exception()
+                asyncio.CancelledError() if future.cancelled() else future.exception()
             )
         else:
             cleanup_state.status = "completed"
 
     completion.add_done_callback(mark_outcome)
 
-    await asyncio.wait(
-        {completion, deferred}, return_when=asyncio.FIRST_COMPLETED
-    )
+    await asyncio.wait({completion, deferred}, return_when=asyncio.FIRST_COMPLETED)
     if deferred.done():
         if cleanup_observation is not None:
             cleanup_observation.cleanup_deferred(owner.blockers)
@@ -863,7 +854,7 @@ async def _run_resource_cleanup(
 async def cleanup_resources(
     resources: Iterable[Any],
     cleanup: Callable[[], Any],
-    options: Dict[str, Any],
+    options: dict[str, Any],
 ) -> Any:
     return await _run_resource_cleanup(list(resources), cleanup, options)
 
@@ -871,7 +862,7 @@ async def cleanup_resources(
 async def cleanup_scope_resources(
     signal: Any,
     cleanup: Callable[[], Any],
-    options: Dict[str, Any],
+    options: dict[str, Any],
 ) -> Any:
     from midscene.core.types import AbortSignal
 
@@ -880,7 +871,7 @@ async def cleanup_scope_resources(
     scope = _scopes.get(id(signal))
     if scope is not None and scope.signal is not signal:
         scope = None
-    resources: List[Any] = []
+    resources: list[Any] = []
     if scope is not None and scope.resources is not None:
         resources.extend(scope.resources)
     if scope is not None:

@@ -70,7 +70,9 @@ def build_insight_system_prompt(
     data_rules = f"\n\n{data_output['rules']}" if data_output.get("rules") else ""
     prefix_text = response_prefix if response_prefix else ""
     build_example = data_output["build_example"]
-    example_1 = build_example('{\n  "name": "John",\n  "age": 30,\n  "isAdmin": true\n}')
+    example_1 = build_example(
+        '{\n  "name": "John",\n  "age": 30,\n  "isAdmin": true\n}'
+    )
     example_2 = build_example('["todo 1", "todo 2", "todo 3"]')
     example_3 = build_example('"todo list"')
     example_4 = build_example('{ "StatementIsTruthy": true }')
@@ -88,7 +90,7 @@ When DATA_DEMAND is a JSON object, the keys in your response must exactly match 
 Return in the following XML format:
 {prefix_text}
 <observation>brief evidence observed for the extraction, less than 300 words. Use {preferred_language} in this field.</observation>
-{data_output['placeholder']}
+{data_output["placeholder"]}
 <errors>optional error messages as JSON array, e.g., ["error1", "error2"]</errors>
 
 # Example 1

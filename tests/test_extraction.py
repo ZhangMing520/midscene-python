@@ -21,8 +21,9 @@ from midscene.core.types import (
 
 
 def make_png_base64(width: int = 320, height: int = 240) -> str:
-    from PIL import Image
     import io
+
+    from PIL import Image
 
     image = Image.new("RGB", (width, height), (200, 200, 200))
     buffer = io.BytesIO()
@@ -95,9 +96,7 @@ def test_default_insight_response_parser_builds_and_parses_data_json():
     protocol = create_default_insight_protocol()
     data_output = protocol["data_output"]
 
-    parsed = data_output["parse"](
-        '<data-json>{"title": "Test Page"}</data-json>'
-    )
+    parsed = data_output["parse"]('<data-json>{"title": "Test Page"}</data-json>')
 
     assert parsed == {"title": "Test Page"}
     assert data_output["build_example"]('"x"') == '<data-json>\n"x"\n</data-json>'
@@ -134,10 +133,7 @@ async def test_should_parse_complete_xml_response_with_all_fields(mock_interface
 async def test_should_parse_xml_response_with_boolean_data(mock_interface):
     from midscene.core.ai_model.workflows import ai_extract_element_info
 
-    raw = (
-        "<observation>yes</observation>\n"
-        '<data-json>{"assertion": true}</data-json>'
-    )
+    raw = '<observation>yes</observation>\n<data-json>{"assertion": true}</data-json>'
     with patch_model_call(
         "midscene.core.ai_model.workflows.insight.extraction",
         lambda *args, **kwargs: {"content": raw, "usage": None},

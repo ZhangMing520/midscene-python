@@ -4,39 +4,45 @@ Synced from upstream packages/core/src/ai-model/workflows/insight/
 (extraction.ts, boolean.ts, insight-response-parser.ts).
 """
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from loguru import logger
 
-from midscene.core.ai_model.service_caller.types import AIResponseParseError
-from midscene.core.ai_model.service_caller.call_ai import call_generative_ai
-from midscene.core.ai_model.prompt.insight import build_insight_system_prompt, extract_data_query_prompt
 from midscene.core.ai_model.model_adapter.insight import (
     get_default_insight_protocol,  # noqa: F401 (re-export)
     resolve_insight,
 )
-from midscene.core.ai_model.service_caller.semantic_retry import call_ai_and_parse_with_retry, with_semantic_retry_feedback
 from midscene.core.ai_model.models.registry import ModelRuntime
-from midscene.core.ai_model.workflows.insight.boolean import extract_boolean
-from midscene.core.ai_model.workflows.insight.insight_response_parser import (
-    parse_insight_response,
+from midscene.core.ai_model.prompt.insight import (
+    build_insight_system_prompt,
+    extract_data_query_prompt,
 )
+from midscene.core.ai_model.service_caller.call_ai import call_generative_ai
+from midscene.core.ai_model.service_caller.semantic_retry import (
+    call_ai_and_parse_with_retry,
+    with_semantic_retry_feedback,
+)
+from midscene.core.ai_model.service_caller.types import AIResponseParseError
 from midscene.core.ai_model.shared.multimodal_prompt import (
     ensure_data_url,
     get_screenshot_base64,
+)
+from midscene.core.ai_model.workflows.insight.boolean import extract_boolean
+from midscene.core.ai_model.workflows.insight.insight_response_parser import (
+    parse_insight_response,
 )
 
 
 async def ai_extract_element_info(
     task_type: str,
-    data_query: Union[str, Dict[str, str]],
+    data_query: str | dict[str, str],
     context: Any,
     model_runtime: ModelRuntime,
     page_description: str = "",
     screenshot_included: bool = True,
-    context_text: Optional[str] = None,
-    screenshot_sequence: Optional[List[str]] = None,
-) -> Dict[str, Any]:
+    context_text: str | None = None,
+    screenshot_sequence: list[str] | None = None,
+) -> dict[str, Any]:
     """Run the insight workflow.
 
     task_type: 'boolean' | 'extract'.
@@ -75,7 +81,7 @@ async def ai_extract_element_info(
         context_text,
     )
 
-    user_content: List[Dict[str, Any]] = []
+    user_content: list[dict[str, Any]] = []
     if screenshot_included:
         frames = screenshot_sequence or []
         if len(frames) > 1:
@@ -122,19 +128,19 @@ async def ai_extract_element_info(
 
     user_content.append({"type": "text", "text": extract_data_prompt_text})
 
-    messages: List[Dict[str, Any]] = [
+    messages: list[dict[str, Any]] = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_content},
     ]
 
-    async def call_ai(retry_attempt: int, previous_parse_error: Optional[Any] = None):
+    async def call_ai(retry_attempt: int, previous_parse_error: Any | None = None):
         return await call_generative_ai(
             with_semantic_retry_feedback(messages, previous_parse_error),
             model_runtime,
             {"semanticRetryAttempt": retry_attempt},
         )
 
-    def parse_response(response: Dict[str, Any]) -> Dict[str, Any]:
+    def parse_response(response: dict[str, Any]) -> dict[str, Any]:
         raw_response = response["content"]
         parse_result = parse_insight_response(raw_response, data_output)
         return {
@@ -145,7 +151,9 @@ async def ai_extract_element_info(
             "reasoning_content": response.get("reasoning_content"),
         }
 
-    def to_parse_error(parse_error: Any, response: Dict[str, Any]) -> AIResponseParseError:
+    def to_parse_error(
+        parse_error: Any, response: dict[str, Any]
+    ) -> AIResponseParseError:
         return AIResponseParseError(
             f"XML parse error: {parse_error}",
             response.get("content", ""),

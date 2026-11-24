@@ -1,7 +1,11 @@
 """AutoGLM custom planner (upstream ai-model/models/auto-glm/planning.ts)."""
 
-from typing import Any, Callable, Dict
+from collections.abc import Callable
+from typing import Any
 
+from midscene.core.ai_model.model_adapter.custom_planning_types import (
+    CustomPlanningDefinition,
+)
 from midscene.core.ai_model.models.auto_glm.actions import transform_auto_glm_action
 from midscene.core.ai_model.models.auto_glm.parser import (
     parse_auto_glm_planning_response,
@@ -16,15 +20,11 @@ from midscene.core.ai_model.shared.model_locate_result import (
 )
 from midscene.core.ai_model.shared.multimodal_prompt import get_shot_size
 
-from midscene.core.ai_model.model_adapter.custom_planning_types import (
-    CustomPlanningDefinition,
-)
-
 AUTO_GLM_COORDINATES = {"shape": "point", "order": "xy", "normalizedBy": 1000}
 
 
 def _coordinate_distance_to_pixels_for(
-    context: Any, model_runtime: Any, coordinates: Dict[str, Any]
+    context: Any, model_runtime: Any, coordinates: dict[str, Any]
 ) -> Callable[[float, str], float]:
     size = get_shot_size(context)
     return create_coordinate_distance_to_pixels(
@@ -48,7 +48,9 @@ def create_auto_glm_planner(is_multilingual: bool) -> CustomPlanningDefinition:
             ),
         },
         "coordinates": AUTO_GLM_COORDINATES,
-        "parse_response": lambda raw, context, runtime: parse_auto_glm_planning_response(raw),
+        "parse_response": lambda raw, context, runtime: (
+            parse_auto_glm_planning_response(raw)
+        ),
         "transform_actions": lambda parsed, context, action_space, runtime: (
             transform_auto_glm_action(
                 parsed["action"],

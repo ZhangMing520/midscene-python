@@ -12,7 +12,7 @@ import io
 import math
 import os
 import re
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import httpx
 
@@ -40,9 +40,7 @@ def _is_positive_integer(value: Any) -> bool:
     )
 
 
-def _clamp_rect(
-    rect: Dict[str, float], size: Dict[str, int]
-) -> Dict[str, float]:
+def _clamp_rect(rect: dict[str, float], size: dict[str, int]) -> dict[str, float]:
     width = min(float(rect["width"]), float(size["width"]))
     height = min(float(rect["height"]), float(size["height"]))
     return {
@@ -57,7 +55,7 @@ def normalize_base64_body(body: str) -> str:
     return "".join(body.split())
 
 
-def _detect_image_mime_type_from_buffer(buffer: bytes) -> Optional[str]:
+def _detect_image_mime_type_from_buffer(buffer: bytes) -> str | None:
     """Detect the encoded image mime type from its magic bytes."""
     if len(buffer) >= 8 and buffer[:8] == b"\x89PNG\r\n\x1a\n":
         return "image/png"
@@ -65,36 +63,28 @@ def _detect_image_mime_type_from_buffer(buffer: bytes) -> Optional[str]:
         return "image/jpeg"
     if len(buffer) >= 6 and buffer[:3] == b"GIF":
         return "image/gif"
-    if (
-        len(buffer) >= 12
-        and buffer[:4] == b"RIFF"
-        and buffer[8:12] == b"WEBP"
-    ):
+    if len(buffer) >= 12 and buffer[:4] == b"RIFF" and buffer[8:12] == b"WEBP":
         return "image/webp"
     if len(buffer) >= 2 and buffer[:2] == b"BM":
         return "image/bmp"
     return None
 
 
-def _parse_base64(full_base64_string: str) -> Dict[str, str]:
+def _parse_base64(full_base64_string: str) -> dict[str, str]:
     """Split a data URL (or raw base64 body) into ``mimeType`` and ``body``."""
     try:
         separator = ";base64,"
         index = full_base64_string.find(separator)
         if index == -1:
             body = normalize_base64_body(full_base64_string)
-            mime_type = _detect_image_mime_type_from_buffer(
-                base64.b64decode(body)
-            )
+            mime_type = _detect_image_mime_type_from_buffer(base64.b64decode(body))
             if mime_type is None:
                 raise ValueError("Invalid base64 string")
             return {"mimeType": mime_type, "body": body}
         return {
             # 5 means 'data:'
             "mimeType": full_base64_string[5:index],
-            "body": normalize_base64_body(
-                full_base64_string[index + len(separator) :]
-            ),
+            "body": normalize_base64_body(full_base64_string[index + len(separator) :]),
         }
     except Exception as error:  # noqa: BLE001 - mirrors upstream message
         raise ValueError(
@@ -105,9 +95,7 @@ def _parse_base64(full_base64_string: str) -> Dict[str, str]:
 
 def _encode_jpeg_bytes(image: Any, quality: int) -> bytes:
     buffer = io.BytesIO()
-    image.convert("RGB").save(
-        buffer, format="JPEG", quality=quality, subsampling=0
-    )
+    image.convert("RGB").save(buffer, format="JPEG", quality=quality, subsampling=0)
     return buffer.getvalue()
 
 
@@ -128,13 +116,13 @@ def encode_base64_image(image, quality: int = 90) -> str:
     ).decode("ascii")
 
 
-def image_size(image_base64: str) -> Dict[str, int]:
+def image_size(image_base64: str) -> dict[str, int]:
     """Pixel size of an image payload."""
     width, height = decode_base64_image(image_base64).size
     return {"width": width, "height": height}
 
 
-def save_base64_image(options: Dict[str, str]) -> None:
+def save_base64_image(options: dict[str, str]) -> None:
     """Save a base64-encoded image to ``options['outputPath']``."""
     body = _parse_base64(options["base64Data"])["body"]
     with open(options["outputPath"], "wb") as handle:
@@ -144,19 +132,21 @@ def save_base64_image(options: Dict[str, str]) -> None:
 def _resize_image_buffer(
     input_format: str,
     input_data: bytes,
-    target_size: Dict[str, int],
+    target_size: dict[str, int],
     *,
-    source_size: Optional[Dict[str, int]] = None,
+    source_size: dict[str, int] | None = None,
     preserve_original_when_unchanged: bool,
     jpeg_quality: int,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     if isinstance(input_data, str):
         raise ValueError("inputData is base64, use resizeImgBase64 instead")
 
     target_width = target_size.get("width")
     target_height = target_size.get("height")
-    if not target_width or not target_height or (
-        target_width <= 0 or target_height <= 0
+    if (
+        not target_width
+        or not target_height
+        or (target_width <= 0 or target_height <= 0)
     ):
         raise AssertionError("newSize must be positive")
 
@@ -179,9 +169,7 @@ def _resize_image_buffer(
     if dimensions_unchanged:
         resized = image
     else:
-        resized = image.resize(
-            (target_width, target_height), Image.LANCZOS
-        )
+        resized = image.resize((target_width, target_height), Image.LANCZOS)
     return {
         "buffer": _encode_jpeg_bytes(resized, jpeg_quality),
         # by the JPEG encoder
@@ -192,8 +180,8 @@ def _resize_image_buffer(
 def resize_and_convert_img_buffer(
     input_format: str,
     input_data: bytes,
-    new_size: Dict[str, int],
-) -> Dict[str, Any]:
+    new_size: dict[str, int],
+) -> dict[str, Any]:
     """Resize an image buffer, preserving bytes/format when size is unchanged."""
     return _resize_image_buffer(
         input_format,
@@ -216,8 +204,7 @@ def convert_img_buffer_to_jpeg(
             return _encode_jpeg_bytes(image, quality)
     except Exception as error:  # noqa: BLE001 - mirrors upstream failure
         raise ValueError(
-            "Failed to convert image to JPEG with Pillow: "
-            f"{error}"
+            f"Failed to convert image to JPEG with Pillow: {error}"
         ) from error
 
 
@@ -228,9 +215,7 @@ def infer_base64_image_format(base64_body: str) -> str:
 
 
 def create_img_base64_by_format(image_format: str, body: str) -> str:
-    return (
-        f"data:image/{image_format};base64,{normalize_base64_body(body)}"
-    )
+    return f"data:image/{image_format};base64,{normalize_base64_body(body)}"
 
 
 def _validate_jpeg_quality(jpeg_quality: Any) -> None:
@@ -248,7 +233,7 @@ def _validate_jpeg_quality(jpeg_quality: Any) -> None:
         )
 
 
-def _validate_image_size(size: Dict[str, Any], label: str) -> None:
+def _validate_image_size(size: dict[str, Any], label: str) -> None:
     width = size.get("width")
     height = size.get("height")
     if not _is_positive_integer(width) or not _is_positive_integer(height):
@@ -259,7 +244,7 @@ def _validate_image_size(size: Dict[str, Any], label: str) -> None:
 
 
 def normalize_screenshot_base64(
-    base64: str, options: Optional[Dict[str, Any]] = None
+    base64: str, options: dict[str, Any] | None = None
 ) -> str:
     """Normalize a PNG/JPEG screenshot to a canonical data URL."""
     label = (options or {}).get("label") or "screenshot base64"
@@ -335,9 +320,7 @@ def convert_base64_image_to_jpeg(
     )
 
 
-def resize_base64_image_to_jpeg(
-    input_base64: str, options: Dict[str, Any]
-) -> str:
+def resize_base64_image_to_jpeg(input_base64: str, options: dict[str, Any]) -> str:
     """Resize a PNG/JPEG image and guarantee JPEG output."""
     jpeg_quality = options.get("jpegQuality")
     if jpeg_quality is None:
@@ -392,14 +375,12 @@ def resize_base64_image_to_jpeg(
 
 
 def constrain_base64_image_to_max_size(
-    input_base64: str, options: Dict[str, Any]
+    input_base64: str, options: dict[str, Any]
 ) -> str:
     """Constrain the longest edge while preserving the aspect ratio."""
     max_size = options.get("maxSize")
     if not _is_positive_integer(max_size):
-        raise ValueError(
-            f"maxSize must be a positive integer. Received: {max_size}"
-        )
+        raise ValueError(f"maxSize must be a positive integer. Received: {max_size}")
 
     jpeg_quality = options.get("jpegQuality")
     if jpeg_quality is None:
@@ -438,9 +419,7 @@ def constrain_base64_image_to_max_size(
     )
 
 
-def resize_img_base64(
-    input_base64: str, new_size: Dict[str, int]
-) -> str:
+def resize_img_base64(input_base64: str, new_size: dict[str, int]) -> str:
     """Historical resize helper: unchanged input keeps its original format."""
     parsed = _parse_base64(input_base64)
     image_buffer = base64.b64decode(parsed["body"])
@@ -452,9 +431,7 @@ def resize_img_base64(
     )
 
 
-def zoom_for_gpt4o(
-    original_width: float, original_height: float
-) -> Dict[str, int]:
+def zoom_for_gpt4o(original_width: float, original_height: float) -> dict[str, int]:
     """Scale an image into GPT-4o's high-detail 2048x768 budget."""
     max_width = 2048
     max_height = 768
@@ -489,7 +466,7 @@ def photon_to_base64(image, quality: int = 90) -> str:
     return encode_base64_image(image, quality)
 
 
-def padding_to_match_block(image, block_size: int = 28) -> Dict[str, Any]:
+def padding_to_match_block(image, block_size: int = 28) -> dict[str, Any]:
     """Pad the right/bottom edges with white so both are multiples of a block."""
     Image, _ = _pil()
     width, height = image.size
@@ -500,9 +477,7 @@ def padding_to_match_block(image, block_size: int = 28) -> Dict[str, Any]:
         return {"width": width, "height": height, "image": image}
 
     mode = image.mode
-    background = (
-        (255, 255, 255) if mode == "RGB" else (255, 255, 255, 255)
-    )
+    background = (255, 255, 255) if mode == "RGB" else (255, 255, 255, 255)
     padded = Image.new(mode, (target_width, target_height), background)
     padded.paste(image, (0, 0))
     return {
@@ -514,7 +489,7 @@ def padding_to_match_block(image, block_size: int = 28) -> Dict[str, Any]:
 
 def padding_to_match_block_by_base64(
     image_base64: str, block_size: int = 28
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Pad right/bottom with white so both edges are multiples of ``block_size``."""
     image = photon_from_base64(image_base64)
     width, height = image.size
@@ -536,8 +511,8 @@ def padding_to_match_block_by_base64(
 
 
 def crop_by_rect(
-    image_base64: str, rect: Dict[str, float]
-) -> Tuple[str, Dict[str, int]]:
+    image_base64: str, rect: dict[str, float]
+) -> tuple[str, dict[str, int]]:
     """Crop ``rect`` out of the screenshot; returns (payload, size)."""
     image = decode_base64_image(image_base64)
     left = math.trunc(rect["left"])
@@ -553,7 +528,7 @@ def crop_by_rect(
 
 def resize_long_edge(
     image_base64: str, max_long_edge: int = 1000, max_upscale: float = 2.0
-) -> Optional[str]:
+) -> str | None:
     """Upscale a small crop to at most ``max_upscale`` (upstream resize rule)."""
     Image, _ = _pil()
     image = decode_base64_image(image_base64)
@@ -570,7 +545,7 @@ def resize_long_edge(
     return encode_base64_image(image.resize(target, Image.LANCZOS))
 
 
-def scale_image(image_base64: str, scale: float) -> Dict[str, Any]:
+def scale_image(image_base64: str, scale: float) -> dict[str, Any]:
     """Scale an image by ``scale`` and re-encode it as JPEG."""
     if scale <= 0:
         raise ValueError("Scale factor must be positive")
@@ -593,9 +568,7 @@ def scale_image(image_base64: str, scale: float) -> Dict[str, Any]:
     }
 
 
-def pad_base64_image_to_minimum_size(
-    image_base64: str, minimum: int
-) -> Dict[str, Any]:
+def pad_base64_image_to_minimum_size(image_base64: str, minimum: int) -> dict[str, Any]:
     """Pad the right and bottom edges with white to a minimum size."""
     if not _is_positive_integer(minimum):
         raise AssertionError("minimum must be a positive integer")
@@ -635,15 +608,12 @@ def http_img2_base64(url: str) -> str:
             f"The url {url} is not a image, because of content-type in "
             f"header is {content_type}."
         )
-    return (
-        f"data:{content_type};base64,"
-        + base64.b64encode(response.content).decode("ascii")
+    return f"data:{content_type};base64," + base64.b64encode(response.content).decode(
+        "ascii"
     )
 
 
-def local_img2_base64(
-    img_path: str, without_header: bool = False
-) -> str:
+def local_img2_base64(img_path: str, without_header: bool = False) -> str:
     """Convert a local image file to a base64 string."""
     with open(img_path, "rb") as handle:
         body = base64.b64encode(handle.read()).decode("ascii")
@@ -683,9 +653,7 @@ def _js_to_string(value: Any) -> str:
     return str(value)
 
 
-def pre_process_image_url(
-    url: Any, convert_http_image_2_base64: bool
-) -> str:
+def pre_process_image_url(url: Any, convert_http_image_2_base64: bool) -> str:
     """Resolve a data URL, HTTP URL, or local path to a model-ingestable URL."""
     if not isinstance(url, str):
         raise ValueError(

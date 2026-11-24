@@ -10,15 +10,10 @@ from midscene.harmony.swipe import resolve_swipe_speed
 def test_converts_duration_to_speed_based_on_two_dimensional_distance():
     """converts duration to speed based on two-dimensional distance."""
 
-    assert (
-        resolve_swipe_speed({"x": 0, "y": 0}, {"x": 300, "y": 400}, 1000)
-        == 500
-    )
+    assert resolve_swipe_speed({"x": 0, "y": 0}, {"x": 300, "y": 400}, 1000) == 500
 
 
-@pytest.mark.parametrize(
-    "duration,expected_speed", [(10000, 200), (1, 40000)]
-)
+@pytest.mark.parametrize("duration,expected_speed", [(10000, 200), (1, 40000)])
 def test_clamps_speed_to_hdc_limits_for_duration(duration, expected_speed):
     """clamps speed to HDC limits for duration $duration."""
 

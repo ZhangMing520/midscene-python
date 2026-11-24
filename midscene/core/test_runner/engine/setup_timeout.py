@@ -1,7 +1,8 @@
 """Bounded environment setup (upstream engine/setup-timeout.ts)."""
 
 import asyncio
-from typing import Any, Awaitable, Callable, Optional, TypeVar
+from collections.abc import Awaitable, Callable
+from typing import Any, TypeVar
 
 from midscene.core.test_runner.engine._abort import (
     abort_reason,
@@ -21,7 +22,7 @@ async def run_setup_with_timeout(
     setup: Callable[[], Awaitable[T]],
     signal: Any,
     abort: Callable[[Any], None],
-    timeout_ms: Optional[float] = None,
+    timeout_ms: float | None = None,
 ) -> T:
     """Keep tracking a timed-out acquisition until it actually settles."""
     if timeout_ms is None:
@@ -32,7 +33,7 @@ async def run_setup_with_timeout(
     operation = asyncio.ensure_future(setup())
     track_resource_operation(anonymous_resource(), operation, signal, "acquisition")
 
-    stopped: "asyncio.Future[Any]" = loop.create_future()
+    stopped: asyncio.Future[Any] = loop.create_future()
 
     def on_abort() -> None:
         if not stopped.done():

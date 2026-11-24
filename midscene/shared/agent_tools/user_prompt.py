@@ -1,33 +1,32 @@
 """Compose user prompts with reference images (upstream user-prompt.ts)."""
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from midscene.shared.agent_tools.types import schema_field
 
-PromptReferenceImage = Dict[str, str]
-UserPromptLike = Union[str, Dict[str, Any]]
+PromptReferenceImage = dict[str, str]
+UserPromptLike = str | dict[str, Any]
 
 
-def _normalize_string_list(raw: Any, field_name: str) -> List[str]:
+def _normalize_string_list(raw: Any, field_name: str) -> list[str]:
     if raw is None:
         return []
     if isinstance(raw, str):
         trimmed = raw.strip()
         return [trimmed] if trimmed else []
     if isinstance(raw, list):
-        values: List[str] = []
+        values: list[str] = []
         for index, item in enumerate(raw):
             if not isinstance(item, str):
                 raise ValueError(f"{field_name}[{index}]: expected a string.")
             values.append(item.strip())
         return values
     raise ValueError(
-        f"{field_name}: expected a string or string array, "
-        f"got {type(raw).__name__}."
+        f"{field_name}: expected a string or string array, got {type(raw).__name__}."
     )
 
 
-def _compose_images(image: Any, image_name: Any) -> List[PromptReferenceImage]:
+def _compose_images(image: Any, image_name: Any) -> list[PromptReferenceImage]:
     urls = _normalize_string_list(image, "image")
     names = _normalize_string_list(image_name, "imageName")
     if len(urls) != len(names):
@@ -36,12 +35,10 @@ def _compose_images(image: Any, image_name: Any) -> List[PromptReferenceImage]:
             f"--image-name values, got {len(urls)} image(s) and "
             f"{len(names)} image name(s)."
         )
-    return [
-        {"name": name, "url": url} for name, url in zip(names, urls)
-    ]
+    return [{"name": name, "url": url} for name, url in zip(names, urls, strict=False)]
 
 
-def _coerce_boolean(value: Any) -> Optional[bool]:
+def _coerce_boolean(value: Any) -> bool | None:
     if value is None:
         return None
     if isinstance(value, bool):
@@ -56,12 +53,11 @@ def _coerce_boolean(value: Any) -> Optional[bool]:
         if lowered in ("false", "0"):
             return False
         raise ValueError(
-            "convertHttpImage2Base64: expected \"true\", \"false\", \"1\", or "
-            f"\"0\"; got {value!r}."
+            'convertHttpImage2Base64: expected "true", "false", "1", or '
+            f'"0"; got {value!r}.'
         )
     raise ValueError(
-        "convertHttpImage2Base64: expected a boolean, "
-        f"got {type(value).__name__}."
+        f"convertHttpImage2Base64: expected a boolean, got {type(value).__name__}."
     )
 
 
@@ -77,7 +73,7 @@ def compose_user_prompt(
     if not images and convert_flag is None:
         return prompt
 
-    payload: Dict[str, Any] = {"prompt": prompt}
+    payload: dict[str, Any] = {"prompt": prompt}
     if images:
         payload["images"] = images
     if convert_flag is not None:
@@ -85,7 +81,7 @@ def compose_user_prompt(
     return payload
 
 
-PROMPT_INPUT_EXTRA_SCHEMA: Dict[str, Dict[str, Any]] = {
+PROMPT_INPUT_EXTRA_SCHEMA: dict[str, dict[str, Any]] = {
     "image": schema_field(
         "string | string[]",
         "Reference image URL/path. Repeat --image for multiple images.",

@@ -1,11 +1,11 @@
 """System One endpoint resolution (upstream system-one/resolve-endpoint.ts)."""
 
-from typing import Any, Dict
+from typing import Any
 
 from midscene.core.ai_model.service_caller.system_one.schema import SystemOneError
 
 
-def resolve_system_one_endpoint(config: Dict[str, Any]) -> str:
+def resolve_system_one_endpoint(config: dict[str, Any]) -> str:
     endpoint = config.get("endpoint")
     if endpoint:
         return endpoint

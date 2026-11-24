@@ -13,7 +13,7 @@ import shutil
 import tempfile
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any
 from urllib.parse import unquote
 
 from midscene.core.dump.html_utils import (
@@ -53,20 +53,18 @@ from midscene.core.dump.screenshot_store import (
 class TestReportImages:
     """Rewrite image references into the final delivery format."""
 
-    def __init__(self, report_path: Union[str, Path], external: bool):
+    def __init__(self, report_path: str | Path, external: bool):
         self.report_path = Path(report_path)
         self.external = external
-        self._locations: Dict[str, Dict[str, Any]] = {}
-        self._files: Set[str] = set()
+        self._locations: dict[str, dict[str, Any]] = {}
+        self._files: set[str] = set()
 
-    def _reference(self, ref: Dict[str, Any], data_uri: str) -> Dict[str, Any]:
+    def _reference(self, ref: dict[str, Any], data_uri: str) -> dict[str, Any]:
         known = self._locations.get(ref["id"])
         if known is not None:
             return {**ref, **known}
         if self.external:
-            data = base64.b64decode(
-                parse_base64_image_data_url(data_uri)["rawBase64"]
-            )
+            data = base64.b64decode(parse_base64_image_data_url(data_uri)["rawBase64"])
             location = {
                 "storage": "file",
                 "path": (
@@ -92,8 +90,8 @@ class TestReportImages:
             return [self._replace(item) for item in value]
         return value
 
-    def _collect(self, serialized: str) -> List[Dict[str, Any]]:
-        refs: Dict[str, Dict[str, Any]] = {}
+    def _collect(self, serialized: str) -> list[dict[str, Any]]:
+        refs: dict[str, dict[str, Any]] = {}
 
         def visit(value: Any) -> None:
             ref = normalize_stored_image_ref(value)
@@ -115,11 +113,11 @@ class TestReportImages:
 
     def _inline_sources(
         self,
-        refs: List[Dict[str, Any]],
+        refs: list[dict[str, Any]],
         source_path: str,
-        origins: Optional[Dict[str, str]],
-    ) -> Dict[str, Dict[str, Dict[str, Any]]]:
-        sources: Dict[str, Dict[str, Dict[str, Any]]] = {}
+        origins: dict[str, str] | None,
+    ) -> dict[str, dict[str, dict[str, Any]]]:
+        sources: dict[str, dict[str, dict[str, Any]]] = {}
         for ref in refs:
             if ref.get("storage") != "inline":
                 continue
@@ -127,7 +125,7 @@ class TestReportImages:
             sources.setdefault(source, {})[ref["id"]] = ref
         return sources
 
-    def _write_sync(self, ref: Dict[str, Any], data: str) -> None:
+    def _write_sync(self, ref: dict[str, Any], data: str) -> None:
         target = self._reference(ref, data)
         if target.get("storage") == "file":
             path = target.get("path")
@@ -135,9 +133,7 @@ class TestReportImages:
                 destination = self.report_path.parent / path
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 destination.write_bytes(
-                    base64.b64decode(
-                        parse_base64_image_data_url(data)["rawBase64"]
-                    )
+                    base64.b64decode(parse_base64_image_data_url(data)["rawBase64"])
                 )
                 self._files.add(path)
             return
@@ -148,7 +144,7 @@ class TestReportImages:
         self,
         serialized: str,
         source_path: str,
-        origins: Optional[Dict[str, str]] = None,
+        origins: dict[str, str] | None = None,
     ) -> str:
         refs = self._collect(serialized)
         for ref in refs:
@@ -160,29 +156,30 @@ class TestReportImages:
                 ref,
                 f"data:{ref['mimeType']};base64,{base64.b64encode(data).decode('ascii')}",
             )
-        for source, images in self._inline_sources(
-            refs, source_path, origins
-        ).items():
-            def visit(image_id: str, data: str) -> bool:
-                ref = images.get(image_id)
+        for source, images in self._inline_sources(refs, source_path, origins).items():
+
+            def visit(
+                image_id: str,
+                data: str,
+                _images: dict[str, Any] = images,
+            ) -> bool:
+                ref = _images.get(image_id)
                 if ref is not None:
                     self._write_sync(ref, data)
-                    images.pop(image_id, None)
-                return not images
+                    _images.pop(image_id, None)
+                return not _images
 
             stream_inline_report_images(source, visit)
             if images:
                 missing = next(iter(images))
-                raise ReportArtifactError(
-                    f"Missing report image {missing} in {source}"
-                )
+                raise ReportArtifactError(f"Missing report image {missing} in {source}")
         return self._rewrite(serialized)
 
     async def rewrite_async(
         self,
         serialized: str,
         source_path: str,
-        origins: Optional[Dict[str, str]] = None,
+        origins: dict[str, str] | None = None,
     ) -> str:
         """Async variant of :meth:`rewrite_sync` (upstream rewriteAsync)."""
         return await asyncio.to_thread(
@@ -195,15 +192,15 @@ class ReportArtifactWriter:
 
     def __init__(
         self,
-        entry: Union[str, Path],
+        entry: str | Path,
         external: bool,
         kind: str,
-        report_id: Optional[str] = None,
+        report_id: str | None = None,
     ):
         self.entry = Path(entry)
         self.external = external
         self.kind = kind
-        self.manifest: Dict[str, Any] = {
+        self.manifest: dict[str, Any] = {
             "schemaVersion": 1,
             "kind": kind,
             "reportId": report_id or uuid.uuid4().hex,
@@ -227,9 +224,7 @@ class ReportArtifactWriter:
     def initialize_sync(self) -> None:
         self.initialize()
 
-    def _group(
-        self, group_id: str, attributes: Dict[str, Any]
-    ) -> Path:
+    def _group(self, group_id: str, attributes: dict[str, Any]) -> Path:
         if any(group["id"] == group_id for group in self.manifest["groups"]):
             raise ReportArtifactError(f"Duplicate report group: {group_id}")
         path = f"data/group-{len(self.manifest['groups']) + 1}/1.json"
@@ -249,7 +244,7 @@ class ReportArtifactWriter:
     def _inline_group(
         self,
         group_id: str,
-        attributes: Dict[str, Any],
+        attributes: dict[str, Any],
         serialized: str,
     ) -> str:
         return generate_dump_script_tag(
@@ -267,35 +262,27 @@ class ReportArtifactWriter:
         group_id: str,
         serialized: str,
         source_path: str,
-        attributes: Dict[str, Any],
-        origins: Optional[Dict[str, str]] = None,
+        attributes: dict[str, Any],
+        origins: dict[str, str] | None = None,
     ) -> None:
-        rewritten = self.images.rewrite_sync(
-            serialized, source_path, origins
-        )
+        rewritten = self.images.rewrite_sync(serialized, source_path, origins)
         if self.external:
-            write_report_artifact_file(
-                self._group(group_id, attributes), rewritten
-            )
+            write_report_artifact_file(self._group(group_id, attributes), rewritten)
         else:
             with open(self.entry, "a", encoding="utf-8") as handle:
-                handle.write(
-                    self._inline_group(group_id, attributes, rewritten)
-                )
+                handle.write(self._inline_group(group_id, attributes, rewritten))
 
     def add_group_sync(
         self,
         group_id: str,
         serialized: str,
         source_path: str,
-        attributes: Dict[str, Any],
-        origins: Optional[Dict[str, str]] = None,
+        attributes: dict[str, Any],
+        origins: dict[str, str] | None = None,
     ) -> None:
         self.add_group(group_id, serialized, source_path, attributes, origins)
 
-    def _footer(
-        self, runner: Optional[Dict[str, Any]], comment: str
-    ) -> str:
+    def _footer(self, runner: dict[str, Any] | None, comment: str) -> str:
         if self.external:
             data = generate_report_artifact_script_tag("report.json")
         elif runner:
@@ -304,9 +291,7 @@ class ReportArtifactWriter:
             data = ""
         return f"{data}{comment}\n</html>\n"
 
-    def finish(
-        self, runner: Optional[Dict[str, Any]] = None, comment: str = ""
-    ) -> None:
+    def finish(self, runner: dict[str, Any] | None = None, comment: str = "") -> None:
         if self.external:
             if runner:
                 self.manifest["runner"] = "data/runner.json"
@@ -323,7 +308,7 @@ class ReportArtifactWriter:
             handle.write(self._footer(runner, comment))
 
     def finish_sync(
-        self, runner: Optional[Dict[str, Any]] = None, comment: str = ""
+        self, runner: dict[str, Any] | None = None, comment: str = ""
     ) -> None:
         self.finish(runner, comment)
 
@@ -341,8 +326,8 @@ def _validate_export_file_name(file_name: str) -> None:
         )
 
 
-def _parse_group_attributes(open_tag: str) -> Dict[str, str]:
-    attributes: Dict[str, str] = {}
+def _parse_group_attributes(open_tag: str) -> dict[str, str]:
+    attributes: dict[str, str] = {}
     for match in re.finditer(r'([^\s=]+)="([^"]*)"', open_tag):
         key, value = match.group(1), match.group(2)
         if key == "type":
@@ -352,13 +337,13 @@ def _parse_group_attributes(open_tag: str) -> Dict[str, str]:
 
 
 def _dedupe_executions_keep_latest(
-    executions: List[Dict[str, Any]],
-) -> List[Dict[str, Any]]:
-    latest: Dict[str, int] = {}
+    executions: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    latest: dict[str, int] = {}
     for index, execution in enumerate(executions):
         if isinstance(execution, dict) and execution.get("id"):
             latest[execution["id"]] = index
-    result: List[Dict[str, Any]] = []
+    result: list[dict[str, Any]] = []
     for index, execution in enumerate(executions):
         execution_id = execution.get("id") if isinstance(execution, dict) else None
         if execution_id and latest.get(execution_id) != index:
@@ -379,14 +364,12 @@ def _export_streamed_report_artifact(
     """Export a streaming/directory report through the shared artifact writer."""
     manifest = read_report_artifact_manifest(input_path)
     runner = read_report_runner_dump(input_path)
-    groups: Dict[str, Dict[str, Any]] = {}
+    groups: dict[str, dict[str, Any]] = {}
     for source in read_report_dump_scripts(input_path):
         attributes = _parse_group_attributes(source["openTag"])
         group_id = attributes.get("data-group-id")
         if not group_id:
-            raise ReportArtifactError(
-                "Report execution group is missing its ID."
-            )
+            raise ReportArtifactError("Report execution group is missing its ID.")
         content = (
             source["content"]
             if manifest is not None
@@ -404,13 +387,9 @@ def _export_streamed_report_artifact(
         groups[group_id] = {"dump": dump, "attributes": attributes}
 
     if not groups and not runner:
-        raise ReportArtifactError(
-            "No report execution data was found in the input."
-        )
+        raise ReportArtifactError("No report execution data was found in the input.")
 
-    hint = next(iter(groups.values()), {}).get("attributes", {}).get(
-        "data-report-kind"
-    )
+    hint = next(iter(groups.values()), {}).get("attributes", {}).get("data-report-kind")
     if manifest is not None:
         kind = manifest["kind"]
     elif hint in ("agent", "test"):
@@ -460,9 +439,7 @@ def _export_legacy_report_artifact(
 
     dump = _load_report_dump_for_export(input_path)
     if not dump.get("executions") and not dump.get("runner"):
-        raise ReportArtifactError(
-            "No report execution data was found in the input."
-        )
+        raise ReportArtifactError("No report execution data was found in the input.")
 
     output.mkdir(parents=True, exist_ok=True)
     temporary = Path(tempfile.mkdtemp(dir=output, prefix=".report-export-"))
@@ -497,8 +474,8 @@ def _export_legacy_report_artifact(
 
 
 def export_report_artifact(
-    report_path: Union[str, Path],
-    output_dir: Union[str, Path],
+    report_path: str | Path,
+    output_dir: str | Path,
     report_file_name: str,
     output_format: str = "single-html",
     overwrite: bool = False,
@@ -518,12 +495,11 @@ def export_report_artifact(
     output = Path(output_dir).resolve()
     external = output_format == "html-and-external-assets"
     artifact = output / report_file_name
-    destination = artifact / "index.html" if external else output / (
-        f"{report_file_name}.html"
+    destination = (
+        artifact / "index.html" if external else output / (f"{report_file_name}.html")
     )
     if input_path == destination or (
-        external
-        and str(input_path).startswith(f"{artifact}{os.sep}")
+        external and str(input_path).startswith(f"{artifact}{os.sep}")
     ):
         raise ReportArtifactError(
             "Export destination must differ from the input report."
@@ -532,9 +508,7 @@ def export_report_artifact(
     if not overwrite and existing.exists():
         raise ReportArtifactError(f"Report artifact already exists: {existing}")
 
-    if read_report_dump_scripts(input_path) or read_report_runner_dump(
-        input_path
-    ):
+    if read_report_dump_scripts(input_path) or read_report_runner_dump(input_path):
         return _export_streamed_report_artifact(
             input_path,
             output,

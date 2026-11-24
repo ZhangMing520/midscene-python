@@ -1,13 +1,14 @@
 """AutoGLM action transformation (upstream ai-model/models/auto-glm/actions.ts)."""
 
-from typing import Any, Callable, Dict, List
+from collections.abc import Callable
+from typing import Any
 
 BACK_BUTTON_NAMES = ["AndroidBackButton", "HarmonyBackButton"]
 HOME_BUTTON_NAMES = ["AndroidHomeButton", "HarmonyHomeButton"]
 
 
 def _find_action_name(
-    action_space: List[Any], known_names: List[str], default_name: str
+    action_space: list[Any], known_names: list[str], default_name: str
 ) -> str:
     if not action_space:
         return default_name
@@ -19,10 +20,10 @@ def _find_action_name(
 
 
 def transform_auto_glm_action(
-    action: Dict[str, Any],
-    action_space: List[Any],
+    action: dict[str, Any],
+    action_space: list[Any],
     coordinate_distance_to_pixels: Callable[[float, str], float],
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Map a parsed AutoGLM action to Midscene planning actions."""
     try:
         if action["_metadata"] == "finish":
@@ -105,10 +106,16 @@ def transform_auto_glm_action(
             ]
         if action_type == "Wait":
             return [
-                {"type": "Sleep", "param": {"timeMs": action["durationMs"]}, "thought": think}
+                {
+                    "type": "Sleep",
+                    "param": {"timeMs": action["durationMs"]},
+                    "thought": think,
+                }
             ]
         if action_type == "Launch":
-            return [{"type": "Launch", "param": {"uri": action["app"]}, "thought": think}]
+            return [
+                {"type": "Launch", "param": {"uri": action["app"]}, "thought": think}
+            ]
         if action_type == "Interact":
             raise ValueError(
                 'Action "Interact" from auto-glm is not supported in the current implementation.'

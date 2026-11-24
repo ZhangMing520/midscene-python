@@ -1,17 +1,18 @@
 """Planning-based tap locator (upstream workflows/grounding/planning-action-locate.ts)."""
 
-from typing import Any, Callable, Dict, List, Optional, TypedDict
+from collections.abc import Callable
+from typing import Any, TypedDict
 
-from midscene.core.ai_model.service_caller.call_ai import (
-    call_ai_with_string_response,
-)
-from midscene.core.ai_model.service_caller.types import AIResponseParseError
 from midscene.core.ai_model.model_adapter.image_preprocess import (
     prepare_model_image,
 )
 from midscene.core.ai_model.model_adapter.locate_prompt_order import (
     multimodal_prompt_to_messages,
 )
+from midscene.core.ai_model.service_caller.call_ai import (
+    call_ai_with_string_response,
+)
+from midscene.core.ai_model.service_caller.types import AIResponseParseError
 from midscene.core.ai_model.shared.multimodal_prompt import (
     ensure_data_url,
     user_prompt_to_string,
@@ -22,23 +23,21 @@ class PlanningTapLocatorDefinition(TypedDict, total=False):
     """Resolved planning tap locator callbacks."""
 
     build_system_prompt: Callable[[], str]
-    parse_response: Callable[[str], Dict[str, Any]]
+    parse_response: Callable[[str], dict[str, Any]]
     transform_actions: Callable[
-        [Dict[str, Any], Any, Dict[str, Any], Dict[str, int]],
-        List[Dict[str, Any]],
+        [dict[str, Any], Any, dict[str, Any], dict[str, int]],
+        list[dict[str, Any]],
     ]
-    get_located_pixel_result: Callable[
-        [List[Dict[str, Any]]], Optional[Dict[str, Any]]
-    ]
-    reasoning_content: Callable[[Dict[str, Any]], str]
+    get_located_pixel_result: Callable[[list[dict[str, Any]]], dict[str, Any] | None]
+    reasoning_content: Callable[[dict[str, Any]], str]
 
 
 async def run_planning_action_locate(
     definition: PlanningTapLocatorDefinition,
     target_element_description: Any,
-    locate_image: Dict[str, Any],
+    locate_image: dict[str, Any],
     model_runtime: Any,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run one planning pass and turn its actions into a pixel locate result."""
     shot_size = {
         "width": locate_image["width"],
@@ -63,8 +62,7 @@ async def run_planning_action_locate(
                 {
                     "type": "text",
                     "text": (
-                        "Tap: "
-                        f"{user_prompt_to_string(target_element_description)}"
+                        f"Tap: {user_prompt_to_string(target_element_description)}"
                     ),
                 }
             ],
@@ -81,7 +79,7 @@ async def run_planning_action_locate(
     try:
         response = await call_ai_with_string_response(messages, model_runtime)
         parsed = definition["parse_response"](response["content"])
-        actions: List[Dict[str, Any]] = definition["transform_actions"](
+        actions: list[dict[str, Any]] = definition["transform_actions"](
             parsed, model_runtime, prepared, shot_size
         )
         located = definition["get_located_pixel_result"](actions)
@@ -101,22 +99,19 @@ async def run_planning_action_locate(
             "raw_response": error.raw_response,
             "usage": error.usage,
             "errors": [
-                error.message
-                or "Failed to parse planning tap locator response"
+                error.message or "Failed to parse planning tap locator response"
             ],
         }
     except Exception as error:
         return {
             "raw_response": str(error),
-            "errors": [
-                str(error) or "Failed to parse planning tap locator response"
-            ],
+            "errors": [str(error) or "Failed to parse planning tap locator response"],
         }
 
 
 async def resolve_planning_tap_locator(
     definition: PlanningTapLocatorDefinition,
-    planner: Dict[str, Any],
+    planner: dict[str, Any],
 ):
     """Build a locate function from a planning tap locator definition.
 
@@ -129,9 +124,9 @@ async def resolve_planning_tap_locator(
         locate_request: Any = None,
         *,
         target_element_description: Any = None,
-        locate_image: Optional[Dict[str, Any]] = None,
+        locate_image: dict[str, Any] | None = None,
         model_runtime: Any = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         from types import SimpleNamespace
 
         from midscene.core.ai_model.model_adapter.planning import (
@@ -201,8 +196,7 @@ async def resolve_planning_tap_locator(
                 "raw_response": error.raw_response,
                 "usage": error.usage,
                 "errors": [
-                    error.message
-                    or "Failed to parse planning tap locator response"
+                    error.message or "Failed to parse planning tap locator response"
                 ],
             }
         except Exception as error:

@@ -7,7 +7,6 @@ back to bind to the exact same tab.
 
 import os
 import tempfile
-from typing import Optional
 
 from midscene.shared.logger import get_logger
 
@@ -16,7 +15,7 @@ debug = get_logger("agent-tools:cdp:target-store")
 TARGET_ID_FILE = os.path.join(tempfile.gettempdir(), "midscene-cdp-target-id")
 
 
-def read_saved_target_id() -> Optional[str]:
+def read_saved_target_id() -> str | None:
     """Read the saved target id, or return None when no command stored one."""
     try:
         with open(TARGET_ID_FILE, encoding="utf-8") as handle:

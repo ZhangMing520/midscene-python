@@ -17,9 +17,7 @@ from midscene.harmony.hdc import HdcClient
 class FakeProcess:
     def __init__(self, stdout: str = "", stderr: str = "", returncode: int = 0):
         self.returncode = returncode
-        self.communicate = AsyncMock(
-            return_value=(stdout.encode(), stderr.encode())
-        )
+        self.communicate = AsyncMock(return_value=(stdout.encode(), stderr.encode()))
 
 
 @pytest.fixture
@@ -31,9 +29,7 @@ def hdc_calls(monkeypatch):
             calls.append(list(args))
             return FakeProcess(stdout, stderr, returncode)
 
-        monkeypatch.setattr(
-            "asyncio.create_subprocess_exec", fake
-        )
+        monkeypatch.setattr("asyncio.create_subprocess_exec", fake)
 
     install.calls = calls
     install()
@@ -97,9 +93,7 @@ async def test_should_execute_numeric_and_supported_system_key_events(hdc_calls)
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("key", ["RecentApps", "F5", "Control+A", ";"])
-async def test_should_reject_unsupported_string_key_before_invoking_hdc(
-    key, hdc_calls
-):
+async def test_should_reject_unsupported_string_key_before_invoking_hdc(key, hdc_calls):
     """should reject unsupported string key %s before invoking HDC."""
 
     hdc = HdcClient()
@@ -144,9 +138,7 @@ async def test_should_reject_combining_a_system_key_with_another_key(hdc_calls):
 
     hdc = HdcClient()
 
-    with pytest.raises(
-        RuntimeError, match="HDC system key events cannot be combined"
-    ):
+    with pytest.raises(RuntimeError, match="HDC system key events cannot be combined"):
         await hdc.key_event("Home", "2054")
 
     assert hdc_calls.calls == []

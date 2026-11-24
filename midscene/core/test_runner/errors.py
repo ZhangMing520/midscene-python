@@ -1,6 +1,6 @@
 """Workflow errors (upstream test-runner/errors.ts)."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class WorkflowError(Exception):
@@ -11,7 +11,7 @@ class WorkflowError(Exception):
     def __init__(
         self,
         message: str,
-        options: Optional[Dict[str, Any]] = None,
+        options: dict[str, Any] | None = None,
     ) -> None:
         options = options or {}
         super().__init__(message)
@@ -19,7 +19,7 @@ class WorkflowError(Exception):
         self.details = options.get("details")
         self.cause = options.get("cause")
 
-    def to_json(self) -> Dict[str, Any]:
+    def to_json(self) -> dict[str, Any]:
         return {
             "name": type(self).__name__,
             "message": str(self),
@@ -31,7 +31,8 @@ class WorkflowError(Exception):
 class WorkflowParseError(WorkflowError):
     def __init__(self, message: str, details: Any = None, cause: Any = None) -> None:
         super().__init__(
-            message, {"code": "WORKFLOW_PARSE_ERROR", "details": details, "cause": cause}
+            message,
+            {"code": "WORKFLOW_PARSE_ERROR", "details": details, "cause": cause},
         )
 
 
@@ -68,7 +69,7 @@ class NodeInputValidationError(WorkflowError):
     def from_zod(node: str, error: Any) -> "NodeInputValidationError":
         """Build the error from a zod-compatible validation error (fromZod)."""
         raw_issues = getattr(error, "issues", None) or []
-        issues: List[Dict[str, Any]] = []
+        issues: list[dict[str, Any]] = []
         for issue in raw_issues:
             if isinstance(issue, dict):
                 code = issue.get("code")
@@ -97,7 +98,7 @@ class NodeInputValidationError(WorkflowError):
 
     @classmethod
     def from_validation_issues(
-        cls, node: str, issues: List[Dict[str, Any]]
+        cls, node: str, issues: list[dict[str, Any]]
     ) -> "NodeInputValidationError":
         first = issues[0] if issues else {}
         path = first.get("path") or ""
@@ -109,13 +110,13 @@ class NodeInputValidationError(WorkflowError):
 
 
 class StepTimeoutError(WorkflowError):
-    def __init__(self, timeout_ms: int, node: Optional[str] = None) -> None:
+    def __init__(self, timeout_ms: int, node: str | None = None) -> None:
         message = (
             f'Node "{node}" timed out after {timeout_ms}ms.'
             if node
             else f"Step timed out after {timeout_ms}ms."
         )
-        details: Dict[str, Any] = {"timeoutMs": timeout_ms}
+        details: dict[str, Any] = {"timeoutMs": timeout_ms}
         if node is not None:
             details["node"] = node
         super().__init__(message, {"code": "STEP_TIMEOUT", "details": details})
@@ -142,7 +143,7 @@ class WorkflowLifecycleError(WorkflowError):
 
 
 class ProjectSetupError(WorkflowError):
-    def __init__(self, cause: Any, details: Dict[str, Any]) -> None:
+    def __init__(self, cause: Any, details: dict[str, Any]) -> None:
         cause_message = str(cause) if cause is not None else "Unknown error"
         super().__init__(
             f'Project "{details["projectName"]}" setup failed: {cause_message}',
@@ -151,7 +152,7 @@ class ProjectSetupError(WorkflowError):
 
 
 class ProjectTeardownError(WorkflowError):
-    def __init__(self, cause: Any, details: Dict[str, Any]) -> None:
+    def __init__(self, cause: Any, details: dict[str, Any]) -> None:
         cause_message = str(cause) if cause is not None else "Unknown error"
         super().__init__(
             f'Project "{details["projectName"]}" teardown failed: {cause_message}',
@@ -160,9 +161,11 @@ class ProjectTeardownError(WorkflowError):
 
 
 class NodeScopeTeardownError(WorkflowError):
-    def __init__(self, cause: Any, details: Dict[str, Any]) -> None:
+    def __init__(self, cause: Any, details: dict[str, Any]) -> None:
         cause_message = str(cause) if cause is not None else "Unknown error"
-        scope = "Case attempt" if details.get("scope") == "case" else "Workflow document"
+        scope = (
+            "Case attempt" if details.get("scope") == "case" else "Workflow document"
+        )
         super().__init__(
             f'{scope} node teardown failed for "{details.get("node")}": {cause_message}',
             {"code": "NODE_SCOPE_TEARDOWN_ERROR", "details": details, "cause": cause},
@@ -171,9 +174,7 @@ class NodeScopeTeardownError(WorkflowError):
 
 class FatalDeviceError(WorkflowError):
     def __init__(self, message: str, cause: Any = None) -> None:
-        super().__init__(
-            message, {"code": "FATAL_DEVICE_ERROR", "cause": cause}
-        )
+        super().__init__(message, {"code": "FATAL_DEVICE_ERROR", "cause": cause})
 
 
 class CaseExecutionError(WorkflowError):
@@ -229,15 +230,20 @@ def is_fatal_device_error(error: Any) -> bool:
 
     pattern = re.compile(_FATAL_DEVICE_MESSAGE, re.IGNORECASE)
     seen: set = set()
-    pending: List[Any] = [error]
+    pending: list[Any] = [error]
     while pending and len(seen) < 50:
         current = pending.pop()
-        if not isinstance(current, WorkflowError) and not isinstance(current, BaseException):
+        if not isinstance(current, WorkflowError) and not isinstance(
+            current, BaseException
+        ):
             continue
         if id(current) in seen:
             continue
         seen.add(id(current))
-        if isinstance(current, FatalDeviceError) or getattr(current, "code", None) == "FATAL_DEVICE_ERROR":
+        if (
+            isinstance(current, FatalDeviceError)
+            or getattr(current, "code", None) == "FATAL_DEVICE_ERROR"
+        ):
             return True
         if pattern.search(str(current)):
             return True

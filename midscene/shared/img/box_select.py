@@ -12,7 +12,8 @@ Pillow replaces sharp/Photon here but the Pillow JPEG encoder is configured for
 from __future__ import annotations
 
 import math
-from typing import Any, Dict, List, Optional, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from midscene.shared.img.transform import (
     decode_base64_image,
@@ -21,7 +22,7 @@ from midscene.shared.img.transform import (
 from midscene.shared.types import NodeType
 
 # Simple 5x7 bitmap font for digits 0-9
-DIGIT_FONT: Dict[str, List[List[int]]] = {
+DIGIT_FONT: dict[str, list[list[int]]] = {
     "0": [
         [0, 1, 1, 1, 0],
         [1, 0, 0, 0, 1],
@@ -123,7 +124,7 @@ MARKER_THICKNESS = 3
 MARKER_COLOR = (0xC6, 0x23, 0x00, 0xEE)
 MARKER_BORDER = (0xFF, 0xFF, 0xFF, 0xFF)
 
-Rect = Dict[str, float]
+Rect = dict[str, float]
 
 # Rect/text colors cycle per element (upstream ``createSvgOverlay``).
 _PALETTE = [
@@ -205,7 +206,7 @@ def _draw_rect(
     pixels,
     width: int,
     height: int,
-    rect: Dict[str, float],
+    rect: dict[str, float],
     color: Sequence[int],
     thickness: int,
 ) -> None:
@@ -222,12 +223,7 @@ def _draw_rect(
             is_right_border = px <= x + w - 1 and px > x + w - thickness - 1
             is_top_border = y <= py < y + thickness
             is_bottom_border = py <= y + h - 1 and py > y + h - thickness - 1
-            if (
-                is_left_border
-                or is_right_border
-                or is_top_border
-                or is_bottom_border
-            ):
+            if is_left_border or is_right_border or is_top_border or is_bottom_border:
                 pixels[px, py] = color
 
 
@@ -235,7 +231,7 @@ def _fill_rect(
     pixels,
     width: int,
     height: int,
-    rect: Dict[str, float],
+    rect: dict[str, float],
     color: Sequence[int],
 ) -> None:
     x = math.floor(rect["x"])
@@ -254,7 +250,7 @@ def _draw_circle(
     pixels,
     width: int,
     height: int,
-    center: Dict[str, float],
+    center: dict[str, float],
     radius: float,
     color: Sequence[int],
     thickness: int = 2,
@@ -274,9 +270,7 @@ def _draw_circle(
                 continue
             distance_sq = (px - cx) ** 2 + (py - cy) ** 2
             should_draw = (
-                distance_sq <= outer_sq
-                if fill
-                else inner_sq <= distance_sq <= outer_sq
+                distance_sq <= outer_sq if fill else inner_sq <= distance_sq <= outer_sq
             )
             if should_draw:
                 pixels[px, py] = color
@@ -286,8 +280,8 @@ def _draw_line(
     pixels,
     width: int,
     height: int,
-    start: Dict[str, float],
-    end: Dict[str, float],
+    start: dict[str, float],
+    end: dict[str, float],
     color: Sequence[int],
     thickness: int = 2,
 ) -> None:
@@ -314,7 +308,7 @@ def _draw_point_marker(
     pixels,
     width: int,
     height: int,
-    point: Dict[str, float],
+    point: dict[str, float],
     radius: float,
     index_id: int = 1,
 ) -> None:
@@ -366,10 +360,10 @@ def _create_svg_overlay(
     elements: Sequence[Any],
     image_width: int,
     image_height: int,
-    box_padding: Optional[int] = None,
-    border_thickness: Optional[int] = None,
-    prompt: Optional[str] = None,
-    center_point: Optional[bool] = None,
+    box_padding: int | None = None,
+    border_thickness: int | None = None,
+    prompt: str | None = None,
+    center_point: bool | None = None,
 ):
     Image, _ = _pil()
     box_padding = 5 if box_padding is None else box_padding
@@ -446,9 +440,7 @@ def _create_svg_overlay(
             )
 
         index_id = _element_value(element, "indexId")
-        if not isinstance(index_id, (int, float)) or isinstance(
-            index_id, bool
-        ):
+        if not isinstance(index_id, (int, float)) or isinstance(index_id, bool):
             continue
         index_id = int(index_id)
 
@@ -458,14 +450,17 @@ def _create_svg_overlay(
         label_height = text_height + 4
         rect_x = padded_left - label_width
         rect_y = (
-            padded_top
-            + math.floor(padded_height / 2)
-            - math.floor(text_height / 2)
-            - 2
+            padded_top + math.floor(padded_height / 2) - math.floor(text_height / 2) - 2
         )
 
-        def check_overlap(x: float, y: float) -> bool:
-            for other in elements[:index]:
+        def check_overlap(
+            x: float,
+            y: float,
+            _index: int = index,
+            _label_width: int = label_width,
+            _label_height: int = label_height,
+        ) -> bool:
+            for other in elements[:_index]:
                 other_rect = _element_value(other, "rect") or {}
                 other_left = float(other_rect.get("left", 0))
                 other_top = float(other_rect.get("top", 0))
@@ -473,24 +468,27 @@ def _create_svg_overlay(
                 other_height = float(other_rect.get("height", 0))
                 if (
                     x < other_left + other_width
-                    and x + label_width > other_left
+                    and x + _label_width > other_left
                     and y < other_top + other_height
-                    and y + label_height > other_top
+                    and y + _label_height > other_top
                 ):
                     return True
             return False
 
-        def is_within_bounds(x: float, y: float) -> bool:
+        def is_within_bounds(
+            x: float,
+            y: float,
+            _label_width: int = label_width,
+            _label_height: int = label_height,
+        ) -> bool:
             return (
                 x >= 0
-                and x + label_width <= image_width
+                and x + _label_width <= image_width
                 and y >= 0
-                and y + label_height <= image_height
+                and y + _label_height <= image_height
             )
 
-        if check_overlap(rect_x, rect_y) or not is_within_bounds(
-            rect_x, rect_y
-        ):
+        if check_overlap(rect_x, rect_y) or not is_within_bounds(rect_x, rect_y):
             top_y = padded_top - label_height - 2
             bottom_y = padded_top + padded_height + 2
             right_x = padded_left + padded_width + 2
@@ -499,9 +497,9 @@ def _create_svg_overlay(
             ):
                 rect_x = padded_left
                 rect_y = top_y
-            elif not check_overlap(
+            elif not check_overlap(padded_left, bottom_y) and is_within_bounds(
                 padded_left, bottom_y
-            ) and is_within_bounds(padded_left, bottom_y):
+            ):
                 rect_x = padded_left
                 rect_y = bottom_y
             elif not check_overlap(right_x, padded_top) and is_within_bounds(
@@ -543,7 +541,7 @@ def _create_svg_overlay(
 
 def _decode_base_image(
     input_img_base64: str,
-    size: Optional[Dict[str, int]] = None,
+    size: dict[str, int] | None = None,
 ):
     Image, _ = _pil()
     image = decode_base64_image(input_img_base64).convert("RGBA")
@@ -555,7 +553,7 @@ def _decode_base_image(
     return image
 
 
-def composite_element_info_img(options: Dict[str, Any]) -> str:
+def composite_element_info_img(options: dict[str, Any]) -> str:
     """Draw bordered (and optionally numbered) element rects on a screenshot."""
     Image, _ = _pil()
     input_img_base64 = options.get("inputImgBase64")
@@ -575,7 +573,7 @@ def composite_element_info_img(options: Dict[str, Any]) -> str:
     return encode_base64_image(Image.alpha_composite(image, overlay))
 
 
-def composite_point_marker_img(options: Dict[str, Any]) -> str:
+def composite_point_marker_img(options: dict[str, Any]) -> str:
     """Draw a centered reticle marker on a screenshot."""
     Image, _ = _pil()
     input_img_base64 = options.get("inputImgBase64")
@@ -598,7 +596,7 @@ def composite_point_marker_img(options: Dict[str, Any]) -> str:
     return encode_base64_image(Image.alpha_composite(image, overlay))
 
 
-def process_image_element_info(options: Dict[str, Any]) -> Dict[str, str]:
+def process_image_element_info(options: dict[str, Any]) -> dict[str, str]:
     """Compose the with-text and without-text element images in one call."""
     base64_image = options["inputImgBase64"].split(";base64,")[-1]
     if not base64_image:
@@ -615,9 +613,7 @@ def process_image_element_info(options: Dict[str, Any]) -> Dict[str, str]:
             composite_element_info_img(
                 {
                     "inputImgBase64": options["inputImgBase64"],
-                    "elementsPositionInfo": options[
-                        "elementsPositionInfoWithoutText"
-                    ],
+                    "elementsPositionInfo": options["elementsPositionInfoWithoutText"],
                 }
             )
         ),
@@ -627,7 +623,7 @@ def process_image_element_info(options: Dict[str, Any]) -> Dict[str, str]:
 def annotate_rects(
     img_base64: str,
     rects: Sequence[Rect],
-    prompt: Optional[str] = None,
+    prompt: str | None = None,
 ) -> str:
     """Annotate plain rects with numbered colored borders."""
     elements = [
@@ -656,7 +652,7 @@ def annotate_rects(
 
 def composite_point_marker(
     image_base64: str,
-    point: Dict[str, float],
+    point: dict[str, float],
     radius: int = POINT_MARKER_RADIUS,
 ) -> str:
     """Ring + crosshair at ``point`` (upstream compositePointMarkerImg)."""
@@ -671,7 +667,7 @@ def composite_point_marker(
 
 def composite_rect_marker(
     image_base64: str,
-    rect: Dict[str, float],
+    rect: dict[str, float],
     border_thickness: int = 0,
 ) -> str:
     """Bordered rect with a center cross (describe-marker variant)."""
@@ -685,9 +681,7 @@ def composite_rect_marker(
         1 if (right - left) <= 40 and (bottom - top) <= 40 else 2
     )
     center_x, center_y = (left + right) / 2, (top + bottom) / 2
-    draw.rectangle(
-        [left, top, right, bottom], outline=MARKER_COLOR, width=thickness
-    )
+    draw.rectangle([left, top, right, bottom], outline=MARKER_COLOR, width=thickness)
     arm = min(6, max(3, (bottom - top) / 4))
     draw.line(
         [(center_x - arm, center_y), (center_x + arm, center_y)],
@@ -699,9 +693,7 @@ def composite_rect_marker(
         fill=MARKER_COLOR,
         width=2,
     )
-    return encode_base64_image(
-        Image.alpha_composite(image.convert("RGBA"), overlay)
-    )
+    return encode_base64_image(Image.alpha_composite(image.convert("RGBA"), overlay))
 
 
 __all__ = [

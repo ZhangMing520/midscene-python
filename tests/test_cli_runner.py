@@ -386,8 +386,7 @@ class TestParseCliArgs:
 
         assert parsed == {"mode": 3}
         assert (
-            format_cli_validation_error("test-cli", "configure", defn, parsed)
-            is None
+            format_cli_validation_error("test-cli", "configure", defn, parsed) is None
         )
 
     def test_keeps_numeric_branches_reachable_beside_restricted_strings(self):
@@ -413,9 +412,7 @@ class TestParseCliArgs:
         }
         defn = _tool("demo", schema=schema)
 
-        parsed = parse_cli_args(
-            ["--mode=42", "--choice=3", "--native=0"], defn
-        )
+        parsed = parse_cli_args(["--mode=42", "--choice=3", "--native=0"], defn)
         assert parsed == {"mode": 42, "choice": 3, "native": 0}
         assert format_cli_validation_error("test-cli", "demo", defn, parsed) is None
         assert parse_cli_args(
@@ -469,9 +466,9 @@ class TestParseCliArgs:
         assert parsed == {"values": [1, 2], "tuple": ["007", 3, 4]}
         assert format_cli_validation_error("test-cli", "demo", defn, parsed) is None
         assert parse_cli_args(["--values=007"], defn) == {"values": "007"}
-        assert parse_cli_args(
-            ['--tuple=["007",3]', "--tuple=4"], defn
-        ) == {"tuple": ["007", 3, 4]}
+        assert parse_cli_args(['--tuple=["007",3]', "--tuple=4"], defn) == {
+            "tuple": ["007", 3, 4]
+        }
 
 
 class TestRemovePrefix:
@@ -764,7 +761,10 @@ class TestRunToolsCLI:
         await run_tools_cli(
             tools,
             "test-cli",
-            {"stripPrefix": "test_", "argv": ["connect", "--url", "https://example.com"]},
+            {
+                "stripPrefix": "test_",
+                "argv": ["connect", "--url", "https://example.com"],
+            },
         )
 
         assert received == [{"url": "https://example.com"}]
@@ -815,7 +815,9 @@ class TestRunToolsCLI:
         messages = [line for line in capsys.readouterr().out.splitlines() if line]
         assert messages[0] == "[Midscene] connect started (url=https://example.com)"
         assert messages[1] == "Connected"
-        assert re.match(r"^\[Midscene\] connect finished in \d+(\.\d+)?ms$", messages[2])
+        assert re.match(
+            r"^\[Midscene\] connect finished in \d+(\.\d+)?ms$", messages[2]
+        )
 
     @pytest.mark.asyncio
     async def test_emits_readable_progress_for_record_without_an_explicit_verbose_flag(

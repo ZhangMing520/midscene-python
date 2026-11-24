@@ -1,7 +1,8 @@
 """CLI error type and reporting (upstream cli/cli-error.ts)."""
 
 import sys
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 
 class CLIError(Exception):
@@ -17,7 +18,7 @@ def _default_log(message: Any = None, *optional_params: Any) -> None:
 
 
 def report_cli_error(
-    error: BaseException, log: Optional[Callable[..., None]] = None
+    error: BaseException, log: Callable[..., None] | None = None
 ) -> int:
     logger = log or _default_log
     if isinstance(error, CLIError):

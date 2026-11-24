@@ -1,11 +1,7 @@
 """Insight user prompt (upstream prompt/insight/user-prompt.ts)."""
 
-from typing import Optional, Union
 
-
-def build_type_query_demand_value(
-    demand_type: str, demand: Union[str, dict]
-) -> str:
+def build_type_query_demand_value(demand_type: str, demand: str | dict) -> str:
     """Build a typed demand value ('Boolean' | 'Number' | 'String' | 'Assert' | 'WaitFor')."""
     current_screenshot_constraint = (
         "based on the current screenshot and its contents if provided, unless the "
@@ -28,8 +24,8 @@ def build_type_query_demand_value(
 
 def extract_data_query_prompt(
     page_description: str,
-    data_query: Union[str, dict],
-    context: Optional[str] = None,
+    data_query: str | dict,
+    context: str | None = None,
 ) -> str:
     import json as _json
 

@@ -5,8 +5,9 @@ rendering one back into a standalone HTML file must resolve (and inline) them.
 """
 
 import base64
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 from urllib.parse import urljoin
 
 from midscene.core.dump.image_reference import (
@@ -23,12 +24,12 @@ class RestoredScreenshotReference:
 
     def __init__(
         self,
-        source_ref: Dict[str, Any],
-        resolve_image: Callable[[Dict[str, Any]], str],
+        source_ref: dict[str, Any],
+        resolve_image: Callable[[dict[str, Any]], str],
     ) -> None:
         self._source_ref = source_ref
         self._resolve_image = resolve_image
-        self._resolved: Optional[str] = None
+        self._resolved: str | None = None
 
     @property
     def base64(self) -> str:
@@ -37,14 +38,14 @@ class RestoredScreenshotReference:
         return self._resolved
 
     @property
-    def captured_at(self) -> Optional[int]:
+    def captured_at(self) -> int | None:
         return self._source_ref.get("capturedAt")
 
     @property
-    def source_ref(self) -> Dict[str, Any]:
+    def source_ref(self) -> dict[str, Any]:
         return dict(self._source_ref)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "base64": self.base64,
             "capturedAt": self.captured_at,
@@ -53,11 +54,11 @@ class RestoredScreenshotReference:
 
 
 def create_inline_image_resolver(
-    images: Dict[str, str],
-) -> Callable[[Dict[str, Any]], str]:
+    images: dict[str, str],
+) -> Callable[[dict[str, Any]], str]:
     """Create a resolver that fails loudly when an inline asset is absent."""
 
-    def resolve(ref: Dict[str, Any]) -> str:
+    def resolve(ref: dict[str, Any]) -> str:
         image = images.get(ref["id"])
         if not image:
             raise ValueError(f'Missing inline report image "{ref["id"]}"')
@@ -68,7 +69,7 @@ def create_inline_image_resolver(
 
 def restore_image_references(
     data: Any,
-    resolve_image: Callable[[Dict[str, Any]], str],
+    resolve_image: Callable[[dict[str, Any]], str],
 ) -> Any:
     """Recursively restore image references in parsed data.
 
@@ -98,7 +99,7 @@ def restore_image_references(
 def restore_report_image_references(data: Any, report_url: str) -> Any:
     """Restore file-backed report images to browser-resolvable URLs."""
 
-    def resolve_report_image(ref: Dict[str, Any]) -> str:
+    def resolve_report_image(ref: dict[str, Any]) -> str:
         return urljoin(report_url, report_image_asset_path(ref))
 
     return restore_image_references(data, resolve_report_image)
@@ -108,13 +109,17 @@ def _save_image(
     value: str,
     screenshots_dir: Path,
     written: set,
-    state: Dict[str, int],
+    state: dict[str, int],
     prefix: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     data_uri = _DATA_URI_PATTERN.match(value)
     if data_uri:
         raw = data_uri.group(2)
-        extension = "jpg" if data_uri.group(1).lower() in ("jpeg", "jpg") else data_uri.group(1).lower()
+        extension = (
+            "jpg"
+            if data_uri.group(1).lower() in ("jpeg", "jpg")
+            else data_uri.group(1).lower()
+        )
     else:
         raw = value
         extension = "png"
@@ -133,10 +138,10 @@ def _save_image(
 
 def _externalize_images(
     value: Any,
-    key: Optional[str],
+    key: str | None,
     screenshots_dir: Path,
     written: set,
-    state: Dict[str, int],
+    state: dict[str, int],
     prefix: str,
 ) -> Any:
     if isinstance(value, dict):
@@ -158,8 +163,8 @@ def _externalize_images(
 
 def _inline_file_images(
     value: Any,
-    base_dirs: List[Path],
-    cache: Optional[Dict[str, str]] = None,
+    base_dirs: list[Path],
+    cache: dict[str, str] | None = None,
 ) -> Any:
     """Embed {storage: 'file'} images as data URLs.
 
@@ -184,9 +189,7 @@ def _inline_file_images(
                 except ValueError:
                     continue
                 suffix = candidate.suffix.lstrip(".").lower() or "png"
-                mime = (
-                    "image/jpeg" if suffix in ("jpg", "jpeg") else f"image/{suffix}"
-                )
+                mime = "image/jpeg" if suffix in ("jpg", "jpeg") else f"image/{suffix}"
                 data = base64.b64encode(candidate.read_bytes()).decode("ascii")
                 cache[relative] = f"data:{mime};base64,{data}"
                 return cache[relative]

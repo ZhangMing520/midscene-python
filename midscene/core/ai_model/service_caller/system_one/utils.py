@@ -2,17 +2,17 @@
 
 import re
 import uuid
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 from midscene.core.ai_model.service_caller.system_one.schema import SystemOneError
 
 
 def encode_system_one_images(
-    images: Optional[Dict[str, str]], is_openrouter: bool
-) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    images: dict[str, str] | None, is_openrouter: bool
+) -> tuple[dict[str, Any], dict[str, Any]]:
     """Encode reference images into inline parts (OpenRouter) or assets map."""
-    assets: Dict[str, Any] = {}
-    image_state: Dict[str, Any] = {}
+    assets: dict[str, Any] = {}
+    image_state: dict[str, Any] = {}
     for name, data_url in (images or {}).items():
         if is_openrouter:
             # OpenRouter ignores TypeSafe's top-level assets map; send inline

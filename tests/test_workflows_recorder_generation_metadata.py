@@ -81,9 +81,7 @@ async def test_omits_fallback_audit_chains_before_building_metadata_prompts():
     assert "role" in user_message
     content = user_message["content"]
     text = (
-        "\n".join(
-            part["text"] for part in content if part.get("type") == "text"
-        )
+        "\n".join(part["text"] for part in content if part.get("type") == "text")
         if isinstance(content, list)
         else ""
     )

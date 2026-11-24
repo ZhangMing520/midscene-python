@@ -9,7 +9,8 @@ and optionally delegate to the `json_repair` package when installed.
 
 import json
 import re
-from typing import Any, Dict, Optional, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 
 def extract_json_from_code_block(response: str) -> str:
@@ -108,7 +109,7 @@ def _parse_json_with_repair(json_str: str) -> Any:
     return json.loads(_repair_json_string(json_str))
 
 
-def assert_json_object(parsed: Any) -> Dict[str, Any]:
+def assert_json_object(parsed: Any) -> dict[str, Any]:
     if not isinstance(parsed, dict):
         if isinstance(parsed, list):
             parsed_type = "array"
@@ -124,7 +125,7 @@ def assert_json_object(parsed: Any) -> Dict[str, Any]:
 
 
 def _trim_parsed_json_strings(
-    obj: Any, preserve_string_value_keys: Optional[Sequence[str]] = None
+    obj: Any, preserve_string_value_keys: Sequence[str] | None = None
 ) -> Any:
     preserve = set(preserve_string_value_keys or [])
 
@@ -134,7 +135,7 @@ def _trim_parsed_json_strings(
         if isinstance(value, list):
             return [trim(item) for item in value]
         if isinstance(value, dict):
-            normalized: Dict[str, Any] = {}
+            normalized: dict[str, Any] = {}
             for key, val in value.items():
                 trimmed_key = key.strip() if isinstance(key, str) else key
                 keep_raw = trimmed_key in preserve
@@ -147,13 +148,15 @@ def _trim_parsed_json_strings(
     return trim(obj)
 
 
-JsonParserSource = str  # 'generic-object' | 'planning-action-param' | 'locate' | 'section-locator'
+JsonParserSource = (
+    str  # 'generic-object' | 'planning-action-param' | 'locate' | 'section-locator'
+)
 
 
 def parse_model_response_json(
     raw: str,
     source: JsonParserSource = "generic-object",
-    preserve_string_value_keys: Optional[Sequence[str]] = None,
+    preserve_string_value_keys: Sequence[str] | None = None,
 ) -> Any:
     """Parse a model response into JSON, with code-fence extraction and repair."""
     clean_json_string = extract_json_from_code_block(raw)

@@ -4,11 +4,12 @@ Port of upstream agent-tools/tool-defaults.ts. Adding a behavior flag is a
 one-row change to ``TOOL_BEHAVIOR_FLAGS``.
 """
 
-from typing import Any, Callable, Dict, List, Tuple
+from collections.abc import Callable
+from typing import Any
 
 from midscene.shared.agent_tools.types import ToolDefaults
 
-TOOL_BEHAVIOR_FLAGS: List[Dict[str, Any]] = [
+TOOL_BEHAVIOR_FLAGS: list[dict[str, Any]] = [
     {
         "cli": "deep-locate",
         "description": (
@@ -48,10 +49,10 @@ def resolve_tool_defaults(is_enabled: Callable[[str], bool]) -> ToolDefaults:
     return resolved
 
 
-def strip_behavior_flags(argv: List[str]) -> Tuple[List[str], ToolDefaults]:
+def strip_behavior_flags(argv: list[str]) -> tuple[list[str], ToolDefaults]:
     """Split argv into resolved tool defaults and remaining args."""
     enabled = set()
-    raw_args: List[str] = []
+    raw_args: list[str] = []
     for arg in argv:
         flag = next(
             (flag for flag in TOOL_BEHAVIOR_FLAGS if arg == f"--{flag['cli']}"),

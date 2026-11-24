@@ -1,14 +1,17 @@
 """Jev locate workflow (upstream models/jev/locate.ts)."""
 
-from typing import Any, Dict
-from midscene.core.ai_model.models.registry import ModelRuntime
-from midscene.core.ai_model.service_caller.system_one import SystemOneError, call_system_one
-from midscene.core.ai_model.shared.model_locate_result import create_locate_result_codec
+from typing import Any
 
 from midscene.core.ai_model.models.jev.image import (
     _prepare_jev_references,
     prepare_jev_image,
 )
+from midscene.core.ai_model.models.registry import ModelRuntime
+from midscene.core.ai_model.service_caller.system_one import (
+    SystemOneError,
+    call_system_one,
+)
+from midscene.core.ai_model.shared.model_locate_result import create_locate_result_codec
 
 # Jev boxes are normalized 0-1 with half-open, image-edge semantics.
 _jev_box_codec = create_locate_result_codec(
@@ -23,9 +26,7 @@ _jev_box_codec = create_locate_result_codec(
 )
 
 
-def map_jev_box(
-    box: Dict[str, float], target_size: Dict[str, Any]
-) -> Dict[str, Any]:
+def map_jev_box(box: dict[str, float], target_size: dict[str, Any]) -> dict[str, Any]:
     """Map a normalized 0-1 Jev box to pixel {center, rect}."""
     return _jev_box_codec.to_pixel_result(
         [box["left"], box["top"], box["right"], box["bottom"]],
@@ -35,9 +36,9 @@ def map_jev_box(
 
 async def jev_locate(
     target_element_description: Any,
-    locate_image: Dict[str, Any],
+    locate_image: dict[str, Any],
     model_runtime: ModelRuntime,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Jev locate: returns {locatedPixelResult}, plus raw/usage."""
     image = prepare_jev_image(locate_image["imageBase64"])
     references = await _prepare_jev_references(target_element_description)

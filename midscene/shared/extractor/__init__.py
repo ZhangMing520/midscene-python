@@ -5,7 +5,7 @@ platform-neutral tree/description helpers plus the cross-platform element
 descriptor surfaced by `ElementInfo`/`ElementNode`.
 """
 
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Any, Optional, TypedDict
 
 from midscene.core.types import NodeType, Rect
 from midscene.shared.extractor.constants import TEXT_MAX_SIZE, TEXT_SIZE_THRESHOLD
@@ -35,8 +35,8 @@ class ElementInfo(TypedDict, total=False):
     id: str
     indexId: int
     nodeHashId: str
-    xpaths: List[str]
-    attributes: Dict[str, Any]
+    xpaths: list[str]
+    attributes: dict[str, Any]
     nodeType: NodeType
     content: str
     rect: Rect
@@ -47,8 +47,8 @@ class ElementInfo(TypedDict, total=False):
 class ElementNode(TypedDict):
     """Upstream ElementNode: a node plus its extracted children."""
 
-    node: Optional[ElementInfo]
-    children: List["ElementNode"]
+    node: ElementInfo | None
+    children: list["ElementNode"]
 
 
 __all__ = [

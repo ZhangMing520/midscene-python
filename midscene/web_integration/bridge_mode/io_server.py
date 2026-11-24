@@ -1,7 +1,8 @@
 """Socket.IO server the Chrome extension connects to (upstream io-server.ts)."""
 
 import asyncio
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 from loguru import logger
 
@@ -25,7 +26,7 @@ from midscene.web_integration.bridge_mode.common import (
 )
 
 
-def is_trusted_origin(origin: Optional[str]) -> bool:
+def is_trusted_origin(origin: str | None) -> bool:
     """Only the Midscene Chrome extension (or local processes without an
     Origin header) may connect; browser pages are rejected (CSWSH)."""
     if not origin:
@@ -40,8 +41,8 @@ class BridgeServer:
         self,
         host: str = DefaultBridgeServerHost,
         port: int = DefaultBridgeServerPort,
-        on_connect: Optional[Callable] = None,
-        on_disconnect: Optional[Callable] = None,
+        on_connect: Callable | None = None,
+        on_disconnect: Callable | None = None,
         close_conflict_server: bool = True,
     ):
         self.host = host
@@ -49,16 +50,16 @@ class BridgeServer:
         self.on_connect = on_connect
         self.on_disconnect = on_disconnect
         self.close_conflict_server = close_conflict_server
-        self._sio: Optional[socketio.AsyncServer] = None
+        self._sio: socketio.AsyncServer | None = None
         self._runner = None
         self._site = None
-        self._client_sid: Optional[str] = None
+        self._client_sid: str | None = None
         self._connected_event = asyncio.Event()
         self._call_counter = 0
-        self._pending: Dict[str, asyncio.Future] = {}
+        self._pending: dict[str, asyncio.Future] = {}
         self._closed = False
 
-    async def listen(self, timeout: Optional[float] = 30.0) -> None:
+    async def listen(self, timeout: float | None = 30.0) -> None:
         """Start the server and wait for an extension connection."""
         if self.close_conflict_server and self.port:
             # upstream io-server.ts: free 3766 from a stale session first
@@ -94,15 +95,13 @@ class BridgeServer:
 
         if timeout is not False and timeout is not None:
             try:
-                await asyncio.wait_for(
-                    self._connected_event.wait(), timeout=timeout
-                )
-            except asyncio.TimeoutError:
+                await asyncio.wait_for(self._connected_event.wait(), timeout=timeout)
+            except TimeoutError:
                 await self.close()
                 raise RuntimeError(
                     f"no extension connected after {int(timeout * 1000)}ms "
                     "(no-client-connected)"
-                )
+                ) from None
             if self._client_sid is None:
                 raise RuntimeError(
                     "bridge server was closed before an extension connected"
@@ -138,7 +137,7 @@ class BridgeServer:
         client_version = ""
         for part in query.split("&"):
             if part.startswith("version="):
-                client_version = part[len("version="):]
+                client_version = part[len("version=") :]
         logger.info(
             f"Bridge connected, browser-side version v{client_version or 'unknown'}"
         )
@@ -188,7 +187,9 @@ class BridgeServer:
             future.set_result(data.get("response"))
 
     async def call(
-        self, method: str, args: Optional[List[Any]] = None,
+        self,
+        method: str,
+        args: list[Any] | None = None,
         timeout: float = BridgeCallTimeout / 1000,
     ) -> Any:
         """Invoke a method on the extension side and wait for the response."""

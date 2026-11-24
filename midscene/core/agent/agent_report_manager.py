@@ -3,13 +3,16 @@
 import asyncio
 import json
 import re
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional
+from typing import Any
 
 from loguru import logger
 
 
-def get_report_builder(agent, ):
+def get_report_builder(
+    agent,
+):
     if agent._report_builder is None:
         from midscene.core.dump import ExecutionDumpBuilder
 
@@ -25,7 +28,9 @@ def get_report_builder(agent, ):
     return agent._report_builder
 
 
-async def flush_report(agent, ) -> Optional[str]:
+async def flush_report(
+    agent,
+) -> str | None:
     """Write the in-memory report to disk; returns the report path."""
     if agent._report_builder is None:
         return None
@@ -39,7 +44,7 @@ async def flush_report(agent, ) -> Optional[str]:
     return html_path or json_path or None
 
 
-def write_report_artifact(agent, name: str, dump: Dict[str, Any]) -> None:
+def write_report_artifact(agent, name: str, dump: dict[str, Any]) -> None:
     """Mirror the report into a directory artifact when configured.
 
     Artifact publishing is secondary to the single-file report: a failure
@@ -58,14 +63,14 @@ def write_report_artifact(agent, name: str, dump: Dict[str, Any]) -> None:
                 report_id or "report",
                 reuse_existing_report=True,
             )
-        agent._report_artifact_store.write_execution(
-            name, dump, {"reportName": name}
-        )
+        agent._report_artifact_store.write_execution(name, dump, {"reportName": name})
     except Exception as error:
         logger.warning(f"Failed to write report artifact to {artifact_dir}: {error}")
 
 
-async def reset_dump(agent, ) -> Dict[str, Any]:
+async def reset_dump(
+    agent,
+) -> dict[str, Any]:
     """Finalize the preceding report and start a fresh execution dump."""
     agent._check_not_destroyed()
     try:
@@ -81,7 +86,9 @@ async def reset_dump(agent, ) -> Dict[str, Any]:
     return agent._get_report_builder().to_dict()
 
 
-async def finalize_report(agent, ) -> Optional[str]:
+async def finalize_report(
+    agent,
+) -> str | None:
     """Seal the current report and release its in-memory records."""
     if agent._report_finalized is not None:
         return agent._report_finalized or None
@@ -96,9 +103,7 @@ async def finalize_report(agent, ) -> Optional[str]:
     return path
 
 
-def append_execution_dump(
-    agent, execution: Dict[str, Any], runner: Any = None
-) -> None:
+def append_execution_dump(agent, execution: dict[str, Any], runner: Any = None) -> None:
     """Append one execution dump; a runner replaces its previous entry."""
     if agent._report_finalized is not None:
         raise RuntimeError(
@@ -119,9 +124,7 @@ def append_execution_dump(
     agent._last_execution = execution
 
 
-def dump_data_string(
-    agent, opt: Optional[Dict[str, Any]] = None
-) -> str:
+def dump_data_string(agent, opt: dict[str, Any] | None = None) -> str:
     """Serialize the in-memory dump (upstream dumpDataString)."""
     return json.dumps(
         agent._get_report_builder().to_dict(),
@@ -129,18 +132,18 @@ def dump_data_string(
     )
 
 
-def report_html_string(
-    agent, opt: Optional[Dict[str, Any]] = None
-) -> str:
+def report_html_string(agent, opt: dict[str, Any] | None = None) -> str:
     """Render the in-memory dump as a self-contained HTML string."""
     from midscene.core.report_html_template import render_report_html
 
-    return render_report_html(agent._get_report_builder().to_dict(), agent._report_name())
+    return render_report_html(
+        agent._get_report_builder().to_dict(), agent._report_name()
+    )
 
 
 def write_out_action_dumps(
-    agent, execution_dump: Optional[Dict[str, Any]] = None
-) -> Optional[str]:
+    agent, execution_dump: dict[str, Any] | None = None
+) -> str | None:
     """Persist the current report (JSON + HTML) without disposing the Agent."""
     if agent._report_finalized is not None:
         if execution_dump is not None:
@@ -175,12 +178,14 @@ def remove_dump_update_listener(agent, listener: Callable) -> None:
         pass
 
 
-def clear_dump_update_listeners(agent, ) -> None:
+def clear_dump_update_listeners(
+    agent,
+) -> None:
     agent._dump_update_listeners.clear()
 
 
 def notify_dump_update_listeners(
-    agent, execution: Optional[Dict[str, Any]] = None
+    agent, execution: dict[str, Any] | None = None
 ) -> None:
     if not agent._dump_update_listeners:
         return
@@ -205,16 +210,16 @@ class AgentReportManager:
         self.agent = agent if agent is not None else context
         if self.agent is None:
             raise ValueError("AgentReportManager requires an agent")
-        self._report_file: Optional[str] = None
-        self._report_file_name: Optional[str] = getattr(
+        self._report_file: str | None = None
+        self._report_file_name: str | None = getattr(
             self.agent, "_report_file_name", None
         )
-        self._report_by_runner: Dict[int, "AgentReportManager"] = {}
+        self._report_by_runner: dict[int, AgentReportManager] = {}
         self._active_operations: set = set()
-        self._report_reset: Optional[Any] = None
+        self._report_reset: Any | None = None
 
     @property
-    def dump(self) -> Dict[str, Any]:
+    def dump(self) -> dict[str, Any]:
         return get_report_builder(self.agent).to_dict()
 
     @dump.setter
@@ -223,21 +228,21 @@ class AgentReportManager:
         builder.dump = value.to_dict() if hasattr(value, "to_dict") else value
 
     @property
-    def report_file(self) -> Optional[str]:
+    def report_file(self) -> str | None:
         if self._report_file is not None:
             return self._report_file
         return getattr(self.agent, "_report_finalized", None) or None
 
     @report_file.setter
-    def report_file(self, value: Optional[str]) -> None:
+    def report_file(self, value: str | None) -> None:
         self._report_file = value
 
     @property
-    def report_file_name(self) -> Optional[str]:
+    def report_file_name(self) -> str | None:
         return self._report_file_name
 
     @report_file_name.setter
-    def report_file_name(self, value: Optional[str]) -> None:
+    def report_file_name(self, value: str | None) -> None:
         self._report_file_name = value
         self.agent._report_file_name = value
 
@@ -245,9 +250,7 @@ class AgentReportManager:
         if getattr(self.agent, "destroyed", False):
             raise RuntimeError("Cannot execute using a destroyed Agent.")
         if self._report_reset is not None:
-            raise RuntimeError(
-                "Report reset is in progress. Await resetDump() first."
-            )
+            raise RuntimeError("Report reset is in progress. Await resetDump() first.")
         if getattr(self.agent, "_report_finalized", None) is not None:
             raise RuntimeError(
                 "The report has been finalized. Call and await resetDump() "
@@ -265,16 +268,14 @@ class AgentReportManager:
         finally:
             self._active_operations.discard(pending)
 
-    async def reset_dump(self) -> Dict[str, Any]:
+    async def reset_dump(self) -> dict[str, Any]:
         if self._report_reset is not None:
             return await self._report_reset
 
-        async def run() -> Dict[str, Any]:
+        async def run() -> dict[str, Any]:
             result = await reset_dump(self.agent)
             self._report_file = None
-            self._report_file_name = getattr(
-                self.agent, "_report_file_name", None
-            )
+            self._report_file_name = getattr(self.agent, "_report_file_name", None)
             return result
 
         self._report_reset = asyncio.ensure_future(run())
@@ -283,28 +284,28 @@ class AgentReportManager:
         finally:
             self._report_reset = None
 
-    async def finalize_report(self) -> Optional[str]:
+    async def finalize_report(self) -> str | None:
         path = await finalize_report(self.agent)
         self._report_file = path
         return path
 
     def append_execution_dump(
-        self, execution: Dict[str, Any], runner: Any = None
+        self, execution: dict[str, Any], runner: Any = None
     ) -> None:
         append_execution_dump(self.agent, execution, runner)
 
-    def dump_data_string(self, opt: Optional[Dict[str, Any]] = None) -> str:
+    def dump_data_string(self, opt: dict[str, Any] | None = None) -> str:
         return dump_data_string(self.agent, opt)
 
     def report_html_string(self, get_dump_string: Any = None) -> str:
         return report_html_string(self.agent)
 
     def write_out_action_dumps(
-        self, execution_dump: Optional[Dict[str, Any]] = None
-    ) -> Optional[str]:
+        self, execution_dump: dict[str, Any] | None = None
+    ) -> str | None:
         return write_out_action_dumps(self.agent, execution_dump)
 
-    async def flush_report(self) -> Optional[str]:
+    async def flush_report(self) -> str | None:
         return await flush_report(self.agent)
 
     def add_dump_update_listener(self, listener: Callable) -> Callable[[], None]:
@@ -317,7 +318,7 @@ class AgentReportManager:
         clear_dump_update_listeners(self.agent)
 
     def notify_dump_update_listeners(
-        self, execution_dump: Optional[Dict[str, Any]] = None
+        self, execution_dump: dict[str, Any] | None = None
     ) -> None:
         notify_dump_update_listeners(self.agent, execution_dump)
 
@@ -342,9 +343,7 @@ class AgentReportManager:
 
     async def wait_for_operations(self) -> None:
         while self._active_operations:
-            await asyncio.gather(
-                *list(self._active_operations), return_exceptions=True
-            )
+            await asyncio.gather(*list(self._active_operations), return_exceptions=True)
 
     async def wait_for_reset(self) -> None:
         if self._report_reset is not None:

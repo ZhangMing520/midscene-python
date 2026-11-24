@@ -1,6 +1,7 @@
 """Caller errors (upstream service-caller/types.ts)."""
 
-from typing import Any, Dict, Optional
+from typing import Any
+
 
 class AIResponseParseError(Exception):
     """Error that preserves usage and raw response when AI parsing fails."""
@@ -9,9 +10,9 @@ class AIResponseParseError(Exception):
         self,
         message: str,
         raw_response: str,
-        usage: Optional[Dict[str, Any]] = None,
-        raw_assistant_output: Optional[Dict[str, Any]] = None,
-        reasoning_content: Optional[str] = None,
+        usage: dict[str, Any] | None = None,
+        raw_assistant_output: dict[str, Any] | None = None,
+        reasoning_content: str | None = None,
     ):
         super().__init__(message)
         self.raw_response = raw_response
@@ -22,5 +23,6 @@ class AIResponseParseError(Exception):
 
 class CodexAppServerNotSupportedError(NotImplementedError):
     pass
+
 
 DEFAULT_MODEL_PROTOCOL = "openai-chat"

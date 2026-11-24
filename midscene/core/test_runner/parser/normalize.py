@@ -1,6 +1,7 @@
 """Normalize authored steps (upstream parser/normalize.ts)."""
 
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 from midscene.core.test_runner.errors import WorkflowParseError
 
@@ -15,7 +16,7 @@ def _format_step(index: int) -> str:
     return f"step {index + 1}"
 
 
-def _normalize_meta(value: Any, index: int) -> Dict[str, Any]:
+def _normalize_meta(value: Any, index: int) -> dict[str, Any]:
     if value is None:
         return {"continueOnError": False}
     if not _is_mapping(value):
@@ -44,7 +45,7 @@ def _normalize_meta(value: Any, index: int) -> Dict[str, Any]:
             f'{_format_step(index)} "$.continue-on-error" must be a boolean.',
             {"index": index, "continueOnError": continue_on_error},
         )
-    meta: Dict[str, Any] = {"continueOnError": continue_on_error or False}
+    meta: dict[str, Any] = {"continueOnError": continue_on_error or False}
     if timeout is not None:
         meta["timeoutMs"] = timeout
     return meta
@@ -53,8 +54,8 @@ def _normalize_meta(value: Any, index: int) -> Dict[str, Any]:
 def normalize_step(
     value: Any,
     index: int = 0,
-    resolve_node: Optional[Callable[[str], Optional[Dict[str, Any]]]] = None,
-) -> Dict[str, Any]:
+    resolve_node: Callable[[str], dict[str, Any] | None] | None = None,
+) -> dict[str, Any]:
     if not _is_mapping(value):
         raise WorkflowParseError(
             f"{_format_step(index)} must be a mapping.", {"index": index}
@@ -90,13 +91,19 @@ def normalize_step(
         )
     raw_meta = raw_value.get("$")
     input_value = {key: item for key, item in raw_value.items() if key != "$"}
-    return {"node": node, "input": input_value, "meta": _normalize_meta(raw_meta, index)}
+    return {
+        "node": node,
+        "input": input_value,
+        "meta": _normalize_meta(raw_meta, index),
+    }
 
 
 def normalize_steps(
     steps: Any,
-    resolve_node: Optional[Callable[[str], Optional[Dict[str, Any]]]] = None,
-) -> List[Dict[str, Any]]:
+    resolve_node: Callable[[str], dict[str, Any] | None] | None = None,
+) -> list[dict[str, Any]]:
     if not isinstance(steps, list):
         raise WorkflowParseError("Steps must be an array.")
-    return [normalize_step(step, index, resolve_node) for index, step in enumerate(steps)]
+    return [
+        normalize_step(step, index, resolve_node) for index, step in enumerate(steps)
+    ]

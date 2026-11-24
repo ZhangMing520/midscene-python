@@ -7,19 +7,19 @@ operations (mouse.*/keyboard.*/screenshotBase64/...) on the active tab.
 """
 
 import asyncio
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
 from midscene.core.types import (
     AbstractInterface,
     InterfaceType,
+    NodeType,
     Rect,
     Size,
     UIContext,
-    UITree,
     UINode,
-    NodeType,
+    UITree,
 )
 from midscene.web_integration.bridge_mode.common import (
     BRIDGE_EVENT_CONNECT_CURRENT_TAB,
@@ -48,12 +48,12 @@ class ExtensionBridgePageBrowserSide(AbstractInterface):
         self,
         host: str = DefaultBridgeServerHost,
         port: int = DefaultBridgeServerPort,
-        connect_options: Optional[Dict[str, Any]] = None,
-        listening_timeout: Optional[float] = 30.0,
+        connect_options: dict[str, Any] | None = None,
+        listening_timeout: float | None = 30.0,
         allow_remote_access: bool = False,
         close_conflict_server: bool = True,
-        input_strategy: Optional[str] = None,
-        keyboard_type_delay: Optional[float] = None,
+        input_strategy: str | None = None,
+        keyboard_type_delay: float | None = None,
     ):
         self.host = get_bridge_server_host(host, allow_remote_access)
         self.port = port
@@ -66,7 +66,7 @@ class ExtensionBridgePageBrowserSide(AbstractInterface):
         self.close_conflict_server = close_conflict_server
         self.input_strategy = input_strategy
         self.keyboard_type_delay = keyboard_type_delay
-        self._server: Optional[BridgeServer] = None
+        self._server: BridgeServer | None = None
         self._connected = False
 
     @property
@@ -91,9 +91,7 @@ class ExtensionBridgePageBrowserSide(AbstractInterface):
         await self.listen()
         await self.connect_current_tab()
 
-    async def connect_current_tab(
-        self, options: Optional[Dict[str, Any]] = None
-    ) -> None:
+    async def connect_current_tab(self, options: dict[str, Any] | None = None) -> None:
         """Attach the bridge to the current (or selected) browser tab."""
         await self.listen()
         await self._server.call(
@@ -103,7 +101,7 @@ class ExtensionBridgePageBrowserSide(AbstractInterface):
         self._connected = True
 
     async def connect_new_tab_with_url(
-        self, url: str, options: Optional[Dict[str, Any]] = None
+        self, url: str, options: dict[str, Any] | None = None
     ) -> None:
         """Open a new tab and attach the bridge to it."""
         await self.listen()
@@ -160,30 +158,33 @@ class ExtensionBridgePageBrowserSide(AbstractInterface):
             ),
         )
 
-    async def action_space(self) -> List[str]:
+    async def action_space(self) -> list[str]:
         return [
-            "tap", "right_click", "middle_click", "double_click", "hover",
-            "input", "scroll", "key_press", "drag_and_drop", "long_press",
-            "pinch", "navigate",
+            "tap",
+            "right_click",
+            "middle_click",
+            "double_click",
+            "hover",
+            "input",
+            "scroll",
+            "key_press",
+            "drag_and_drop",
+            "long_press",
+            "pinch",
+            "navigate",
         ]
 
     async def tap(self, x: float, y: float) -> None:
         await self._require_server().call("mouse.click", [x, y])
 
     async def right_click(self, x: float, y: float) -> None:
-        await self._require_server().call(
-            "mouse.click", [x, y, {"button": "right"}]
-        )
+        await self._require_server().call("mouse.click", [x, y, {"button": "right"}])
 
     async def middle_click(self, x: float, y: float) -> None:
-        await self._require_server().call(
-            "mouse.click", [x, y, {"button": "middle"}]
-        )
+        await self._require_server().call("mouse.click", [x, y, {"button": "middle"}])
 
     async def double_click(self, x: float, y: float) -> None:
-        await self._require_server().call(
-            "mouse.click", [x, y, {"count": 2}]
-        )
+        await self._require_server().call("mouse.click", [x, y, {"count": 2}])
 
     async def hover(self, x: float, y: float) -> None:
         await self._require_server().call("mouse.move", [x, y])
@@ -194,20 +195,22 @@ class ExtensionBridgePageBrowserSide(AbstractInterface):
     async def drag_and_drop(self, from_point, to_point) -> None:
         await self._require_server().call(
             "mouse.drag",
-            [{"x": from_point[0], "y": from_point[1]},
-             {"x": to_point[0], "y": to_point[1]}],
+            [
+                {"x": from_point[0], "y": from_point[1]},
+                {"x": to_point[0], "y": to_point[1]},
+            ],
         )
 
     async def swipe_points(
         self,
-        start: List[float],
-        end: List[float],
-        duration: Optional[int] = None,
+        start: list[float],
+        end: list[float],
+        duration: int | None = None,
     ) -> None:
         """Endpoint pointer swipe between two points (upstream swipe)."""
         await self.drag_and_drop((start[0], start[1]), (end[0], end[1]))
 
-    async def size(self) -> Dict[str, int]:
+    async def size(self) -> dict[str, int]:
         """Logical page size reported by the bridge (upstream size())."""
         size = await self._require_server().call("size", [])
         return {"width": int(size["width"]), "height": int(size["height"])}
@@ -216,9 +219,7 @@ class ExtensionBridgePageBrowserSide(AbstractInterface):
         await self._require_server().call("keyboard.type", [text])
 
     async def keyboard_press(self, key: str) -> None:
-        await self._require_server().call(
-            "keyboard.press", [build_key_commands(key)]
-        )
+        await self._require_server().call("keyboard.press", [build_key_commands(key)])
 
     async def cursor_move(self, direction: str, times: int = 1) -> None:
         """Move the caret inside the focused field (upstream web cursorMove)."""
@@ -236,10 +237,10 @@ class ExtensionBridgePageBrowserSide(AbstractInterface):
 
     async def pinch(
         self,
-        center: List[float],
+        center: list[float],
         start_distance: float,
         end_distance: float,
-        duration: Optional[int] = None,
+        duration: int | None = None,
     ) -> None:
         """Two-finger pinch around `center` (upstream pinch primitive)."""
         server = self._require_server()
@@ -255,7 +256,7 @@ class ExtensionBridgePageBrowserSide(AbstractInterface):
         )
 
     async def scroll(
-        self, direction: str, distance: Optional[int] = None, **kwargs
+        self, direction: str, distance: int | None = None, **kwargs
     ) -> None:
         if direction not in ("up", "down", "left", "right"):
             raise ValueError(f"Invalid scroll direction: {direction}")
@@ -265,9 +266,7 @@ class ExtensionBridgePageBrowserSide(AbstractInterface):
         if distance is None or not point:
             size = await server.call("size", [])
             if distance is None:
-                distance = (
-                    size["width"] if horizontal else size["height"]
-                ) * 0.7
+                distance = (size["width"] if horizontal else size["height"]) * 0.7
             if not point:
                 await server.call(
                     "mouse.move", [size["width"] // 2, size["height"] // 2]
@@ -301,9 +300,7 @@ class ExtensionBridgePageBrowserSide(AbstractInterface):
         await self._require_server().call("goForward", [])
 
     async def get_browser_tab_list(self) -> Any:
-        return await self._require_server().call(
-            BRIDGE_EVENT_GET_BROWSER_TAB_LIST, []
-        )
+        return await self._require_server().call(BRIDGE_EVENT_GET_BROWSER_TAB_LIST, [])
 
     async def get_active_tab_id(self) -> Any:
         """Tab id the extension is currently driving."""
@@ -314,9 +311,7 @@ class ExtensionBridgePageBrowserSide(AbstractInterface):
         return await self._require_server().call("screenshotBase64", [])
 
     async def set_active_tab_id(self, tab_id: str) -> None:
-        await self._require_server().call(
-            BRIDGE_EVENT_SET_ACTIVE_TAB_ID, [tab_id]
-        )
+        await self._require_server().call(BRIDGE_EVENT_SET_ACTIVE_TAB_ID, [tab_id])
 
     async def list_tabs(self) -> Any:
         """Browser tabs reported by the connected extension."""
@@ -326,11 +321,9 @@ class ExtensionBridgePageBrowserSide(AbstractInterface):
         """Focus the tab with the given id for later calls."""
         await self.set_active_tab_id(tab_id)
 
-    async def set_destroy_options(self, options: Dict[str, Any]) -> None:
+    async def set_destroy_options(self, options: dict[str, Any]) -> None:
         """Configure what the extension tears down when the bridge closes."""
-        await self._require_server().call(
-            BRIDGE_EVENT_SET_DESTROY_OPTIONS, [options]
-        )
+        await self._require_server().call(BRIDGE_EVENT_SET_DESTROY_OPTIONS, [options])
 
     async def set_water_flow_animation_enabled(self, enabled: bool) -> None:
         """Toggle the extension's water-flow border (upstream page method)."""
@@ -339,9 +332,7 @@ class ExtensionBridgePageBrowserSide(AbstractInterface):
         )
 
     async def update_agent_status(self, message: str) -> None:
-        await self._require_server().call(
-            BRIDGE_EVENT_UPDATE_AGENT_STATUS, [message]
-        )
+        await self._require_server().call(BRIDGE_EVENT_UPDATE_AGENT_STATUS, [message])
 
     async def show_status_message(self, message: str) -> None:
         """Show a status tip in the extension (upstream showStatusMessage)."""

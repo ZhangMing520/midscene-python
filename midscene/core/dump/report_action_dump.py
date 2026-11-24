@@ -13,7 +13,7 @@ import shutil
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -46,17 +46,17 @@ def get_report_file_name(tag: str = "web") -> str:
 
 def build_service_dump(
     dump_type: str,
-    user_query: Dict[str, Any],
+    user_query: dict[str, Any],
     data: Any,
-    task_info: Dict[str, Any],
-    matched_element: Optional[List[Dict[str, Any]]] = None,
-    error: Optional[str] = None,
+    task_info: dict[str, Any],
+    matched_element: list[dict[str, Any]] | None = None,
+    error: str | None = None,
     deep_locate: bool = False,
-    assertion_pass: Optional[bool] = None,
-    assertion_thought: Optional[str] = None,
-) -> Dict[str, Any]:
+    assertion_pass: bool | None = None,
+    assertion_thought: str | None = None,
+) -> dict[str, Any]:
     """Build one ServiceDump entry (one AI service call)."""
-    dump: Dict[str, Any] = {
+    dump: dict[str, Any] = {
         "logTime": int(time.time() * 1000),
         "type": dump_type,  # 'locate' | 'extract' | 'assert'
         "logId": new_log_id(),
@@ -85,13 +85,13 @@ class ExecutionDumpBuilder:
         self,
         group_name: str = "Midscene Report",
         group_description: str = "",
-        model_briefs: Optional[List[Dict[str, Any]]] = None,
-        device_type: Optional[str] = None,
-        sdk_version: Optional[str] = None,
+        model_briefs: list[dict[str, Any]] | None = None,
+        device_type: str | None = None,
+        sdk_version: str | None = None,
     ):
         import midscene
 
-        self.dump: Dict[str, Any] = {
+        self.dump: dict[str, Any] = {
             "sdkVersion": sdk_version or midscene.__version__,
             "groupName": group_name,
             "groupDescription": group_description,
@@ -104,10 +104,10 @@ class ExecutionDumpBuilder:
     def add_execution(
         self,
         name: str,
-        tasks: List[Dict[str, Any]],
-        description: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        execution: Dict[str, Any] = {
+        tasks: list[dict[str, Any]],
+        description: str | None = None,
+    ) -> dict[str, Any]:
+        execution: dict[str, Any] = {
             "id": uuid.uuid4().hex[:8],
             "logTime": int(time.time() * 1000),
             "name": name,
@@ -118,10 +118,10 @@ class ExecutionDumpBuilder:
         self.dump["executions"].append(execution)
         return execution
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return self.dump
 
-    def write_to_disk(self, file_name: Optional[str] = None) -> str:
+    def write_to_disk(self, file_name: str | None = None) -> str:
         """Persist as `<midscene_run>/report/<name>.json` (upstream layout)."""
         report_dir = get_midscene_run_dir("report")
         if not file_name:
@@ -143,13 +143,13 @@ class ExecutionDumpBuilder:
 
 def build_execution_task(
     task_type: str,
-    sub_type: Optional[str],
+    sub_type: str | None,
     param: Any,
     status: str = "finished",
     **extra: Any,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Build one ExecutionTask entry (upstream ExecutionTask field names)."""
-    task: Dict[str, Any] = {
+    task: dict[str, Any] = {
         "type": task_type,  # 'Planning' | 'Insight' | 'Action Space' | 'Log'
         "taskId": new_task_id(),
         "status": status,  # 'pending'|'running'|'finished'|'failed'|'cancelled'
@@ -162,7 +162,7 @@ def build_execution_task(
     return task
 
 
-def _get_page_or_browser_object_name(value: Any) -> Optional[str]:
+def _get_page_or_browser_object_name(value: Any) -> str | None:
     """Return ``Page``/``Browser`` for opaque runtime objects, else ``None``."""
     name = type(value).__name__
     return name if name in ("Page", "Browser") else None
@@ -193,7 +193,7 @@ def _prepare_for_serialization(value: Any) -> Any:
     return value
 
 
-def _stringify_dump(data: Any, indents: Optional[int] = None) -> str:
+def _stringify_dump(data: Any, indents: int | None = None) -> str:
     return json.dumps(
         _prepare_for_serialization(data),
         ensure_ascii=False,
@@ -221,17 +221,15 @@ def _is_reference_image_descriptor(value: Any) -> bool:
 
 def _replace_reference_image_urls(
     value: Any,
-    reference_image_refs_by_url: Dict[str, Any],
-    ancestors: Optional[set] = None,
+    reference_image_refs_by_url: dict[str, Any],
+    ancestors: set | None = None,
 ) -> Any:
     """Clone plain data, replacing descriptor URLs found inside ``images``."""
     if ancestors is None:
         ancestors = set()
     if not isinstance(value, (dict, list)):
         return value
-    if _get_page_or_browser_object_name(value) or _is_custom_serializable_object(
-        value
-    ):
+    if _get_page_or_browser_object_name(value) or _is_custom_serializable_object(value):
         return value
     if id(value) in ancestors:
         return value
@@ -246,10 +244,10 @@ def _replace_reference_image_urls(
                 for item in value
             ]
 
-        result: Dict[str, Any] = {}
+        result: dict[str, Any] = {}
         for key, nested_value in value.items():
             if key == "images" and isinstance(nested_value, list):
-                images: List[Any] = []
+                images: list[Any] = []
                 for image in nested_value:
                     transformed = _replace_reference_image_urls(
                         image, reference_image_refs_by_url, ancestors
@@ -257,17 +255,11 @@ def _replace_reference_image_urls(
                     if not _is_reference_image_descriptor(image):
                         images.append(transformed)
                         continue
-                    reference_image_ref = reference_image_refs_by_url.get(
-                        image["url"]
-                    )
-                    if not reference_image_ref or not isinstance(
-                        transformed, dict
-                    ):
+                    reference_image_ref = reference_image_refs_by_url.get(image["url"])
+                    if not reference_image_ref or not isinstance(transformed, dict):
                         images.append(transformed)
                         continue
-                    images.append(
-                        {**transformed, "url": reference_image_ref}
-                    )
+                    images.append({**transformed, "url": reference_image_ref})
                 result[key] = images
                 continue
             result[key] = _replace_reference_image_urls(
@@ -283,8 +275,8 @@ class ExecutionDump:
 
     def __init__(
         self,
-        data: Dict[str, Any],
-        options: Optional[Dict[str, Any]] = None,
+        data: dict[str, Any],
+        options: dict[str, Any] | None = None,
     ) -> None:
         options = options or {}
         self.id = data.get("id")
@@ -293,27 +285,26 @@ class ExecutionDump:
         self.description = data.get("description")
         self.tasks = data.get("tasks") or []
         self.ai_act_context = data.get("aiActContext")
-        registered = options.get("referenceImageUrls") or options.get(
-            "reference_image_urls"
-        ) or []
+        registered = (
+            options.get("referenceImageUrls")
+            or options.get("reference_image_urls")
+            or []
+        )
         self.reference_image_urls = list(
-            dict.fromkeys(
-                url for url in registered if is_base64_image_data_url(url)
-            )
+            dict.fromkeys(url for url in registered if is_base64_image_data_url(url))
         )
 
-    def serialize(self, indents: Optional[int] = None) -> str:
+    def serialize(self, indents: int | None = None) -> str:
         return _stringify_dump(self.to_json(), indents)
 
-    def to_json(self) -> Dict[str, Any]:
+    def to_json(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "logTime": self.log_time,
             "name": self.name,
             "description": self.description,
             "tasks": [
-                {**task, "recorder": task.get("recorder") or []}
-                for task in self.tasks
+                {**task, "recorder": task.get("recorder") or []} for task in self.tasks
             ],
             "aiActContext": self.ai_act_context,
         }
@@ -323,11 +314,11 @@ class ExecutionDump:
         return cls.from_json(json.loads(serialized))
 
     @classmethod
-    def from_json(cls, data: Dict[str, Any]) -> "ExecutionDump":
+    def from_json(cls, data: dict[str, Any]) -> "ExecutionDump":
         return cls(data)
 
-    def collect_screenshots(self) -> List[ScreenshotItem]:
-        screenshots: List[ScreenshotItem] = []
+    def collect_screenshots(self) -> list[ScreenshotItem]:
+        screenshots: list[ScreenshotItem] = []
         for task in self.tasks:
             if not isinstance(task, dict):
                 continue
@@ -343,14 +334,14 @@ class ExecutionDump:
                     screenshots.append(record["screenshot"])
         return screenshots
 
-    def get_reference_image_urls(self) -> List[str]:
+    def get_reference_image_urls(self) -> list[str]:
         return list(self.reference_image_urls)
 
 
 class ReportActionDump:
     """Serialize and deserialize report action dumps (upstream ReportActionDump)."""
 
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.sdk_version = data.get("sdkVersion")
         self.group_name = data.get("groupName")
         self.group_description = data.get("groupDescription")
@@ -364,24 +355,20 @@ class ReportActionDump:
         ]
         self.device_type = data.get("deviceType")
 
-    def serialize(self, indents: Optional[int] = None) -> str:
+    def serialize(self, indents: int | None = None) -> str:
         return _stringify_dump(self.to_json(), indents)
 
     def serialize_with_reference_images(
         self,
-        reference_image_refs_by_url: Dict[str, Any],
-        indents: Optional[int] = None,
+        reference_image_refs_by_url: dict[str, Any],
+        indents: int | None = None,
     ) -> str:
         return _stringify_dump(
-            _replace_reference_image_urls(
-                self.to_json(), reference_image_refs_by_url
-            ),
+            _replace_reference_image_urls(self.to_json(), reference_image_refs_by_url),
             indents,
         )
 
-    def serialize_with_inline_screenshots(
-        self, indents: Optional[int] = None
-    ) -> str:
+    def serialize_with_inline_screenshots(self, indents: int | None = None) -> str:
         def process_value(obj: Any) -> Any:
             if ScreenshotItem.is_screenshot_item(obj):
                 return {"base64": obj.base64, "capturedAt": obj.captured_at}
@@ -401,7 +388,7 @@ class ReportActionDump:
             indent=indents,
         )
 
-    def to_json(self) -> Dict[str, Any]:
+    def to_json(self) -> dict[str, Any]:
         return {
             "sdkVersion": self.sdk_version,
             "groupName": self.group_name,
@@ -416,11 +403,11 @@ class ReportActionDump:
         return cls.from_json(json.loads(serialized))
 
     @classmethod
-    def from_json(cls, data: Dict[str, Any]) -> "ReportActionDump":
+    def from_json(cls, data: dict[str, Any]) -> "ReportActionDump":
         return cls(data)
 
-    def collect_all_screenshots(self) -> List[ScreenshotItem]:
-        screenshots: List[ScreenshotItem] = []
+    def collect_all_screenshots(self) -> list[ScreenshotItem]:
+        screenshots: list[ScreenshotItem] = []
         for execution in self.executions:
             screenshots.extend(execution.collect_screenshots())
         return screenshots
@@ -451,9 +438,7 @@ class ReportActionDump:
             report_path=base_path,
             screenshots_dir=f"{base_path}.screenshots",
         )
-        processed = restore_image_references(
-            dump_data, image_store.load_data_uri
-        )
+        processed = restore_image_references(dump_data, image_store.load_data_uri)
         return json.dumps(processed, ensure_ascii=False, default=_json_default)
 
     @staticmethod
@@ -467,7 +452,7 @@ class ReportActionDump:
                     path.unlink(missing_ok=True)
 
     @staticmethod
-    def get_file_paths(base_path: str) -> List[str]:
+    def get_file_paths(base_path: str) -> list[str]:
         return [base_path, f"{base_path}.screenshots"]
 
 

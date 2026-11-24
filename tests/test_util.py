@@ -52,7 +52,7 @@ def test_should_attach_copy_command_when_control_is_present_with_key_c():
 
 
 def test_should_attach_proper_commands_for_uppercase_letters_when_meta_is_present():
-    '''should attach proper commands for uppercase letters when "Meta" is present'''
+    """should attach proper commands for uppercase letters when "Meta" is present"""
     result = get_key_commands(["Meta", "A", "C", "V"])
     assert result == [
         {"key": "Meta"},
@@ -183,9 +183,7 @@ def test_should_build_detailed_locate_param_and_extract_ui_context_to_rest_param
         "prompt": "Override prompt",
         "uiContext": mock_page_context,
     }
-    result = build_detailed_locate_param_and_rest_params(
-        locate_prompt, options
-    )
+    result = build_detailed_locate_param_and_rest_params(locate_prompt, options)
 
     assert result["locateParam"] == {
         "cacheable": False,
@@ -211,9 +209,7 @@ def test_should_handle_multiple_rest_params():
         "customParam2": 42,
         "customParam3": True,
     }
-    result = build_detailed_locate_param_and_rest_params(
-        locate_prompt, options
-    )
+    result = build_detailed_locate_param_and_rest_params(locate_prompt, options)
 
     assert result["locateParam"] == {
         "prompt": "Locate the search input",
@@ -237,9 +233,7 @@ def test_should_handle_multiple_rest_params():
 def test_should_handle_null_options():
     """should handle null options"""
     locate_prompt = "Test prompt"
-    result = build_detailed_locate_param_and_rest_params(
-        locate_prompt, None
-    )
+    result = build_detailed_locate_param_and_rest_params(locate_prompt, None)
 
     assert result["locateParam"] == {
         "prompt": "Test prompt",

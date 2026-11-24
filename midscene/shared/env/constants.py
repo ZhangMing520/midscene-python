@@ -1,11 +1,9 @@
 """Env key constants and per-intent key maps (upstream packages/shared/src/env/constants.ts)."""
 
-from typing import Dict, List
-
 MODEL_CONFIG_DOC_URL = "https://midscenejs.com/model-api-setup.html"
 
 
-MODEL_FAMILY_VALUES: List[str] = [
+MODEL_FAMILY_VALUES: list[str] = [
     "jev",
     "ant-ling",
     "step",
@@ -678,7 +676,7 @@ PLANNING_MODEL_CONFIG_KEYS = {
 }
 
 
-KEYS_MAP: Dict[str, Dict[str, str]] = {
+KEYS_MAP: dict[str, dict[str, str]] = {
     "locate": LOCATE_MODEL_CONFIG_KEYS,
     "insight": INSIGHT_MODEL_CONFIG_KEYS,
     "planning": PLANNING_MODEL_CONFIG_KEYS,

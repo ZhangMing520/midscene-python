@@ -79,9 +79,12 @@ class TestReportSession:
             )
             source = await writer.create_source_snapshot("scope-1", ["e1"])
             assert source["collection"]["status"] == "complete"
-            assert json.loads(
-                open(source["dumpPath"], encoding="utf-8").read()
-            )["executions"][0]["id"] == "e1"
+            assert (
+                json.loads(open(source["dumpPath"], encoding="utf-8").read())[
+                    "executions"
+                ][0]["id"]
+                == "e1"
+            )
             writer.on_execution_update(
                 {"id": "e2", "name": "second", "tasks": []},
                 {"testId": "test-1"},

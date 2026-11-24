@@ -4,7 +4,8 @@ Pure functions over plain dump fields so report icons and merged-report
 status aggregation agree on what "failed" means.
 """
 
-from typing import Any, Iterable, Optional
+from collections.abc import Iterable
+from typing import Any
 
 
 def _field(task: Any, key: str, default: Any = None) -> Any:
@@ -49,11 +50,13 @@ def derive_case_status(executions: Iterable[Any]) -> str:
     return "passed"
 
 
-def task_status_error(task: Any) -> Optional[Any]:
+def task_status_error(task: Any) -> Any | None:
     """Return the recorded failure for a task, if any."""
     if derive_task_status(task) != "failed":
         return None
-    return _field(task, "error") or _field(task, "errorMessage", _field(task, "error_message"))
+    return _field(task, "error") or _field(
+        task, "errorMessage", _field(task, "error_message")
+    )
 
 
 __all__ = ["derive_case_status", "derive_task_status", "task_status_error"]

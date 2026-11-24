@@ -1,11 +1,11 @@
 """Legacy YAML Test Runner nodes (upstream yaml/test-runner-nodes.ts)."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from midscene.core.agent.test_runner_nodes import (
+    COMMON_AGENT_TEST_RUNNER_NODE_DEFINITIONS,
     AgentTestRunnerNodeDefinition,
     AgentTestRunnerNodeExecutionContext,
-    COMMON_AGENT_TEST_RUNNER_NODE_DEFINITIONS,
 )
 from midscene.core.test_runner.node.types import NodeResult
 from midscene.core.yaml.test_runner_compat import compile_legacy_flow_item
@@ -19,7 +19,7 @@ async def _maybe_await(value: Any) -> Any:
     return value
 
 
-def _schema(properties: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def _schema(properties: dict[str, Any] | None = None) -> dict[str, Any]:
     return {
         "type": "object",
         "properties": properties or {},
@@ -27,7 +27,7 @@ def _schema(properties: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     }
 
 
-def _text(description: str) -> Dict[str, Any]:
+def _text(description: str) -> dict[str, Any]:
     return {"type": "string", "description": description}
 
 
@@ -40,7 +40,9 @@ LEGACY_FINALIZE_NODE_DEFINITION = AgentTestRunnerNodeDefinition(
 
 
 async def _execute_run_adb_shell(
-    agent: Any, input_value: Dict[str, Any], context: AgentTestRunnerNodeExecutionContext
+    agent: Any,
+    input_value: dict[str, Any],
+    context: AgentTestRunnerNodeExecutionContext,
 ) -> Any:
     command = input_value.get("command")
     timeout = input_value.get("timeout")
@@ -71,7 +73,9 @@ LEGACY_RUN_ADB_SHELL_NODE_DEFINITION = AgentTestRunnerNodeDefinition(
 
 
 async def _execute_legacy_action(
-    agent: Any, input_value: Dict[str, Any], context: AgentTestRunnerNodeExecutionContext
+    agent: Any,
+    input_value: dict[str, Any],
+    context: AgentTestRunnerNodeExecutionContext,
 ) -> Any:
     context.signal.throw_if_aborted()
     action_space = await agent.get_action_space()
@@ -96,7 +100,9 @@ LEGACY_ACTION_NODE_DEFINITION = AgentTestRunnerNodeDefinition(
 
 
 def _execute_legacy_validation_error(
-    agent: Any, input_value: Dict[str, Any], context: AgentTestRunnerNodeExecutionContext
+    agent: Any,
+    input_value: dict[str, Any],
+    context: AgentTestRunnerNodeExecutionContext,
 ) -> None:
     raise RuntimeError(input_value.get("message"))
 
@@ -120,9 +126,8 @@ _LEGACY_PROMPT_INPUT_SCHEMA = _schema(
         "options": {"type": "object"},
     }
 )
-_LEGACY_INPUT_SCHEMAS: Dict[str, Dict[str, Any]] = {
-    name: _LEGACY_PROMPT_INPUT_SCHEMA
-    for name in (
+_LEGACY_INPUT_SCHEMAS: dict[str, dict[str, Any]] = dict.fromkeys(
+    (
         "aiAct",
         "aiTap",
         "aiLocate",
@@ -133,8 +138,9 @@ _LEGACY_INPUT_SCHEMAS: Dict[str, Dict[str, Any]] = {
         "aiAsk",
         "aiWaitFor",
         "aiScroll",
-    )
-}
+    ),
+    _LEGACY_PROMPT_INPUT_SCHEMA,
+)
 _LEGACY_INPUT_SCHEMAS["aiAssert"] = {
     **_LEGACY_PROMPT_INPUT_SCHEMA,
     "properties": {
@@ -149,17 +155,19 @@ _LEGACY_INPUT_SCHEMAS["runGherkinScenario"] = _schema(
 _LEGACY_INPUT_SCHEMAS["sleep"] = _schema(
     {"ms": {"type": "number", "exclusiveMinimum": 0}}
 )
-_LEGACY_INPUT_SCHEMAS["action"] = _schema({"name": _text("The action name."), "params": {}})
+_LEGACY_INPUT_SCHEMAS["action"] = _schema(
+    {"name": _text("The action name."), "params": {}}
+)
 _LEGACY_INPUT_SCHEMAS["recordToReport"] = _schema(
     {"title": {}, "options": {"type": "object"}}
 )
 
-_SHARED_DEFINITIONS: Dict[str, AgentTestRunnerNodeDefinition] = {
+_SHARED_DEFINITIONS: dict[str, AgentTestRunnerNodeDefinition] = {
     definition.name: definition
     for definition in COMMON_AGENT_TEST_RUNNER_NODE_DEFINITIONS
 }
 
-_LEGACY_DEFINITIONS: List[AgentTestRunnerNodeDefinition] = []
+_LEGACY_DEFINITIONS: list[AgentTestRunnerNodeDefinition] = []
 for _name, _input_schema in _LEGACY_INPUT_SCHEMAS.items():
     _shared = _SHARED_DEFINITIONS.get(_name)
     if _shared is None:
@@ -183,11 +191,11 @@ _LEGACY_DEFINITIONS.extend(
     ]
 )
 
-LEGACY_AGENT_TEST_RUNNER_NODE_DEFINITIONS: List[AgentTestRunnerNodeDefinition] = (
+LEGACY_AGENT_TEST_RUNNER_NODE_DEFINITIONS: list[AgentTestRunnerNodeDefinition] = (
     _LEGACY_DEFINITIONS
 )
 
-_LEGACY_DEFINITIONS_BY_NAME: Dict[str, AgentTestRunnerNodeDefinition] = {
+_LEGACY_DEFINITIONS_BY_NAME: dict[str, AgentTestRunnerNodeDefinition] = {
     definition.name: definition
     for definition in LEGACY_AGENT_TEST_RUNNER_NODE_DEFINITIONS
 }

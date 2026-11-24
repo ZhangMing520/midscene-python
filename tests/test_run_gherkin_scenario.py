@@ -8,7 +8,6 @@ key on aiAssert options; the Python runner only forwards `context`, so that
 assertion is reconciled in the empty-context case below.
 """
 
-from typing import List
 from unittest.mock import patch
 
 import pytest
@@ -37,8 +36,8 @@ def _agent(**options):
 @pytest.mark.asyncio
 async def test_runs_an_anonymous_gherkin_scenario_through_ai_act_and_ai_assert():
     agent = _agent()
-    act_calls: List[tuple] = []
-    assert_calls: List[tuple] = []
+    act_calls: list[tuple] = []
+    assert_calls: list[tuple] = []
 
     async def fake_act(prompt, opt=None):
         act_calls.append((prompt, opt))
@@ -46,8 +45,9 @@ async def test_runs_an_anonymous_gherkin_scenario_through_ai_act_and_ai_assert()
     async def fake_assert(assertion, msg=None, opt=None):
         assert_calls.append((assertion, msg, opt))
 
-    with patch.object(agent, "ai_act", new=fake_act), patch.object(
-        agent, "ai_assert", new=fake_assert
+    with (
+        patch.object(agent, "ai_act", new=fake_act),
+        patch.object(agent, "ai_assert", new=fake_assert),
     ):
         result = await agent.run_gherkin_scenario(
             """
@@ -78,8 +78,8 @@ async def test_forwards_an_empty_context_to_every_gherkin_step():
     from midscene.core.agent.run_gherkin_scenario import parse_gherkin_scenario
 
     agent = _agent()
-    act_calls: List[tuple] = []
-    assert_calls: List[tuple] = []
+    act_calls: list[tuple] = []
+    assert_calls: list[tuple] = []
 
     async def fake_act(prompt, opt=None):
         act_calls.append((prompt, opt))
@@ -87,8 +87,9 @@ async def test_forwards_an_empty_context_to_every_gherkin_step():
     async def fake_assert(assertion, msg=None, opt=None):
         assert_calls.append((assertion, msg, opt))
 
-    with patch.object(agent, "ai_act", new=fake_act), patch.object(
-        agent, "ai_assert", new=fake_assert
+    with (
+        patch.object(agent, "ai_act", new=fake_act),
+        patch.object(agent, "ai_assert", new=fake_assert),
     ):
         await agent.run_gherkin_scenario(
             """
@@ -127,7 +128,7 @@ Then the list should contain "Buy milk"
 @pytest.mark.asyncio
 async def test_always_disables_ai_act_cache_inside_a_gherkin_scenario():
     agent = _agent()
-    act_calls: List[tuple] = []
+    act_calls: list[tuple] = []
 
     async def fake_act(prompt, opt=None):
         act_calls.append((prompt, opt))
@@ -152,8 +153,8 @@ async def test_supports_one_scenario():
     from midscene.core.agent.run_gherkin_scenario import parse_gherkin_scenario
 
     agent = _agent()
-    act_calls: List[str] = []
-    assert_calls: List[str] = []
+    act_calls: list[str] = []
+    assert_calls: list[str] = []
 
     async def fake_act(prompt, opt=None):
         act_calls.append(prompt)
@@ -173,8 +174,9 @@ Scenario: Add a todo item
         'I add "Buy milk"',
         'the list should contain "Buy milk"',
     ]
-    with patch.object(agent, "ai_act", new=fake_act), patch.object(
-        agent, "ai_assert", new=fake_assert
+    with (
+        patch.object(agent, "ai_act", new=fake_act),
+        patch.object(agent, "ai_assert", new=fake_assert),
     ):
         await agent.run_gherkin_scenario(scenario)
     assert len(act_calls) == 2
@@ -254,7 +256,6 @@ async def test_reports_inherited_and_or_but_semantics_in_execution_errors():
             await agent.run_gherkin_scenario(
                 "Scenario: flow\n  Given a page\n  And a dialog"
             )
-    assert (
-        "setting up the precondition (And as Given -> aiAct) at line 3"
-        in str(exc.value)
+    assert "setting up the precondition (And as Given -> aiAct) at line 3" in str(
+        exc.value
     )

@@ -6,7 +6,7 @@ bulk input uses one insertText call, sequential input types code points
 individually, and the legacy strategy forwards the platform keyboard delay.
 """
 
-from typing import Any, Dict, List
+from typing import Any
 from unittest.mock import Mock
 
 import pytest
@@ -14,9 +14,9 @@ import pytest
 
 class _FakeKeyboard:
     def __init__(self):
-        self.typed: List[tuple] = []
-        self.inserted: List[str] = []
-        self.presses: List[str] = []
+        self.typed: list[tuple] = []
+        self.inserted: list[str] = []
+        self.presses: list[str] = []
 
     async def type(self, text, **kwargs):
         self.typed.append((text, kwargs.get("delay")))
@@ -31,7 +31,7 @@ class _FakeKeyboard:
 class _FakeTypingPage:
     def __init__(self):
         self.keyboard = _FakeKeyboard()
-        self.handlers: Dict[str, Any] = {}
+        self.handlers: dict[str, Any] = {}
 
     def on(self, event, handler):
         self.handlers[event] = handler
@@ -74,9 +74,7 @@ async def test_sends_unicode_code_points_separately_for_sequential_input():
 async def test_passes_action_level_keyboard_type_delay_to_text_input_actions():
     from midscene.web_integration.playwright.page import PlaywrightWebPage
 
-    web = PlaywrightWebPage(
-        _FakeTypingPage(), Mock(), Mock(), keyboard_type_delay=25
-    )
+    web = PlaywrightWebPage(_FakeTypingPage(), Mock(), Mock(), keyboard_type_delay=25)
     await web.input_text("hi")
     assert web.page.keyboard.typed == [("hi", 25)]
 
@@ -93,9 +91,9 @@ async def test_selects_existing_text_without_clearing_before_bulk_replace_input(
 
 class _FakeMouse:
     def __init__(self):
-        self.clicks: List[tuple] = []
-        self.moves: List[tuple] = []
-        self.wheels: List[tuple] = []
+        self.clicks: list[tuple] = []
+        self.moves: list[tuple] = []
+        self.wheels: list[tuple] = []
 
     async def click(self, x, y, **kwargs):
         self.clicks.append((x, y, kwargs))
@@ -111,8 +109,8 @@ class _ActionFakePage:
     def __init__(self):
         self.mouse = _FakeMouse()
         self.keyboard = _FakeKeyboard()
-        self.scheduled: List[bool] = []
-        self.flushed: List[bool] = []
+        self.scheduled: list[bool] = []
+        self.flushed: list[bool] = []
 
     def schedule_pending_visual_update(self, force=False):
         self.scheduled.append(force)
@@ -129,7 +127,9 @@ def _find_action(actions, name):
 
 
 class TestCommonWebActionsForWebPageNavigation:
-    def test_supports_system_one_for_simple_navigation_but_delegates_url_generation(self):
+    def test_supports_system_one_for_simple_navigation_but_delegates_url_generation(
+        self,
+    ):
         """supports System One for simple navigation but delegates URL generation"""
         from midscene.web_integration.web_page import (
             common_web_actions_for_web_page,
@@ -139,9 +139,7 @@ class TestCommonWebActionsForWebPageNavigation:
 
         for name in ("Reload", "GoBack", "GoForward"):
             assert _find_action(actions, name).supported_by_system_one is True
-        assert (
-            _find_action(actions, "Navigate").supported_by_system_one is False
-        )
+        assert _find_action(actions, "Navigate").supported_by_system_one is False
 
     @pytest.mark.asyncio
     async def test_exposes_forward_without_exposing_stop_as_an_action_space_entry(self):
@@ -150,7 +148,7 @@ class TestCommonWebActionsForWebPageNavigation:
             common_web_actions_for_web_page,
         )
 
-        calls: List[str] = []
+        calls: list[str] = []
 
         class Page(_ActionFakePage):
             async def go_forward(self):
@@ -179,9 +177,7 @@ class TestCommonWebActionsForWebPageVisualRefresh:
         page = _ActionFakePage()
         actions = common_web_actions_for_web_page(page)
 
-        await _find_action(actions, "Tap").execute(
-            {"locate": {"center": [10, 20]}}
-        )
+        await _find_action(actions, "Tap").execute({"locate": {"center": [10, 20]}})
 
         assert page.mouse.clicks == [(10, 20, {"button": "left"})]
         assert page.scheduled == [False]
@@ -197,9 +193,7 @@ class TestCommonWebActionsForWebPageVisualRefresh:
         page = _ActionFakePage()
         actions = common_web_actions_for_web_page(page)
 
-        await _find_action(actions, "KeyboardPress").execute(
-            {"keyName": "Meta+A"}
-        )
+        await _find_action(actions, "KeyboardPress").execute({"keyName": "Meta+A"})
 
         assert len(page.keyboard.presses) == 1
         assert page.scheduled == [False]
@@ -230,7 +224,7 @@ class TestCommonWebActionsForWebPageVisualRefresh:
             common_web_actions_for_web_page,
         )
 
-        scrolls: List[tuple] = []
+        scrolls: list[tuple] = []
 
         class Page(_ActionFakePage):
             async def scroll(self, direction, distance=None, **kwargs):
@@ -255,7 +249,7 @@ class TestCommonWebActionsForWebPageVisualRefresh:
             common_web_actions_for_web_page,
         )
 
-        navigations: List[str] = []
+        navigations: list[str] = []
 
         class Page(_ActionFakePage):
             async def navigate(self, url):
@@ -264,9 +258,7 @@ class TestCommonWebActionsForWebPageVisualRefresh:
         page = Page()
         actions = common_web_actions_for_web_page(page)
 
-        await _find_action(actions, "Navigate").execute(
-            {"url": "https://example.com"}
-        )
+        await _find_action(actions, "Navigate").execute({"url": "https://example.com"})
 
         assert navigations == ["https://example.com"]
         assert page.scheduled == [True]
@@ -279,7 +271,7 @@ class TestCommonWebActionsForWebPageVisualRefresh:
             common_web_actions_for_web_page,
         )
 
-        reloads: List[int] = []
+        reloads: list[int] = []
 
         class Page(_ActionFakePage):
             async def reload(self):
@@ -365,7 +357,7 @@ class TestCommonWebActionsForWebPageVisualRefresh:
             common_web_actions_for_web_page,
         )
 
-        type_calls: List[tuple] = []
+        type_calls: list[tuple] = []
 
         class Keyboard:
             async def type(self, text, delay=None):
@@ -417,7 +409,9 @@ class TestCommonWebActionsForWebPageVisualRefresh:
         assert page.keyboard.inserted == []
 
     @pytest.mark.asyncio
-    async def test_selects_existing_text_without_clearing_before_bulk_replace_input(self):
+    async def test_selects_existing_text_without_clearing_before_bulk_replace_input(
+        self,
+    ):
         """selects existing text without clearing before bulk replace input"""
         from midscene.web_integration.web_page import (
             common_web_actions_for_web_page,
@@ -428,9 +422,9 @@ class TestCommonWebActionsForWebPageVisualRefresh:
         class Page(_ActionFakePage):
             def __init__(self):
                 super().__init__()
-                self.selected: List[Any] = []
-                self.cleared: List[Any] = []
-                self.waited: List[Any] = []
+                self.selected: list[Any] = []
+                self.cleared: list[Any] = []
+                self.waited: list[Any] = []
 
             async def select_all_input(self, element=None):
                 self.selected.append(element)

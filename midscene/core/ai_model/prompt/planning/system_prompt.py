@@ -1,11 +1,8 @@
 """Standard planning system prompt (upstream prompt/planning/system-prompt.ts)."""
 
-from typing import Any, Dict, Optional, Sequence
+from collections.abc import Sequence
+from typing import Any
 
-from midscene.shared.env import get_preferred_language
-from midscene.shared.env import (
-    planning_model_family_required_for_locate_message,
-)
 from midscene.core.ai_model.prompt.locate import locate_grounding_rules
 from midscene.core.ai_model.prompt.planning.action_output_example import (
     build_action_output_example,
@@ -17,13 +14,17 @@ from midscene.core.ai_model.prompt.planning.action_space_description import (
 from midscene.core.ai_model.prompt.planning.multi_turn_example import (
     build_planning_multi_turn_example,
 )
+from midscene.shared.env import (
+    get_preferred_language,
+    planning_model_family_required_for_locate_message,
+)
 
 
 def build_standard_planning_system_prompt(
     action_space: Sequence[Any],
     planning_protocol,
     include_locate_in_planning: bool,
-    locate_prompt_spec: Optional[Dict[str, Any]] = None,
+    locate_prompt_spec: dict[str, Any] | None = None,
     include_sub_goals: bool = False,
     include_thought: bool = True,
     include_log: bool = True,
@@ -35,7 +36,9 @@ def build_standard_planning_system_prompt(
     preferred_language = get_preferred_language()
 
     action_space_description = build_planning_action_space_description(
-        action_space, planning_protocol, locate_prompt_spec if include_locate_in_planning else None
+        action_space,
+        planning_protocol,
+        locate_prompt_spec if include_locate_in_planning else None,
     )
 
     has_run_adb_shell = any(
@@ -86,24 +89,30 @@ Don't use this tag if no information needs to be preserved.""",
         "",
     )
 
-    planning_tag_section = render_thought_content(
-        f"""### <planning> tag (REQUIRED)
+    planning_tag_section = (
+        render_thought_content(
+            f"""### <planning> tag (REQUIRED)
 
 REQUIRED: You MUST always output the <planning> tag. Never skip it.
 
 Write the content of the <planning> tag in {preferred_language}.
 
-Include your planning details in the <planning> tag. It should answer: {render_sub_goals_content(
-            "What is the user's requirement? What is the current state based on the screenshot? Are all sub-goals completed? If not, what should be the next action?",
-            'What is the current state based on the screenshot? What should be the next action?',
-        )} Write it naturally without numbering or section headers.
+Include your planning details in the <planning> tag. It should answer: {
+                render_sub_goals_content(
+                    "What is the user's requirement? What is the current state based on the screenshot? Are all sub-goals completed? If not, what should be the next action?",
+                    "What is the current state based on the screenshot? What should be the next action?",
+                )
+            } Write it naturally without numbering or section headers.
 
 CRITICAL - Following Explicit Instructions: When the user gives you specific operation steps (not high-level goals), you MUST execute ONLY those exact steps - nothing more, nothing less. Do NOT add extra actions even if they seem logical. For example: "fill out the form" means only fill fields, do NOT submit; "click the button" means only click, do NOT wait for page load or verify results; "type 'hello'" means only type, do NOT press Enter.""",
-        render_thought_content(
-            "### <planning> tag (REQUIRED)\n\nREQUIRED: You MUST always output the <planning> tag. Never skip it.",
-            "",
-        ),
-    ) if include_thought else ""
+            render_thought_content(
+                "### <planning> tag (REQUIRED)\n\nREQUIRED: You MUST always output the <planning> tag. Never skip it.",
+                "",
+            ),
+        )
+        if include_thought
+        else ""
+    )
 
     observation_guidelines = render_sub_goals_content(
         """### Observation Guidelines
@@ -194,7 +203,7 @@ The <log> tag is a brief preamble message to the user explaining what you're abo
     action_space_protocol = planning_protocol["action_space_protocol"]
 
     navigation_restriction_section = render_sub_goals_content(
-        '',
+        "",
         """**Page navigation restriction:**
 - Unless the user's instruction explicitly asks you to click a link, jump to another page, or navigate to a URL, you MUST complete the task on the current page only.
 - Do NOT navigate away from the current page on your own initiative (e.g., do not click links that lead to other pages, do not use browser back/forward, do not open new URLs).
@@ -226,15 +235,19 @@ The <log> tag is a brief preamble message to the user explaining what you're abo
     return f"""
 Target: You are an expert to manipulate the UI to accomplish the user's instruction. User will give you an instruction, some screenshots, background knowledge and previous logs indicating what have been done. Your task is to accomplish the instruction by thinking through the path to complete the task and give the next action to execute.
 
-## Step 1: {render_sub_goals_content(
-        'Observe and Plan (related tags: <planning>, <update-plan-content>, <mark-sub-goal-done>)',
-        render_thought_content('Observe (related tags: <planning>)', 'Observe'),
-    )}
+## Step 1: {
+        render_sub_goals_content(
+            "Observe and Plan (related tags: <planning>, <update-plan-content>, <mark-sub-goal-done>)",
+            render_thought_content("Observe (related tags: <planning>)", "Observe"),
+        )
+    }
 
-First, observe the current screenshot and previous logs{render_sub_goals_content(
-        ", then break down the user's instruction into multiple high-level sub-goals. Update the status of sub-goals based on what you see in the current screenshot.",
-        ' to understand the current state.',
-    )}
+First, observe the current screenshot and previous logs{
+        render_sub_goals_content(
+            ", then break down the user's instruction into multiple high-level sub-goals. Update the status of sub-goals based on what you see in the current screenshot.",
+            " to understand the current state.",
+        )
+    }
 
 {observation_guidelines}
 
@@ -244,12 +257,18 @@ First, observe the current screenshot and previous logs{render_sub_goals_content
 
 {sub_goals_memory_section}
 
-## Step {completion_check_step_number}: {render_sub_goals_content(
-        'Check if Goal is Accomplished',
-        'Check if the Instruction is Fulfilled',
-    )} (related tags: <complete>)
+## Step {completion_check_step_number}: {
+        render_sub_goals_content(
+            "Check if Goal is Accomplished",
+            "Check if the Instruction is Fulfilled",
+        )
+    } (related tags: <complete>)
 
-Determine if the entire task is completed{render_sub_goals_content(' based on the current screenshot and the status of all sub-goals')}.
+Determine if the entire task is completed{
+        render_sub_goals_content(
+            " based on the current screenshot and the status of all sub-goals"
+        )
+    }.
 
 ### CRITICAL: The User's Instruction is the Supreme Authority
 
@@ -259,15 +278,27 @@ The user's instruction defines the EXACT scope of what you must accomplish. You 
 - If the user gives you **explicit operation steps** (e.g., "click X", "type Y", "fill out the form"), treat them as exact commands. Execute ONLY those steps, nothing more.
 - If the user gives you a **high-level goal** (e.g., "log in to the system", "complete the purchase"), you may determine the necessary steps to achieve it.
 
-**What "{render_sub_goals_content('goal accomplished', 'instruction fulfilled')}" means:**
-- The {render_sub_goals_content('goal is accomplished', 'instruction is fulfilled')} when you have done EXACTLY what the user asked - no extra steps, no assumptions.
+**What "{
+        render_sub_goals_content("goal accomplished", "instruction fulfilled")
+    }" means:**
+- The {
+        render_sub_goals_content("goal is accomplished", "instruction is fulfilled")
+    } when you have done EXACTLY what the user asked - no extra steps, no assumptions.
 - Do NOT perform any action beyond the explicit instruction, even if it seems logical or helpful.
 
 **Examples - Explicit instructions (execute exactly, no extra steps):**
-- "fill out the form" → {render_sub_goals_content('Goal accomplished', 'Instruction fulfilled')} when all fields are filled. Do NOT submit the form.
-- "click the login button" → {render_sub_goals_content('Goal accomplished', 'Instruction fulfilled')} once clicked. Do NOT wait for page load or verify login success.
-- "type 'hello' in the search box" → {render_sub_goals_content('Goal accomplished', 'Instruction fulfilled')} when 'hello' is typed. Do NOT press Enter or trigger search.
-- "select the first item" → {render_sub_goals_content('Goal accomplished', 'Instruction fulfilled')} when selected. Do NOT proceed to checkout.
+- "fill out the form" → {
+        render_sub_goals_content("Goal accomplished", "Instruction fulfilled")
+    } when all fields are filled. Do NOT submit the form.
+- "click the login button" → {
+        render_sub_goals_content("Goal accomplished", "Instruction fulfilled")
+    } once clicked. Do NOT wait for page load or verify login success.
+- "type 'hello' in the search box" → {
+        render_sub_goals_content("Goal accomplished", "Instruction fulfilled")
+    } when 'hello' is typed. Do NOT press Enter or trigger search.
+- "select the first item" → {
+        render_sub_goals_content("Goal accomplished", "Instruction fulfilled")
+    } when selected. Do NOT proceed to checkout.
 
 **Change completion:**
 - If the requested outcome is a durable change, such as create, edit, update, delete, save, send, submit, apply, or publish, do not stop at an unsaved draft, open editor, temporary input, transient selection, or staged value. Continue through the app/page's normal completion control such as Save, Done, Confirm, OK, Submit, Apply, Send, or Publish before completing, so the result remains after leaving the screen.
@@ -292,7 +323,9 @@ The user's instruction defines the EXACT scope of what you must accomplish. You 
 - Retry input only when the input field is clearly still empty, or when the page shows an explicit error message.
 
 **Special case - Assertion instructions:**
-- If the user's instruction includes an assertion (e.g., "verify that...", "check that...", "assert..."), and you observe from the screenshot that the assertion condition is NOT satisfied and cannot be satisfied, mark {render_sub_goals_content('the goal', 'it')} as failed (success="false").
+- If the user's instruction includes an assertion (e.g., "verify that...", "check that...", "assert..."), and you observe from the screenshot that the assertion condition is NOT satisfied and cannot be satisfied, mark {
+        render_sub_goals_content("the goal", "it")
+    } as failed (success="false").
 - If the page is still loading (e.g., you see a loading spinner, skeleton screen, or progress bar), do NOT assert yet. Wait for the page to finish loading before evaluating the assertion.
 
 ### Completion Criteria for Process-required Instructions
@@ -309,15 +342,30 @@ If any explicit step lacks completion evidence in the current execution history,
 
 ### Output Rules
 
-- If the task is NOT complete, skip this section and continue to Step {action_step_number}.
+- If the task is NOT complete, skip this section and continue to Step {
+        action_step_number
+    }.
 - Use the <complete success="true|false">message</complete> tag to output the result if the goal is accomplished or failed.
-  - the 'success' attribute is required. {render_sub_goals_content('It means whether the expected goal is accomplished based on what you observe in the current screenshot and the current execution history. ')}No matter what errors occurred during execution, set success="true" only when the current execution history shows that all steps required by the user have been completed and the final state satisfies the requirement. If the user asks for explicit operation steps or an ordered workflow, do not treat those steps as completed only because the current screenshot already shows the final expected state. If the {render_sub_goals_content('expected goal is not accomplished and cannot be accomplished', 'instruction is not fulfilled and cannot be fulfilled')}, set success="false".
+  - the 'success' attribute is required. {
+        render_sub_goals_content(
+            "It means whether the expected goal is accomplished based on what you observe in the current screenshot and the current execution history. "
+        )
+    }No matter what errors occurred during execution, set success="true" only when the current execution history shows that all steps required by the user have been completed and the final state satisfies the requirement. If the user asks for explicit operation steps or an ordered workflow, do not treat those steps as completed only because the current screenshot already shows the final expected state. If the {
+        render_sub_goals_content(
+            "expected goal is not accomplished and cannot be accomplished",
+            "instruction is not fulfilled and cannot be fulfilled",
+        )
+    }, set success="false".
   - the 'message' is the information that will be provided to the user. If the user asks for a specific format, strictly follow that.
 - If you output <complete>, do NOT output {action_output_tags_text}. The task ends here.
 
-## Step {action_step_number}: Determine Next Action (related tags: {render_log_content('<log>, ')}{action_output_tags_text}, <error>)
+## Step {action_step_number}: Determine Next Action (related tags: {
+        render_log_content("<log>, ")
+    }{action_output_tags_text}, <error>)
 
-ONLY if the task is not complete: Think what the next action is according to the current screenshot{render_sub_goals_content(' and the plan')}.
+ONLY if the task is not complete: Think what the next action is according to the current screenshot{
+        render_sub_goals_content(" and the plan")
+    }.
 
 - Don't give extra actions or plans beyond the instruction or the plan. For example, don't try to submit the form if the instruction is only to fill something.
 - Consider the current screenshot and give the action that is most likely to accomplish the instruction. For example, if the next step is to click a button but it's not visible in the screenshot, you should try to find it first instead of give a click action.
@@ -327,7 +375,9 @@ ONLY if the task is not complete: Think what the next action is according to the
 
 ### Action Guidelines
 
-{adb_shell_line}- If Swipe is available in the current Action Space, for touch continuous controls that set a value along a track, such as a slider, prefer Swipe from the current handle or filled position to the requested track endpoint instead of tapping the endpoint.
+{
+        adb_shell_line
+    }- If Swipe is available in the current Action Space, for touch continuous controls that set a value along a track, such as a slider, prefer Swipe from the current handle or filled position to the requested track endpoint instead of tapping the endpoint.
 - When editing existing text in a UI field, preserve all existing text by moving the cursor and typing/deleting the minimal necessary characters.
 - For insert/prepend/append edits, use CursorMove when the caret must be adjusted precisely, then use Input with mode "typeOnly" for inserted characters and KeyboardPress for newlines or deletion. If the caret lands in the wrong position, recover with CursorMove, KeyboardPress, or undo and retry cursor placement; do not switch to replace as a fallback for cursor placement failures.
 
@@ -349,9 +399,9 @@ Use the following priority order:
 
 After interpreting the intent, choose an appropriate Action from the current Action Space and use its supported parameters to achieve the intended result. Some actions support start and end points instead of `direction`. When using `direction`, ensure its value achieves the intended result according to the selected Action's definition.
 
-{locate_grounding_rules() if include_locate_in_planning else ''}
+{locate_grounding_rules() if include_locate_in_planning else ""}
 
-### {action_space_protocol['title']}
+### {action_space_protocol["title"]}
 
 {action_space_description}
 
@@ -359,15 +409,18 @@ After interpreting the intent, choose an appropriate Action from the current Act
 
 ### If there is some action to do ...
 
-{action_output_protocol['action_output_rules']}
+{action_output_protocol["action_output_rules"]}
 
 For example:
-{build_action_output_example(
-        create_sample_tap_action('Add to cart button for Sauce Labs Backpack'),
-        action_output_protocol['build_action_output'],
-        locate_prompt_spec if include_locate_in_planning else None,
-        1,
-    ) or ''}
+{
+        build_action_output_example(
+            create_sample_tap_action("Add to cart button for Sauce Labs Backpack"),
+            action_output_protocol["build_action_output"],
+            locate_prompt_spec if include_locate_in_planning else None,
+            1,
+        )
+        or ""
+    }
 
 ### If you think there is an error ...
 
@@ -391,25 +444,33 @@ Return in XML format following this decision flow:
 
 **Then choose ONE of the following paths:**
 
-**Path A: If the {render_sub_goals_content('goal is accomplished', 'instruction is fulfilled')} or failed (Step {completion_check_step_number})**
+**Path A: If the {
+        render_sub_goals_content("goal is accomplished", "instruction is fulfilled")
+    } or failed (Step {completion_check_step_number})**
 <complete success="true|false">...</complete>
 
-**Path B: If the {render_sub_goals_content('goal is NOT complete', 'instruction is NOT fulfilled')} yet (Step {action_step_number})**
+**Path B: If the {
+        render_sub_goals_content("goal is NOT complete", "instruction is NOT fulfilled")
+    } yet (Step {action_step_number})**
 <!-- Determine next action -->
-{render_log_content('<log>...</log>')}
-{action_output_protocol['action_output_placeholder']}
+{render_log_content("<log>...</log>")}
+{action_output_protocol["action_output_placeholder"]}
 
 <!-- OR if there's an error -->
 <error>...</error>
 
-{build_planning_multi_turn_example(
-        action_output_protocol=action_output_protocol,
-        include_sub_goals=should_include_sub_goals,
-        include_thought=include_thought,
-        include_log=include_log,
-        locate_prompt_spec=locate_prompt_spec if include_locate_in_planning else None,
-        prefix=response_prefix or None,
-    )}"""
+{
+        build_planning_multi_turn_example(
+            action_output_protocol=action_output_protocol,
+            include_sub_goals=should_include_sub_goals,
+            include_thought=include_thought,
+            include_log=include_log,
+            locate_prompt_spec=locate_prompt_spec
+            if include_locate_in_planning
+            else None,
+            prefix=response_prefix or None,
+        )
+    }"""
 
 
 __all__ = ["build_standard_planning_system_prompt"]

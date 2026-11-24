@@ -1,8 +1,8 @@
 """Parse MIDSCENE_* env into model config (upstream packages/shared/src/env/parse-model-config.ts)."""
 
-from typing import Dict, Optional, Union
 import json
 import math
+
 from loguru import logger
 
 from midscene.shared.env.constants import (
@@ -21,7 +21,8 @@ from midscene.shared.env.types import (
     TIntent,
 )
 
-def model_family_required_for_locate_message(slot: Optional[str] = None) -> str:
+
+def model_family_required_for_locate_message(slot: str | None = None) -> str:
     """Deprecated re-export of the model-locate-result error message."""
     from midscene.core.ai_model.shared.model_locate_result.errors import (
         model_family_required_for_locate_message as _message,
@@ -31,7 +32,7 @@ def model_family_required_for_locate_message(slot: Optional[str] = None) -> str:
 
 
 def planning_model_family_required_for_locate_message(
-    slot: Optional[str] = None,
+    slot: str | None = None,
 ) -> str:
     """Deprecated re-export of the model-locate-result error message."""
     from midscene.core.ai_model.shared.model_locate_result.errors import (
@@ -41,7 +42,7 @@ def planning_model_family_required_for_locate_message(
     return _message(slot)
 
 
-def legacy_config_to_model_family(provider: Dict[str, Optional[str]]) -> Optional[str]:
+def legacy_config_to_model_family(provider: dict[str, str | None]) -> str | None:
     """Map deprecated MIDSCENE_USE_* vision switches to a model family."""
     is_doubao = provider.get(MIDSCENE_USE_DOUBAO_VISION)
     is_qwen = provider.get(MIDSCENE_USE_QWEN_VL)
@@ -83,7 +84,7 @@ def legacy_config_to_model_family(provider: Dict[str, Optional[str]]) -> Optiona
     return None
 
 
-def get_uitars_model_version(model_family: Optional[str] = None) -> Optional[str]:
+def get_uitars_model_version(model_family: str | None = None) -> str | None:
     if model_family == "vlm-ui-tars":
         return "1.0"
     if model_family in ("vlm-ui-tars-doubao", "vlm-ui-tars-doubao-1.5"):
@@ -95,7 +96,7 @@ def get_uitars_model_version(model_family: Optional[str] = None) -> Optional[str
 get_ui_tars_model_version = get_uitars_model_version
 
 
-def validate_model_family(model_family: Optional[str]) -> None:
+def validate_model_family(model_family: str | None) -> None:
     if model_family and model_family not in MODEL_FAMILY_VALUES:
         import midscene
 
@@ -110,7 +111,7 @@ def validate_model_family(model_family: Optional[str]) -> None:
 
 
 def get_model_description(
-    model_family: Optional[str], ui_tars_model_version: Optional[str]
+    model_family: str | None, ui_tars_model_version: str | None
 ) -> str:
     if ui_tars_model_version:
         return f"UI-TARS={ui_tars_model_version}"
@@ -119,7 +120,7 @@ def get_model_description(
     return ""
 
 
-def _parse_temperature(raw: Optional[str]) -> Optional[Union[float, str]]:
+def _parse_temperature(raw: str | None) -> float | str | None:
     if raw == "unset":
         return "unset"
     if raw is None or raw == "":
@@ -132,17 +133,17 @@ def _parse_temperature(raw: Optional[str]) -> Optional[Union[float, str]]:
 
 
 def _parse_number_env(
-    raw: Optional[str],
+    raw: str | None,
     key: str,
-    default: Optional[float],
-    minimum: Optional[float] = 0,
-) -> Optional[float]:
+    default: float | None,
+    minimum: float | None = 0,
+) -> float | None:
     if raw is None or raw == "":
         return default
     try:
         value = float(raw)
     except ValueError:
-        raise ValueError(f"{key} must be a finite number, got {raw!r}")
+        raise ValueError(f"{key} must be a finite number, got {raw!r}") from None
     if value != value:  # NaN
         raise ValueError(f"{key} must be a finite number, got {raw!r}")
     if minimum is not None and value < minimum:
@@ -150,19 +151,19 @@ def _parse_number_env(
     return value
 
 
-def _parse_json_env(key: str, value: Optional[str]) -> Optional[dict]:
+def _parse_json_env(key: str, value: str | None) -> dict | None:
     if not value:
         return None
     try:
         parsed = json.loads(value)
     except json.JSONDecodeError as e:
-        raise ValueError(f"Failed to parse {key} as a JSON. {e}")
+        raise ValueError(f"Failed to parse {key} as a JSON. {e}") from e
     if not isinstance(parsed, dict):
         return None
     return parsed
 
 
-def _parse_timeout(raw: Optional[str], key: str) -> Optional[float]:
+def _parse_timeout(raw: str | None, key: str) -> float | None:
     """Parse a timeout in milliseconds, mirroring upstream Number() checks."""
     if raw is None:
         return None
@@ -184,15 +185,16 @@ def _parse_timeout(raw: Optional[str], key: str) -> Optional[float]:
 
 
 def parse_openai_sdk_config(
-    keys: Dict[str, str],
-    provider: Dict[str, Optional[str]],
+    keys: dict[str, str],
+    provider: dict[str, str | None],
     use_legacy_logic: bool = False,
-) -> Dict:
+) -> dict:
     """Parse a per-intent model configuration from an env-style key/value map.
 
     Ported from upstream parse-model-config.ts (parseOpenaiSdkConfig).
     """
-    def pick(field: str) -> Optional[str]:
+
+    def pick(field: str) -> str | None:
         value = provider.get(keys[field])
         if value is None and use_legacy_logic and field in LEGACY_DEFAULT_KEYS:
             for legacy_key in LEGACY_DEFAULT_KEYS[field]:
@@ -225,7 +227,7 @@ def parse_openai_sdk_config(
     protocol = pick("protocol")
     if protocol is not None and protocol not in ("openai-chat", "openai-responses"):
         raise ValueError(
-            f'{keys["protocol"]} must be one of: openai-chat, openai-responses. '
+            f"{keys['protocol']} must be one of: openai-chat, openai-responses. "
             f"Got: {protocol}"
         )
 
@@ -247,7 +249,7 @@ def parse_openai_sdk_config(
             retry_count = 1
         if retry_count < 0:
             raise ValueError(
-                f'{keys["retryCount"]} must be non-negative, got {retry_count}'
+                f"{keys['retryCount']} must be non-negative, got {retry_count}"
             )
 
     retry_interval = _parse_number_env(
@@ -257,7 +259,7 @@ def parse_openai_sdk_config(
     reasoning_effort = (pick("reasoningEffort") or "").strip() or None
 
     reasoning_enabled_raw = (pick("reasoningEnabled") or "").strip().lower()
-    reasoning_enabled: Optional[Union[bool, str]] = None
+    reasoning_enabled: bool | str | None = None
     if reasoning_enabled_raw in ("true", "1"):
         reasoning_enabled = True
     elif reasoning_enabled_raw in ("false", "0"):
@@ -266,7 +268,7 @@ def parse_openai_sdk_config(
         reasoning_enabled = "default"
 
     reasoning_budget_raw = (pick("reasoningBudget") or "").strip()
-    reasoning_budget: Optional[int] = None
+    reasoning_budget: int | None = None
     if reasoning_budget_raw:
         try:
             reasoning_budget = int(float(reasoning_budget_raw))
@@ -278,7 +280,7 @@ def parse_openai_sdk_config(
         response_format = "auto"
     elif response_format != "none":
         raise ValueError(
-            f'{keys["responseFormat"]} must be one of: none, auto. Got: {response_format}'
+            f"{keys['responseFormat']} must be one of: none, auto. Got: {response_format}"
         )
 
     model_name = pick("modelName") or ""
@@ -312,8 +314,8 @@ def parse_openai_sdk_config(
 
 
 def decide_model_config_from_intent_config(
-    intent: TIntent, config_map: Dict[str, Optional[str]]
-) -> Optional[Dict]:
+    intent: TIntent, config_map: dict[str, str | None]
+) -> dict | None:
     """Resolve one intent's model config; returns None when no model name is set."""
     keys_for_intent = KEYS_MAP[intent]
     model_name = config_map.get(keys_for_intent["modelName"])

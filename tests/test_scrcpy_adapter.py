@@ -134,9 +134,7 @@ class FakeManager:
         self.screenshot_calls += 1
         self.events.append(("screenshot",))
         result = (
-            self.screenshot_results.pop(0)
-            if self.screenshot_results
-            else jpeg_frame()
+            self.screenshot_results.pop(0) if self.screenshot_results else jpeg_frame()
         )
         if inspect.isawaitable(result):
             return await result
@@ -160,8 +158,13 @@ class FakeManager:
         return jpeg_frame()
 
 
-def freshness_error(message, *, failure_kind="freshness-target",
-                    timeout_ms=300, video_bit_rate=4_000_000):
+def freshness_error(
+    message,
+    *,
+    failure_kind="freshness-target",
+    timeout_ms=300,
+    video_bit_rate=4_000_000,
+):
     return ScrcpyFreshFrameUnavailableError(
         message,
         failure_kind=failure_kind,
@@ -225,7 +228,9 @@ class TestIsEnabled:
 
 
 class TestGetStatus:
-    def test_should_distinguish_disabled_configuration_from_runtime_connection_state(self):
+    def test_should_distinguish_disabled_configuration_from_runtime_connection_state(
+        self,
+    ):
         """should distinguish disabled configuration from runtime connection state."""
 
         disabled = ScrcpyDeviceAdapter("device", {"enabled": False})
@@ -255,9 +260,7 @@ class TestResolveConfig:
             calls.append((backend, options))
             return manager
 
-        adapter = adapter_with_factory(
-            {"enabled": True, "frameRate": 30}, factory
-        )
+        adapter = adapter_with_factory({"enabled": True, "frameRate": 30}, factory)
         assert adapter.resolve_config().frame_rate == 30
 
         await adapter.ensure_manager(DEVICE_INFO)
@@ -268,9 +271,7 @@ class TestResolveConfig:
         """rejects invalid encoder frame rates during resolution."""
 
         adapter = ScrcpyDeviceAdapter("device", {"frameRate": -1})
-        with pytest.raises(
-            ValueError, match="Invalid scrcpyConfig.frameRate"
-        ):
+        with pytest.raises(ValueError, match="Invalid scrcpyConfig.frameRate"):
             adapter.resolve_config()
 
     def test_should_default_max_size_to_0_no_scaling_when_not_explicitly_set(self):
@@ -291,19 +292,14 @@ class TestResolveConfig:
         adapter = ScrcpyDeviceAdapter("device", {"maxSize": 0})
         assert adapter.resolve_config().max_size == 0
 
-    @pytest.mark.parametrize(
-        "max_size", [-1, 1.5, float("inf"), float("nan")]
-    )
+    @pytest.mark.parametrize("max_size", [-1, 1.5, float("inf"), float("nan")])
     def test_should_reject_invalid_max_size(self, max_size):
         """should reject invalid maxSize %s."""
 
         adapter = ScrcpyDeviceAdapter("device", {"maxSize": max_size})
         with pytest.raises(
             ValueError,
-            match=(
-                "Invalid scrcpyConfig.maxSize: expected a non-negative "
-                "integer"
-            ),
+            match=("Invalid scrcpyConfig.maxSize: expected a non-negative integer"),
         ):
             adapter.resolve_config()
 
@@ -314,27 +310,22 @@ class TestResolveConfig:
         config = adapter.resolve_config()
         assert config.idle_timeout_ms == DEFAULT_SCRCPY_CONFIG["idle_timeout_ms"]
         assert config.video_bit_rate == DEFAULT_SCRCPY_CONFIG["video_bit_rate"]
-        assert config.video_reset_frame_timeout_ms == (
-            DEFAULT_SCRCPY_CONFIG["video_reset_frame_timeout_ms"]
+        assert (
+            config.video_reset_frame_timeout_ms
+            == (DEFAULT_SCRCPY_CONFIG["video_reset_frame_timeout_ms"])
         )
 
     def test_should_honor_a_custom_video_reset_frame_timeout(self):
         """should honor a custom video reset frame timeout."""
 
-        adapter = ScrcpyDeviceAdapter(
-            "device", {"videoResetFrameTimeoutMs": 1200}
-        )
+        adapter = ScrcpyDeviceAdapter("device", {"videoResetFrameTimeoutMs": 1200})
         assert adapter.resolve_config().video_reset_frame_timeout_ms == 1200
 
-    @pytest.mark.parametrize(
-        "timeout", [0, -1, 1.5, float("inf"), float("nan")]
-    )
+    @pytest.mark.parametrize("timeout", [0, -1, 1.5, float("inf"), float("nan")])
     def test_should_reject_invalid_video_reset_frame_timeout(self, timeout):
         """should reject invalid videoResetFrameTimeoutMs %s."""
 
-        adapter = ScrcpyDeviceAdapter(
-            "device", {"videoResetFrameTimeoutMs": timeout}
-        )
+        adapter = ScrcpyDeviceAdapter("device", {"videoResetFrameTimeoutMs": timeout})
         with pytest.raises(
             ValueError,
             match=(
@@ -347,9 +338,7 @@ class TestResolveConfig:
     @pytest.mark.parametrize(
         "device_id", ["10.84.162.47:36967", "127.0.0.1:5555", "device:5555"]
     )
-    def test_should_not_infer_video_bit_rate_from_the_device_endpoint(
-        self, device_id
-    ):
+    def test_should_not_infer_video_bit_rate_from_the_device_endpoint(self, device_id):
         """should not infer videoBitRate from the device endpoint %s."""
 
         adapter = ScrcpyDeviceAdapter(device_id, None)
@@ -361,9 +350,7 @@ class TestResolveConfig:
     def test_should_honor_an_explicit_bitrate_on_a_remote_device_endpoint(self):
         """should honor an explicit bitrate on a remote device endpoint."""
 
-        adapter = ScrcpyDeviceAdapter(
-            "10.84.162.47:36967", {"videoBitRate": 8_000_000}
-        )
+        adapter = ScrcpyDeviceAdapter("10.84.162.47:36967", {"videoBitRate": 8_000_000})
         assert adapter.resolve_config().video_bit_rate == 8_000_000
 
     def test_should_use_custom_idle_timeout_and_video_bit_rate(self):
@@ -515,15 +502,15 @@ class TestEnsureManager:
         assert len(resolve_calls) == 1
         assert calls[0][0] is backend
 
-        await backend.push(
-            "/tmp/scrcpy-server", "/data/local/tmp/scrcpy-server"
-        )
+        await backend.push("/tmp/scrcpy-server", "/data/local/tmp/scrcpy-server")
         assert backend.push_calls == [
             ("/tmp/scrcpy-server", "/data/local/tmp/scrcpy-server")
         ]
 
     @pytest.mark.asyncio
-    async def test_should_create_its_default_backend_through_the_canonical_adb_factory(self):
+    async def test_should_create_its_default_backend_through_the_canonical_adb_factory(
+        self,
+    ):
         """should create its default backend through the canonical ADB factory.
 
         Python's canonical factory is AdbCommandBackend(device_id, adb_path).
@@ -542,9 +529,7 @@ class TestEnsureManager:
         """should return cached manager without re-validation."""
 
         manager = FakeManager()
-        adapter = adapter_with_factory(
-            None, lambda backend, options: FakeManager()
-        )
+        adapter = adapter_with_factory(None, lambda backend, options: FakeManager())
         adapter._manager = manager
 
         result = await adapter.ensure_manager(DEVICE_INFO)
@@ -553,7 +538,9 @@ class TestEnsureManager:
         assert manager.validate_calls == 0
 
     @pytest.mark.asyncio
-    async def test_should_call_validate_environment_once_before_caching_new_manager(self):
+    async def test_should_call_validate_environment_once_before_caching_new_manager(
+        self,
+    ):
         """should call validateEnvironment once before caching new manager."""
 
         manager = FakeManager()
@@ -616,12 +603,16 @@ class TestScreenshotBase64:
 
 class TestFrameFreshnessBarriers:
     @pytest.mark.asyncio
-    async def test_does_not_discard_an_already_valid_frame_when_observation_starts(self):
+    async def test_does_not_discard_an_already_valid_frame_when_observation_starts(
+        self,
+    ):
         """does not discard an already valid frame when observation starts."""
 
         manager = FakeManager()
         adapter = adapter_with_manager({"enabled": True}, manager)
-        listener = lambda frame: None
+
+        def listener(frame):
+            return None
 
         await adapter.subscribe_keyframes(DEVICE_INFO, listener)
 
@@ -645,7 +636,9 @@ class TestFrameFreshnessBarriers:
         ]
 
     @pytest.mark.asyncio
-    async def test_keeps_a_successful_input_action_successful_when_clock_sampling_fails(self):
+    async def test_keeps_a_successful_input_action_successful_when_clock_sampling_fails(
+        self,
+    ):
         """keeps a successful input action successful when clock sampling fails."""
 
         manager = FakeManager(connected=True)
@@ -661,7 +654,9 @@ class TestFrameFreshnessBarriers:
         assert isinstance(status.retry_after, (int, float))
 
     @pytest.mark.asyncio
-    async def test_defers_the_latest_action_barrier_until_a_recovering_stream_is_connected(self):
+    async def test_defers_the_latest_action_barrier_until_a_recovering_stream_is_connected(
+        self,
+    ):
         """defers the latest action barrier until a recovering stream is connected."""
 
         manager = FakeManager(connected=False)
@@ -723,7 +718,9 @@ class TestInitialize:
         assert manager.validate_calls == 1
 
     @pytest.mark.asyncio
-    async def test_should_record_ensure_manager_failures_without_permanently_disabling_scrcpy(self):
+    async def test_should_record_ensure_manager_failures_without_permanently_disabling_scrcpy(
+        self,
+    ):
         """should record ensureManager failures without permanently disabling scrcpy."""
 
         manager = FakeManager()
@@ -772,7 +769,9 @@ class TestInitialize:
 
 class TestRetryCooldown:
     @pytest.mark.asyncio
-    async def test_should_fall_back_during_cooldown_and_retry_on_a_later_screenshot(self):
+    async def test_should_fall_back_during_cooldown_and_retry_on_a_later_screenshot(
+        self,
+    ):
         """should fall back during cooldown and retry on a later screenshot.
 
         Python's adapter falls back to ADB inside screenshot_base64() during
@@ -784,7 +783,9 @@ class TestRetryCooldown:
         manager.ensure_connected_errors = [RuntimeError("codec not ready")]
         backend = FakeBackend()
         adapter = adapter_with_manager(
-            {"enabled": True}, manager, backend=backend,
+            {"enabled": True},
+            manager,
+            backend=backend,
             now=lambda: clock[0],
         )
 
@@ -839,13 +840,13 @@ class TestFreshnessDiagnostics:
 
 class TestFreshnessRecovery:
     @pytest.mark.asyncio
-    async def test_restarts_a_stale_stream_once_and_returns_the_new_epoch_baseline(self):
+    async def test_restarts_a_stale_stream_once_and_returns_the_new_epoch_baseline(
+        self,
+    ):
         """restarts a stale stream once and returns the new epoch baseline."""
 
         manager = FakeManager()
-        manager.screenshot_results = [
-            freshness_error("stale stream closed")
-        ]
+        manager.screenshot_results = [freshness_error("stale stream closed")]
         adapter = adapter_with_manager({"enabled": True}, manager)
 
         assert await adapter.screenshot_base64(DEVICE_INFO) == jpeg_data_url(
@@ -858,7 +859,9 @@ class TestFreshnessRecovery:
         assert adapter.get_status().last_error is None
 
     @pytest.mark.asyncio
-    async def test_enters_cooldown_when_the_restarted_stream_also_fails_then_retries_with_the_same_manager(self):
+    async def test_enters_cooldown_when_the_restarted_stream_also_fails_then_retries_with_the_same_manager(
+        self,
+    ):
         """enters cooldown when the restarted stream also fails, then retries with the same manager."""
 
         clock = [1_000_000.0]
@@ -869,7 +872,9 @@ class TestFreshnessRecovery:
         ]
         backend = FakeBackend()
         adapter = adapter_with_manager(
-            {"enabled": True}, manager, backend=backend,
+            {"enabled": True},
+            manager,
+            backend=backend,
             now=lambda: clock[0],
         )
 
@@ -916,7 +921,9 @@ class TestFreshnessRecovery:
         assert manager.ensure_connected_calls == 3
 
     @pytest.mark.asyncio
-    async def test_recognizes_and_retries_freshness_errors_across_duplicated_module_instances(self):
+    async def test_recognizes_and_retries_freshness_errors_across_duplicated_module_instances(
+        self,
+    ):
         """recognizes and retries freshness errors across duplicated module instances."""
 
         manager = FakeManager()
@@ -933,20 +940,20 @@ class TestFreshnessRecovery:
         assert adapter.get_status().retry_after is None
 
     @pytest.mark.asyncio
-    async def test_reattaches_active_frame_listeners_after_in_band_stream_recovery(self):
+    async def test_reattaches_active_frame_listeners_after_in_band_stream_recovery(
+        self,
+    ):
         """reattaches active frame listeners after in-band stream recovery."""
 
         manager = FakeManager()
         manager.is_connected_results = [False, True, False]
-        manager.screenshot_results = [
-            freshness_error("stale stream closed")
-        ]
+        manager.screenshot_results = [freshness_error("stale stream closed")]
         adapter = adapter_with_manager({"enabled": True}, manager)
-        listener = lambda frame: None
 
-        unsubscribe = await adapter.subscribe_keyframes(
-            DEVICE_INFO, listener
-        )
+        def listener(frame):
+            return None
+
+        unsubscribe = await adapter.subscribe_keyframes(DEVICE_INFO, listener)
         assert await adapter.screenshot_base64(DEVICE_INFO) == jpeg_data_url(
             jpeg_frame()
         )
@@ -956,7 +963,9 @@ class TestFreshnessRecovery:
         assert manager.subscribe_calls[-1] is listener
 
     @pytest.mark.asyncio
-    async def test_reattaches_active_frame_listeners_after_a_double_freshness_failure_and_cooldown_reconnect(self):
+    async def test_reattaches_active_frame_listeners_after_a_double_freshness_failure_and_cooldown_reconnect(
+        self,
+    ):
         """reattaches active frame listeners after a double freshness failure and cooldown reconnect."""
 
         clock = [1_000_000.0]
@@ -968,13 +977,16 @@ class TestFreshnessRecovery:
         ]
         backend = FakeBackend()
         adapter = adapter_with_manager(
-            {"enabled": True}, manager, backend=backend,
+            {"enabled": True},
+            manager,
+            backend=backend,
             now=lambda: clock[0],
         )
-        listener = lambda frame: None
-        unsubscribe = await adapter.subscribe_keyframes(
-            DEVICE_INFO, listener
-        )
+
+        def listener(frame):
+            return None
+
+        unsubscribe = await adapter.subscribe_keyframes(DEVICE_INFO, listener)
 
         result = await adapter.screenshot_base64(DEVICE_INFO)
         assert result == "data:image/png;base64," + base64.b64encode(

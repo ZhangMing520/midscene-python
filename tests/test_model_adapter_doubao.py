@@ -16,7 +16,9 @@ from midscene.core.ai_model.shared.model_locate_result import (
 FAMILIES = ["doubao-seed", "doubao-vision"]
 
 
-def _build(family, base_url=None, user_config=None, expected=False, midscene_defaults=None):
+def _build(
+    family, base_url=None, user_config=None, expected=False, midscene_defaults=None
+):
     user = dict(user_config or {})
     if base_url is not None:
         user["baseURL"] = base_url
@@ -37,9 +39,7 @@ def _resolved(value):
     """Resolve parser metadata defaults the way the codec does."""
     return {
         "coordinates": value["coordinates"],
-        "coordinatesMeta": resolve_locate_result_coordinates(
-            value["coordinatesMeta"]
-        ),
+        "coordinatesMeta": resolve_locate_result_coordinates(value["coordinatesMeta"]),
     }
 
 
@@ -95,7 +95,9 @@ def _shared_parser(raw, source, preserve_string_value_keys=None):
     ],
     ids=["undefined", "false", "true", "default"],
 )
-def test_maps_enabled_for_both_endpoints(family, reasoning_enabled, native, open_router):
+def test_maps_enabled_for_both_endpoints(
+    family, reasoning_enabled, native, open_router
+):
     """maps enabled=$reasoningEnabled for both endpoints"""
     user_config = {
         "reasoningEnabled": reasoning_enabled,
@@ -245,12 +247,8 @@ def test_parses_locate_like_json_through_the_shared_parser():
 
     assert parse('{"bbox": [123 456]}') == {"bbox": [123, 456]}
     assert parse('{"bbox": [1 4]}') == {"bbox": [1, 4]}
-    assert parse('{"bbox": [123 456,789 100]}') == {
-        "bbox": [123, 456, 789, 100]
-    }
-    assert parse('{"bbox": [940 445 969 490]}') == {
-        "bbox": [940, 445, 969, 490]
-    }
+    assert parse('{"bbox": [123 456,789 100]}') == {"bbox": [123, 456, 789, 100]}
+    assert parse('{"bbox": [940 445 969 490]}') == {"bbox": [940, 445, 969, 490]}
     with pytest.raises(ValueError):
         parse("123 345 11111")
 
@@ -264,9 +262,7 @@ def test_parses_locate_like_json_through_the_shared_parser():
   ]
 }
     """
-    assert parse(input_text) == {
-        "bbox": ["550 216", "550 216", "550 216", "550 216"]
-    }
+    assert parse(input_text) == {"bbox": ["550 216", "550 216", "550 216", "550 216"]}
 
 
 def test_does_not_repair_malformed_json_for_generic_parser_sources():
@@ -354,7 +350,7 @@ def test_parses_valid_raw_doubao_locate_values_directly():
         (["bbox", [782, 541, 815, 559]], [782, 541, 815, 559], _bbox_meta()),
         (["bbox", "782, 541, 815, 559"], [782, 541, 815, 559], _bbox_meta()),
         (
-            [410, 295, 885, '345<', '/bbox>,\n  "error": ""\n}'],
+            [410, 295, 885, "345<", '/bbox>,\n  "error": ""\n}'],
             [410, 295, 885, 345],
             _bbox_meta(),
         ),

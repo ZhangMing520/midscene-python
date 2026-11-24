@@ -1,10 +1,11 @@
 """Grounding workflow types (upstream workflows/grounding/types.ts)."""
 
-from typing import Any, Awaitable, Callable, Dict, List, Optional, TypedDict
+from collections.abc import Awaitable, Callable
+from typing import Any, TypedDict
 
 
 class SearchAreaImageMapping(TypedDict):
-    offset: Dict[str, float]
+    offset: dict[str, float]
     scale: float
 
 
@@ -15,7 +16,7 @@ class SearchAreaImage(TypedDict):
 
 
 class SearchAreaConfig(TypedDict):
-    source_rect: Dict[str, float]
+    source_rect: dict[str, float]
     image: SearchAreaImage
     mapping: SearchAreaImageMapping
 
@@ -40,22 +41,22 @@ class LocateRequest(TypedDict):
 
 
 class LocateResult(TypedDict, total=False):
-    parse_result: Dict[str, Any]
+    parse_result: dict[str, Any]
     raw_response: Any
-    raw_assistant_output: Optional[Dict[str, Any]]
-    usage: Optional[Dict[str, Any]]
-    reasoning_content: Optional[str]
+    raw_assistant_output: dict[str, Any] | None
+    usage: dict[str, Any] | None
+    reasoning_content: str | None
 
 
 class LocateModelResponse(TypedDict, total=False):
     """Resolved locate-model output, before coordinate mapping."""
 
-    locatedPixelResult: Dict[str, Any]
+    locatedPixelResult: dict[str, Any]
     raw_response: str
-    rawAssistantOutput: Optional[Dict[str, Any]]
-    usage: Optional[Dict[str, Any]]
-    reasoningContent: Optional[str]
-    errors: List[str]
+    rawAssistantOutput: dict[str, Any] | None
+    usage: dict[str, Any] | None
+    reasoningContent: str | None
+    errors: list[str]
 
 
 LocateFn = Callable[[LocateRequest], Awaitable[LocateModelResponse]]

@@ -1,12 +1,13 @@
 """Compact, transport-safe error serialization (upstream error-formatter.ts)."""
 
 import json
-from typing import Any, Dict, Iterable, Optional, Union
+from collections.abc import Iterable
+from typing import Any
 
 MAX_SERIALIZED_STRING_LENGTH = 4096
 _TRUNCATED_SUFFIX = "… [truncated]"
 
-SerializedError = Dict[str, Any]
+SerializedError = dict[str, Any]
 
 
 def truncate_serialized_error_string(value: str) -> str:
@@ -31,7 +32,7 @@ def _safely_read_property(value: Any, key: str) -> Any:
 
 def _read_bounded_diagnostic(
     value: Any, keys: Iterable[str]
-) -> Optional[Union[str, int, float]]:
+) -> str | int | float | None:
     for key in keys:
         diagnostic = _safely_read_property(value, key)
         if isinstance(diagnostic, bool):
@@ -43,7 +44,7 @@ def _read_bounded_diagnostic(
     return None
 
 
-def _read_non_empty_message(value: Any) -> Optional[str]:
+def _read_non_empty_message(value: Any) -> str | None:
     message = _safely_read_property(value, "message")
     if isinstance(message, str) and message:
         return message
@@ -53,7 +54,7 @@ def _read_non_empty_message(value: Any) -> Optional[str]:
     return None
 
 
-def _extract_string_message(value: Any) -> Optional[str]:
+def _extract_string_message(value: Any) -> str | None:
     direct = _read_non_empty_message(value)
     if direct:
         return direct
@@ -68,14 +69,14 @@ def _extract_string_message(value: Any) -> Optional[str]:
     return None
 
 
-def get_error_stack(error: Any) -> Optional[str]:
+def get_error_stack(error: Any) -> str | None:
     if not _is_object(error):
         return None
     stack = _safely_read_property(error, "stack")
     return stack if isinstance(stack, str) else None
 
 
-def _serialize_error_value(error: Any) -> Dict[str, Any]:
+def _serialize_error_value(error: Any) -> dict[str, Any]:
     if not _is_object(error):
         message = truncate_serialized_error_string(str(error))
         return {
@@ -102,7 +103,9 @@ def _serialize_error_value(error: Any) -> Dict[str, Any]:
 
     code = _read_bounded_diagnostic(error, ["code"])
     status = _read_bounded_diagnostic(error, ["status", "statusCode", "status_code"])
-    request_id = _read_bounded_diagnostic(error, ["requestId", "requestID", "request_id"])
+    request_id = _read_bounded_diagnostic(
+        error, ["requestId", "requestID", "request_id"]
+    )
     if code is not None:
         serialized["code"] = code
     if status is not None:

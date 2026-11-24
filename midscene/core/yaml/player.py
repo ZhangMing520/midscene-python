@@ -2,17 +2,17 @@
 
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
-from midscene.core.yaml.player_state import (
-    get_legacy_yaml_player_state,
-    initialize_legacy_yaml_player_state,
-)
 from midscene.core.yaml.legacy_yaml_runtime import (
     create_legacy_yaml_runtime,
     legacy_yaml_outcome_error,
+)
+from midscene.core.yaml.player_state import (
+    get_legacy_yaml_player_state,
+    initialize_legacy_yaml_player_state,
 )
 from midscene.core.yaml.report_policy import _execution_count, _record_yaml_task_error
 from midscene.core.yaml.utils import (
@@ -29,25 +29,25 @@ from midscene.shared.env import get_midscene_run_dir
 class ScriptPlayer:
     """Execute a parsed YAML script against an agent."""
 
-    def __init__(self, script: Dict[str, Any], agent: Any):
+    def __init__(self, script: dict[str, Any], agent: Any):
         self.script = script
         self.agent = agent
         self.status = "init"
-        self.result: Dict[str, Any] = {}
-        self.failed_tasks: List[Dict[str, Any]] = []
-        self.output_path: Optional[str] = None
-        self.current_task_index: Optional[int] = None
-        self.report_file: Optional[str] = None
+        self.result: dict[str, Any] = {}
+        self.failed_tasks: list[dict[str, Any]] = []
+        self.output_path: str | None = None
+        self.current_task_index: int | None = None
+        self.report_file: str | None = None
         self._unnamed_result_index = 0
         initialize_legacy_yaml_player_state(self)
 
-    def _set_result(self, key: Optional[str], value: Any) -> None:
+    def _set_result(self, key: str | None, value: Any) -> None:
         key_to_use = key or self._unnamed_result_index
         if not key:
             self._unnamed_result_index += 1
         self.result[key_to_use] = value
 
-    async def play_task(self, task_status: Dict[str, Any], agent: Any) -> None:
+    async def play_task(self, task_status: dict[str, Any], agent: Any) -> None:
         """Run one YAML task against ``agent`` (upstream playTask)."""
         flow = (
             task_status.get("flow")
@@ -87,9 +87,7 @@ class ScriptPlayer:
         cases = execution_result.get("cases") or []
         outcome = cases[0] if cases else None
         if not outcome or outcome.get("status") == "not-run":
-            raise RuntimeError(
-                f'Task "{task_status.get("name")}" did not run.'
-            )
+            raise RuntimeError(f'Task "{task_status.get("name")}" did not run.')
         if outcome.get("status") == "failed":
             raise legacy_yaml_outcome_error(outcome)
 
@@ -108,9 +106,7 @@ class ScriptPlayer:
             Path(output).parent.mkdir(parents=True, exist_ok=True)
         else:
             output_dir = get_midscene_run_dir("output")
-            self.output_path = str(
-                Path(output_dir) / f"{uuid.uuid4().hex[:8]}.json"
-            )
+            self.output_path = str(Path(output_dir) / f"{uuid.uuid4().hex[:8]}.json")
 
         try:
             for task in self.script["tasks"]:
@@ -191,9 +187,7 @@ class ScriptPlayer:
 
         if key == "aiWaitFor":
             options = dict(value) if isinstance(value, dict) else {}
-            prompt = (
-                value if isinstance(value, str) else options.pop("prompt", None)
-            )
+            prompt = value if isinstance(value, str) else options.pop("prompt", None)
             if not prompt:
                 raise ValueError("aiWaitFor requires a prompt")
             await agent.ai_wait_for(prompt, options)
@@ -224,7 +218,11 @@ class ScriptPlayer:
                 key_name = value.get("keyName") or (
                     value.get("prompt") if locate else None
                 )
-                options = {k: v for k, v in value.items() if k not in ("locate", "keyName", "prompt")}
+                options = {
+                    k: v
+                    for k, v in value.items()
+                    if k not in ("locate", "keyName", "prompt")
+                }
                 await agent.ai_keyboard_press(locate, {**options, "keyName": key_name})
             else:
                 await agent.ai_keyboard_press(value)
@@ -262,7 +260,9 @@ class ScriptPlayer:
             )
 
         if key == "runGherkinScenario":
-            scenario = value if isinstance(value, str) else (value or {}).get("scenario")
+            scenario = (
+                value if isinstance(value, str) else (value or {}).get("scenario")
+            )
             if not scenario:
                 raise ValueError("runGherkinScenario requires a scenario")
             await agent.run_gherkin_scenario(scenario)

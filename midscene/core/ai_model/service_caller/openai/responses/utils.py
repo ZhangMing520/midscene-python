@@ -1,19 +1,19 @@
 """Responses input/usage/parse helpers (upstream responses/utils.ts)."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from midscene.core.ai_model.service_caller.openai.chat_completion.utils import (
     ensure_data_url,
 )
 
 
-def to_responses_input(messages: List[dict], image_detail: str) -> List[dict]:
+def to_responses_input(messages: list[dict], image_detail: str) -> list[dict]:
     """Convert internal messages to the Responses API input format.
 
     Conversation-history entries (``input-message`` / ``model-output``) are
     flattened to input items first, matching upstream ``toResponsesInput``.
     """
-    input_items: List[dict] = []
+    input_items: list[dict] = []
     for entry in messages:
         if entry.get("type") == "model-output" and "output" in entry:
             output = entry.get("output") or {}
@@ -23,11 +23,7 @@ def to_responses_input(messages: List[dict], image_detail: str) -> List[dict]:
                 )
             input_items.extend(output.get("rawValue") or [])
             continue
-        message = (
-            entry["message"]
-            if entry.get("type") == "input-message"
-            else entry
-        )
+        message = entry["message"] if entry.get("type") == "input-message" else entry
         content = message.get("content")
         if isinstance(content, str):
             input_items.append({"role": message["role"], "content": content})
@@ -36,7 +32,7 @@ def to_responses_input(messages: List[dict], image_detail: str) -> List[dict]:
             text = "".join(part.get("text", "") for part in content or [])
             input_items.append({"role": "assistant", "content": text})
             continue
-        parts: List[dict] = []
+        parts: list[dict] = []
         for part in content or []:
             if part.get("type") == "text":
                 parts.append({"type": "input_text", "text": part.get("text", "")})
@@ -52,9 +48,7 @@ def to_responses_input(messages: List[dict], image_detail: str) -> List[dict]:
     return input_items
 
 
-def map_responses_usage(
-    usage: Optional[Dict[str, Any]]
-) -> Optional[Dict[str, Any]]:
+def map_responses_usage(usage: dict[str, Any] | None) -> dict[str, Any] | None:
     if not usage:
         return None
     return {
@@ -66,7 +60,7 @@ def map_responses_usage(
     }
 
 
-def parse_response(payload: Dict[str, Any]) -> Dict[str, Any]:
+def parse_response(payload: dict[str, Any]) -> dict[str, Any]:
     status = payload.get("status")
     if status != "completed":
         error = (payload.get("error") or {}).get("message")
@@ -75,8 +69,8 @@ def parse_response(payload: Dict[str, Any]) -> Dict[str, Any]:
             f"Responses request {status}: "
             f"{error or incomplete or 'response did not complete'}"
         )
-    content_parts: List[str] = []
-    reasoning_parts: List[str] = []
+    content_parts: list[str] = []
+    reasoning_parts: list[str] = []
     for item in payload.get("output") or []:
         if item.get("type") == "message":
             for part in item.get("content") or []:

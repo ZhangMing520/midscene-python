@@ -15,18 +15,14 @@ def test_normalizes_webdriver_base_url():
         normalize_web_driver_base_url("https://gateway.example:8100/wda/code")
         == "https://gateway.example:8100/wda/code"
     )
-    assert (
-        normalize_web_driver_base_url("http://x:8100/") == "http://x:8100"
-    )
+    assert normalize_web_driver_base_url("http://x:8100/") == "http://x:8100"
 
 
 def test_keeps_different_gateway_prefixes_separate():
     from midscene.webdriver import normalize_webdriver_base_url
 
     assert (
-        normalize_webdriver_base_url(
-            "https://gateway.example:8100/code/wda/"
-        )
+        normalize_webdriver_base_url("https://gateway.example:8100/code/wda/")
         == "https://gateway.example:8100/code/wda"
     )
     assert (

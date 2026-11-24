@@ -51,17 +51,11 @@ def test_maps_enabled_with_endpoint_specific_effort_and_budget_handling(
         thinking_config = {
             "reasoning": {
                 "enabled": enabled,
-                **(
-                    {"effort": "high", "max_tokens": 1024}
-                    if enabled is True
-                    else {}
-                ),
+                **({"effort": "high", "max_tokens": 1024} if enabled is True else {}),
             }
         }
     else:
-        thinking_config = {
-            "thinking": {"type": "enabled" if enabled else "disabled"}
-        }
+        thinking_config = {"thinking": {"type": "enabled" if enabled else "disabled"}}
 
     assert result == {
         "temperature": 0.7,
@@ -111,9 +105,7 @@ def test_maps_reasoningenabled_to_thinking_type_for_xiaomi_mimo():
 
 def test_ignores_unsupported_reasoning_effort_and_budget_params():
     """ignores unsupported reasoning effort and budget params"""
-    result = _build(
-        user_config={"reasoningEffort": "high", "reasoningBudget": 1024}
-    )
+    result = _build(user_config={"reasoningEffort": "high", "reasoningBudget": 1024})
 
     assert result == {
         "temperature": 0,

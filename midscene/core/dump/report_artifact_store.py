@@ -16,8 +16,9 @@ import math
 import os
 import re
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any
 
 SCHEMA_VERSION = 1
 REPORT_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{1,128}$")
@@ -50,7 +51,7 @@ def assert_report_artifact_path(path: Any) -> str:
     return path
 
 
-def validate_manifest(manifest: Any) -> Dict[str, Any]:
+def validate_manifest(manifest: Any) -> dict[str, Any]:
     """Check the manifest shape before it is written or trusted."""
     if not isinstance(manifest, dict):
         raise ReportArtifactError("Report manifest must be an object")
@@ -117,7 +118,7 @@ def validate_manifest(manifest: Any) -> Dict[str, Any]:
     return manifest
 
 
-def parse_report_artifact_manifest(value: Any) -> Dict[str, Any]:
+def parse_report_artifact_manifest(value: Any) -> dict[str, Any]:
     """Validate a manifest value against the portable artifact contract."""
     try:
         return validate_manifest(value)
@@ -136,14 +137,16 @@ def serialize_payload(payload: Any) -> str:
     return json.dumps(payload, ensure_ascii=False)
 
 
-def write_report_artifact_file(path: Union[str, Path], content: Union[str, bytes]) -> None:
+def write_report_artifact_file(path: str | Path, content: str | bytes) -> None:
     """Publish one file atomically (upstream writeReportArtifactFile)."""
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
     temporary = target.with_name(f"{target.name}.{os.getpid()}.{time.time_ns()}.tmp")
     try:
         with open(temporary, "wb") as handle:
-            handle.write(content.encode("utf-8") if isinstance(content, str) else content)
+            handle.write(
+                content.encode("utf-8") if isinstance(content, str) else content
+            )
         os.replace(temporary, target)
     finally:
         try:
@@ -155,10 +158,10 @@ def write_report_artifact_file(path: Union[str, Path], content: Union[str, bytes
 class _ArtifactLock:
     """Exclusive lock file; a live publisher is never expired by elapsed time."""
 
-    def __init__(self, root: Union[str, Path], name: str, timeout_ms: int):
+    def __init__(self, root: str | Path, name: str, timeout_ms: int):
         self.path = Path(root) / name
         self.timeout_ms = timeout_ms
-        self._handle: Optional[Any] = None
+        self._handle: Any | None = None
 
     def __enter__(self) -> "_ArtifactLock":
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -189,7 +192,7 @@ class _ArtifactLock:
 
 
 def with_report_artifact_lock(
-    root: Union[str, Path],
+    root: str | Path,
     publish: Callable[[], Any],
     timeout_ms: int = 10_000,
     lock_name: str = ".report.json.lock",
@@ -204,7 +207,7 @@ class ReportArtifactStore:
 
     def __init__(
         self,
-        root: Union[str, Path],
+        root: str | Path,
         report_id: str,
         kind: str = "agent",
         reuse_existing_report: bool = False,
@@ -217,7 +220,7 @@ class ReportArtifactStore:
         self.kind = kind
         self.reuse_existing_report = reuse_existing_report
         self.entry = entry
-        self.manifest: Dict[str, Any] = {
+        self.manifest: dict[str, Any] = {
             "schemaVersion": SCHEMA_VERSION,
             "kind": kind,
             "status": "running",
@@ -227,7 +230,7 @@ class ReportArtifactStore:
                 {"id": report_id, "status": "running", "attributes": {}, "dumps": []}
             ],
         }
-        self._execution_paths: Dict[str, str] = {}
+        self._execution_paths: dict[str, str] = {}
         self._next_execution = 0
         self._finalized = False
         self._has_published = False
@@ -238,7 +241,7 @@ class ReportArtifactStore:
         self,
         key: str,
         payload: Any,
-        attributes: Optional[Dict[str, Any]] = None,
+        attributes: dict[str, Any] | None = None,
     ) -> str:
         """Store one execution dump; the same key overwrites its file."""
         self._assert_open()
@@ -277,9 +280,7 @@ class ReportArtifactStore:
 
     def _assert_open(self) -> None:
         if self._finalized:
-            raise ReportArtifactError(
-                "The report artifact stream has been finalized."
-            )
+            raise ReportArtifactError("The report artifact stream has been finalized.")
 
     def _publish(self) -> None:
         manifest_path = self.root / "report.json"
@@ -288,9 +289,8 @@ class ReportArtifactStore:
         def publish() -> None:
             nonlocal manifest
             if (
-                (self.reuse_existing_report or self._has_published)
-                and manifest_path.exists()
-            ):
+                self.reuse_existing_report or self._has_published
+            ) and manifest_path.exists():
                 try:
                     previous = validate_manifest(
                         json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -299,7 +299,10 @@ class ReportArtifactStore:
                     raise ReportArtifactError(
                         f"Existing report manifest is unreadable: {manifest_path} ({error})"
                     ) from error
-                if previous["kind"] != manifest["kind"] or previous["entry"] != manifest["entry"]:
+                if (
+                    previous["kind"] != manifest["kind"]
+                    or previous["entry"] != manifest["entry"]
+                ):
                     raise ReportArtifactError(
                         "Cannot combine reports with different kinds or entries"
                     )

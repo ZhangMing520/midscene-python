@@ -21,9 +21,7 @@ def test_should_return_macos_chrome_path(monkeypatch):
     """should return macOS Chrome path"""
     _use_platform(monkeypatch, "darwin")
     mac_path = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-    monkeypatch.setattr(
-        chrome_path.os.path, "exists", lambda path: path == mac_path
-    )
+    monkeypatch.setattr(chrome_path.os.path, "exists", lambda path: path == mac_path)
 
     assert chrome_path.get_system_chrome_path() == mac_path
 
@@ -46,9 +44,7 @@ def test_should_fallback_to_usr_bin_paths_on_linux(monkeypatch):
     """should fallback to /usr/bin paths on Linux"""
     _use_platform(monkeypatch, "linux")
     linux_path = "/usr/bin/google-chrome"
-    monkeypatch.setattr(
-        chrome_path.os.path, "exists", lambda path: path == linux_path
-    )
+    monkeypatch.setattr(chrome_path.os.path, "exists", lambda path: path == linux_path)
 
     assert chrome_path.get_system_chrome_path() == linux_path
 
@@ -57,9 +53,7 @@ def test_should_return_windows_chrome_path(monkeypatch):
     """should return Windows Chrome path"""
     _use_platform(monkeypatch, "win32")
     win_path = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
-    monkeypatch.setattr(
-        chrome_path.os.path, "exists", lambda path: path == win_path
-    )
+    monkeypatch.setattr(chrome_path.os.path, "exists", lambda path: path == win_path)
 
     assert chrome_path.get_system_chrome_path() == win_path
 

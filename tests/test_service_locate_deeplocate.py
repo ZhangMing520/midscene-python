@@ -1,6 +1,6 @@
 """Synced from upstream packages/core/tests/unit-test/service-locate-deeplocate.test.ts."""
 
-from typing import Any, Dict
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -49,19 +49,25 @@ class TestDeepLocate:
         async def fake_element_locate(*args, **kwargs):
             return {
                 "parse_result": {
-                    "element": {"center": (200, 200), "rect": {"left": 200, "top": 200, "width": 100, "height": 80}},
+                    "element": {
+                        "center": (200, 200),
+                        "rect": {"left": 200, "top": 200, "width": 100, "height": 80},
+                    },
                     "errors": [],
                 },
                 "raw_response": "",
                 "usage": None,
             }
 
-        with patch(
-            "midscene.core.service.index.call_generative_ai",
-            new=fake_call,
-        ), patch(
-            "midscene.core.service.index.ai_locate_element",
-            new=fake_element_locate,
+        with (
+            patch(
+                "midscene.core.service.index.call_generative_ai",
+                new=fake_call,
+            ),
+            patch(
+                "midscene.core.service.index.ai_locate_element",
+                new=fake_element_locate,
+            ),
         ):
             result = await locate_service(
                 query_prompt="the button",
@@ -75,7 +81,6 @@ class TestDeepLocate:
         assert element["center"][0] > 0
         assert result["deep_locate"] is True
         assert result["search_area"] is not None
-
 
 
 class TestDeepLocatePlanHint:
@@ -99,7 +104,7 @@ class TestDeepLocatePlanHint:
             ),
         )
 
-        captured: Dict[str, Any] = {}
+        captured: dict[str, Any] = {}
 
         async def fake_locate_service(**kwargs):
             captured.update(kwargs)
@@ -150,6 +155,8 @@ class TestDeepLocatePlanHint:
             "prompt": "the button",
             "locatedPixelResult": {"center": (160, 120)},
         }
-        with patch("midscene.core.agent.task_builder.locate_service", new=fail_if_called):
+        with patch(
+            "midscene.core.agent.task_builder.locate_service", new=fail_if_called
+        ):
             element = await agent._locate_for_action(locate_param)
         assert element["center"] == (160, 120)

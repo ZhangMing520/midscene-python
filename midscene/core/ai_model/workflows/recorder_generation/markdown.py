@@ -4,7 +4,7 @@ import base64
 import io
 import json
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 from PIL import Image
@@ -83,9 +83,7 @@ def prepare_screenshot_assets_for_markdown_replay(screenshot_assets):
     compressed = []
     for asset in screenshot_assets:
         try:
-            compressed.append(
-                _compress_screenshot_asset_for_markdown_replay(asset)
-            )
+            compressed.append(_compress_screenshot_asset_for_markdown_replay(asset))
         except Exception as error:  # noqa: BLE001 - upstream keeps the original
             logger.debug(
                 "failed to compress screenshot asset; keeping original "
@@ -139,7 +137,7 @@ def _remove_omitted_screenshot_paths(summary, screenshot_assets):
     }
 
 
-def _markdown_language_instruction(language: Optional[str]) -> str:
+def _markdown_language_instruction(language: str | None) -> str:
     normalized = (language or "").strip()
     if not normalized:
         return ""
@@ -160,10 +158,10 @@ def normalize_generated_markdown(content: str) -> str:
 
 
 def _create_recorder_markdown_replay_prompt_from_context(
-    input_payload: Dict[str, Any],
-    summary: Dict[str, Any],
-    screenshot_assets: List[Dict[str, Any]],
-) -> List[Dict[str, Any]]:
+    input_payload: dict[str, Any],
+    summary: dict[str, Any],
+    screenshot_assets: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
     target = input_payload["target"]
     screenshot_index_by_hash = {
         asset["eventHashId"]: f"screenshot-{index + 1}"
@@ -245,18 +243,18 @@ Required structure:
 Reproduce the recorded user workflow exactly.
 
 ## Target
-- Platform: {target.get('platformId')}
-- Start target: {summary.get('startUrl') or target.get('label') or target.get('deviceId') or 'Recorded target'}
+- Platform: {target.get("platformId")}
+- Start target: {summary.get("startUrl") or target.get("label") or target.get("deviceId") or "Recorded target"}
 
 ## Steps
 1. ...
 
 Recorder data:
-{json.dumps(prompt_payload, ensure_ascii=False, indent=2, default=str)}{_markdown_language_instruction(input_payload.get('language'))}
+{json.dumps(prompt_payload, ensure_ascii=False, indent=2, default=str)}{_markdown_language_instruction(input_payload.get("language"))}
 
 Important: Return ONLY raw Markdown. Do NOT wrap the response in markdown code blocks."""
 
-    content: List[Dict[str, Any]] = [{"type": "text", "text": prompt_text}]
+    content: list[dict[str, Any]] = [{"type": "text", "text": prompt_text}]
     for asset in screenshot_assets:
         screenshot_ref = screenshot_index_by_hash.get(asset["eventHashId"])
         content.append(
@@ -283,33 +281,29 @@ Important: Return ONLY raw Markdown. Do NOT wrap the response in markdown code b
 
 
 def create_recorder_markdown_replay_prompt(
-    input_payload: Dict[str, Any],
-) -> List[Dict[str, Any]]:
+    input_payload: dict[str, Any],
+) -> list[dict[str, Any]]:
     """Build the Markdown replay prompt (upstream, synchronous variant)."""
     validate_events(input_payload.get("events") or [])
     context = prepare_recorder_generation_context(input_payload)
     screenshot_assets = limit_screenshot_assets_for_markdown_replay(
         context["screenshotAssets"]
     )
-    summary = _remove_omitted_screenshot_paths(
-        context["summary"], screenshot_assets
-    )
+    summary = _remove_omitted_screenshot_paths(context["summary"], screenshot_assets)
     return _create_recorder_markdown_replay_prompt_from_context(
         input_payload, summary, screenshot_assets
     )
 
 
 async def _create_recorder_markdown_replay_prompt_for_generation(
-    input_payload: Dict[str, Any],
-) -> List[Dict[str, Any]]:
+    input_payload: dict[str, Any],
+) -> list[dict[str, Any]]:
     validate_events(input_payload.get("events") or [])
     context = prepare_recorder_generation_context(input_payload)
     screenshot_assets = prepare_screenshot_assets_for_markdown_replay(
         context["screenshotAssets"]
     )
-    summary = _remove_omitted_screenshot_paths(
-        context["summary"], screenshot_assets
-    )
+    summary = _remove_omitted_screenshot_paths(context["summary"], screenshot_assets)
     prompt = _create_recorder_markdown_replay_prompt_from_context(
         input_payload, summary, screenshot_assets
     )
@@ -325,7 +319,7 @@ async def _create_recorder_markdown_replay_prompt_for_generation(
 
 
 async def generate_recorder_markdown_replay(
-    input_payload: Dict[str, Any], model_config: Any
+    input_payload: dict[str, Any], model_config: Any
 ) -> str:
     try:
         prompt = await _create_recorder_markdown_replay_prompt_for_generation(
@@ -345,21 +339,19 @@ async def generate_recorder_markdown_replay(
 
 
 async def convert_record_log_into_markdown(
-    log: Dict[str, Any], model_config: Any
+    log: dict[str, Any], model_config: Any
 ) -> str:
     return await generate_recorder_markdown_replay(log, model_config)
 
 
 async def generate_markdown_replay(
-    events: List[Dict[str, Any]],
-    options: Optional[Dict[str, Any]] = None,
+    events: list[dict[str, Any]],
+    options: dict[str, Any] | None = None,
     model_config: Any = None,
 ) -> str:
     """Backward-compatible wrapper around ``generate_recorder_markdown_replay``."""
     options = dict(options or {})
-    target = options.pop("target", None) or create_default_web_target(
-        events, options
-    )
+    target = options.pop("target", None) or create_default_web_target(events, options)
     return await generate_recorder_markdown_replay(
         {**options, "target": target, "events": events}, model_config
     )

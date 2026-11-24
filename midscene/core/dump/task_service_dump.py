@@ -1,9 +1,9 @@
 """Access a task's service dump and search area (upstream dump/task-service-dump.ts)."""
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 
-def _get(value: Any, name: str, snake_name: Optional[str] = None) -> Any:
+def _get(value: Any, name: str, snake_name: str | None = None) -> Any:
     if isinstance(value, dict):
         if name in value:
             return value[name]
@@ -18,9 +18,7 @@ def _get(value: Any, name: str, snake_name: Optional[str] = None) -> Any:
 
 
 def _is_record(value: Any) -> bool:
-    return isinstance(value, dict) or (
-        value is not None and hasattr(value, "__dict__")
-    )
+    return isinstance(value, dict) or (value is not None and hasattr(value, "__dict__"))
 
 
 def _is_service_dump(value: Any) -> bool:
@@ -30,7 +28,7 @@ def _is_service_dump(value: Any) -> bool:
     return isinstance(_get(value, "type"), str) and _is_record(task_info)
 
 
-def get_task_service_dump(task: Any = None) -> Optional[Dict[str, Any]]:
+def get_task_service_dump(task: Any = None) -> dict[str, Any] | None:
     """Return ``task.log.dump`` when it is a ServiceDump."""
     log = _get(task, "log") if task is not None else None
     dump = _get(log, "dump") if log is not None else None
@@ -39,7 +37,7 @@ def get_task_service_dump(task: Any = None) -> Optional[Dict[str, Any]]:
     return None
 
 
-def get_task_search_area(task: Any = None) -> Optional[Dict[str, Any]]:
+def get_task_search_area(task: Any = None) -> dict[str, Any] | None:
     """Return the explicit task search area, else the service dump's."""
     if task is None:
         return None

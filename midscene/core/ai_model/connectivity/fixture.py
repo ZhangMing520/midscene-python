@@ -8,9 +8,8 @@ synthetic form so the image stays readable without a binary asset.
 import base64
 import io
 from functools import lru_cache
-from typing import Dict
 
-CONNECTIVITY_FIXTURE_SHOT_SIZE: Dict[str, int] = {"width": 320, "height": 100}
+CONNECTIVITY_FIXTURE_SHOT_SIZE: dict[str, int] = {"width": 320, "height": 100}
 
 
 @lru_cache(maxsize=1)

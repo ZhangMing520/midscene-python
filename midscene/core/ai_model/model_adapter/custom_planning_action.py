@@ -1,6 +1,6 @@
 """Custom planning action helpers (upstream model-adapter/custom-planning-action.ts)."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from midscene.core.ai_model.shared.model_locate_result import (
     create_locate_result_codec,
@@ -9,9 +9,9 @@ from midscene.core.ai_model.shared.model_locate_result import (
 
 
 def normalize_custom_locate_fields(
-    actions: List[Dict[str, Any]],
-    coordinates: Dict[str, Any],
-    locate_result_context: Dict[str, Any],
+    actions: list[dict[str, Any]],
+    coordinates: dict[str, Any],
+    locate_result_context: dict[str, Any],
 ) -> None:
     """Convert raw `point`/`bbox` coordinates on locate params into
     `locatedPixelResult` (upstream normalizePlanningActionLocateFields)."""
@@ -35,8 +35,8 @@ def normalize_custom_locate_fields(
 
 
 def get_tap_located_pixel_result(
-    actions: List[Dict[str, Any]],
-) -> Optional[Dict[str, Any]]:
+    actions: list[dict[str, Any]],
+) -> dict[str, Any] | None:
     """First Tap action's locatedPixelResult (custom-planning-action.ts)."""
     for action in actions:
         if action.get("type") != "Tap":

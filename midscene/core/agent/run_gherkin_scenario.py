@@ -6,12 +6,13 @@ Then steps run through aiAssert. And/But inherit the previous primary keyword.
 """
 
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 STEP_KEYWORD_PATTERN = re.compile(r"^(Given|When|Then|And|But)\s+(.+)$", re.IGNORECASE)
 HEADER_PATTERN = re.compile(r"^(Scenario):\s*(.*)$", re.IGNORECASE)
 UNSUPPORTED_HEADER_PATTERN = re.compile(
-    r"^(Feature|Background|Scenario Outline|Scenario Template|Examples|Rule):", re.IGNORECASE
+    r"^(Feature|Background|Scenario Outline|Scenario Template|Examples|Rule):",
+    re.IGNORECASE,
 )
 
 
@@ -26,10 +27,10 @@ def _normalize_step_keyword(keyword: str) -> str:
 _PRIMARY_KEYWORDS = ("Given", "When", "Then")
 
 
-def parse_gherkin_scenario(scenario_text: str) -> Dict[str, Any]:
+def parse_gherkin_scenario(scenario_text: str) -> dict[str, Any]:
     """Parse a single-scenario Gherkin text (upstream parseGherkinScenario)."""
-    steps: List[Dict[str, Any]] = []
-    scenario: Optional[str] = None
+    steps: list[dict[str, Any]] = []
+    scenario: str | None = None
     scenario_count = 0
 
     for line_number, raw_line in enumerate(scenario_text.splitlines(), start=1):
@@ -80,7 +81,7 @@ def parse_gherkin_scenario(scenario_text: str) -> Dict[str, Any]:
         raise ValueError("runGherkinScenario requires at least one Gherkin step.")
 
     # resolve And/But to the previous primary keyword
-    previous_primary: Optional[str] = None
+    previous_primary: str | None = None
     for step in steps:
         if step["keyword"] in _PRIMARY_KEYWORDS:
             previous_primary = step["keyword"]
@@ -89,15 +90,15 @@ def parse_gherkin_scenario(scenario_text: str) -> Dict[str, Any]:
             if previous_primary is None:
                 raise ValueError(
                     f'runGherkinScenario cannot resolve "{step["keyword"]}" at line '
-                    f'{step["line_number"]}; use Given, When, or Then before '
-                    f'{step["keyword"]}.'
+                    f"{step['line_number']}; use Given, When, or Then before "
+                    f"{step['keyword']}."
                 )
             step["effective_keyword"] = previous_primary
 
     return {"scenario": scenario, "steps": steps}
 
 
-def build_step_prompt(step: Dict[str, Any]) -> str:
+def build_step_prompt(step: dict[str, Any]) -> str:
     if step["effective_keyword"] == "Given":
         return f"Set up this precondition: {step['text']}"
     if step["effective_keyword"] == "When":
@@ -105,7 +106,7 @@ def build_step_prompt(step: Dict[str, Any]) -> str:
     return f"Verify that {step['text']}"
 
 
-def _describe_step_execution(step: Dict[str, Any], action: str) -> str:
+def _describe_step_execution(step: dict[str, Any], action: str) -> str:
     keyword = step["keyword"]
     effective = step["effective_keyword"]
     mapping = keyword if keyword == effective else f"{keyword} as {effective}"
@@ -119,7 +120,7 @@ def _describe_step_execution(step: Dict[str, Any], action: str) -> str:
 async def run_gherkin_scenario(
     agent: Any,
     scenario_text: str,
-    opt: Optional[Dict[str, Any]] = None,
+    opt: dict[str, Any] | None = None,
 ) -> None:
     """Execute the scenario: Given/When -> aiAct, Then -> aiAssert."""
     parsed = parse_gherkin_scenario(scenario_text)

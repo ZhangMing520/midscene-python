@@ -1,6 +1,6 @@
 """Android Agent implementation (upstream android/src/agent.ts)."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -25,15 +25,15 @@ class AndroidAgent(Agent):
     """Android-specific agent implementation"""
 
     @staticmethod
-    def get_test_runner_node_definitions() -> List[Any]:
+    def get_test_runner_node_definitions() -> list[Any]:
         """Common Agent nodes (platform bindings live in the Node-only module)."""
         return Agent.get_test_runner_node_definitions()
 
     def __init__(
         self,
         device: AndroidDevice,
-        options: Optional[Any] = None,
-        app_name_mapping: Optional[Dict[str, str]] = None,
+        options: Any | None = None,
+        app_name_mapping: dict[str, str] | None = None,
     ):
         """Initialize Android agent
 
@@ -56,10 +56,10 @@ class AndroidAgent(Agent):
     @classmethod
     async def create(
         cls,
-        device_id: Optional[str] = None,
-        options: Optional[AgentOptions] = None,
-        app_name_mapping: Optional[Dict[str, str]] = None,
-    ) -> 'AndroidAgent':
+        device_id: str | None = None,
+        options: AgentOptions | None = None,
+        app_name_mapping: dict[str, str] | None = None,
+    ) -> "AndroidAgent":
         """Create Android agent with device
 
         Args:
@@ -82,14 +82,14 @@ class AndroidAgent(Agent):
         await self._call_action_in_action_space("Terminate", {"uri": uri})
 
     async def run_adb_shell(
-        self, command: str, opt: Optional[Dict[str, Any]] = None
+        self, command: str, opt: dict[str, Any] | None = None
     ) -> str:
         """Execute an ADB shell command through the RunAdbShell action."""
-        param: Dict[str, Any] = {"command": command}
+        param: dict[str, Any] = {"command": command}
         param.update(opt or {})
         return await self._call_action_in_action_space("RunAdbShell", param)
 
-    async def launch_app(self, package_name: str, activity: Optional[str] = None) -> None:
+    async def launch_app(self, package_name: str, activity: str | None = None) -> None:
         """Launch Android app
 
         Args:
@@ -128,9 +128,11 @@ class AndroidAgent(Agent):
 
     async def swipe(
         self,
-        start_x: float, start_y: float,
-        end_x: float, end_y: float,
-        duration: int = 300
+        start_x: float,
+        start_y: float,
+        end_x: float,
+        end_y: float,
+        duration: int = 300,
     ) -> None:
         """Swipe gesture
 
@@ -155,8 +157,8 @@ class AndroidAgent(Agent):
 
 
 async def agent_from_adb_device(
-    device_id: Optional[str] = None,
-    options: Optional[Any] = None,
+    device_id: str | None = None,
+    options: Any | None = None,
 ) -> AndroidAgent:
     """Create an Android agent from a connected ADB device (upstream)."""
     device_options = options if isinstance(options, dict) else {}

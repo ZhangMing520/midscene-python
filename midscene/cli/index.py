@@ -10,7 +10,7 @@ connectivity test.
 
 import asyncio
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 import typer
 from rich.console import Console
@@ -83,14 +83,20 @@ model_app.add_typer(siwc_app, name="siwc")
 console = Console()
 
 
-@app.command(context_settings={"ignore_unknown_options": True, "allow_extra_args": True})
+@app.command(
+    context_settings={"ignore_unknown_options": True, "allow_extra_args": True}
+)
 def run(
     ctx: typer.Context,
     script_path: Optional[str] = typer.Argument(None, help="Path to YAML script file"),
     headed: bool = typer.Option(False, "--headed", help="Run browser in headed mode"),
-    device_id: Optional[str] = typer.Option(None, "--device", "-d", help="Android device ID"),
+    device_id: Optional[str] = typer.Option(
+        None, "--device", "-d", help="Android device ID"
+    ),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
-    files: Optional[List[str]] = typer.Option(None, "--files", help="YAML files to run"),
+    files: Optional[list[str]] = typer.Option(
+        None, "--files", help="YAML files to run"
+    ),
     config_file: Optional[str] = typer.Option(
         None, "--config", help="Batch config YAML path"
     ),
@@ -140,7 +146,7 @@ def run(
     ),
 ):
     """Run a YAML script, a directory of scripts, or a batch config
-(upstream `midscene run`)."""
+    (upstream `midscene run`)."""
     from midscene.core.agent.agent import Agent
     from midscene.core.yaml import ScriptPlayer, parse_yaml_script
 
@@ -296,8 +302,12 @@ def run(
 
 @siwc_app.command("login")
 def siwc_login(
-    port: Optional[int] = typer.Option(None, "--port", help="Local callback server port"),
-    client_id: Optional[str] = typer.Option(None, "--client-id", help="OAuth client ID"),
+    port: Optional[int] = typer.Option(
+        None, "--port", help="Local callback server port"
+    ),
+    client_id: Optional[str] = typer.Option(
+        None, "--client-id", help="OAuth client ID"
+    ),
 ):
     """Sign in with your ChatGPT plan (SIWC) and store credentials."""
     if not run_siwc_login(console, port, client_id):
@@ -333,7 +343,7 @@ def report_tool(
     html_path: Optional[str] = typer.Option(
         None, "--htmlPath", help="Input report HTML path (split / to-markdown)"
     ),
-    html_report: Optional[List[str]] = typer.Option(
+    html_report: Optional[list[str]] = typer.Option(
         None,
         "--htmlReport",
         help="Input report HTML path for merge-html (repeatable)",

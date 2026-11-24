@@ -3,7 +3,6 @@
 import os
 import re
 import sys
-from typing import Dict, Optional, Union
 
 from midscene.shared.env.constants import (
     ALL_ENV_KEYS,
@@ -19,7 +18,8 @@ from midscene.shared.env.model_config_manager import (
 )
 
 
-def _console_warn(message: str) -> None:    print(message, file=sys.stderr)
+def _console_warn(message: str) -> None:
+    print(message, file=sys.stderr)
 
 
 def _js_type(value: object) -> str:
@@ -37,18 +37,18 @@ def _js_type(value: object) -> str:
 class GlobalConfigManager:
     """Collect global configs from env and ``overrideAIConfig``."""
 
-    def __init__(self, env_provider: Optional[Dict[str, Optional[str]]] = None):
+    def __init__(self, env_provider: dict[str, str | None] | None = None):
         self._env_provider = env_provider
-        self._override: Optional[Dict[str, object]] = None
-        self._keys_have_been_read: Dict[str, bool] = {}
-        self._global_model_config_manager: Optional[ModelConfigManager] = None
+        self._override: dict[str, object] | None = None
+        self._keys_have_been_read: dict[str, bool] = {}
+        self._global_model_config_manager: ModelConfigManager | None = None
 
-    def _env(self, key: str) -> Optional[str]:
+    def _env(self, key: str) -> str | None:
         if self._env_provider is not None:
             return self._env_provider.get(key)
         return os.environ.get(key)
 
-    def get_all_env_config(self) -> Dict[str, Optional[str]]:
+    def get_all_env_config(self) -> dict[str, str | None]:
         """Recalculate the merged env config on every call."""
         env_config = {key: self._env(key) for key in ALL_ENV_KEYS}
         if self._override is not None:
@@ -58,7 +58,7 @@ class GlobalConfigManager:
             return dict(new_config)
         return env_config
 
-    def get_env_config_value(self, key: str) -> Optional[str]:
+    def get_env_config_value(self, key: str) -> str | None:
         all_config = self.get_all_env_config()
         if key == MATCH_BY_POSITION:
             raise ValueError(
@@ -75,9 +75,7 @@ class GlobalConfigManager:
     def get_env_config_in_boolean(self, key: str) -> bool:
         all_config = self.get_all_env_config()
         if key not in BOOLEAN_ENV_KEYS:
-            raise ValueError(
-                f"getEnvConfigInBoolean with key {key} is not supported"
-            )
+            raise ValueError(f"getEnvConfigInBoolean with key {key} is not supported")
         self._keys_have_been_read[key] = True
         value = all_config.get(key)
         if not value:
@@ -88,7 +86,7 @@ class GlobalConfigManager:
             return False
         return bool(value.strip())
 
-    def get_env_config_value_as_number(self, key: str) -> Optional[Union[int, float]]:
+    def get_env_config_value_as_number(self, key: str) -> int | float | None:
         if key not in STRING_ENV_KEYS and key not in NUMBER_ENV_KEYS:
             raise ValueError(
                 f"getEnvConfigValueAsNumber with key {key} is not supported."
@@ -116,14 +114,12 @@ class GlobalConfigManager:
 
     def override_ai_config(
         self,
-        new_config: Dict[str, object],
+        new_config: dict[str, object],
         extend_mode: bool = False,
     ) -> None:
         for key, value in new_config.items():
             if key not in GLOBAL_ENV_KEYS and key not in MODEL_ENV_KEYS:
-                raise ValueError(
-                    f"Failed to override AI config, invalid key: {key}"
-                )
+                raise ValueError(f"Failed to override AI config, invalid key: {key}")
             if not isinstance(value, str):
                 raise ValueError(
                     f"Failed to override AI config, value for key {key} must be "
@@ -173,7 +169,7 @@ def reset_global_model_config() -> None:
 
 
 def override_ai_config(
-    new_config: Dict[str, Union[str, int, float]], extend_mode: bool = False
+    new_config: dict[str, str | int | float], extend_mode: bool = False
 ) -> None:
     """Override global model config (mirrors upstream overrideAIConfig)."""
     global _global_model_config_manager

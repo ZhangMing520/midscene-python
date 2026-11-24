@@ -9,7 +9,7 @@ import os
 import re
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 _REPORT_DUMP_PATTERN = re.compile(
     r'<script id="midscene_report_dump" type="application/json">(.*?)</script>',
@@ -41,7 +41,7 @@ def resolve_report_html_path(html_path: str) -> Path:
     return path
 
 
-def read_report_dump(html_path: str) -> Dict[str, Any]:
+def read_report_dump(html_path: str) -> dict[str, Any]:
     """Extract the embedded report dump JSON from a Midscene report HTML."""
     path = resolve_report_html_path(html_path)
     content = path.read_text(encoding="utf-8")
@@ -57,10 +57,10 @@ def read_report_dump(html_path: str) -> Dict[str, Any]:
     return dump
 
 
-def _dedupe_executions(executions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def _dedupe_executions(executions: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Deduplicate executions by id, keeping the latest entry; id-less
     executions are always kept (upstream dedupeExecutionsKeepLatest)."""
-    latest: Dict[str, int] = {}
+    latest: dict[str, int] = {}
     for index, execution in enumerate(executions):
         if isinstance(execution, dict) and execution.get("id"):
             latest[execution["id"]] = index
@@ -75,7 +75,7 @@ def _dedupe_executions(executions: List[Dict[str, Any]]) -> List[Dict[str, Any]]
 
 def collect_report_executions(
     html_path: str,
-) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     dump = read_report_dump(html_path)
     executions = dump.get("executions") or []
     if not isinstance(executions, list):
@@ -84,12 +84,12 @@ def collect_report_executions(
 
 
 def merge_report_files(
-    html_paths: List[str],
-    output_dir: Optional[str] = None,
-    output_name: Optional[str] = None,
+    html_paths: list[str],
+    output_dir: str | None = None,
+    output_name: str | None = None,
     overwrite: bool = False,
-    output_format: Optional[str] = None,
-) -> Dict[str, str]:
+    output_format: str | None = None,
+) -> dict[str, str]:
     """Merge multiple report HTMLs into one report.
 
     Delegates to ``ReportMergingTool`` (upstream mergeReportFiles) so both
@@ -102,9 +102,7 @@ def merge_report_files(
 
     tool = ReportMergingTool()
     for html_path in html_paths:
-        tool.append(
-            {"reportFilePath": str(resolve_report_html_path(str(html_path)))}
-        )
+        tool.append({"reportFilePath": str(resolve_report_html_path(str(html_path)))})
     result = tool.merge_reports(
         output_name or "AUTO",
         {
@@ -118,7 +116,7 @@ def merge_report_files(
     return {"mergedReportPath": result}
 
 
-def compact_report_dumps(report_path: str) -> Dict[str, Any]:
+def compact_report_dumps(report_path: str) -> dict[str, Any]:
     """Merge repeated dump scripts per group, keeping the latest executions.
 
     Upstream streams the file in chunks; the Python report is a text document,
@@ -143,7 +141,7 @@ def compact_report_dumps(report_path: str) -> Dict[str, Any]:
         }
 
     group_re = re.compile(r'data-group-id="([^"]+)"')
-    groups: Dict[str, Dict[str, Any]] = {}
+    groups: dict[str, dict[str, Any]] = {}
     tag_count = 0
     for script in dump_scripts:
         match = group_re.search(script["openTag"])
@@ -184,7 +182,7 @@ def compact_report_dumps(report_path: str) -> Dict[str, Any]:
             "afterDumpCount": after_dump_count,
         }
 
-    compacted_tags: Dict[str, str] = {}
+    compacted_tags: dict[str, str] = {}
     for group_id, group in groups.items():
         base_dump = dict(group["baseDump"] or {})
         base_dump["executions"] = list(group["executionsByKey"].values())
@@ -196,8 +194,8 @@ def compact_report_dumps(report_path: str) -> Dict[str, Any]:
 
     html = path.read_text(encoding="utf-8")
     script_re = re.compile(r"<script\b[^>]*>.*?</script>", re.DOTALL)
-    seen_tags_by_group: Dict[str, int] = {}
-    output: List[str] = []
+    seen_tags_by_group: dict[str, int] = {}
+    output: list[str] = []
     last_index = 0
 
     for match in script_re.finditer(html):

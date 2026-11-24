@@ -31,8 +31,8 @@ REM Check development dependencies
 findstr /i "pytest==" requirements.txt >nul 2>&1
 if %errorlevel% equ 0 (echo Success: pytest) else (echo Error: pytest & set error=1)
 
-findstr /i "black==" requirements.txt >nul 2>&1
-if %errorlevel% equ 0 (echo Success: black) else (echo Error: black & set error=1)
+findstr /i "ruff==" requirements.txt >nul 2>&1
+if %errorlevel% equ 0 (echo Success: ruff) else (echo Error: ruff & set error=1)
 
 REM Check documentation dependencies
 findstr /i "mkdocs==" requirements.txt >nul 2>&1

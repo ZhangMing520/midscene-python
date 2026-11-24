@@ -1,7 +1,7 @@
 """AutoGLM response parsing (upstream ai-model/models/auto-glm/parser.ts)."""
 
 import re
-from typing import Any, Dict, Tuple
+from typing import Any
 
 
 def _extract_value_after(src: str, key: str) -> str:
@@ -9,13 +9,13 @@ def _extract_value_after(src: str, key: str) -> str:
     idx = src.find(key)
     if idx == -1:
         raise ValueError(f"Missing key {key} in action payload {src}")
-    rest = src[idx + len(key):].strip()
+    rest = src[idx + len(key) :].strip()
     if rest.endswith('")'):
         rest = rest[:-2]
     return rest
 
 
-def parse_auto_glm_response(content: str) -> Dict[str, str]:
+def parse_auto_glm_response(content: str) -> dict[str, str]:
     """Split a raw response into {think, content}."""
     if "finish(message=" in content:
         parts = content.split("finish(message=")
@@ -30,12 +30,14 @@ def parse_auto_glm_response(content: str) -> Dict[str, str]:
     return {"think": "", "content": content}
 
 
-def parse_auto_glm_planning_action(response: Dict[str, str]) -> Dict[str, Any]:
+def parse_auto_glm_planning_action(response: dict[str, str]) -> dict[str, Any]:
     """Parse the AutoGLM action payload into a discriminated dict."""
     think = response.get("think", "")
     trimmed = response["content"].strip()
     try:
-        if trimmed.startswith('do(action="Type"') or trimmed.startswith('do(action="Type_Name"'):
+        if trimmed.startswith('do(action="Type"') or trimmed.startswith(
+            'do(action="Type_Name"'
+        ):
             text = _extract_value_after(trimmed, 'text="')
             return {"_metadata": "do", "action": "Type", "text": text, "think": think}
 
@@ -49,17 +51,17 @@ def parse_auto_glm_planning_action(response: Dict[str, str]) -> Dict[str, Any]:
             action_match = re.search(r'do\(action="([^"]+)"', trimmed)
             if not action_match:
                 raise ValueError(
-                    f"Failed to extract action type from do() call; raw=\"{trimmed}\""
+                    f'Failed to extract action type from do() call; raw="{trimmed}"'
                 )
             action_type = action_match.group(1)
-            base: Dict[str, Any] = {"_metadata": "do", "think": think}
+            base: dict[str, Any] = {"_metadata": "do", "think": think}
 
-            def _coords(pattern: str, label: str) -> Tuple[int, int]:
+            def _coords(pattern: str, label: str) -> tuple[int, int]:
                 match = re.search(pattern, trimmed)
                 if not match:
                     raise ValueError(
                         f"Failed to extract {label} coordinates for {action_type}; "
-                        f"raw=\"{trimmed}\""
+                        f'raw="{trimmed}"'
                     )
                 return (int(match.group(1)), int(match.group(2)))
 
@@ -95,7 +97,7 @@ def parse_auto_glm_planning_action(response: Dict[str, str]) -> Dict[str, Any]:
                 match = re.search(r'duration=(?:["\[])?(\d+)', trimmed)
                 if not match:
                     raise ValueError(
-                        f"Failed to extract duration for Wait; raw=\"{trimmed}\""
+                        f'Failed to extract duration for Wait; raw="{trimmed}"'
                     )
                 base["durationMs"] = int(match.group(1)) * 1000
                 return base
@@ -114,14 +116,14 @@ def parse_auto_glm_planning_action(response: Dict[str, str]) -> Dict[str, Any]:
                 base["action"] = "Note"
                 base["message"] = _extract_value_after(trimmed, 'message="')
                 return base
-            raise ValueError(f"Unknown action type: {action_type}; raw=\"{trimmed}\"")
+            raise ValueError(f'Unknown action type: {action_type}; raw="{trimmed}"')
 
         raise ValueError(f"Failed to parse action: {trimmed}")
     except ValueError as e:
-        raise ValueError(f"Failed to parse action: {e}; raw=\"{trimmed}\"") from e
+        raise ValueError(f'Failed to parse action: {e}; raw="{trimmed}"') from e
 
 
-def parse_auto_glm_planning_response(content: str) -> Dict[str, Any]:
+def parse_auto_glm_planning_response(content: str) -> dict[str, Any]:
     response = parse_auto_glm_response(content)
     return {
         "response": response,

@@ -1,18 +1,16 @@
 """Type aliases shared by model adapters (upstream ai-model/model-adapter/types.ts)."""
 
-from typing import Any, Dict, Optional
+from typing import Any
 
-ModelRequestUserConfig = Dict[str, Any]
+ModelRequestUserConfig = dict[str, Any]
 
-ReasoningInput = Dict[str, Any]
+ReasoningInput = dict[str, Any]
 
 
 class ModelRuntime:
     """A model config bound to its family adapter (upstream ModelRuntime)."""
 
-    def __init__(
-        self, config: Dict[str, Any], adapter: Optional[Any] = None
-    ):
+    def __init__(self, config: dict[str, Any], adapter: Any | None = None):
         self.config = config
         if adapter is None:
             from midscene.core.ai_model.models.registry import get_model_adapter
@@ -20,8 +18,8 @@ class ModelRuntime:
             adapter = get_model_adapter(config.get("modelFamily"))
         self.adapter = adapter
         self.on_usage = None  # optional callback(AIUsageInfo)
-        self.model_fallback: Optional[Dict[str, Any]] = None
-        self._execution_id: Optional[str] = None
+        self.model_fallback: dict[str, Any] | None = None
+        self._execution_id: str | None = None
 
     @property
     def execution_id(self) -> str:
@@ -33,11 +31,11 @@ class ModelRuntime:
         return self._execution_id
 
     @property
-    def model_family(self) -> Optional[str]:
+    def model_family(self) -> str | None:
         return self.config.get("modelFamily")
 
     @property
-    def model_name(self) -> Optional[str]:
+    def model_name(self) -> str | None:
         return self.config.get("modelName")
 
 

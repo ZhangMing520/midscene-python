@@ -4,7 +4,7 @@ Synced from upstream packages/ios/src/keyboard-dismiss.ts. These are pure
 rectangle predicates so they can be unit tested without a device.
 """
 
-from typing import Dict, List, Optional, TypedDict
+from typing import TypedDict
 
 KEYBOARD_ACCESSORY_TOOLBAR_MIN_HEIGHT = 24
 KEYBOARD_ACCESSORY_TOOLBAR_MAX_HEIGHT = 80
@@ -17,14 +17,14 @@ KEYBOARD_NAMED_BUTTON_MAX_DISTANCE = 100
 
 class KeyboardAccessoryButton(TypedDict):
     id: str
-    rect: Dict[str, float]
+    rect: dict[str, float]
 
 
-def _has_positive_size(rect: Dict[str, float]) -> bool:
+def _has_positive_size(rect: dict[str, float]) -> bool:
     return rect["width"] > 0 and rect["height"] > 0
 
 
-def _center_of(rect: Dict[str, float]) -> Dict[str, float]:
+def _center_of(rect: dict[str, float]) -> dict[str, float]:
     return {
         "x": rect["x"] + rect["width"] / 2,
         "y": rect["y"] + rect["height"] / 2,
@@ -32,15 +32,17 @@ def _center_of(rect: Dict[str, float]) -> Dict[str, float]:
 
 
 def is_named_dismiss_button_near_keyboard(
-    button_rect: Dict[str, float],
-    keyboard_rect: Dict[str, float],
+    button_rect: dict[str, float],
+    keyboard_rect: dict[str, float],
 ) -> bool:
     if not _has_positive_size(button_rect) or not _has_positive_size(keyboard_rect):
         return False
 
     button_center = _center_of(button_rect)
     return (
-        keyboard_rect["x"] <= button_center["x"] <= keyboard_rect["x"] + keyboard_rect["width"]
+        keyboard_rect["x"]
+        <= button_center["x"]
+        <= keyboard_rect["x"] + keyboard_rect["width"]
         and keyboard_rect["y"] - KEYBOARD_NAMED_BUTTON_MAX_DISTANCE
         <= button_center["y"]
         <= keyboard_rect["y"] + keyboard_rect["height"]
@@ -48,15 +50,15 @@ def is_named_dismiss_button_near_keyboard(
 
 
 def keyboard_accessory_toolbar_gap(
-    toolbar_rect: Dict[str, float],
-    keyboard_rect: Dict[str, float],
+    toolbar_rect: dict[str, float],
+    keyboard_rect: dict[str, float],
 ) -> float:
     return keyboard_rect["y"] - (toolbar_rect["y"] + toolbar_rect["height"])
 
 
 def is_keyboard_accessory_toolbar(
-    toolbar_rect: Dict[str, float],
-    keyboard_rect: Dict[str, float],
+    toolbar_rect: dict[str, float],
+    keyboard_rect: dict[str, float],
 ) -> bool:
     if not _has_positive_size(toolbar_rect) or not _has_positive_size(keyboard_rect):
         return False
@@ -85,9 +87,9 @@ def is_keyboard_accessory_toolbar(
 
 
 def select_keyboard_accessory_dismiss_button(
-    toolbar_rect: Dict[str, float],
-    buttons: List[KeyboardAccessoryButton],
-) -> Optional[KeyboardAccessoryButton]:
+    toolbar_rect: dict[str, float],
+    buttons: list[KeyboardAccessoryButton],
+) -> KeyboardAccessoryButton | None:
     """Pick the single right-edge control of a standard accessory toolbar.
 
     Conservative on purpose: navigation controls on the left plus exactly one
@@ -98,14 +100,19 @@ def select_keyboard_accessory_dismiss_button(
 
     right_region_start = (
         toolbar_rect["x"]
-        + toolbar_rect["width"] * KEYBOARD_ACCESSORY_TOOLBAR_MIN_RIGHT_BUTTON_CENTER_RATIO
+        + toolbar_rect["width"]
+        * KEYBOARD_ACCESSORY_TOOLBAR_MIN_RIGHT_BUTTON_CENTER_RATIO
     )
     buttons_inside_toolbar = [
         button
         for button in buttons
         if _has_positive_size(button["rect"])
-        and toolbar_rect["x"] <= _center_of(button["rect"])["x"] <= toolbar_rect["x"] + toolbar_rect["width"]
-        and toolbar_rect["y"] <= _center_of(button["rect"])["y"] <= toolbar_rect["y"] + toolbar_rect["height"]
+        and toolbar_rect["x"]
+        <= _center_of(button["rect"])["x"]
+        <= toolbar_rect["x"] + toolbar_rect["width"]
+        and toolbar_rect["y"]
+        <= _center_of(button["rect"])["y"]
+        <= toolbar_rect["y"] + toolbar_rect["height"]
     ]
     left_side_buttons = [
         button

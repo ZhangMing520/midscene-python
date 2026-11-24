@@ -1,9 +1,9 @@
 """Synced from upstream packages/core/tests/unit-test/runner-report-merge.test.ts."""
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
 
@@ -24,14 +24,12 @@ from midscene.core.utils import get_version
 
 _TIME = "2026-09-10T00:00:00.000Z"
 _TIME_MS = int(
-    datetime.strptime(_TIME, "%Y-%m-%dT%H:%M:%S.%fZ")
-    .replace(tzinfo=timezone.utc)
-    .timestamp()
+    datetime.strptime(_TIME, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC).timestamp()
     * 1000
 )
 
 
-def _runner_step(step_id: str, report_id: str) -> Dict[str, Any]:
+def _runner_step(step_id: str, report_id: str) -> dict[str, Any]:
     return {
         "id": step_id,
         "phase": "steps",
@@ -47,7 +45,7 @@ def _runner_step(step_id: str, report_id: str) -> Dict[str, Any]:
     }
 
 
-def _runner_dump(report_id: str) -> Dict[str, Any]:
+def _runner_dump(report_id: str) -> dict[str, Any]:
     lifecycle = {
         "documentId": "document",
         "sourcePath": "/fixtures/case.yaml",
@@ -57,18 +55,14 @@ def _runner_dump(report_id: str) -> Dict[str, Any]:
         "scopeReportIds": [report_id],
     }
 
-    def attempt(attempt_index: int, status: str = "success") -> Dict[str, Any]:
+    def attempt(attempt_index: int, status: str = "success") -> dict[str, Any]:
         return {
             **lifecycle,
             "documentRunId": f"file-attempt-{attempt_index + 1}",
             "attemptIndex": attempt_index,
             "status": status,
             **(
-                {
-                    "teardownErrors": [
-                        {"name": "Error", "message": "old cleanup failed"}
-                    ]
-                }
+                {"teardownErrors": [{"name": "Error", "message": "old cleanup failed"}]}
                 if status == "failed"
                 else {}
             ),
@@ -128,18 +122,14 @@ def _runner_dump(report_id: str) -> Dict[str, Any]:
                                     {
                                         "attemptId": f"attempt-{index}",
                                         "attemptIndex": index,
-                                        "status": (
-                                            "success" if index else "failed"
-                                        ),
+                                        "status": ("success" if index else "failed"),
                                         "startedAt": _TIME,
                                         "endedAt": _TIME,
                                         "durationMs": 0,
                                         "beforeEach": [],
                                         "afterEach": [],
                                         "steps": [
-                                            _runner_step(
-                                                f"step-{index}", report_id
-                                            )
+                                            _runner_step(f"step-{index}", report_id)
                                         ],
                                         "scopeReportIds": [report_id],
                                     }
@@ -154,7 +144,7 @@ def _runner_dump(report_id: str) -> Dict[str, Any]:
     }
 
 
-def _write_source(directory: Path, name: str, dump: Dict[str, Any]) -> str:
+def _write_source(directory: Path, name: str, dump: dict[str, Any]) -> str:
     report_path = directory / f"{name}.html"
     agent = {
         "sdkVersion": get_version(),
@@ -191,7 +181,9 @@ def _write_source(directory: Path, name: str, dump: Dict[str, Any]) -> str:
     return str(report_path)
 
 
-def _step(node: str = "echo", meta: Dict[str, Any] = None, **input_value) -> Dict[str, Any]:
+def _step(
+    node: str = "echo", meta: dict[str, Any] = None, **input_value
+) -> dict[str, Any]:
     return {
         "node": node,
         "input": input_value,
@@ -199,12 +191,17 @@ def _step(node: str = "echo", meta: Dict[str, Any] = None, **input_value) -> Dic
     }
 
 
-def _document(steps: List[Dict[str, Any]]) -> Dict[str, Any]:
+def _document(steps: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         "documentId": "doc-1",
         "projectId": "project-1",
         "sourcePath": "/tmp/workflow.yaml",
-        "lifecycle": {"beforeAll": [], "beforeEach": [], "afterEach": [], "afterAll": []},
+        "lifecycle": {
+            "beforeAll": [],
+            "beforeEach": [],
+            "afterEach": [],
+            "afterAll": [],
+        },
         "cases": [
             {
                 "caseId": "case-1",
@@ -433,9 +430,7 @@ def test_retains_host_status_without_changing_successful_yaml_actions(
             },
         }
     )
-    output = tool.merge_reports(
-        "host-failed", {"outputDir": str(tmp_path)}
-    )
+    output = tool.merge_reports("host-failed", {"outputDir": str(tmp_path)})
     assert output is not None
 
     merged = read_report_runner_dump(output)
@@ -452,15 +447,12 @@ def test_retains_host_status_without_changing_successful_yaml_actions(
     assert host_result["node"] == "runner:host-result"
     assert host_result["status"] == "failed"
     assert test_status in host_result["error"]["message"]
-    assert document["attempts"][-1]["afterAll"][-1]["node"] == (
-        "runner:host-result"
-    )
-    assert [
-        attempt["status"] for attempt in document["cases"][0]["attempts"]
-    ] == ["failed", "success"]
-    assert document["cases"][0]["attempts"][-1]["steps"][0]["status"] == (
-        "success"
-    )
+    assert document["attempts"][-1]["afterAll"][-1]["node"] == ("runner:host-result")
+    assert [attempt["status"] for attempt in document["cases"][0]["attempts"]] == [
+        "failed",
+        "success",
+    ]
+    assert document["cases"][0]["attempts"][-1]["steps"][0]["status"] == ("success")
     assert source_dump["status"] == "success"
 
     second_tool = ReportMergingTool()

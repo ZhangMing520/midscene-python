@@ -5,9 +5,10 @@ The implementation lives in `midscene.core.dump.report_dump_compactor` and
 names so existing imports keep working.
 """
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any
 
 from midscene.core.dump.report_dump_compactor import (
     _DUMP_HEADER_KEYS,
@@ -20,7 +21,8 @@ from midscene.core.dump.report_dump_compactor import (
 )
 from midscene.core.dump.test_report_images import split_report_file
 
-def report_file_to_markdown(options: Dict[str, Any]) -> Dict[str, List[str]]:
+
+def report_file_to_markdown(options: dict[str, Any]) -> dict[str, list[str]]:
     """Convert a report file to Markdown (upstream reportFileToMarkdown)."""
     from midscene.core.report_markdown import (
         report_file_to_markdown as _report_file_to_markdown,
@@ -32,9 +34,7 @@ def report_file_to_markdown(options: Dict[str, Any]) -> Dict[str, List[str]]:
         raise ValueError("reportFileToMarkdown: htmlPath is required")
     if not output_dir:
         raise ValueError("reportFileToMarkdown: outputDir is required")
-    return _report_file_to_markdown(
-        resolve_report_html_path(html_path), output_dir
-    )
+    return _report_file_to_markdown(resolve_report_html_path(html_path), output_dir)
 
 
 REPORT_TOOL_ACTIONS = ("split", "to-markdown", "merge-html", "export")
@@ -46,8 +46,8 @@ class ReportCliCommandDefinition:
 
     name: str
     description: str
-    schema: Dict[str, Any]
-    handler: Callable[[Dict[str, Any]], Awaitable[Dict[str, Any]]]
+    schema: dict[str, Any]
+    handler: Callable[[dict[str, Any]], Awaitable[dict[str, Any]]]
 
 
 @dataclass(frozen=True)
@@ -58,7 +58,7 @@ class ReportCliCommandEntry:
     definition: ReportCliCommandDefinition = field(repr=False)
 
 
-def _tool_result(text: str) -> Dict[str, Any]:
+def _tool_result(text: str) -> dict[str, Any]:
     return {"isError": False, "content": [{"type": "text", "text": text}]}
 
 
@@ -66,20 +66,18 @@ def _is_truthy_flag(value: Any) -> bool:
     return value is True or value == "true" or value == "1"
 
 
-def _normalize_html_report_arg(raw: Any) -> Optional[List[str]]:
+def _normalize_html_report_arg(raw: Any) -> list[str] | None:
     if raw is None:
         return None
     if isinstance(raw, list):
-        return [
-            path for path in raw if isinstance(path, str) and len(path) > 0
-        ]
+        return [path for path in raw if isinstance(path, str) and len(path) > 0]
     if isinstance(raw, str):
         trimmed = raw.strip()
         return [trimmed] if trimmed else []
     return None
 
 
-_REPORT_TOOL_SCHEMA: Dict[str, Any] = {
+_REPORT_TOOL_SCHEMA: dict[str, Any] = {
     "action": {
         "type": "enum",
         "values": list(REPORT_TOOL_ACTIONS),
@@ -122,7 +120,7 @@ _REPORT_TOOL_SCHEMA: Dict[str, Any] = {
 }
 
 
-async def _handle_report_tool(args: Dict[str, Any]) -> Dict[str, Any]:
+async def _handle_report_tool(args: dict[str, Any]) -> dict[str, Any]:
     from midscene.core.dump.report_artifact_writer import export_report_artifact
     from midscene.core.report_markdown import report_file_to_markdown
 
@@ -166,13 +164,10 @@ async def _handle_report_tool(args: Dict[str, Any]) -> Dict[str, Any]:
 
     if action == "export":
         input_path = resolve_report_html_path(html_path)
-        name = (
-            output_name
-            or (
-                Path(input_path).parent.name
-                if Path(input_path).name == "index.html"
-                else Path(input_path).stem
-            )
+        name = output_name or (
+            Path(input_path).parent.name
+            if Path(input_path).name == "index.html"
+            else Path(input_path).stem
         )
         report_path = export_report_artifact(
             input_path,
@@ -213,12 +208,10 @@ _REPORT_TOOL_DEFINITION = ReportCliCommandDefinition(
 )
 
 
-def create_report_cli_commands() -> List[ReportCliCommandEntry]:
+def create_report_cli_commands() -> list[ReportCliCommandEntry]:
     """Return the generic report command (upstream createReportCliCommands)."""
     return [
-        ReportCliCommandEntry(
-            name="report-tool", definition=_REPORT_TOOL_DEFINITION
-        )
+        ReportCliCommandEntry(name="report-tool", definition=_REPORT_TOOL_DEFINITION)
     ]
 
 

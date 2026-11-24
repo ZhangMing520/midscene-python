@@ -1,11 +1,7 @@
 """Kimi / Kimi K3 adapters (upstream ai-model/models/kimi.ts)."""
 
-from typing import Any, Dict
+from typing import Any
 
-from midscene.core.ai_model.shared.model_locate_result import (
-    create_locate_result_value,
-    parse_coordinate_list,
-)
 from midscene.core.ai_model.model_adapter.chat_completion import (
     _json_object_config,
 )
@@ -25,13 +21,18 @@ from midscene.core.ai_model.model_adapter.types import (
 from midscene.core.ai_model.models.default import (
     build_chat_completion_params_from_context,
 )
+from midscene.core.ai_model.shared.model_locate_result import (
+    create_locate_result_value,
+    parse_coordinate_list,
+)
+
 
 def _build_kimi_params(
-    midscene_defaults: Dict[str, Any],
+    midscene_defaults: dict[str, Any],
     user_config: ModelRequestUserConfig,
     expected_json_object_response: bool = False,
-) -> Dict[str, Any]:
-    config: Dict[str, Any] = dict(midscene_defaults)
+) -> dict[str, Any]:
+    config: dict[str, Any] = dict(midscene_defaults)
     # Kimi disallows custom temperature.
     _apply_temperature(config, user_config, allow_override=False)
     config.update(_json_object_config(user_config, expected_json_object_response))
@@ -46,11 +47,11 @@ def _build_kimi_params(
 
 
 def _build_kimi3_params(
-    midscene_defaults: Dict[str, Any],
+    midscene_defaults: dict[str, Any],
     user_config: ModelRequestUserConfig,
     expected_json_object_response: bool = False,
-) -> Dict[str, Any]:
-    config: Dict[str, Any] = dict(midscene_defaults)
+) -> dict[str, Any]:
+    config: dict[str, Any] = dict(midscene_defaults)
     # Kimi disallows custom temperature.
     _apply_temperature(config, user_config, allow_override=False)
     config.update(_json_object_config(user_config, expected_json_object_response))
@@ -70,16 +71,21 @@ def _build_kimi3_params(
 
 
 KIMI_NORMALIZED_POINT_COORDS = {
-    "shape": "point", "order": "xy", "normalizedBy": 1, "rounding": "round",
+    "shape": "point",
+    "order": "xy",
+    "normalizedBy": 1,
+    "rounding": "round",
 }
 
 
 KIMI_PIXEL_POINT_COORDS = {
-    "shape": "point", "order": "xy", "rounding": "round",
+    "shape": "point",
+    "order": "xy",
+    "rounding": "round",
 }
 
 
-def _parse_kimi_raw_locate_value(input_value: Any) -> Dict[str, Any]:
+def _parse_kimi_raw_locate_value(input_value: Any) -> dict[str, Any]:
     point = parse_coordinate_list(input_value, "point")
     if len(point) != 2:
         raise ValueError(f"invalid point data: {input_value!r} ")

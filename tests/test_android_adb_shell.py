@@ -11,9 +11,12 @@ from midscene.android.adb_shell import (
 
 def test_build_run_adb_shell_planning_feedback_includes_command_and_stdout():
     """buildRunAdbShellPlanningFeedback returns command + stdout."""
-    assert build_run_adb_shell_planning_feedback(
-        command="wm size", stdout="Physical size: 1080x2400"
-    ) == "Command: wm size\nStdout:\nPhysical size: 1080x2400"
+    assert (
+        build_run_adb_shell_planning_feedback(
+            command="wm size", stdout="Physical size: 1080x2400"
+        )
+        == "Command: wm size\nStdout:\nPhysical size: 1080x2400"
+    )
 
 
 def test_build_run_adb_shell_planning_feedback_returns_none_for_empty_stdout():
@@ -29,9 +32,7 @@ def test_get_adb_shell_stdout_or_throw_returns_plain_string_output():
 def test_get_adb_shell_stdout_or_throw_returns_stdout_from_full_output():
     """getAdbShellStdoutOrThrow reads stdout from a full output object."""
     assert (
-        get_adb_shell_stdout_or_throw(
-            "cmd", {"stdout": "result", "stderr": ""}
-        )
+        get_adb_shell_stdout_or_throw("cmd", {"stdout": "result", "stderr": ""})
         == "result"
     )
 
@@ -85,11 +86,7 @@ async def test_run_adb_shell_stdout_or_throw_passes_timeout_and_full_output_form
     """runAdbShellStdoutOrThrow forwards options with the full output format."""
     adb = _FakeAdb({"stdout": "adb-result", "stderr": ""})
 
-    result = await run_adb_shell_stdout_or_throw(
-        adb, "sleep 2", {"timeout": 2000}
-    )
+    result = await run_adb_shell_stdout_or_throw(adb, "sleep 2", {"timeout": 2000})
 
     assert result == "adb-result"
-    assert adb.calls == [
-        ("sleep 2", {"timeout": 2000, "outputFormat": "full"})
-    ]
+    assert adb.calls == [("sleep 2", {"timeout": 2000, "outputFormat": "full"})]

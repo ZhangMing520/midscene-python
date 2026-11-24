@@ -1,6 +1,7 @@
 """Locate adapter resolution (upstream model-adapter/locate.ts)."""
 
-from typing import Any, Callable, Dict, TypedDict
+from collections.abc import Callable
+from typing import Any, TypedDict
 
 from midscene.core.ai_model.model_adapter.default_locate_protocol import (
     create_default_element_protocol,
@@ -22,7 +23,7 @@ class LocateElementAdapter(TypedDict):
 class LocateAdapter(TypedDict, total=False):
     kind: str
     locate_fn: Callable[..., Any]
-    prompt_order: Dict[str, Any]
+    prompt_order: dict[str, Any]
     element: LocateElementAdapter
     search_area: LocateElementAdapter
 

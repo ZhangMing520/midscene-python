@@ -11,34 +11,49 @@ Architecture (packages/core/src/ai-model + packages/shared/src/env):
 """
 
 # New layered API
-from midscene.shared.env import (
-    ModelConfigManager,
-    get_global_model_config_manager,
-    get_preferred_language,
-    override_ai_config,
+# Connectivity test (upstream run-connectivity-test)
+from midscene.core.ai_model.connectivity import run_connectivity_test
+from midscene.core.ai_model.model_adapter.default_insight_protocol import (
+    create_default_insight_protocol,
 )
-from midscene.core.ai_model.models.registry import ModelRuntime, get_model_adapter, get_model_runtime
-from midscene.core.ai_model.service_caller.types import AIResponseParseError
+from midscene.core.ai_model.model_adapter.default_locate_protocol import (
+    create_default_element_protocol,
+)
+from midscene.core.ai_model.model_adapter.default_planning_protocol import (
+    create_default_planning_protocol,
+)
+from midscene.core.ai_model.models.registry import (
+    ModelRuntime,
+    get_model_adapter,
+    get_model_runtime,
+)
 from midscene.core.ai_model.service_caller.call_ai import call_generative_ai
-from midscene.core.ai_model.shared.model_locate_result import LocateResultCodec, create_locate_result_codec
-from midscene.core.ai_model.model_adapter.default_locate_protocol import create_default_element_protocol
-from midscene.core.ai_model.model_adapter.default_insight_protocol import create_default_insight_protocol
-from midscene.core.ai_model.model_adapter.default_planning_protocol import create_default_planning_protocol
+from midscene.core.ai_model.service_caller.system_one import (
+    SystemOneError,
+    call_system_one,
+)
+from midscene.core.ai_model.service_caller.types import AIResponseParseError
+from midscene.core.ai_model.shared.model_locate_result import (
+    LocateResultCodec,
+    create_locate_result_codec,
+)
 from midscene.core.ai_model.workflows import (
     ConversationHistory,
     ai_extract_element_info,
     ai_locate_element,
     standard_plan,
 )
-
-# Connectivity test (upstream run-connectivity-test)
-from midscene.core.ai_model.connectivity import run_connectivity_test
-from midscene.core.ai_model.service_caller.system_one import call_system_one, SystemOneError
 from midscene.core.siwc import (
     SiwcError,
     SiwcTokenExpiredError,
-    siwc_token_manager,
     prepare_siwc_call,
+    siwc_token_manager,
+)
+from midscene.shared.env import (
+    ModelConfigManager,
+    get_global_model_config_manager,
+    get_preferred_language,
+    override_ai_config,
 )
 
 

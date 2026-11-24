@@ -141,9 +141,7 @@ async def test_uses_a_1px_rectangle_marker_for_explicitly_provided_small_target_
 
 
 @pytest.mark.asyncio
-async def test_uses_a_2px_rectangle_marker_for_larger_target_rects(
-    image_mocks, model
-):
+async def test_uses_a_2px_rectangle_marker_for_larger_target_rects(image_mocks, model):
     target = {"left": 10, "top": 20, "width": 80, "height": 50}
 
     await describe.ai_describe_element(_context(), target, _runtime())
@@ -169,9 +167,7 @@ async def test_uses_a_rectangle_marker_for_small_target_rects_during_deep_descri
 
 
 @pytest.mark.asyncio
-async def test_uses_a_rectangle_marker_for_thin_wide_target_regions(
-    image_mocks, model
-):
+async def test_uses_a_rectangle_marker_for_thin_wide_target_regions(image_mocks, model):
     model.content = '{"description": "thin blank region"}'
 
     await describe.ai_describe_element(
@@ -316,9 +312,7 @@ async def test_keeps_crop_local_point_markers_anchored_to_the_original_click_poi
 async def test_recovers_from_structured_ai_response_parse_errors_when_raw_response_is_available(
     monkeypatch, image_mocks
 ):
-    raw_response = (
-        '{"description": "搜索输入框，placeholder 为"搜索你感兴趣的内容""}'
-    )
+    raw_response = '{"description": "搜索输入框，placeholder 为"搜索你感兴趣的内容""}'
 
     async def failing_call(messages, runtime, options=None):
         raise AIResponseParseError("failed to parse json response", raw_response)
@@ -327,9 +321,7 @@ async def test_recovers_from_structured_ai_response_parse_errors_when_raw_respon
 
     result = await describe.ai_describe_element(_context(), [100, 100], _runtime())
 
-    assert result == {
-        "description": '搜索输入框，placeholder 为"搜索你感兴趣的内容"'
-    }
+    assert result == {"description": '搜索输入框，placeholder 为"搜索你感兴趣的内容"'}
 
 
 @pytest.mark.asyncio

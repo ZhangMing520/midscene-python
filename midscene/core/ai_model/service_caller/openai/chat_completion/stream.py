@@ -1,29 +1,30 @@
 """Streaming chat-completion parsing (upstream chat-completion/stream.ts)."""
 
-from typing import Any, AsyncIterator, Dict, List, Optional
 import json
+from collections.abc import AsyncIterator
+from typing import Any
 
+from midscene.core.ai_model.service_caller.openai.chat_completion.utils import (
+    resolve_content_with_reasoning_fallback,
+)
 from midscene.core.ai_model.service_caller.types import AIResponseParseError
 from midscene.core.ai_model.service_caller.utils import (
     emit_stream_chunk,
     has_usable_text,
-)
-from midscene.core.ai_model.service_caller.openai.chat_completion.utils import (
-    resolve_content_with_reasoning_fallback,
 )
 
 
 async def call_chat_completion_stream(
     lines: AsyncIterator[str],
     adapter: Any,
-    on_chunk: Optional[Any] = None,
-) -> Dict[str, Any]:
-    content_parts: List[str] = []
-    reasoning_parts: List[str] = []
+    on_chunk: Any | None = None,
+) -> dict[str, Any]:
+    content_parts: list[str] = []
+    reasoning_parts: list[str] = []
     accumulated = ""
     accumulated_reasoning = ""
-    usage: Optional[Dict[str, Any]] = None
-    response_model: Optional[str] = None
+    usage: dict[str, Any] | None = None
+    response_model: str | None = None
 
     async for line in lines:
         line = line.strip()
@@ -81,9 +82,7 @@ async def call_chat_completion_stream(
         reasoning_content,
         adapter.use_reasoning_as_content_fallback,
     )
-    await emit_stream_chunk(
-        on_chunk, "", "", final_content or accumulated, True, usage
-    )
+    await emit_stream_chunk(on_chunk, "", "", final_content or accumulated, True, usage)
     raw_assistant_output = {
         "type": "chat-completion",
         "rawValue": {

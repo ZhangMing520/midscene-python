@@ -4,7 +4,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from midscene.shared.agent_tools.tool_defaults import (
     TOOL_BEHAVIOR_FLAGS,
@@ -52,7 +52,7 @@ def _load_dotenv_from_cwd() -> None:
         os.environ[key] = value.strip().strip('"').strip("'")
 
 
-def _output_content_item(item: Dict[str, Any], is_error: bool) -> None:
+def _output_content_item(item: dict[str, Any], is_error: bool) -> None:
     item_type = item.get("type")
     if item_type == "text":
         if is_error:
@@ -86,13 +86,13 @@ def _output_result(result: ToolResult) -> None:
         _output_content_item(item, bool(result.is_error))
 
 
-def remove_prefix(name: str, prefix: Optional[str] = None) -> str:
+def remove_prefix(name: str, prefix: str | None = None) -> str:
     if prefix and name.startswith(prefix):
         return name[len(prefix) :]
     return name
 
 
-def _get_global_options() -> List[Dict[str, str]]:
+def _get_global_options() -> list[dict[str, str]]:
     return [
         {
             "flag": f"--{CLI_VERBOSE_FLAG}",
@@ -117,12 +117,10 @@ def _print_global_options() -> None:
         print(f"  {option['flag']:<{width}} {option['description']}")
 
 
-def _print_command_help(script_name: str, command: Dict[str, Any]) -> None:
+def _print_command_help(script_name: str, command: dict[str, Any]) -> None:
     definition: ToolDefinition = command["def"]
     cli = definition.cli or {}
-    positional_usage = " ".join(
-        f"<{name}>" for name in (cli.get("positionals") or [])
-    )
+    positional_usage = " ".join(f"<{name}>" for name in (cli.get("positionals") or []))
     suffix = f" {positional_usage}" if positional_usage else ""
     print(f"\nUsage: {script_name} {command['name']}{suffix} [options]\n")
     print(definition.description)
@@ -167,8 +165,8 @@ def _print_version(script_name: str, version: str) -> None:
 
 def _print_help(
     script_name: str,
-    commands: List[Dict[str, Any]],
-    version: Optional[str] = None,
+    commands: list[dict[str, Any]],
+    version: str | None = None,
 ) -> None:
     if version:
         _print_version(script_name, version)
@@ -187,7 +185,7 @@ def _print_help(
 async def run_tools_cli(
     tools: Any,
     script_name: str,
-    options: Optional[Dict[str, Any]] = None,
+    options: dict[str, Any] | None = None,
 ) -> None:
     options = options or {}
     input_args = options.get("argv")
@@ -212,11 +210,9 @@ async def run_tools_cli(
     if get_cli_tool_definitions is not None:
         tool_definitions.extend(get_cli_tool_definitions())
 
-    commands: List[Dict[str, Any]] = [
+    commands: list[dict[str, Any]] = [
         {
-            "name": remove_prefix(
-                definition.name, options.get("stripPrefix")
-            ).lower(),
+            "name": remove_prefix(definition.name, options.get("stripPrefix")).lower(),
             "def": definition,
         }
         for definition in tool_definitions
@@ -266,7 +262,7 @@ async def run_tools_cli(
     definition: ToolDefinition = match["def"]
     cli = definition.cli or {}
     positional_names = cli.get("positionals") or []
-    positional_args: Dict[str, Any] = {}
+    positional_args: dict[str, Any] = {}
     option_start_index = 0
     while (
         option_start_index < len(rest_args)
@@ -299,9 +295,7 @@ async def run_tools_cli(
 
     debug.info("command: %s, args: %s", match["name"], handler_args)
 
-    verbose_enabled = (
-        verbose or match["name"] == "act" or match["name"] == "record"
-    )
+    verbose_enabled = verbose or match["name"] == "act" or match["name"] == "record"
 
     async def run_command() -> None:
         started_at = time.time() * 1000
@@ -329,9 +323,7 @@ async def run_tools_cli(
             if result.is_error:
                 raise CLIError("Command failed", 1)
         except Exception as error:
-            if not (
-                isinstance(error, CLIError) and str(error) == "Command failed"
-            ):
+            if not (isinstance(error, CLIError) and str(error) == "Command failed"):
                 emit_cli_verbose_event(
                     {
                         "event": "command_done",

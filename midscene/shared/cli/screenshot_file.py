@@ -5,7 +5,7 @@ import re
 import tempfile
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 _SAFE_FILENAME_PATTERN = re.compile(r"[^a-zA-Z0-9._-]")
 
@@ -16,9 +16,7 @@ def _safe_screenshot_filename_part(value: Any) -> str:
     return sanitized or "shot"
 
 
-def _extension_from_image_metadata(
-    mime_type: Any, extension: Any
-) -> str:
+def _extension_from_image_metadata(mime_type: Any, extension: Any) -> str:
     if extension in ("jpeg", "jpg"):
         return "jpeg"
     if extension == "png":
@@ -27,7 +25,7 @@ def _extension_from_image_metadata(
 
 
 def write_cli_screenshot_file(
-    raw_base64: str, options: Optional[Dict[str, Any]] = None
+    raw_base64: str, options: dict[str, Any] | None = None
 ) -> str:
     options = options or {}
     extension = _extension_from_image_metadata(

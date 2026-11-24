@@ -8,7 +8,6 @@ shortcut used before replacing input.
 """
 
 import sys
-from typing import List
 from unittest.mock import MagicMock
 
 import pytest
@@ -16,7 +15,7 @@ import pytest
 
 class FakePyAutoGUI:
     def __init__(self):
-        self.calls: List[tuple] = []
+        self.calls: list[tuple] = []
         self.size_result = MagicMock(width=1920, height=1080)
         self.KEY_NAMES = [chr(code) for code in range(32, 127)] + [
             "enter",
@@ -91,7 +90,13 @@ async def test_uses_explicit_modifier_phases_when_modifier_delay_is_configured(
         "keyUp",
         "keyUp",
     ]
-    assert [c[1] for c in combo] == [("ctrl",), ("shift",), ("s",), ("shift",), ("ctrl",)]
+    assert [c[1] for c in combo] == [
+        ("ctrl",),
+        ("shift",),
+        ("s",),
+        ("shift",),
+        ("ctrl",),
+    ]
     assert not _calls(fake_pyautogui, "hotkey")
 
 

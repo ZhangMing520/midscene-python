@@ -8,7 +8,6 @@ import asyncio
 import os
 import re
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from loguru import logger
 
@@ -33,7 +32,7 @@ def round_ui_input_speed(speed: float, operation: str = "swipe") -> int:
     return int(round(speed))
 
 
-def resolve_hdc_path(hdc_path: Optional[str] = None) -> str:
+def resolve_hdc_path(hdc_path: str | None = None) -> str:
     """Resolve the hdc binary (upstream resolveHdcPath):
     explicit > HDC_HOME > common install paths > PATH."""
     if hdc_path:
@@ -63,21 +62,21 @@ class HdcClient:
     def __init__(
         self,
         device_id: str = "",
-        hdc_path: Optional[str] = None,
+        hdc_path: str | None = None,
         timeout: float = 60.0,
     ):
         self.hdc_path = resolve_hdc_path(hdc_path)
         self.device_id = device_id or ""
         self.timeout = timeout
         self._exec_lock = asyncio.Lock()
-        self._launch_ability_cache: Dict[str, Dict[str, str]] = {}
+        self._launch_ability_cache: dict[str, dict[str, str]] = {}
 
-    def _build_args(self, args: List[str]) -> List[str]:
+    def _build_args(self, args: list[str]) -> list[str]:
         if self.device_id:
             return ["-t", self.device_id, *args]
         return list(args)
 
-    async def exec(self, args: List[str]) -> str:
+    async def exec(self, args: list[str]) -> str:
         """Run one hdc command; serialized to prevent concurrent processes
         competing for the device connection (upstream execMutex)."""
         async with self._exec_lock:
@@ -93,13 +92,13 @@ class HdcClient:
                 stdout, stderr = await asyncio.wait_for(
                     process.communicate(), timeout=self.timeout
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError as error:
                 process.kill()
                 await process.wait()
                 raise RuntimeError(
                     f"HDC command failed: hdc {' '.join(full_args)}: timed out "
                     f"after {self.timeout}s"
-                )
+                ) from error
 
             stdout_text = stdout.decode("utf-8", "replace")
             stderr_text = stderr.decode("utf-8", "replace")
@@ -128,7 +127,9 @@ class HdcClient:
     # -- assertions ----------------------------------------------------------
 
     @staticmethod
-    def _assert_ui_input_succeeded(operation: str, output: str, detail: str = "") -> None:
+    def _assert_ui_input_succeeded(
+        operation: str, output: str, detail: str = ""
+    ) -> None:
         match = UI_INPUT_ERROR_PATTERN.search(output)
         if not match:
             return
@@ -164,8 +165,13 @@ class HdcClient:
         )
 
     def _pointer_args(
-        self, from_x: float, from_y: float, to_x: float, to_y: float,
-        speed: Optional[float], operation: str,
+        self,
+        from_x: float,
+        from_y: float,
+        to_x: float,
+        to_y: float,
+        speed: float | None,
+        operation: str,
     ) -> str:
         args = [
             str(round_ui_coordinate(from_x)),
@@ -178,24 +184,36 @@ class HdcClient:
         return " ".join(args)
 
     async def swipe(
-        self, from_x: float, from_y: float, to_x: float, to_y: float,
-        speed: Optional[float] = None,
+        self,
+        from_x: float,
+        from_y: float,
+        to_x: float,
+        to_y: float,
+        speed: float | None = None,
     ) -> None:
         await self._run_ui_input(
             "swipe", self._pointer_args(from_x, from_y, to_x, to_y, speed, "swipe")
         )
 
     async def fling(
-        self, from_x: float, from_y: float, to_x: float, to_y: float,
-        speed: Optional[float] = None,
+        self,
+        from_x: float,
+        from_y: float,
+        to_x: float,
+        to_y: float,
+        speed: float | None = None,
     ) -> None:
         await self._run_ui_input(
             "fling", self._pointer_args(from_x, from_y, to_x, to_y, speed, "fling")
         )
 
     async def drag(
-        self, from_x: float, from_y: float, to_x: float, to_y: float,
-        speed: Optional[float] = None,
+        self,
+        from_x: float,
+        from_y: float,
+        to_x: float,
+        to_y: float,
+        speed: float | None = None,
     ) -> None:
         await self._run_ui_input(
             "drag", self._pointer_args(from_x, from_y, to_x, to_y, speed, "drag")
@@ -217,7 +235,10 @@ class HdcClient:
         if len(keys) > 1 and any(k in SUPPORTED_STRING_KEY_EVENTS for k in keys):
             raise RuntimeError("HDC system key events cannot be combined")
         for key in keys:
-            if key not in SUPPORTED_STRING_KEY_EVENTS and not NUMERIC_KEY_EVENT_PATTERN.match(key):
+            if (
+                key not in SUPPORTED_STRING_KEY_EVENTS
+                and not NUMERIC_KEY_EVENT_PATTERN.match(key)
+            ):
                 raise RuntimeError(f"Invalid HDC key event: {key}")
         joined = " ".join(keys)
         await self._run_ui_input("keyEvent", joined, joined)
@@ -233,7 +254,7 @@ class HdcClient:
     # -- app management ---------------------------------------------------------
 
     async def start_ability(
-        self, bundle_name: str, ability_name: str, module_name: Optional[str] = None
+        self, bundle_name: str, ability_name: str, module_name: str | None = None
     ) -> None:
         module_arg = f" -m {module_name}" if module_name else ""
         output = await self.shell(
@@ -257,7 +278,7 @@ class HdcClient:
             target["bundleName"], target["abilityName"], target.get("moduleName")
         )
 
-    async def _query_launch_ability(self, bundle_name: str) -> Dict[str, str]:
+    async def _query_launch_ability(self, bundle_name: str) -> dict[str, str]:
         """Resolve the launcher ability from `bm dump` (compact upstream
         queryLaunchAbility)."""
         output = await self.shell(f"bm dump -n {bundle_name}")
@@ -272,13 +293,11 @@ class HdcClient:
     async def force_stop(self, bundle_name: str) -> None:
         output = await self.shell(f"aa force-stop {bundle_name}")
         if "error:" in output:
-            raise RuntimeError(
-                f"Failed to force stop {bundle_name}: {output.strip()}"
-            )
+            raise RuntimeError(f"Failed to force stop {bundle_name}: {output.strip()}")
 
     # -- device info ------------------------------------------------------------
 
-    async def get_screen_info(self) -> Dict[str, int]:
+    async def get_screen_info(self) -> dict[str, int]:
         """Read the active display render size (foldable-aware; upstream
         getScreenInfo)."""
         stdout = await self.shell("hidumper -s RenderService -a screen")
@@ -301,21 +320,28 @@ class HdcClient:
                 }
         render_match = re.search(render_dimension_pattern, stdout)
         if render_match:
-            return {"width": int(render_match.group(1)), "height": int(render_match.group(2))}
+            return {
+                "width": int(render_match.group(1)),
+                "height": int(render_match.group(2)),
+            }
 
         display_stdout = await self.shell("hidumper -s DisplayManagerService -a")
-        display_match = re.search(r"activeModes.*?(\d{3,5}),\s*(\d{3,5})", display_stdout, re.DOTALL)
+        display_match = re.search(
+            r"activeModes.*?(\d{3,5}),\s*(\d{3,5})", display_stdout, re.DOTALL
+        )
         if display_match:
-            return {"width": int(display_match.group(1)), "height": int(display_match.group(2))}
+            return {
+                "width": int(display_match.group(1)),
+                "height": int(display_match.group(2)),
+            }
         raise RuntimeError(
             f"Failed to get screen size from HDC. RenderService output: {stdout[:500]}"
         )
 
-    async def list_targets(self) -> List[str]:
+    async def list_targets(self) -> list[str]:
         stdout = await self.exec(["list", "targets"])
         return [
             line.strip()
             for line in stdout.strip().splitlines()
             if line.strip() and not line.strip().startswith("[")
         ]
-

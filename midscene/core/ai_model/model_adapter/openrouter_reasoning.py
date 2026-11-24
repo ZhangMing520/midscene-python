@@ -1,27 +1,27 @@
 """OpenRouter unified reasoning params (upstream ai-model/model-adapter/openrouter-reasoning.ts)."""
 
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 from midscene.core.ai_model.model_adapter.types import (
     ModelRequestUserConfig,
 )
 
 
-def _reasoning_enabled(user_config: ModelRequestUserConfig) -> Union[bool, str]:
+def _reasoning_enabled(user_config: ModelRequestUserConfig) -> bool | str:
     reasoning_enabled = user_config.get("reasoningEnabled")
     return False if reasoning_enabled is None else reasoning_enabled
 
 
 def build_open_router_reasoning_params(
     user_config: ModelRequestUserConfig,
-    control_method: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    control_method: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """OpenRouter unified reasoning control (openrouter-reasoning.ts)."""
     reasoning_enabled = _reasoning_enabled(user_config)
     if reasoning_enabled == "default":
         return {}
 
-    reasoning: Dict[str, Any] = {}
+    reasoning: dict[str, Any] = {}
     if control_method and control_method.get("type") == "effort":
         if reasoning_enabled is True:
             reasoning["effort"] = (

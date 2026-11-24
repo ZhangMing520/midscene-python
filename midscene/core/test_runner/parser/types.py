@@ -1,6 +1,6 @@
 """Workflow document parser types (upstream test-runner/parser/types.ts)."""
 
-from typing import Any, Dict, List, TypedDict
+from typing import Any, TypedDict
 
 
 class StepMetaInput(TypedDict, total=False):
@@ -23,23 +23,23 @@ class NormalizedStepMeta(TypedDict, total=False):
 
 class NormalizedStep(TypedDict, total=False):
     node: str
-    input: Dict[str, Any]
-    templateInput: Dict[str, Any]
+    input: dict[str, Any]
+    templateInput: dict[str, Any]
     meta: NormalizedStepMeta
 
 
 class CaseDefinition(TypedDict, total=False):
     name: str
-    tags: List[str]
-    steps: List[Any]
+    tags: list[str]
+    steps: list[Any]
 
 
 class WorkflowDocumentDefinition(TypedDict, total=False):
-    beforeAll: List[Dict[str, Any]]
-    beforeEach: List[Dict[str, Any]]
-    cases: List[CaseDefinition]
-    afterEach: List[Dict[str, Any]]
-    afterAll: List[Dict[str, Any]]
+    beforeAll: list[dict[str, Any]]
+    beforeEach: list[dict[str, Any]]
+    cases: list[CaseDefinition]
+    afterEach: list[dict[str, Any]]
+    afterAll: list[dict[str, Any]]
 
 
 class WorkflowDocumentSource(TypedDict, total=False):
@@ -55,14 +55,14 @@ class CollectedCase(TypedDict):
     projectId: str
     sourcePath: str
     caseIndex: int
-    definition: Dict[str, Any]
+    definition: dict[str, Any]
 
 
 class CollectedDocumentLifecycle(TypedDict):
-    beforeAll: List[NormalizedStep]
-    beforeEach: List[NormalizedStep]
-    afterEach: List[NormalizedStep]
-    afterAll: List[NormalizedStep]
+    beforeAll: list[NormalizedStep]
+    beforeEach: list[NormalizedStep]
+    afterEach: list[NormalizedStep]
+    afterAll: list[NormalizedStep]
 
 
 class CollectedWorkflowDocument(TypedDict, total=False):
@@ -71,4 +71,4 @@ class CollectedWorkflowDocument(TypedDict, total=False):
     sourcePath: str
     sourceYaml: Any
     lifecycle: CollectedDocumentLifecycle
-    cases: List[CollectedCase]
+    cases: list[CollectedCase]

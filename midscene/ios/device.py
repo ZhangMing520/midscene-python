@@ -9,7 +9,7 @@ physical pixels and the device pixel ratio comes from /wda/screen.
 
 import asyncio
 import math
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -17,12 +17,12 @@ from midscene.core.device.mobile_scroll import resolve_default_mobile_scroll
 from midscene.core.types import (
     AbstractInterface,
     InterfaceType,
+    NodeType,
     Rect,
     Size,
     UIContext,
-    UITree,
     UINode,
-    NodeType,
+    UITree,
 )
 from midscene.ios.utils import screenshots_similar as _screenshots_similar
 from midscene.ios.wda import WebDriverAgentBackend
@@ -53,8 +53,8 @@ class IOSDevice(AbstractInterface):
         self,
         host: Any = "localhost",
         port: int = 8100,
-        base_url: Optional[str] = None,
-        session_id: Optional[str] = None,
+        base_url: str | None = None,
+        session_id: str | None = None,
         timeout: float = 30.0,
     ):
         if isinstance(host, dict):
@@ -65,16 +65,19 @@ class IOSDevice(AbstractInterface):
             session_id = options.get("sessionId", session_id)
             timeout = float(options.get("timeout", timeout))
         self.wda = WebDriverAgentBackend(
-            host=host, port=port, base_url=base_url,
-            session_id=session_id, timeout=timeout,
+            host=host,
+            port=port,
+            base_url=base_url,
+            session_id=session_id,
+            timeout=timeout,
         )
         self._connected = False
-        self._screen_scale: Optional[float] = None
-        self._app_name_mapping: Dict[str, str] = {}
+        self._screen_scale: float | None = None
+        self._app_name_mapping: dict[str, str] = {}
         # Upstream detects the real UDID during connect().
         self.device_id = "pending-connection"
-        self._description: Optional[str] = None
-        self._uri: Optional[str] = None
+        self._description: str | None = None
+        self._uri: str | None = None
 
     @property
     def interface_type(self) -> InterfaceType:
@@ -107,11 +110,11 @@ class IOSDevice(AbstractInterface):
         """Human-readable device description (upstream describe)."""
         return self._description or f"Device ID: {self.device_id}"
 
-    async def get_connected_device_info(self) -> Optional[Dict[str, str]]:
+    async def get_connected_device_info(self) -> dict[str, str] | None:
         """Device info reported by WebDriverAgent (upstream)."""
         return await self.wda.get_device_info()
 
-    async def get_screen_size(self) -> Dict[str, float]:
+    async def get_screen_size(self) -> dict[str, float]:
         """Logical window size plus the physical/logical scale (upstream)."""
         await self._ensure_connected()
         width, height = await self.wda.get_window_size()
@@ -121,11 +124,11 @@ class IOSDevice(AbstractInterface):
             "scale": await self._device_pixel_ratio(),
         }
 
-    async def get_elements_info(self) -> List[Any]:
+    async def get_elements_info(self) -> list[Any]:
         """Element list is not extracted on iOS (upstream returns [])."""
         return []
 
-    async def get_elements_node_tree(self) -> Dict[str, Any]:
+    async def get_elements_node_tree(self) -> dict[str, Any]:
         """Simplified empty node tree (upstream)."""
         return {"node": None, "children": []}
 
@@ -146,15 +149,26 @@ class IOSDevice(AbstractInterface):
             content=[],
             tree=UITree(
                 node=UINode(
-                    id="root", content="",
+                    id="root",
+                    content="",
                     rect=Rect(left=0, top=0, width=0, height=0),
-                    center=(0, 0), node_type=NodeType.CONTAINER,
+                    center=(0, 0),
+                    node_type=NodeType.CONTAINER,
                 )
             ),
         )
 
-    async def action_space(self) -> List[str]:
-        return ["tap", "double_click", "long_press", "input", "key_press", "scroll", "swipe", "pinch"]
+    async def action_space(self) -> list[str]:
+        return [
+            "tap",
+            "double_click",
+            "long_press",
+            "input",
+            "key_press",
+            "scroll",
+            "swipe",
+            "pinch",
+        ]
 
     # -- screen -----------------------------------------------------------------
 
@@ -169,7 +183,7 @@ class IOSDevice(AbstractInterface):
             self._screen_scale = scale
         return self._screen_scale
 
-    async def size(self) -> Dict[str, int]:
+    async def size(self) -> dict[str, int]:
         """Logical window size in points (upstream size())."""
         await self._ensure_connected()
         width, height = await self.wda.get_window_size()
@@ -206,7 +220,7 @@ class IOSDevice(AbstractInterface):
         await self._ensure_connected()
         await self.wda.type_text(text)
 
-    async def clear_input(self, element: Optional[Any] = None) -> None:
+    async def clear_input(self, element: Any | None = None) -> None:
         """Clear the focused field with the W3C element API (upstream clearInputAt)."""
         await self._ensure_connected()
         await self.wda.wait_for_input_focus(timeout_ms=INPUT_FOCUS_TIMEOUT_MS)
@@ -236,7 +250,10 @@ class IOSDevice(AbstractInterface):
 
     async def _swipe_coordinates(
         self,
-        from_x: float, from_y: float, to_x: float, to_y: float,
+        from_x: float,
+        from_y: float,
+        to_x: float,
+        to_y: float,
         duration: float = 500.0,
     ) -> None:
         """Raw finger path (upstream swipeCoordinates/swipePoint)."""
@@ -246,9 +263,9 @@ class IOSDevice(AbstractInterface):
     async def swipe(
         self,
         from_x: Any,
-        from_y: Optional[float] = None,
-        to_x: Optional[float] = None,
-        to_y: Optional[float] = None,
+        from_y: float | None = None,
+        to_x: float | None = None,
+        to_y: float | None = None,
         duration: float = 500,
         **kwargs: Any,
     ) -> None:
@@ -265,12 +282,15 @@ class IOSDevice(AbstractInterface):
             await self._swipe_direction(from_x, distance)
             return
         await self._swipe_coordinates(
-            float(from_x), float(from_y or 0), float(to_x or 0), float(to_y or 0),
+            float(from_x),
+            float(from_y or 0),
+            float(to_x or 0),
+            float(to_y or 0),
             duration,
         )
 
     async def _swipe_direction(
-        self, direction: str, distance: Optional[int] = None
+        self, direction: str, distance: int | None = None
     ) -> None:
         """Finger-movement convention swipe (content follows the finger)."""
         if direction not in ("up", "down", "left", "right"):
@@ -282,8 +302,10 @@ class IOSDevice(AbstractInterface):
         # (dx, dy) is the finger movement vector, so the path runs from
         # center - vector/2 to center + vector/2.
         vectors = {
-            "up": (0, -distance), "down": (0, distance),
-            "left": (-distance, 0), "right": (distance, 0),
+            "up": (0, -distance),
+            "down": (0, distance),
+            "left": (-distance, 0),
+            "right": (distance, 0),
         }
         dx, dy = vectors[direction]
         await self._swipe_coordinates(
@@ -292,23 +314,26 @@ class IOSDevice(AbstractInterface):
 
     async def swipe_points(
         self,
-        start: List[float],
-        end: List[float],
-        duration: Optional[int] = None,
+        start: list[float],
+        end: list[float],
+        duration: int | None = None,
     ) -> None:
         """Endpoint swipe between two logical points (upstream swipe(start, end))."""
         await self._swipe_coordinates(
-            start[0], start[1], end[0], end[1],
+            start[0],
+            start[1],
+            end[0],
+            end[1],
             duration if duration is not None else 300,
         )
 
     async def scroll(
         self,
         direction: str,
-        distance: Optional[int] = None,
+        distance: int | None = None,
         *,
-        point: Optional[List[float]] = None,
-        scroll_type: Optional[str] = None,
+        point: list[float] | None = None,
+        scroll_type: str | None = None,
         **kwargs,
     ) -> None:
         """Scroll `direction` names the content to reveal, so the finger moves
@@ -334,8 +359,8 @@ class IOSDevice(AbstractInterface):
     async def _scroll_in_direction(
         self,
         direction: str,
-        distance: Optional[int] = None,
-        point: Optional[List[float]] = None,
+        distance: int | None = None,
+        point: list[float] | None = None,
         duration: float = 500.0,
     ) -> None:
         """Bounded gesture from the chosen touch origin (upstream).
@@ -366,16 +391,15 @@ class IOSDevice(AbstractInterface):
         x = round(point[0]) if point else round(width / 2)
         y = round(point[1]) if point else round(height / 2)
         if not (
-            math.isfinite(x)
-            and math.isfinite(y)
-            and 0 <= x < width
-            and 0 <= y < height
+            math.isfinite(x) and math.isfinite(y) and 0 <= x < width and 0 <= y < height
         ):
             raise ValueError("Scroll origin must be inside the viewport")
 
         horizontal = direction in ("left", "right")
-        amount = distance if distance is not None else (
-            width * 0.7 if horizontal else height / 3
+        amount = (
+            distance
+            if distance is not None
+            else (width * 0.7 if horizontal else height / 3)
         )
         if not math.isfinite(amount) or amount <= 0:
             raise ValueError("Scroll distance must be positive and finite")
@@ -391,7 +415,7 @@ class IOSDevice(AbstractInterface):
         await self._swipe_coordinates(x, y, end_x, end_y, duration)
 
     async def _scroll_until_boundary(
-        self, direction: str, point: Optional[List[float]] = None
+        self, direction: str, point: list[float] | None = None
     ) -> None:
         """Fling toward the boundary until the screen stops changing.
 
@@ -418,7 +442,7 @@ class IOSDevice(AbstractInterface):
         # horizontal carousels settle after one, the rest use a single check.
         max_unchanged = 3 if direction == "right" else 1
 
-        last_screenshot: Optional[str] = None
+        last_screenshot: str | None = None
         unchanged_count = 0
         for attempt in range(SCROLL_MAX_ATTEMPTS):
             await asyncio.sleep(SCROLL_SETTLE_MS / 1000.0)
@@ -448,10 +472,10 @@ class IOSDevice(AbstractInterface):
 
     async def pinch(
         self,
-        center: List[float],
+        center: list[float],
         start_distance: float,
         end_distance: float,
-        duration: Optional[int] = None,
+        duration: int | None = None,
     ) -> None:
         """Two-finger pinch around `center` (upstream pinch primitive)."""
         await self._ensure_connected()
@@ -466,7 +490,7 @@ class IOSDevice(AbstractInterface):
     # -- apps ---------------------------------------------------------------------------
 
     @staticmethod
-    def _point_to_list(point: Optional[Any]) -> Optional[List[float]]:
+    def _point_to_list(point: Any | None) -> list[float] | None:
         if point is None:
             return None
         if isinstance(point, dict):
@@ -493,13 +517,9 @@ class IOSDevice(AbstractInterface):
         try:
             await self.wda.terminate_app(resolved)
         except Exception as error:  # noqa: BLE001 - mirror upstream wrapping
-            raise RuntimeError(
-                f"Failed to terminate {resolved}: {error}"
-            ) from error
+            raise RuntimeError(f"Failed to terminate {resolved}: {error}") from error
 
-    async def hide_keyboard(
-        self, key_names: Optional[List[str]] = None
-    ) -> bool:
+    async def hide_keyboard(self, key_names: list[str] | None = None) -> bool:
         """Dismiss the software keyboard through WDA (upstream)."""
         try:
             return await self.wda.dismiss_keyboard(key_names)
@@ -511,7 +531,7 @@ class IOSDevice(AbstractInterface):
     async def open_url(
         self,
         url: str,
-        options: Optional[Dict[str, Any]] = None,
+        options: dict[str, Any] | None = None,
     ) -> None:
         """Open a URL through WDA, optionally falling back to Safari."""
         opts = {"useSafariAsBackup": True, "waitTime": 2000, **(options or {})}
@@ -535,70 +555,54 @@ class IOSDevice(AbstractInterface):
             await self.keyboard_press("Return")
             await asyncio.sleep(1)
         except Exception as error:  # noqa: BLE001 - mirror upstream wrapping
-            raise RuntimeError(
-                f"Failed to open URL via Safari: {error}"
-            ) from error
+            raise RuntimeError(f"Failed to open URL via Safari: {error}") from error
 
     async def scroll_up(
-        self, distance: Optional[int] = None, start_point: Optional[Any] = None
+        self, distance: int | None = None, start_point: Any | None = None
     ) -> None:
         await self._scroll_in_direction(
             "up", distance, self._point_to_list(start_point)
         )
 
     async def scroll_down(
-        self, distance: Optional[int] = None, start_point: Optional[Any] = None
+        self, distance: int | None = None, start_point: Any | None = None
     ) -> None:
         await self._scroll_in_direction(
             "down", distance, self._point_to_list(start_point)
         )
 
     async def scroll_left(
-        self, distance: Optional[int] = None, start_point: Optional[Any] = None
+        self, distance: int | None = None, start_point: Any | None = None
     ) -> None:
         await self._scroll_in_direction(
             "left", distance, self._point_to_list(start_point)
         )
 
     async def scroll_right(
-        self, distance: Optional[int] = None, start_point: Optional[Any] = None
+        self, distance: int | None = None, start_point: Any | None = None
     ) -> None:
         await self._scroll_in_direction(
             "right", distance, self._point_to_list(start_point)
         )
 
-    async def scroll_until_top(self, start_point: Optional[Any] = None) -> None:
-        await self._scroll_until_boundary(
-            "up", self._point_to_list(start_point)
-        )
+    async def scroll_until_top(self, start_point: Any | None = None) -> None:
+        await self._scroll_until_boundary("up", self._point_to_list(start_point))
 
-    async def scroll_until_bottom(
-        self, start_point: Optional[Any] = None
-    ) -> None:
-        await self._scroll_until_boundary(
-            "down", self._point_to_list(start_point)
-        )
+    async def scroll_until_bottom(self, start_point: Any | None = None) -> None:
+        await self._scroll_until_boundary("down", self._point_to_list(start_point))
 
-    async def scroll_until_left(self, start_point: Optional[Any] = None) -> None:
-        await self._scroll_until_boundary(
-            "left", self._point_to_list(start_point)
-        )
+    async def scroll_until_left(self, start_point: Any | None = None) -> None:
+        await self._scroll_until_boundary("left", self._point_to_list(start_point))
 
-    async def scroll_until_right(
-        self, start_point: Optional[Any] = None
-    ) -> None:
-        await self._scroll_until_boundary(
-            "right", self._point_to_list(start_point)
-        )
+    async def scroll_until_right(self, start_point: Any | None = None) -> None:
+        await self._scroll_until_boundary("right", self._point_to_list(start_point))
 
-    def set_app_name_mapping(self, mapping: Dict[str, str]) -> None:
+    def set_app_name_mapping(self, mapping: dict[str, str]) -> None:
         """Set the friendly app name -> bundle id mapping (upstream
         setAppNameMapping)."""
-        self._app_name_mapping = merge_and_normalize_app_name_mapping(
-            {}, mapping
-        )
+        self._app_name_mapping = merge_and_normalize_app_name_mapping({}, mapping)
 
-    def _resolve_bundle_id(self, app_name: str) -> Optional[str]:
+    def _resolve_bundle_id(self, app_name: str) -> str | None:
         """Resolve a friendly app name to its bundle id, if mapped."""
         return self._app_name_mapping.get(normalize_for_comparison(app_name))
 
@@ -611,9 +615,7 @@ class IOSDevice(AbstractInterface):
 
     async def stop_app(self, bundle_id: str) -> None:
         await self._ensure_connected()
-        await self.wda.terminate_app(
-            self._resolve_bundle_id(bundle_id) or bundle_id
-        )
+        await self.wda.terminate_app(self._resolve_bundle_id(bundle_id) or bundle_id)
 
     async def home(self) -> None:
         await self._ensure_connected()
@@ -624,7 +626,7 @@ class IOSDevice(AbstractInterface):
         await self.wda.app_switcher()
 
     async def run_wda_request(
-        self, method: str, endpoint: str, data: Optional[Dict[str, Any]] = None
+        self, method: str, endpoint: str, data: dict[str, Any] | None = None
     ) -> Any:
         """Raw WDA API access (upstream runWdaRequest, the iOS sibling of
         runAdbShell). Returns the parsed WDA response."""

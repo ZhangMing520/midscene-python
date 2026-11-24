@@ -13,7 +13,7 @@ import shutil
 import string
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from midscene.shared.agent_tools.types import UIObservationFrame, UIObservationRecord
 from midscene.shared.env import get_midscene_run_dir
@@ -51,9 +51,7 @@ def default_observation_record_path() -> str:
     )
 
 
-def _check_object(
-    value: Any, location: str, allowed: List[str]
-) -> Dict[str, Any]:
+def _check_object(value: Any, location: str, allowed: list[str]) -> dict[str, Any]:
     if not isinstance(value, dict):
         _fail(location, "Expected object")
     unknown = [key for key in value if key not in allowed]
@@ -89,7 +87,7 @@ def parse_ui_observation_record(input_value: Any) -> UIObservationRecord:
     frames = record.get("frames")
     if not isinstance(frames, list) or not frames:
         _fail("frames", "Expected at least 1 frame")
-    parsed_frames: List[UIObservationFrame] = []
+    parsed_frames: list[UIObservationFrame] = []
     for index, frame in enumerate(frames):
         frame_obj = _check_object(
             frame, f"frames.{index}", ["path", "mimeType", "capturedAt"]
@@ -114,9 +112,7 @@ def parse_ui_observation_record(input_value: Any) -> UIObservationRecord:
             }
         )
 
-    shot_size = _check_object(
-        record.get("shotSize"), "shotSize", ["width", "height"]
-    )
+    shot_size = _check_object(record.get("shotSize"), "shotSize", ["width", "height"])
     for key in ("width", "height"):
         value = shot_size.get(key)
         if not _is_finite_number(value) or value <= 0:
@@ -167,7 +163,7 @@ def read_ui_observation_record(file_path: str) -> UIObservationRecord:
 
     record = parse_ui_observation_record(parsed)
     manifest_directory = resolved.parent
-    frames: List[UIObservationFrame] = []
+    frames: list[UIObservationFrame] = []
     for index, frame in enumerate(record["frames"]):
         frame_path = Path(frame["path"])
         if frame_path.is_absolute():
@@ -196,7 +192,7 @@ def read_ui_observation_record(file_path: str) -> UIObservationRecord:
 class UIObservationRecordWriter:
     """Incrementally persist frames and export their resolved manifest."""
 
-    def __init__(self, file_path: Optional[str] = None) -> None:
+    def __init__(self, file_path: str | None = None) -> None:
         self.output_path = (
             str(Path(file_path).resolve())
             if file_path
@@ -209,7 +205,7 @@ class UIObservationRecordWriter:
         )
         self._finalized = False
         self._disposed = False
-        self._finalized_record: Optional[UIObservationRecord] = None
+        self._finalized_record: UIObservationRecord | None = None
 
     def persist_frame(self, data_url: str, captured_at: int) -> UIObservationFrame:
         if self._disposed:
@@ -218,9 +214,7 @@ class UIObservationRecordWriter:
             raise RuntimeError("UI observation record has already been finalized")
         match = _DATA_URL_PATTERN.match(data_url)
         if not match:
-            raise RuntimeError(
-                "UI observation frame must be a PNG or JPEG data URL"
-            )
+            raise RuntimeError("UI observation frame must be a PNG or JPEG data URL")
         image_format = "png" if match.group(1).lower() == "png" else "jpeg"
         mime_type = "image/png" if image_format == "png" else "image/jpeg"
         import base64
@@ -250,7 +244,7 @@ class UIObservationRecordWriter:
         )
         return str(Path(directory) / Path(frame["path"]).name)
 
-    def prune_frames(self, frames: List[UIObservationFrame]) -> None:
+    def prune_frames(self, frames: list[UIObservationFrame]) -> None:
         if self._disposed:
             raise RuntimeError("UI observation record writer has been disposed")
         temporary = Path(self._temporary_frames_directory)
@@ -262,7 +256,7 @@ class UIObservationRecordWriter:
                 entry.unlink(missing_ok=True)
 
     def finalize(
-        self, frames: List[UIObservationFrame], metadata: Dict[str, Any]
+        self, frames: list[UIObservationFrame], metadata: dict[str, Any]
     ) -> UIObservationRecord:
         if self._disposed:
             raise RuntimeError("UI observation record writer has been disposed")
@@ -305,7 +299,7 @@ class UIObservationRecordWriter:
 
 
 def write_ui_observation_record(
-    record: UIObservationRecord, file_path: Optional[str] = None
+    record: UIObservationRecord, file_path: str | None = None
 ) -> str:
     """Persist a resolved record as a JSON manifest plus an image directory."""
     validated = parse_ui_observation_record(record)
@@ -316,17 +310,13 @@ def write_ui_observation_record(
     )
     output = Path(output_path)
     frames_directory = output.parent / f"{output.stem}.frames"
-    temporary_frames = Path(
-        f"{frames_directory}.tmp-{os.getpid()}-{_random_suffix()}"
-    )
-    temporary_manifest = Path(
-        f"{output_path}.tmp-{os.getpid()}-{_random_suffix()}"
-    )
-    copied_paths: Dict[str, str] = {}
+    temporary_frames = Path(f"{frames_directory}.tmp-{os.getpid()}-{_random_suffix()}")
+    temporary_manifest = Path(f"{output_path}.tmp-{os.getpid()}-{_random_suffix()}")
+    copied_paths: dict[str, str] = {}
 
     try:
         temporary_frames.mkdir(parents=True, exist_ok=True)
-        frames: List[UIObservationFrame] = []
+        frames: list[UIObservationFrame] = []
         for index, frame in enumerate(validated["frames"]):
             source = Path(frame["path"]).resolve()
             if not source.is_file():
@@ -336,9 +326,7 @@ def write_ui_observation_record(
                 )
             relative = copied_paths.get(str(source))
             if relative is None:
-                image_extension = (
-                    "png" if frame["mimeType"] == "image/png" else "jpeg"
-                )
+                image_extension = "png" if frame["mimeType"] == "image/png" else "jpeg"
                 file_name = f"{len(copied_paths):04d}.{image_extension}"
                 relative = f"{frames_directory.name}/{file_name}"
                 shutil.copyfile(source, temporary_frames / file_name)

@@ -1,24 +1,23 @@
 """Locate-cache feature helpers (upstream common/cache-helper.ts)."""
 
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 from midscene.core.ai_model.workflows.insight.order_sensitive import (
     resolve_order_sensitive,
 )
 
 
-def sanitize_xpaths(xpaths: Any) -> List[str]:
+def sanitize_xpaths(xpaths: Any) -> list[str]:
     """Keep only non-empty xpath strings from a cache feature payload."""
     if not isinstance(xpaths, list):
         return []
-    return [
-        xpath for xpath in xpaths if isinstance(xpath, str) and len(xpath) > 0
-    ]
+    return [xpath for xpath in xpaths if isinstance(xpath, str) and len(xpath) > 0]
 
 
 async def judge_order_sensitive(
-    options: Optional[Dict[str, Any]] = None,
-    debug: Optional[Callable[..., Any]] = None,
+    options: dict[str, Any] | None = None,
+    debug: Callable[..., Any] | None = None,
 ) -> bool:
     """Shared isOrderSensitive judgement for web cache features."""
     result = await resolve_order_sensitive(options)
@@ -27,7 +26,7 @@ async def judge_order_sensitive(
     return result
 
 
-def build_rect_from_element_info(element_info: Dict[str, Any]) -> Dict[str, Any]:
+def build_rect_from_element_info(element_info: dict[str, Any]) -> dict[str, Any]:
     """Copy an element's rect into a plain Rect mapping."""
     rect = element_info["rect"]
     return {

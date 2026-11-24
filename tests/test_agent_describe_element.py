@@ -129,9 +129,7 @@ async def test_returns_the_generated_prompt_when_locator_verification_throws(
     monkeypatch.setattr(element_describer, "ai_describe_element", fake_describe)
     monkeypatch.setattr(element_describer, "locate_service", failing_locate)
 
-    result = await describe_element_at_point(
-        _agent(), [10, 20], {"retry_limit": 1}
-    )
+    result = await describe_element_at_point(_agent(), [10, 20], {"retry_limit": 1})
 
     assert result["prompt"] == "Missing target"
     assert result["deepLocate"] is False
@@ -155,7 +153,12 @@ async def test_enables_deep_describe_on_the_first_retry_after_verifier_failure(
 
     async def fake_locate(**kwargs):
         locate_calls.append(kwargs)
-        return {"element": {"rect": {"left": 0, "top": 0, "width": 100, "height": 100}, "center": [50, 50]}}
+        return {
+            "element": {
+                "rect": {"left": 0, "top": 0, "width": 100, "height": 100},
+                "center": [50, 50],
+            }
+        }
 
     monkeypatch.setattr(element_describer, "ai_describe_element", fake_describe)
     monkeypatch.setattr(element_describer, "locate_service", fake_locate)
@@ -192,7 +195,12 @@ async def test_enables_deep_describe_on_retry_even_when_deep_locate_is_explicitl
 
     async def fake_locate(**kwargs):
         locate_calls.append(kwargs)
-        return {"element": {"rect": {"left": 0, "top": 0, "width": 100, "height": 100}, "center": [50, 50]}}
+        return {
+            "element": {
+                "rect": {"left": 0, "top": 0, "width": 100, "height": 100},
+                "center": [50, 50],
+            }
+        }
 
     monkeypatch.setattr(element_describer, "ai_describe_element", fake_describe)
     monkeypatch.setattr(element_describer, "locate_service", fake_locate)
@@ -230,7 +238,12 @@ async def test_keeps_deep_describe_disabled_on_retry_when_explicitly_false(
 
     async def fake_locate(**kwargs):
         locate_calls.append(kwargs)
-        return {"element": {"rect": {"left": 0, "top": 0, "width": 100, "height": 100}, "center": [50, 50]}}
+        return {
+            "element": {
+                "rect": {"left": 0, "top": 0, "width": 100, "height": 100},
+                "center": [50, 50],
+            }
+        }
 
     monkeypatch.setattr(element_describer, "ai_describe_element", fake_describe)
     monkeypatch.setattr(element_describer, "locate_service", fake_locate)
@@ -267,7 +280,12 @@ async def test_allows_locator_verify_fn_to_override_describe_element_at_point_re
 
     async def fake_locate(**kwargs):
         locate_calls.append(kwargs)
-        return {"element": {"rect": {"left": 0, "top": 0, "width": 20, "height": 20}, "center": [10, 10]}}
+        return {
+            "element": {
+                "rect": {"left": 0, "top": 0, "width": 20, "height": 20},
+                "center": [10, 10],
+            }
+        }
 
     monkeypatch.setattr(element_describer, "ai_describe_element", fake_describe)
     monkeypatch.setattr(element_describer, "locate_service", fake_locate)
@@ -301,7 +319,12 @@ async def test_enables_verifier_locate_deep_locate_on_retry_by_default(
 
     async def fake_locate(**kwargs):
         locate_calls.append(kwargs)
-        return {"element": {"rect": {"left": 0, "top": 0, "width": 20, "height": 20}, "center": [10, 10]}}
+        return {
+            "element": {
+                "rect": {"left": 0, "top": 0, "width": 20, "height": 20},
+                "center": [10, 10],
+            }
+        }
 
     monkeypatch.setattr(element_describer, "ai_describe_element", fake_describe)
     monkeypatch.setattr(element_describer, "locate_service", fake_locate)
@@ -337,7 +360,12 @@ async def test_keeps_verifier_locate_deep_locate_disabled_on_retry_when_explicit
 
     async def fake_locate(**kwargs):
         locate_calls.append(kwargs)
-        return {"element": {"rect": {"left": 0, "top": 0, "width": 20, "height": 20}, "center": [10, 10]}}
+        return {
+            "element": {
+                "rect": {"left": 0, "top": 0, "width": 20, "height": 20},
+                "center": [10, 10],
+            }
+        }
 
     monkeypatch.setattr(element_describer, "ai_describe_element", fake_describe)
     monkeypatch.setattr(element_describer, "locate_service", fake_locate)
@@ -371,14 +399,17 @@ async def test_accepts_a_distant_center_when_the_returned_rect_contains_the_targ
 
     async def fake_locate(**kwargs):
         locate_calls.append(kwargs)
-        return {"element": {"rect": {"left": 0, "top": 0, "width": 100, "height": 100}, "center": [50, 50]}}
+        return {
+            "element": {
+                "rect": {"left": 0, "top": 0, "width": 100, "height": 100},
+                "center": [50, 50],
+            }
+        }
 
     monkeypatch.setattr(element_describer, "ai_describe_element", fake_describe)
     monkeypatch.setattr(element_describer, "locate_service", fake_locate)
 
-    result = await describe_element_at_point(
-        _agent(), [10, 10], {"retry_limit": 2}
-    )
+    result = await describe_element_at_point(_agent(), [10, 10], {"retry_limit": 2})
 
     assert result["prompt"] == "Broad row container"
     assert result["deepLocate"] is False
@@ -421,7 +452,12 @@ async def test_keeps_locator_verification_strict_when_the_expected_point_is_outs
 ):
     async def fake_locate(**kwargs):
         locate_calls.append(kwargs)
-        return {"element": {"rect": {"left": 0, "top": 0, "width": 10, "height": 10}, "center": [5, 5]}}
+        return {
+            "element": {
+                "rect": {"left": 0, "top": 0, "width": 10, "height": 10},
+                "center": [5, 5],
+            }
+        }
 
     monkeypatch.setattr(element_describer, "locate_service", fake_locate)
 
@@ -521,7 +557,12 @@ async def test_verifies_an_explicit_element_description_without_a_screenshot_con
 ):
     async def fake_locate(**kwargs):
         locate_calls.append(kwargs)
-        return {"element": {"rect": {"left": 0, "top": 0, "width": 20, "height": 20}, "center": [10, 10]}}
+        return {
+            "element": {
+                "rect": {"left": 0, "top": 0, "width": 20, "height": 20},
+                "center": [10, 10],
+            }
+        }
 
     monkeypatch.setattr(element_describer, "locate_service", fake_locate)
 
@@ -542,7 +583,12 @@ async def test_verifies_an_explicit_element_description_against_a_provided_scree
 ):
     async def fake_locate(**kwargs):
         locate_calls.append(kwargs)
-        return {"element": {"rect": {"left": 1600, "top": 700, "width": 20, "height": 20}, "center": [1641, 721]}}
+        return {
+            "element": {
+                "rect": {"left": 1600, "top": 700, "width": 20, "height": 20},
+                "center": [1641, 721],
+            }
+        }
 
     monkeypatch.setattr(element_describer, "locate_service", fake_locate)
 

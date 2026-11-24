@@ -13,11 +13,11 @@ class TestPromptActionDescription:
         assert "\\n" not in dumped
 
     def test_distance_fields_include_input_image_unit_note(self):
-        from midscene.core.device import build_web_action_space
         from midscene.core.ai_model.models.registry import get_model_adapter
         from midscene.core.ai_model.prompt.planning import (
             build_standard_planning_system_prompt,
         )
+        from midscene.core.device import build_web_action_space
 
         adapter = get_model_adapter("qwen3-vl")
         prompt = build_standard_planning_system_prompt(
@@ -35,9 +35,7 @@ class TestPromptActionDescription:
         from midscene.core.device import build_android_action_space
 
         scroll = next(
-            action
-            for action in build_android_action_space()
-            if action.name == "Scroll"
+            action for action in build_android_action_space() if action.name == "Scroll"
         )
         assert "browse content outside the current viewport" in scroll.description
         assert "scrollToBottom/scrollToTop" in scroll.description
@@ -47,11 +45,9 @@ class TestPromptActionDescription:
             in locate_description
         )
         assert (
-            "screen-coordinate units"
-            in scroll.param_schema["distance"]["description"]
+            "screen-coordinate units" in scroll.param_schema["distance"]["description"]
         )
         assert (
             "Only effective when scrollType"
             in scroll.param_schema["direction"]["description"]
         )
-

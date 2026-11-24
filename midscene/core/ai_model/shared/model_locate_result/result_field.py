@@ -1,14 +1,14 @@
 """Locate result field readers (upstream shared/model-locate-result/result-field.ts)."""
 
-from typing import Any, Dict, List
+from typing import Any
 
 
-def locate_result_keys(prompt_spec: Dict[str, Any]) -> List[str]:
+def locate_result_keys(prompt_spec: dict[str, Any]) -> list[str]:
     return [prompt_spec["resultKey"], *prompt_spec.get("resultKeyAliases", [])]
 
 
 def read_locate_result_field(
-    record: Dict[str, Any], prompt_spec: Dict[str, Any], prefix: str = ""
+    record: dict[str, Any], prompt_spec: dict[str, Any], prefix: str = ""
 ) -> Any:
     """An explicit null or empty array takes precedence over any fallback field."""
     for key in locate_result_keys(prompt_spec):

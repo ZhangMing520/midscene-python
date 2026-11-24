@@ -22,9 +22,10 @@ import pytest
 def test_continues_after_partial_failed_files_but_exits_non_zero_from_summary(
     tmp_path, monkeypatch, status, failed_tasks, expected_exit
 ):
+    from typer.testing import CliRunner
+
     import midscene.core.agent.agent as agent_module
     import midscene.core.yaml as yaml_module
-    from typer.testing import CliRunner
 
     cli_main = importlib.import_module("midscene.cli.index")
 

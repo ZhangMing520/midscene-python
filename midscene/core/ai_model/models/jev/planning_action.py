@@ -1,22 +1,23 @@
 """Jev planning action builder (upstream models/jev/planning-action.ts)."""
 
-from typing import Any, Dict, List, Optional
 import json
-from midscene.core.ai_model.service_caller.system_one import SystemOneError
+from typing import Any
 
 from midscene.core.ai_model.models.jev.locate import (
     map_jev_box,
 )
+from midscene.core.ai_model.service_caller.system_one import SystemOneError
+
 
 def build_jev_action(
-    decision: Dict[str, Any],
-    jev_context: Dict[str, Any],
+    decision: dict[str, Any],
+    jev_context: dict[str, Any],
     instruction: str,
-    action_space: List[Any],
+    action_space: list[Any],
     include_locate_in_planning: bool,
-    shot_size: Dict[str, Any],
-    reference_images: Optional[List[str]] = None,
-) -> List[Dict[str, Any]]:
+    shot_size: dict[str, Any],
+    reference_images: list[str] | None = None,
+) -> list[dict[str, Any]]:
     choice = decision["choice"]
     if choice["kind"] == "complete":
         return []
@@ -37,7 +38,7 @@ def build_jev_action(
         "Task context: {context}"
     )
 
-    def locate_param(field: str) -> Dict[str, Any]:
+    def locate_param(field: str) -> dict[str, Any]:
         prompt = locate_prompt.format(
             field=json.dumps(field),
             action=json.dumps(action.name),
@@ -50,7 +51,11 @@ def build_jev_action(
                 if reference_images
                 else prompt
             ),
-            **({"locatedPixelResult": located_pixel_result} if located_pixel_result else {}),
+            **(
+                {"locatedPixelResult": located_pixel_result}
+                if located_pixel_result
+                else {}
+            ),
         }
 
     param = {field: locate_param(field) for field in fields}

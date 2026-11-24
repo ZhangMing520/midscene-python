@@ -1,10 +1,10 @@
 """SIWC OAuth authorization flow (upstream openai/siwc/authorization.ts)."""
 
-from typing import Any, Dict, Optional, TypedDict
 import base64
 import hashlib
 import os
 import time
+from typing import Any, TypedDict
 from urllib.parse import parse_qs, urlencode, urlparse
 
 import httpx
@@ -26,7 +26,7 @@ class SiwcLoginAttempt(TypedDict):
 
     host_id: str
     redirect_uri: str
-    client_id: Optional[str]
+    client_id: str | None
     state: str
     nonce: str
     verifier: str
@@ -40,9 +40,9 @@ def _base64url(bytes_data: bytes) -> str:
 def create_siwc_authorization(
     host_id: str,
     redirect_uri: str,
-    client_id: Optional[str] = None,
+    client_id: str | None = None,
     agent_name: str = "Midscene Python",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Build the OAuth authorization URL (PKCE + state + nonce)."""
     random = lambda: _base64url(os.urandom(32))  # noqa: E731
     attempt: SiwcLoginAttempt = {
@@ -78,8 +78,8 @@ def create_siwc_authorization(
 
 
 def parse_siwc_callback(
-    callback_url: str, attempt: Dict[str, Any]
-) -> Optional[Dict[str, str]]:
+    callback_url: str, attempt: dict[str, Any]
+) -> dict[str, str] | None:
     callback = urlparse(callback_url)
     expected = urlparse(attempt["redirect_uri"])
     if (callback.scheme, callback.netloc, callback.path) != (
@@ -117,19 +117,15 @@ def parse_siwc_callback(
 
 
 async def exchange_siwc_code(
-    attempt: Dict[str, Any],
-    callback: Dict[str, str],
+    attempt: dict[str, Any],
+    callback: dict[str, str],
     signal: Any = None,
-    dependencies: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    dependencies: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Exchange the OAuth code for tokens and verify the ID token."""
     if signal is not None and hasattr(signal, "throw_if_aborted"):
         signal.throw_if_aborted()
-    proxy = (
-        dependencies.get("proxy")
-        if isinstance(dependencies, dict)
-        else None
-    )
+    proxy = dependencies.get("proxy") if isinstance(dependencies, dict) else None
     async with httpx.AsyncClient(
         timeout=30.0, proxy=network._siwc_proxy(proxy)
     ) as client:
@@ -185,7 +181,9 @@ async def exchange_siwc_code(
     if payload.get("nonce") != attempt["nonce"] or not payload.get("sub"):
         raise SiwcError("OpenAI login identity or nonce did not match.")
     return {
-        **({"email": payload["email"]} if isinstance(payload.get("email"), str) else {}),
+        **(
+            {"email": payload["email"]} if isinstance(payload.get("email"), str) else {}
+        ),
         "ext_agent_host_id": attempt["host_id"],
         "client_id": callback["client_id"],
         "subject": payload["sub"],

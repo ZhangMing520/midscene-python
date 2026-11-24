@@ -22,9 +22,7 @@ MODEL_CONFIG = {
 
 def test_declares_common_and_android_test_runner_nodes():
     """declares common and Android Test Runner Nodes"""
-    names = [
-        node.name for node in AndroidAgent.get_test_runner_node_definitions()
-    ]
+    names = [node.name for node in AndroidAgent.get_test_runner_node_definitions()]
     assert len(names) > 0
     assert len(set(names)) == len(names)
 
@@ -70,9 +68,7 @@ class TestAndroidAgent:
         result = await agent.run_adb_shell("sleep 2", {"timeout": 2000})
 
         assert result == "adb-result"
-        device.run_adb_shell.assert_awaited_once_with(
-            "sleep 2", timeout=2000.0
-        )
+        device.run_adb_shell.assert_awaited_once_with("sleep 2", timeout=2000.0)
 
     @pytest.mark.skip(
         reason="Python filters the action space by device primitive support; "
@@ -91,9 +87,7 @@ class TestAgentFromAdbDevice:
         """should use the first device and forward ADB options if no deviceId is provided"""
         mock_devices = [{"udid": "device-1"}, {"udid": "device-2"}]
         get_devices = AsyncMock(return_value=mock_devices)
-        monkeypatch.setattr(
-            "midscene.android.agent.get_connected_devices", get_devices
-        )
+        monkeypatch.setattr("midscene.android.agent.get_connected_devices", get_devices)
 
         created = {}
 
@@ -178,7 +172,9 @@ class TestAgentFromAdbDevice:
         assert created["options"] == options
 
     @pytest.mark.asyncio
-    async def test_should_throw_when_no_android_devices_are_connected(self, monkeypatch):
+    async def test_should_throw_when_no_android_devices_are_connected(
+        self, monkeypatch
+    ):
         """throws a clear error when no Android device is connected"""
         monkeypatch.setattr(
             "midscene.android.agent.get_connected_devices",

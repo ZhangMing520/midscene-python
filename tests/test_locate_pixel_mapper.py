@@ -44,9 +44,7 @@ def test_map_locate_result_to_pixel_rect_preserves_closed_interval_length():
 
 
 def test_map_locate_result_to_pixel_rect_clips_to_content_size():
-    result = _bbox_result(
-        [-10, -10, 400, 300], boundsType="left-closed-right-open"
-    )
+    result = _bbox_result([-10, -10, 400, 300], boundsType="left-closed-right-open")
 
     rect = map_locate_result_to_pixel_rect(
         result,

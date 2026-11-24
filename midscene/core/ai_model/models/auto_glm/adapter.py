@@ -1,6 +1,6 @@
 """AutoGLM adapter params (upstream ai-model/models/auto-glm/adapter.ts)."""
 
-from typing import Any, Dict
+from typing import Any
 
 from midscene.core.ai_model.model_adapter.temperature_with_semantic_retry import (
     _apply_temperature,
@@ -14,18 +14,18 @@ from midscene.core.ai_model.models.default import (
 
 
 def _build_auto_glm_params(
-    midscene_defaults: Dict[str, Any],
+    midscene_defaults: dict[str, Any],
     user_config: ModelRequestUserConfig,
     expected_json_object_response: bool = False,
-) -> Dict[str, Any]:
-    config: Dict[str, Any] = dict(midscene_defaults)
+) -> dict[str, Any]:
+    config: dict[str, Any] = dict(midscene_defaults)
     _apply_temperature(config, user_config)
     config["top_p"] = 0.85
     config["frequency_penalty"] = 0.2
     return config
 
 
-def _create_auto_glm_adapter_config(is_multilingual: bool) -> Dict[str, Any]:
+def _create_auto_glm_adapter_config(is_multilingual: bool) -> dict[str, Any]:
     return {
         "chat_completion": {
             "build_chat_completion_params": build_chat_completion_params_from_context(

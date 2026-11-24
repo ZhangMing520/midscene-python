@@ -8,7 +8,6 @@ import hashlib
 import json
 import os
 from pathlib import Path
-from typing import Union
 
 from midscene.core.dump.report_artifact_store import (
     ReportArtifactError,
@@ -17,8 +16,8 @@ from midscene.core.dump.report_artifact_store import (
 
 
 def publish_report_artifact(
-    prepared: Union[str, Path],
-    destination: Union[str, Path],
+    prepared: str | Path,
+    destination: str | Path,
     directory: bool = True,
     overwrite: bool = False,
 ) -> None:
@@ -46,8 +45,8 @@ def publish_report_artifact(
 
 
 def publish_report_artifact_sync(
-    prepared: Union[str, Path],
-    destination: Union[str, Path],
+    prepared: str | Path,
+    destination: str | Path,
     directory: bool,
     overwrite: bool = False,
 ) -> None:
@@ -58,9 +57,7 @@ def publish_report_artifact_sync(
     lock_path = target.parent / f".report-publish-{digest}.lock"
 
     try:
-        lock_fd = os.open(
-            lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600
-        )
+        lock_fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
     except FileExistsError as error:
         raise ReportArtifactError(
             f"Report artifact is locked for publication: {target}"
@@ -69,9 +66,7 @@ def publish_report_artifact_sync(
     try:
         os.write(lock_fd, json.dumps({"pid": os.getpid()}).encode("utf-8"))
         if target.exists() and not overwrite:
-            raise ReportArtifactError(
-                f"Report artifact already exists: {target}"
-            )
+            raise ReportArtifactError(f"Report artifact already exists: {target}")
         if directory:
             if overwrite:
                 import shutil

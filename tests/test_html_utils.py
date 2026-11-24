@@ -164,7 +164,9 @@ def test_keeps_agent_analysis_comments_optional_for_incomplete_execution_dumps()
 
 def test_should_extract_image_by_id_from_html_file(tmp_path):
     """should extract image by id from HTML file"""
-    result = extract_image_by_id_sync(str(_write_inline_sample(tmp_path)), "test-id-001")
+    result = extract_image_by_id_sync(
+        str(_write_inline_sample(tmp_path)), "test-id-001"
+    )
 
     assert result == _INLINE_IMAGE_001
 
@@ -196,7 +198,9 @@ def test_should_return_null_for_non_existent_id(tmp_path):
 def test_should_throw_for_non_existent_file(tmp_path):
     """should throw for non-existent file"""
     with pytest.raises(FileNotFoundError):
-        extract_image_by_id_sync(str(tmp_path / "non-existent-file.html"), "test-id-001")
+        extract_image_by_id_sync(
+            str(tmp_path / "non-existent-file.html"), "test-id-001"
+        )
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -242,9 +246,7 @@ def test_should_work_with_folder_report_html_no_inline_images():
 def test_should_verify_screenshot_files_exist_in_folder_report():
     """should verify screenshot files exist in folder report"""
     image_file = (
-        _REAL_FOLDER_REPORT
-        / "screenshots"
-        / "50a74f81-6750-4a9b-a11b-7842ae1b897b.png"
+        _REAL_FOLDER_REPORT / "screenshots" / "50a74f81-6750-4a9b-a11b-7842ae1b897b.png"
     )
     assert image_file.exists() is True
 
@@ -264,9 +266,7 @@ def test_should_verify_screenshot_files_exist_in_folder_report():
 
 def test_should_extract_dump_script_content_from_html_file(tmp_path):
     """should extract dump script content from HTML file"""
-    result = extract_last_dump_script_sync(
-        str(_write_inline_sample(tmp_path))
-    )
+    result = extract_last_dump_script_sync(str(_write_inline_sample(tmp_path)))
     assert result == '{"groupName":"test","executions":[]}'
 
 
@@ -303,9 +303,7 @@ def test_should_extract_the_last_dump_script_when_multiple_exist(tmp_path):
 def test_should_return_empty_string_for_file_without_dump_script(tmp_path):
     """should return empty string for file without dump script"""
     html_path = tmp_path / "empty.html"
-    html_path.write_text(
-        "<html><body>no script</body></html>", encoding="utf-8"
-    )
+    html_path.write_text("<html><body>no script</body></html>", encoding="utf-8")
     assert extract_last_dump_script_sync(str(html_path)) == ""
 
 
@@ -320,12 +318,8 @@ async def test_collects_inline_image_ids_asynchronously_across_streaming_chunks(
         "\n".join(
             [
                 chunk_boundary_padding,
-                generate_image_script_tag(
-                    "first-image", "data:image/png;base64,AAA"
-                ),
-                generate_image_script_tag(
-                    "second-image", "data:image/png;base64,BBB"
-                ),
+                generate_image_script_tag("first-image", "data:image/png;base64,AAA"),
+                generate_image_script_tag("second-image", "data:image/png;base64,BBB"),
             ]
         ),
         encoding="utf-8",
@@ -374,15 +368,11 @@ def test_should_deduplicate_image_ids_across_streamed_reports(tmp_path):
         "unique-image", "data:image/png;base64,BBB"
     )
     first_src_path.write_text(shared_image, encoding="utf-8")
-    second_src_path.write_text(
-        f"{shared_image}\n{unique_image}", encoding="utf-8"
-    )
+    second_src_path.write_text(f"{shared_image}\n{unique_image}", encoding="utf-8")
     dest_path.write_text("", encoding="utf-8")
 
     written_image_ids = set()
-    stream_image_scripts_to_file(
-        str(first_src_path), str(dest_path), written_image_ids
-    )
+    stream_image_scripts_to_file(str(first_src_path), str(dest_path), written_image_ids)
     stream_image_scripts_to_file(
         str(second_src_path), str(dest_path), written_image_ids
     )
@@ -397,9 +387,7 @@ def test_should_handle_file_with_no_image_scripts(tmp_path):
     """should handle file with no image scripts"""
     src_path = tmp_path / "source.html"
     dest_path = tmp_path / "dest.html"
-    src_path.write_text(
-        "<html><body>no images</body></html>", encoding="utf-8"
-    )
+    src_path.write_text("<html><body>no images</body></html>", encoding="utf-8")
     dest_path.write_text("", encoding="utf-8")
 
     stream_image_scripts_to_file(str(src_path), str(dest_path))

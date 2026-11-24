@@ -5,8 +5,9 @@ The transport now lives in ``service_caller.openai`` (upstream
 the historical ``service_caller.model_call`` imports working.
 """
 
-from typing import Any, AsyncIterator, Dict, List, Optional
 import json
+from collections.abc import AsyncIterator
+from typing import Any
 
 import httpx  # noqa: F401  (kept so tests can patch ``model_call.httpx``)
 
@@ -44,8 +45,8 @@ class _NoFallbackAdapter:
 
 
 async def _aggregate_stream_lines(
-    lines: AsyncIterator[str], on_chunk: Optional[Any] = None
-) -> Dict[str, Any]:
+    lines: AsyncIterator[str], on_chunk: Any | None = None
+) -> dict[str, Any]:
     """Aggregate a chat-completion or Responses SSE stream.
 
     The protocol is detected from the first typed event so the result matches
@@ -88,16 +89,14 @@ async def _aggregate_stream_lines(
 
     if protocol == "responses":
         return await call_responses_stream(replayed(), on_chunk)
-    return await call_chat_completion_stream(
-        replayed(), _NoFallbackAdapter(), on_chunk
-    )
+    return await call_chat_completion_stream(replayed(), _NoFallbackAdapter(), on_chunk)
 
 
 def parse_ai_object_response(
-    response: Dict[str, Any],
+    response: dict[str, Any],
     model_runtime: Any,
     json_parser_source: str = "generic-object",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Parse an AI string response into a JSON object (upstream model-call.ts)."""
     if not response:
         raise ValueError("empty response")
@@ -119,16 +118,16 @@ def parse_ai_object_response(
 
 
 async def call_ai_with_object_response(
-    messages: List[dict],
+    messages: list[dict],
     model_runtime: Any,
-    options: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    options: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Call the model expecting a JSON object response."""
     options = options or {}
     model_config = model_runtime.config
     json_parser_source = options.get("jsonParserSource") or "generic-object"
 
-    async def call_ai(retry_attempt: int, previous_error: Optional[Any]):
+    async def call_ai(retry_attempt: int, previous_error: Any | None):
         return await call_generative_ai(
             with_semantic_retry_feedback(messages, previous_error),
             model_runtime,
@@ -138,12 +137,10 @@ async def call_ai_with_object_response(
             },
         )
 
-    def parse_response(response: Dict[str, Any]) -> Dict[str, Any]:
-        return parse_ai_object_response(
-            response, model_runtime, json_parser_source
-        )
+    def parse_response(response: dict[str, Any]) -> dict[str, Any]:
+        return parse_ai_object_response(response, model_runtime, json_parser_source)
 
-    def to_parse_error(error: Exception, response: Dict[str, Any]):
+    def to_parse_error(error: Exception, response: dict[str, Any]):
         return AIResponseParseError(
             str(error),
             response.get("content") or "",

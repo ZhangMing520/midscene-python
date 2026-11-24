@@ -1,6 +1,6 @@
 """Coordinate system resolution (upstream shared/model-locate-result/coordinates.ts)."""
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from midscene.core.ai_model.shared.model_locate_result.types import (
     BboxBoundsType,
@@ -16,7 +16,7 @@ BOUNDS_TYPE_ALIASES = {
 NORMALIZATION_BASES = ("image-size", "last-pixel")
 
 
-def resolve_bounds_type(value: Optional[str]) -> BboxBoundsType:
+def resolve_bounds_type(value: str | None) -> BboxBoundsType:
     if value is None:
         return "closed"
     canonical = BOUNDS_TYPE_ALIASES.get(value)
@@ -25,20 +25,20 @@ def resolve_bounds_type(value: Optional[str]) -> BboxBoundsType:
     return canonical
 
 
-def resolve_normalization_basis(value: Optional[str]) -> NormalizationBasis:
+def resolve_normalization_basis(value: str | None) -> NormalizationBasis:
     basis = value or "image-size"
     if basis not in NORMALIZATION_BASES:
         raise ValueError(f"invalid normalization basis: {basis}")
     return basis
 
 
-def resolve_locate_result_coordinates(coordinates: Dict[str, Any]) -> Dict[str, Any]:
+def resolve_locate_result_coordinates(coordinates: dict[str, Any]) -> dict[str, Any]:
     normalized_by = coordinates.get("normalizedBy")
     if normalized_by is not None and normalized_by <= 0:
         raise ValueError(
             f"locate result coordinates normalizedBy must be positive: {normalized_by}"
         )
-    resolved: Dict[str, Any] = {
+    resolved: dict[str, Any] = {
         "shape": coordinates["shape"],
         "order": coordinates.get("order") or "xy",
         "normalizedBy": normalized_by,
@@ -48,7 +48,5 @@ def resolve_locate_result_coordinates(coordinates: Dict[str, Any]) -> Dict[str, 
         "rounding": coordinates.get("rounding") or "round",
     }
     if coordinates["shape"] == "bbox":
-        resolved["boundsType"] = resolve_bounds_type(
-            coordinates.get("boundsType")
-        )
+        resolved["boundsType"] = resolve_bounds_type(coordinates.get("boundsType"))
     return resolved

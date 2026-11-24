@@ -5,11 +5,11 @@ import json
 import math
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from midscene.core.dump.image_reference import image_ref_file_extension
-from midscene.core.dump.screenshot_store import normalize_screenshot_ref
 from midscene.core.dump.screenshot_restoration import _externalize_images
+from midscene.core.dump.screenshot_store import normalize_screenshot_ref
 from midscene.core.report_cli import (
     _DUMP_HEADER_KEYS,
     collect_report_executions,
@@ -37,25 +37,21 @@ _UsageKeys = (
 )
 
 
-def _to_execution_dump(execution: Any) -> Dict[str, Any]:
+def _to_execution_dump(execution: Any) -> dict[str, Any]:
     if not isinstance(execution, dict):
         raise ValueError("executionToMarkdown: execution is required")
     if not isinstance(execution.get("tasks"), list):
-        raise ValueError(
-            "executionToMarkdown: execution.tasks must be an array"
-        )
+        raise ValueError("executionToMarkdown: execution.tasks must be an array")
     if not execution.get("name"):
         raise ValueError("executionToMarkdown: execution.name is required")
     return execution
 
 
-def _to_report_dump(report: Any) -> Dict[str, Any]:
+def _to_report_dump(report: Any) -> dict[str, Any]:
     if not isinstance(report, dict):
         raise ValueError("reportToMarkdown: report is required")
     if not isinstance(report.get("executions"), list):
-        raise ValueError(
-            "reportToMarkdown: report.executions must be an array"
-        )
+        raise ValueError("reportToMarkdown: report.executions must be an array")
     return report
 
 
@@ -67,13 +63,8 @@ def _format_time(timestamp: Any) -> str:
     ):
         return "N/A"
     milliseconds = int(timestamp)
-    moment = datetime.datetime.fromtimestamp(
-        milliseconds / 1000, tz=datetime.timezone.utc
-    )
-    return (
-        moment.strftime("%Y-%m-%dT%H:%M:%S.")
-        + f"{milliseconds % 1000:03d}Z"
-    )
+    moment = datetime.datetime.fromtimestamp(milliseconds / 1000, tz=datetime.UTC)
+    return moment.strftime("%Y-%m-%dT%H:%M:%S.") + f"{milliseconds % 1000:03d}Z"
 
 
 def _stringify_number(value: float) -> str:
@@ -96,7 +87,7 @@ def _escape_table_cell(value: Any) -> str:
     return _format_value(value).replace("|", "\\|").replace("\n", "<br>")
 
 
-def _markdown_table(headers: List[str], rows: List[List[Any]]) -> List[str]:
+def _markdown_table(headers: list[str], rows: list[list[Any]]) -> list[str]:
     return [
         "| " + " | ".join(_escape_table_cell(header) for header in headers) + " |",
         "| " + " | ".join("---" for _ in headers) + " |",
@@ -107,7 +98,7 @@ def _markdown_table(headers: List[str], rows: List[List[Any]]) -> List[str]:
     ]
 
 
-def _model_brief_rows(model_briefs: List[Dict[str, Any]]) -> List[List[Any]]:
+def _model_brief_rows(model_briefs: list[dict[str, Any]]) -> list[list[Any]]:
     return [
         [
             brief.get("intent") or "default",
@@ -118,14 +109,14 @@ def _model_brief_rows(model_briefs: List[Dict[str, Any]]) -> List[List[Any]]:
     ]
 
 
-def _has_usage(usage: Optional[Dict[str, Any]]) -> bool:
+def _has_usage(usage: dict[str, Any] | None) -> bool:
     if not isinstance(usage, dict):
         return False
     return any(usage.get(key) is not None for key in _UsageKeys)
 
 
-def _model_rows_from_usage(report: Dict[str, Any]) -> List[List[Any]]:
-    rows: Dict[str, List[Any]] = {}
+def _model_rows_from_usage(report: dict[str, Any]) -> list[list[Any]]:
+    rows: dict[str, list[Any]] = {}
 
     def add_usage(source: str, usage: Any) -> None:
         if not _has_usage(usage):
@@ -148,7 +139,7 @@ def _model_rows_from_usage(report: Dict[str, Any]) -> List[List[Any]]:
     return list(rows.values())
 
 
-def _usage_value(usage: Optional[Dict[str, Any]], key: str) -> float:
+def _usage_value(usage: dict[str, Any] | None, key: str) -> float:
     value = usage.get(key) if isinstance(usage, dict) else None
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         if math.isfinite(value):
@@ -156,7 +147,7 @@ def _usage_value(usage: Optional[Dict[str, Any]], key: str) -> float:
     return 0
 
 
-def _usage_total_tokens(usage: Dict[str, Any]) -> float:
+def _usage_total_tokens(usage: dict[str, Any]) -> float:
     explicit = _usage_value(usage, "total_tokens")
     if explicit > 0:
         return explicit
@@ -165,8 +156,8 @@ def _usage_total_tokens(usage: Dict[str, Any]) -> float:
     )
 
 
-def _usage_rows_for_task(task: Dict[str, Any]) -> List[List[Any]]:
-    rows: List[List[Any]] = []
+def _usage_rows_for_task(task: dict[str, Any]) -> list[list[Any]]:
+    rows: list[list[Any]] = []
 
     def append_usage(source: str, usage: Any) -> None:
         if not _has_usage(usage):
@@ -193,9 +184,7 @@ def _usage_rows_for_task(task: Dict[str, Any]) -> List[List[Any]]:
     return rows
 
 
-def _sanitize_json_for_markdown(
-    value: Any, seen: Optional[set] = None
-) -> Any:
+def _sanitize_json_for_markdown(value: Any, seen: set | None = None) -> Any:
     if seen is None:
         seen = set()
     if isinstance(value, str):
@@ -223,32 +212,23 @@ def _sanitize_json_for_markdown(
     seen.add(id(value))
 
     if isinstance(value, list):
-        sanitized = [
-            _sanitize_json_for_markdown(item, seen) for item in value
-        ]
+        sanitized = [_sanitize_json_for_markdown(item, seen) for item in value]
     else:
         sanitized = {}
         for key, entry in value.items():
-            if (
-                isinstance(entry, str)
-                and re.search(
-                    r"(^|_|-)(base64|screenshotBase64|imageBase64)$",
-                    key,
-                    re.IGNORECASE,
-                )
+            if isinstance(entry, str) and re.search(
+                r"(^|_|-)(base64|screenshotBase64|imageBase64)$",
+                key,
+                re.IGNORECASE,
             ):
-                sanitized[key] = (
-                    f"[omitted base64 string, length={len(entry)}]"
-                )
+                sanitized[key] = f"[omitted base64 string, length={len(entry)}]"
                 continue
             sanitized[key] = _sanitize_json_for_markdown(entry, seen)
     seen.discard(id(value))
     return sanitized
 
 
-def _append_json_section(
-    lines: List[str], title: str, value: Any
-) -> None:
+def _append_json_section(lines: list[str], title: str, value: Any) -> None:
     if value is None or value == "":
         return
     sanitized = _sanitize_json_for_markdown(value)
@@ -266,9 +246,7 @@ def _append_json_section(
     )
 
 
-def _append_text_section(
-    lines: List[str], title: str, value: Any
-) -> None:
+def _append_text_section(lines: list[str], title: str, value: Any) -> None:
     if not isinstance(value, str) or not value.strip():
         return
     lines.extend(
@@ -283,7 +261,7 @@ def _append_text_section(
     )
 
 
-def _resolve_task_timing(task: Dict[str, Any]) -> Dict[str, Any]:
+def _resolve_task_timing(task: dict[str, Any]) -> dict[str, Any]:
     timing = task.get("timing")
     if not isinstance(timing, dict):
         return {}
@@ -300,8 +278,10 @@ def _resolve_task_timing(task: Dict[str, Any]) -> Dict[str, Any]:
     if end is None:
         end = timing.get("captureAfterCallingSnapshotEnd")
     cost = timing.get("cost")
-    if cost is None and isinstance(start, (int, float)) and isinstance(
-        end, (int, float)
+    if (
+        cost is None
+        and isinstance(start, (int, float))
+        and isinstance(end, (int, float))
     ):
         cost = end - start
     return {"start": start, "end": end, "cost": cost}
@@ -325,7 +305,7 @@ def _locate_param_str(locate: Any) -> str:
     return ""
 
 
-def _scroll_param_str(scroll_param: Optional[Dict[str, Any]]) -> str:
+def _scroll_param_str(scroll_param: dict[str, Any] | None) -> str:
     if not scroll_param:
         return ""
     return (
@@ -335,7 +315,7 @@ def _scroll_param_str(scroll_param: Optional[Dict[str, Any]]) -> str:
     )
 
 
-def _pull_param_str(pull_param: Optional[Dict[str, Any]]) -> str:
+def _pull_param_str(pull_param: dict[str, Any] | None) -> str:
     if not pull_param:
         return ""
     parts = [f"direction: {pull_param.get('direction') or 'down'}"]
@@ -350,11 +330,11 @@ def _to_content(value: Any) -> str:
     return value if isinstance(value, str) else json.dumps(value)
 
 
-def _extract_insight_param(task_param: Any) -> Dict[str, Any]:
+def _extract_insight_param(task_param: Any) -> dict[str, Any]:
     if not task_param:
         return {"content": ""}
 
-    def extract_images(source: Dict[str, Any]) -> Any:
+    def extract_images(source: dict[str, Any]) -> Any:
         multimodal = source.get("multimodalPrompt") or {}
         images = multimodal.get("images") if isinstance(multimodal, dict) else None
         return images if isinstance(images, list) else None
@@ -375,9 +355,7 @@ def _extract_insight_param(task_param: Any) -> Dict[str, Any]:
             return {"content": data_demand}
         if isinstance(data_demand, dict):
             return {
-                "content": _to_content(
-                    data_demand.get("demand") or data_demand
-                ),
+                "content": _to_content(data_demand.get("demand") or data_demand),
                 "images": extract_images(data_demand),
             }
     return {"content": ""}
@@ -388,9 +366,7 @@ def _user_prompt_to_string(prompt: Any) -> str:
         return prompt
     if isinstance(prompt, list):
         return "\n".join(
-            item
-            if isinstance(item, str)
-            else json.dumps(item, ensure_ascii=False)
+            item if isinstance(item, str) else json.dumps(item, ensure_ascii=False)
             for item in prompt
         )
     if isinstance(prompt, dict):
@@ -412,7 +388,7 @@ def _format_param_value(value: Any) -> str:
     return str(value)
 
 
-def _param_str(task: Dict[str, Any]) -> str:
+def _param_str(task: dict[str, Any]) -> str:
     value: Any = _UNDEFINED
     task_type = task.get("type")
     sub_type = task.get("subType")
@@ -436,9 +412,7 @@ def _param_str(task: Dict[str, Any]) -> str:
         value = task.get("thought") or ""
         if isinstance(param, dict) and isinstance(param.get("timeMs"), (int, float)):
             value = f"{param['timeMs']}ms"
-        elif isinstance(param, dict) and isinstance(
-            param.get("scrollType"), str
-        ):
+        elif isinstance(param, dict) and isinstance(param.get("scrollType"), str):
             value = _scroll_param_str(param)
         elif (
             isinstance(param, dict)
@@ -469,17 +443,15 @@ def _param_str(task: Dict[str, Any]) -> str:
         if len(entries) == 1:
             key, item = entries[0]
             return f"{key}: {_format_param_value(item)}"
-        return ", ".join(
-            f"{key}: {_format_param_value(item)}" for key, item in entries
-        )
+        return ", ".join(f"{key}: {_format_param_value(item)}" for key, item in entries)
     return _format_param_value(value)
 
 
-def _type_str(task: Dict[str, Any]) -> str:
+def _type_str(task: dict[str, Any]) -> str:
     return task.get("subType") or task.get("type") or ""
 
 
-def _safe_task_param(task: Dict[str, Any]) -> str:
+def _safe_task_param(task: dict[str, Any]) -> str:
     readable = _param_str(task)
     if readable:
         return readable
@@ -488,7 +460,7 @@ def _safe_task_param(task: Dict[str, Any]) -> str:
     return ""
 
 
-def _format_size(size: Any) -> Optional[str]:
+def _format_size(size: Any) -> str | None:
     if not isinstance(size, dict):
         return None
     width = size.get("width")
@@ -505,7 +477,7 @@ def _format_size(size: Any) -> Optional[str]:
     return f"{_stringify_number(width)} x {_stringify_number(height)}"
 
 
-def _extract_locate_center(task: Dict[str, Any]) -> Optional[Tuple[Any, Any]]:
+def _extract_locate_center(task: dict[str, Any]) -> tuple[Any, Any] | None:
     output = task.get("output") or {}
     element = output.get("element") if isinstance(output, dict) else None
     candidates = []
@@ -530,7 +502,7 @@ def _extract_locate_center(task: Dict[str, Any]) -> Optional[Tuple[Any, Any]]:
     return None
 
 
-def _try_extract_base64(screenshot: Any) -> Optional[str]:
+def _try_extract_base64(screenshot: Any) -> str | None:
     if ScreenshotItem.is_screenshot_item(screenshot):
         try:
             value = screenshot.base64
@@ -546,9 +518,7 @@ def _try_extract_base64(screenshot: Any) -> Optional[str]:
             if not body:
                 return None
             return f"data:image/{image_format};base64,{body}"
-        if trimmed.startswith("data:") or not _RAW_BASE64_BODY_PATTERN.match(
-            trimmed
-        ):
+        if trimmed.startswith("data:") or not _RAW_BASE64_BODY_PATTERN.match(trimmed):
             return None
         body = re.sub(r"\s", "", trimmed)
         return f"data:image/png;base64,{body}" if body else None
@@ -559,7 +529,7 @@ def _try_extract_base64(screenshot: Any) -> Optional[str]:
     return None
 
 
-def _restored_source_ref(screenshot: Any) -> Optional[Dict[str, Any]]:
+def _restored_source_ref(screenshot: Any) -> dict[str, Any] | None:
     if not isinstance(screenshot, dict):
         return None
     return normalize_screenshot_ref(screenshot.get("sourceRef"))
@@ -570,12 +540,12 @@ def _screenshot_attachment(
     screenshot_base_dir: str,
     execution_index: int,
     task_index: int,
-    options: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    options: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     options = options or {}
     markdown_label = options.get("label") or f"task-{task_index + 1}"
 
-    def result(attachment: Dict[str, Any]) -> Dict[str, Any]:
+    def result(attachment: dict[str, Any]) -> dict[str, Any]:
         resolver = options.get("resolveScreenshotFileName")
         if resolver is not None:
             attachment["suggestedFileName"] = resolver(attachment)
@@ -643,9 +613,7 @@ def _screenshot_attachment(
     if base64:
         extension = "jpeg" if base64.startswith("data:image/jpeg") else "png"
         suffix = (
-            f"-{options['fallbackIdSuffix']}"
-            if options.get("fallbackIdSuffix")
-            else ""
+            f"-{options['fallbackIdSuffix']}" if options.get("fallbackIdSuffix") else ""
         )
         image_id = f"restored-{execution_index + 1}-{task_index + 1}{suffix}"
         return result(
@@ -675,14 +643,14 @@ def _image_label_suffix(value: str) -> str:
 
 
 def _screenshots_markdown_section(
-    task: Dict[str, Any],
+    task: dict[str, Any],
     screenshot_base_dir: str,
     execution_index: int,
     task_index: int,
-    resolve_screenshot_file_name: Optional[Any] = None,
-) -> Dict[str, Any]:
-    lines: List[str] = ["", "### Screenshots"]
-    attachments: List[Dict[str, Any]] = []
+    resolve_screenshot_file_name: Any | None = None,
+) -> dict[str, Any]:
+    lines: list[str] = ["", "### Screenshots"]
+    attachments: list[dict[str, Any]] = []
     screenshot_index = 0
 
     ui_context = task.get("uiContext") or {}
@@ -712,9 +680,7 @@ def _screenshots_markdown_section(
         if not isinstance(item, dict) or not item.get("screenshot"):
             continue
         description_text = (
-            f", description={item['description']}"
-            if item.get("description")
-            else ""
+            f", description={item['description']}" if item.get("description") else ""
         )
         timing = item.get("timing") or "N/A"
         screenshot_index += 1
@@ -725,9 +691,7 @@ def _screenshots_markdown_section(
             task_index,
             {
                 "fallbackIdSuffix": f"recorder-{recorder_index + 1}",
-                "label": (
-                    f"task-{task_index + 1}-{_image_label_suffix(timing)}"
-                ),
+                "label": (f"task-{task_index + 1}-{_image_label_suffix(timing)}"),
                 "resolveScreenshotFileName": resolve_screenshot_file_name,
             },
         )
@@ -747,14 +711,14 @@ def _screenshots_markdown_section(
 def _render_execution(
     execution_raw: Any,
     execution_index: int,
-    options: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    options: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     execution = _to_execution_dump(execution_raw)
     options = options or {}
     screenshot_base_dir = options.get("screenshotBaseDir") or "./screenshots"
 
-    lines: List[str] = []
-    attachments: List[Dict[str, Any]] = []
+    lines: list[str] = []
+    attachments: list[dict[str, Any]] = []
 
     lines.append(f"# {execution['name']}")
     if execution.get("description"):
@@ -768,9 +732,7 @@ def _render_execution(
         ]
     )
     if execution.get("aiActContext"):
-        _append_text_section(
-            lines, "AI Action Context", execution["aiActContext"]
-        )
+        _append_text_section(lines, "AI Action Context", execution["aiActContext"])
 
     for task_index, task in enumerate(execution["tasks"]):
         title = _type_str(task)
@@ -780,8 +742,7 @@ def _render_execution(
         lines.extend(
             [
                 "",
-                f"## {task_index + 1}. {title}"
-                + (f" - {detail}" if detail else ""),
+                f"## {task_index + 1}. {title}" + (f" - {detail}" if detail else ""),
             ]
         )
         lines.append(f"- Task ID: {task.get('taskId') or 'N/A'}")
@@ -838,9 +799,7 @@ def _render_execution(
         _append_json_section(lines, "Output", task.get("output"))
         _append_json_section(lines, "Log", task.get("log"))
         _append_text_section(lines, "Thought", task.get("thought"))
-        _append_text_section(
-            lines, "Reasoning Content", task.get("reasoning_content")
-        )
+        _append_text_section(lines, "Reasoning Content", task.get("reasoning_content"))
 
         screenshots_section = _screenshots_markdown_section(
             task,
@@ -857,17 +816,17 @@ def _render_execution(
 
 
 def execution_to_markdown(
-    execution: Dict[str, Any],
-    options: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    execution: dict[str, Any],
+    options: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Render one execution as Markdown plus its screenshot attachments."""
     return _render_execution(execution, 0, options)
 
 
 def report_to_markdown(
-    report: Dict[str, Any],
-    options: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    report: dict[str, Any],
+    options: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Render a report as Markdown plus every screenshot attachment."""
     report_dump = _to_report_dump(report)
     options = options or {}
@@ -985,16 +944,12 @@ def report_to_markdown(
     return {
         "markdown": header
         + "\n\n"
-        + "\n\n---\n\n".join(
-            result["markdown"] for result in execution_results
-        ),
+        + "\n\n---\n\n".join(result["markdown"] for result in execution_results),
         "attachments": attachments,
     }
 
 
-def report_file_to_markdown(
-    html_path: str, output_dir: str
-) -> Dict[str, List[str]]:
+def report_file_to_markdown(html_path: str, output_dir: str) -> dict[str, list[str]]:
     """Convert a report HTML into report.md plus externalized screenshots."""
     dump, executions = collect_report_executions(html_path)
     out_dir = Path(output_dir)
@@ -1017,14 +972,10 @@ def report_file_to_markdown(
     merged["executions"] = processed
 
     md_path = out_dir / "report.md"
-    md_path.write_text(
-        report_to_markdown(merged)["markdown"], encoding="utf-8"
-    )
+    md_path.write_text(report_to_markdown(merged)["markdown"], encoding="utf-8")
     return {
         "markdownFiles": [str(md_path)],
-        "screenshotFiles": [
-            str(screenshots_dir / name) for name in sorted(written)
-        ],
+        "screenshotFiles": [str(screenshots_dir / name) for name in sorted(written)],
     }
 
 

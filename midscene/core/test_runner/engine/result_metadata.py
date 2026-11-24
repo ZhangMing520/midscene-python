@@ -1,6 +1,7 @@
 """Phase/retry facts for report metadata (upstream engine/result-metadata.ts)."""
 
-from typing import Any, Iterable, Mapping
+from collections.abc import Iterable, Mapping
+from typing import Any
 
 from midscene.core.test_run_report import (
     TestRunReportPhaseResult,

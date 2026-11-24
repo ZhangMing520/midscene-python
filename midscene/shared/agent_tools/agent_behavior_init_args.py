@@ -1,7 +1,7 @@
 """Agent behavior init args (upstream agent-tools/agent-behavior-init-args.ts)."""
 
 import json
-from typing import Any, Dict, Optional
+from typing import Any
 
 from midscene.shared.agent_tools.agent_context import is_agent_ai_context_key
 from midscene.shared.agent_tools.types import ToolSchema, schema_field
@@ -42,8 +42,8 @@ AGENT_BEHAVIOR_INIT_ARG_SHAPE: ToolSchema = {
 
 
 def extract_agent_behavior_init_args(
-    extracted: Optional[Dict[str, Any]],
-) -> Optional[Dict[str, Any]]:
+    extracted: dict[str, Any] | None,
+) -> dict[str, Any] | None:
     if not extracted:
         return None
 
@@ -53,7 +53,7 @@ def extract_agent_behavior_init_args(
         if is_agent_ai_context_key(key) and isinstance(value, str)
     }
 
-    agent_options: Dict[str, Any] = {}
+    agent_options: dict[str, Any] = {}
     if ai_contexts:
         agent_options["aiContexts"] = ai_contexts
     if isinstance(extracted.get("aiActContext"), str):
@@ -73,22 +73,20 @@ def _stable_json_value(value: Any) -> Any:
     if isinstance(value, list):
         return [_stable_json_value(item) for item in value]
     if isinstance(value, dict):
-        return {
-            key: _stable_json_value(value[key]) for key in sorted(value)
-        }
+        return {key: _stable_json_value(value[key]) for key in sorted(value)}
     return value
 
 
 def get_agent_init_args_signature(
-    init_args: Optional[Dict[str, Any]],
-) -> Optional[str]:
+    init_args: dict[str, Any] | None,
+) -> str | None:
     if not init_args:
         return None
     return json.dumps(_stable_json_value(init_args), ensure_ascii=False)
 
 
 def should_rebuild_agent_for_init_args(
-    current_signature: Optional[str], next_signature: Optional[str]
+    current_signature: str | None, next_signature: str | None
 ) -> bool:
     return current_signature != next_signature and (
         current_signature is not None or next_signature is not None

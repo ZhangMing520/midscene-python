@@ -161,9 +161,7 @@ def test_should_warn_when_overriding_already_read_keys(monkeypatch):
     global_config_manager = _manager()
 
     global_config_manager.get_env_config_value("MIDSCENE_ADB_PATH")
-    global_config_manager.override_ai_config(
-        {"MIDSCENE_ADB_PATH": "/new/adb/path"}
-    )
+    global_config_manager.override_ai_config({"MIDSCENE_ADB_PATH": "/new/adb/path"})
 
     assert warnings == [
         "Warning: try to override AI config with key MIDSCENE_ADB_PATH "

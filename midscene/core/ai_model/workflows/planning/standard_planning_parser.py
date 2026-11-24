@@ -1,7 +1,7 @@
 """Standard planning response parser (upstream workflows/planning/standard-planning-parser.ts)."""
 
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from midscene.core.ai_model.shared.xml import (
     extract_raw_xml_fragment,
@@ -19,11 +19,13 @@ _SUB_GOAL_RE = re.compile(
 _MARK_SUB_GOAL_DONE_RE = re.compile(
     r'<sub-goal\s+index="(\d+)"\s+status="finished"\s*/>', re.IGNORECASE
 )
-_COMPLETE_RE = re.compile(r'<complete\s+success="(true|false)">([\s\S]*?)</complete>', re.IGNORECASE)
+_COMPLETE_RE = re.compile(
+    r'<complete\s+success="(true|false)">([\s\S]*?)</complete>', re.IGNORECASE
+)
 
 
-def parse_sub_goals_from_xml(xml_content: str) -> List[Dict[str, Any]]:
-    sub_goals: List[Dict[str, Any]] = []
+def parse_sub_goals_from_xml(xml_content: str) -> list[dict[str, Any]]:
+    sub_goals: list[dict[str, Any]] = []
     for match in _SUB_GOAL_RE.finditer(xml_content):
         sub_goals.append(
             {
@@ -35,15 +37,17 @@ def parse_sub_goals_from_xml(xml_content: str) -> List[Dict[str, Any]]:
     return sub_goals
 
 
-def parse_mark_finished_indexes(xml_content: str) -> List[int]:
-    return [int(match.group(1)) for match in _MARK_SUB_GOAL_DONE_RE.finditer(xml_content)]
+def parse_mark_finished_indexes(xml_content: str) -> list[int]:
+    return [
+        int(match.group(1)) for match in _MARK_SUB_GOAL_DONE_RE.finditer(xml_content)
+    ]
 
 
 def parse_xml_planning_response(
     xml_string: str,
-    action_output_tag_names: Tuple[str, ...],
+    action_output_tag_names: tuple[str, ...],
     include_thought: bool,
-) -> Tuple[Dict[str, Any], str]:
+) -> tuple[dict[str, Any], str]:
     """Parse common XML fields and retain the raw action-protocol XML."""
     thought = extract_xml_tag(xml_string, "planning") if include_thought else None
     memory = extract_xml_tag(xml_string, "memory")
@@ -51,8 +55,8 @@ def parse_xml_planning_response(
     error = extract_xml_tag(xml_string, "error")
 
     complete_match = _COMPLETE_RE.search(xml_string)
-    finalize_message: Optional[str] = None
-    finalize_success: Optional[bool] = None
+    finalize_message: str | None = None
+    finalize_success: bool | None = None
     if complete_match:
         finalize_success = complete_match.group(1) == "true"
         finalize_message = complete_match.group(2).strip() or None
@@ -66,7 +70,7 @@ def parse_xml_planning_response(
         parse_mark_finished_indexes(mark_sub_goal_done) if mark_sub_goal_done else None
     )
 
-    parsed: Dict[str, Any] = {"log": log}
+    parsed: dict[str, Any] = {"log": log}
     if thought:
         parsed["thought"] = thought
     if memory:
@@ -88,11 +92,11 @@ def parse_xml_planning_response(
 
 def parse_standard_planning_response(
     xml_string: str,
-    action_output_protocol: Dict[str, Any],
-    action_space: List[Any],
+    action_output_protocol: dict[str, Any],
+    action_space: list[Any],
     include_thought: bool,
     log_source: str = "model",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     parsed, raw_action_output = parse_xml_planning_response(
         xml_string, action_output_protocol["action_output_tag_names"], include_thought
     )

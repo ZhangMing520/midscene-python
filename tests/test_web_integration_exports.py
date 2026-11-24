@@ -26,9 +26,7 @@ class TestBridgeModeCommon:
             == f"http://{DefaultBridgeServerHost}:{DefaultBridgeServerPort}"
         )
         assert BRIDGE_PAGE_TYPE == "page-over-chrome-extension-bridge"
-        assert (
-            BRIDGE_ERROR_CODE_NO_CLIENT_CONNECTED == "no-client-connected"
-        )
+        assert BRIDGE_ERROR_CODE_NO_CLIENT_CONNECTED == "no-client-connected"
 
     def test_exposes_bridge_event_names_as_constants(self):
         from midscene.web_integration.bridge_mode.common import BridgeEvent
@@ -45,13 +43,9 @@ class TestBridgeModeCommon:
         assert BridgeEvent.SetDestroyOptions.value == "setDestroyOptions"
         assert BridgeEvent.SetActiveTabId.value == "setActiveTabId"
         assert (
-            BridgeEvent.RegisterFileChooserAccept.value
-            == "registerFileChooserAccept"
+            BridgeEvent.RegisterFileChooserAccept.value == "registerFileChooserAccept"
         )
-        assert (
-            BridgeEvent.ClearFileChooserAccept.value
-            == "clearFileChooserAccept"
-        )
+        assert BridgeEvent.ClearFileChooserAccept.value == "clearFileChooserAccept"
         assert BridgeEvent.GetFileChooserError.value == "getFileChooserError"
 
     def test_exposes_mouse_and_keyboard_event_names(self):
@@ -79,6 +73,8 @@ class TestBridgePageBrowserSide:
         )
         from midscene.web_integration.bridge_mode.page_browser_side import (
             BridgeWebPage,
+        )
+        from midscene.web_integration.bridge_mode.page_browser_side import (
             ExtensionBridgePageBrowserSide as PageClass,
         )
 
@@ -136,7 +132,9 @@ class TestWebElement:
             LIMIT_OPEN_NEW_TAB_SCRIPT,
         )
 
-        assert LIMIT_OPEN_NEW_TAB_SCRIPT == """
+        assert (
+            LIMIT_OPEN_NEW_TAB_SCRIPT
+            == """
 if (!window.__MIDSCENE_NEW_TAB_INTERCEPTOR_INITIALIZED__) {
   window.__MIDSCENE_NEW_TAB_INTERCEPTOR_INITIALIZED__ = true;
 
@@ -159,6 +157,7 @@ if (!window.__MIDSCENE_NEW_TAB_INTERCEPTOR_INITIALIZED__) {
   }, true);
 }
 """
+        )
 
 
 def test_playwright_web_page_module_exposes_web_page_class():

@@ -5,13 +5,13 @@ The Python SDK has no browser/worker runtimes, so the `ifInBrowser` /
 live in `midscene.core.dump.html_utils` and are re-exported here.
 """
 
+import asyncio
 import json
 import os
 import time
 import uuid
-import asyncio
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -58,11 +58,12 @@ def process_cache_config(cache: Any, cache_id: str) -> Any:
     return None
 
 
-def get_tmp_dir() -> Optional[str]:
+def get_tmp_dir() -> str | None:
     """Return a package-named temp directory, or None when unavailable."""
     try:
-        import midscene
         from tempfile import gettempdir
+
+        import midscene
 
         name = getattr(midscene, "__package_name__", None) or "midscene"
         path = Path(gettempdir()) / name
@@ -72,14 +73,14 @@ def get_tmp_dir() -> Optional[str]:
         return None
 
 
-def get_tmp_file(file_ext_without_dot: str) -> Optional[str]:
+def get_tmp_file(file_ext_without_dot: str) -> str | None:
     tmp_dir = get_tmp_dir()
     if tmp_dir is None:
         return None
     return str(Path(tmp_dir) / f"{_uuid()}.{file_ext_without_dot}")
 
 
-def overlapped(container: Dict[str, Any], target: Dict[str, Any]) -> bool:
+def overlapped(container: dict[str, Any], target: dict[str, Any]) -> bool:
     """Whether two rects overlap (upstream overlapped)."""
     return (
         container["left"] < target["left"] + target["width"]
@@ -103,7 +104,7 @@ def replacer_for_page_object(_key: str, value: Any) -> Any:
     return value
 
 
-def stringify_dump_data(data: Any, indents: Optional[int] = None) -> str:
+def stringify_dump_data(data: Any, indents: int | None = None) -> str:
     return json.dumps(data, default=replacer_for_page_object, indent=indents)
 
 
@@ -119,9 +120,13 @@ def debug_log(*message: Any) -> None:
         logger.info("[Midscene] " + " ".join(str(item) for item in message))
 
 
-def format_timestamp(format: str = "YYYY-MM-DD HH:mm:ss", timestamp: Optional[float] = None) -> str:
+def format_timestamp(
+    format: str = "YYYY-MM-DD HH:mm:ss", timestamp: float | None = None
+) -> str:
     value = (
-        time.localtime(timestamp / 1000.0) if timestamp is not None else time.localtime()
+        time.localtime(timestamp / 1000.0)
+        if timestamp is not None
+        else time.localtime()
     )
     replacements = {
         "YYYY": str(value.tm_year),
@@ -140,7 +145,7 @@ def format_timestamp(format: str = "YYYY-MM-DD HH:mm:ss", timestamp: Optional[fl
 _last_reported_repo_url = ""
 
 
-async def _get_git_info_async() -> Dict[str, str]:
+async def _get_git_info_async() -> dict[str, str]:
     """Read the git remote/user email without failing when git is absent."""
 
     async def read_config(key: str) -> str:
@@ -165,7 +170,7 @@ async def _get_git_info_async() -> Dict[str, str]:
     return {"repoUrl": repo_url, "userEmail": user_email}
 
 
-async def _post_test_info(server_url: str, payload: Dict[str, str]) -> None:
+async def _post_test_info(server_url: str, payload: dict[str, str]) -> None:
     try:
         import httpx
 
@@ -178,7 +183,7 @@ async def _post_test_info(server_url: str, payload: Dict[str, str]) -> None:
 
 
 async def upload_test_info_to_server(
-    test_url: str, server_url: Optional[str] = None
+    test_url: str, server_url: str | None = None
 ) -> None:
     """Report the test/repo pair to an optional server (upstream)."""
     global _last_reported_repo_url
@@ -189,9 +194,7 @@ async def upload_test_info_to_server(
     repo_url = git_info["repoUrl"]
     user_email = git_info["userEmail"]
 
-    should_upload = (
-        repo_url != _last_reported_repo_url if repo_url else bool(test_url)
-    )
+    should_upload = repo_url != _last_reported_repo_url if repo_url else bool(test_url)
     if should_upload:
         debug_log(
             "Uploading test info to server",

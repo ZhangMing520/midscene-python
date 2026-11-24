@@ -2,7 +2,8 @@
 
 import json
 import re
-from typing import Any, Callable, Dict, List, Optional, Union
+from collections.abc import Callable
+from typing import Any
 
 from midscene.core.types import UINode, UITree
 
@@ -14,7 +15,7 @@ _NODE_TYPE_TAG_NAMES = {"image": "img"}
 
 
 def truncate_text(
-    text: Union[str, int, float, object, None], max_length: int = 150
+    text: str | int | float | object | None, max_length: int = 150
 ) -> str:
     """Stringify and truncate an attribute value (upstream truncateText)."""
     if text is None:
@@ -32,10 +33,10 @@ def truncate_text(
 
 
 def trim_attributes(
-    attributes: Dict[str, Any], truncate_text_length: Optional[int] = None
-) -> Dict[str, str]:
+    attributes: dict[str, Any], truncate_text_length: int | None = None
+) -> dict[str, str]:
     """Drop rendering-only attributes and truncate the rest (upstream)."""
-    result: Dict[str, str] = {}
+    result: dict[str, str] = {}
     for key, value in attributes.items():
         if key in ("style", "htmlTagName", "nodeType"):
             continue
@@ -45,13 +46,13 @@ def trim_attributes(
 
 def description_of_tree(
     tree: UITree,
-    truncate_text_length: Optional[int] = None,
+    truncate_text_length: int | None = None,
     filter_non_text_content: bool = False,
     visible_only: bool = True,
 ) -> str:
     """Render a UI tree as the XML-ish description fed to the model."""
 
-    def attributes_string(kv: Dict[str, Any]) -> str:
+    def attributes_string(kv: dict[str, Any]) -> str:
         return " ".join(
             f'{key}="{truncate_text(value, truncate_text_length or 150)}"'
             for key, value in kv.items()
@@ -111,16 +112,18 @@ def description_of_tree(
         if empty_node and not children.strip():
             return ""
 
-        result = f"{indent_str}{before}{content_with_indent}{children}\n{indent_str}{after}"
+        result = (
+            f"{indent_str}{before}{content_with_indent}{children}\n{indent_str}{after}"
+        )
         return result if result.strip() else ""
 
     result = build_content_tree(tree, 0, visible_only)
     return re.sub(r"^\s*\n", "", result, flags=re.MULTILINE)
 
 
-def tree_to_list(tree: UITree) -> List[UINode]:
+def tree_to_list(tree: UITree) -> list[UINode]:
     """Flatten a UI tree into its nodes in depth-first order."""
-    result: List[UINode] = []
+    result: list[UINode] = []
 
     def dfs(node: UITree) -> None:
         if node.node is not None:
@@ -132,9 +135,7 @@ def tree_to_list(tree: UITree) -> List[UINode]:
     return result
 
 
-def traverse_tree(
-    tree: UITree, on_node: Callable[[UINode], UINode]
-) -> UITree:
+def traverse_tree(tree: UITree, on_node: Callable[[UINode], UINode]) -> UITree:
     """Map every node through `on_node` in place (upstream traverseTree)."""
 
     def dfs(node: UITree) -> None:

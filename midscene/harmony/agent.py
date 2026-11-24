@@ -1,6 +1,6 @@
 """HarmonyOS agent (upstream HarmonyAgent extends the core Agent)."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -25,15 +25,15 @@ class HarmonyAgent(Agent):
     """AI agent controlling a HarmonyOS device through hdc."""
 
     @staticmethod
-    def get_test_runner_node_definitions() -> List[Any]:
+    def get_test_runner_node_definitions() -> list[Any]:
         """Common Agent nodes (platform bindings live in the Node-only module)."""
         return Agent.get_test_runner_node_definitions()
 
     def __init__(
         self,
-        device: Optional[HarmonyDevice] = None,
-        options: Optional[Any] = None,
-        app_name_mapping: Optional[Dict[str, str]] = None,
+        device: HarmonyDevice | None = None,
+        options: Any | None = None,
+        app_name_mapping: dict[str, str] | None = None,
     ):
         app_name_mapping = app_name_mapping or _option(
             options, "appNameMapping", "app_name_mapping"
@@ -62,8 +62,8 @@ class HarmonyAgent(Agent):
 
 
 async def agent_from_hdc_device(
-    device_id: Optional[str] = None,
-    options: Optional[Any] = None,
+    device_id: str | None = None,
+    options: Any | None = None,
 ) -> HarmonyAgent:
     """Create a HarmonyOS agent from a connected HDC device (upstream)."""
     device_options = options if isinstance(options, dict) else {}

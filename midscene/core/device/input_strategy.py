@@ -3,9 +3,9 @@
 import inspect
 import math
 import re
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
-INPUT_STRATEGIES: Tuple[str, ...] = ("legacy", "sequential", "bulk")
+INPUT_STRATEGIES: tuple[str, ...] = ("legacy", "sequential", "bulk")
 
 # Upstream exports the tuple as ``inputStrategies``; keep the Python alias for
 # callers that look the constant up by name.
@@ -54,9 +54,9 @@ def _strategy_label(value: Any) -> str:
     return str(value)
 
 
-def input_options(param: Dict[str, Any]) -> Dict[str, Any]:
+def input_options(param: dict[str, Any]) -> dict[str, Any]:
     """Typing options forwarded to the device input primitive."""
-    options: Dict[str, Any] = {}
+    options: dict[str, Any] = {}
     if param.get("keyboardTypeDelay") is not None:
         options["keyboard_type_delay"] = param["keyboardTypeDelay"]
     if param.get("inputStrategy") is not None:
@@ -66,7 +66,7 @@ def input_options(param: Dict[str, Any]) -> Dict[str, Any]:
 
 def resolve_input_strategy(
     input_strategy: Any = _UNSET,
-    keyboard_type_delay: Optional[float] = None,
+    keyboard_type_delay: float | None = None,
 ) -> str:
     """Resolve an input strategy and reject combinations whose intent conflicts.
 
@@ -100,10 +100,12 @@ def resolve_input_strategy(
 def resolve_text_input_options(
     action_options: Any = None,
     platform_defaults: Any = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Resolve action-level text input options over platform-level defaults."""
     keyboard_type_delay = _field(
-        action_options, "keyboardTypeDelay", _field(action_options, "keyboard_type_delay")
+        action_options,
+        "keyboardTypeDelay",
+        _field(action_options, "keyboard_type_delay"),
     )
     if keyboard_type_delay is None:
         keyboard_type_delay = _field(
@@ -114,9 +116,7 @@ def resolve_text_input_options(
 
     action_strategy = _field(action_options, "inputStrategy", _UNSET)
     if action_strategy is _UNSET:
-        action_strategy = _field(
-            action_options, "input_strategy", _UNSET
-        )
+        action_strategy = _field(action_options, "input_strategy", _UNSET)
     if action_strategy is _UNSET:
         action_strategy = _field(platform_defaults, "inputStrategy", _UNSET)
     if action_strategy is _UNSET:
@@ -145,7 +145,7 @@ def should_input_sequentially(options: Any) -> bool:
 async def send_text_sequentially(
     text: str,
     handlers: Any,
-    options: Optional[Dict[str, Any]] = None,
+    options: dict[str, Any] | None = None,
 ) -> None:
     """Send text one Unicode code point at a time with one delay policy.
 
@@ -158,16 +158,16 @@ async def send_text_sequentially(
     delay_after_last = _field(
         options, "delayAfterLast", _field(options, "delay_after_last", False)
     )
-    send_character = _field(handlers, "sendCharacter", _field(handlers, "send_character"))
+    send_character = _field(
+        handlers, "sendCharacter", _field(handlers, "send_character")
+    )
     wait = _field(handlers, "wait")
 
     for index, character in enumerate(characters):
         result = send_character(character)
         if inspect.isawaitable(result):
             await result
-        if delay_ms > 0 and (
-            index < len(characters) - 1 or delay_after_last is True
-        ):
+        if delay_ms > 0 and (index < len(characters) - 1 or delay_after_last is True):
             result = wait(delay_ms)
             if inspect.isawaitable(result):
                 await result

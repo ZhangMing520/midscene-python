@@ -21,9 +21,9 @@ def _png(width: int, height: int) -> str:
     image = Image.new("RGB", (width, height), (200, 200, 200))
     buffer = io.BytesIO()
     image.save(buffer, format="PNG")
-    return "data:image/png;base64," + base64.b64encode(
-        buffer.getvalue()
-    ).decode("ascii")
+    return "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode(
+        "ascii"
+    )
 
 
 def _image_size(data_url: str):
@@ -51,17 +51,13 @@ class _Interface:
 class TestCommonContextParserShrinkFactor:
     @pytest.mark.asyncio
     async def test_converts_png_screenshots_to_jpeg_quality_90_when_not_shrinking(self):
-        context = await common_context_parser(
-            _Interface((800, 400), (2400, 1200)), {}
-        )
+        context = await common_context_parser(_Interface((800, 400), (2400, 1200)), {})
         assert context.screenshot_base64.startswith("data:image/jpeg;base64,")
         assert _image_size(context.screenshot_base64) == (2400, 1200)
 
     @pytest.mark.asyncio
     async def test_does_not_shrink_when_screenshot_shrink_factor_is_not_provided(self):
-        context = await common_context_parser(
-            _Interface((800, 400), (2400, 1200)), {}
-        )
+        context = await common_context_parser(_Interface((800, 400), (2400, 1200)), {})
         assert _image_size(context.screenshot_base64) == (2400, 1200)
 
     @pytest.mark.asyncio
@@ -93,45 +89,31 @@ class TestCommonContextParserShrinkFactor:
 class TestCommonContextParserOrientation:
     @pytest.mark.asyncio
     async def test_should_compute_correct_dpr_for_portrait(self):
-        context = await common_context_parser(
-            _Interface((360, 720), (1080, 2160)), {}
-        )
+        context = await common_context_parser(_Interface((360, 720), (1080, 2160)), {})
         assert context.shrunk_shot_to_logical_ratio == pytest.approx(3)
         assert (context.size.width, context.size.height) == (360, 720)
 
     @pytest.mark.asyncio
     async def test_should_compute_correct_dpr_for_landscape(self):
-        context = await common_context_parser(
-            _Interface((720, 360), (2160, 1080)), {}
-        )
+        context = await common_context_parser(_Interface((720, 360), (2160, 1080)), {})
         assert context.shrunk_shot_to_logical_ratio == pytest.approx(3)
 
     @pytest.mark.asyncio
     async def test_should_swap_logical_dimensions_when_orientation_mismatches(self):
-        context = await common_context_parser(
-            _Interface((359, 717), (1972, 988)), {}
-        )
+        context = await common_context_parser(_Interface((359, 717), (1972, 988)), {})
         expected_dpr = 1972 / 717
-        assert context.shrunk_shot_to_logical_ratio == pytest.approx(
-            expected_dpr
-        )
+        assert context.shrunk_shot_to_logical_ratio == pytest.approx(expected_dpr)
         assert context.size.width == 717
         assert context.size.height == 359
 
     @pytest.mark.asyncio
     async def test_should_swap_logical_dimensions_for_reverse_mismatch(self):
-        context = await common_context_parser(
-            _Interface((717, 359), (988, 1972)), {}
-        )
-        assert context.shrunk_shot_to_logical_ratio == pytest.approx(
-            988 / 359
-        )
+        context = await common_context_parser(_Interface((717, 359), (988, 1972)), {})
+        assert context.shrunk_shot_to_logical_ratio == pytest.approx(988 / 359)
 
     @pytest.mark.asyncio
     async def test_should_not_swap_dimensions_for_square_screenshots(self):
-        context = await common_context_parser(
-            _Interface((400, 400), (1200, 1200)), {}
-        )
+        context = await common_context_parser(_Interface((400, 400), (1200, 1200)), {})
         assert context.shrunk_shot_to_logical_ratio == pytest.approx(3)
 
     @pytest.mark.asyncio
@@ -140,7 +122,5 @@ class TestCommonContextParserOrientation:
             _Interface((359, 717), (1972, 988)),
             {"screenshotShrinkFactor": 2},
         )
-        assert context.shrunk_shot_to_logical_ratio == pytest.approx(
-            (1972 / 717) / 2
-        )
+        assert context.shrunk_shot_to_logical_ratio == pytest.approx((1972 / 717) / 2)
         assert _image_size(context.screenshot_base64) == (986, 494)

@@ -1,6 +1,6 @@
 """Grounding workflow helpers (upstream workflows/grounding/utils.ts)."""
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from midscene.core.ai_model.model_adapter.image_preprocess import (
     ImagePreprocessPolicy,
@@ -22,9 +22,9 @@ def prepare_locate_model_input(
     target_description: Any,
     system_prompt: str,
     user_prompt: str,
-    image_preprocess: Optional[ImagePreprocessPolicy] = None,
-    prompt_order: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    image_preprocess: ImagePreprocessPolicy | None = None,
+    prompt_order: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Prepare the locate screenshot and message list for one model call."""
     prepared_image: PreparedModelImage = prepare_model_image(
         image_base64=locate_image["imageBase64"],
@@ -32,9 +32,7 @@ def prepare_locate_model_input(
         height=locate_image["height"],
         policy=image_preprocess,
     )
-    order = prompt_order or parse_locate_prompt_order(
-        DEFAULT_LOCATE_PROMPT_ORDER
-    )
+    order = prompt_order or parse_locate_prompt_order(DEFAULT_LOCATE_PROMPT_ORDER)
     messages = build_locate_messages(
         order,
         {

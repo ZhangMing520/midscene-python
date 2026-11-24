@@ -1,13 +1,10 @@
 """Constants shared by the bridge server and page (upstream bridge-mode/common.ts)."""
 
 from enum import Enum
-from typing import Optional
 
 DefaultBridgeServerHost = "127.0.0.1"
 DefaultBridgeServerPort = 3766
-DefaultLocalEndpoint = (
-    f"http://{DefaultBridgeServerHost}:{DefaultBridgeServerPort}"
-)
+DefaultLocalEndpoint = f"http://{DefaultBridgeServerHost}:{DefaultBridgeServerPort}"
 BridgeCallTimeout = 30000
 
 DEFAULT_LOCAL_ENDPOINT = DefaultLocalEndpoint
@@ -68,7 +65,7 @@ BRIDGE_EVENT_SET_ACTIVE_TAB_ID = BridgeEvent.SetActiveTabId.value
 
 
 def get_bridge_server_host(
-    host: Optional[str] = None, allow_remote_access: bool = False
+    host: str | None = None, allow_remote_access: bool = False
 ) -> str:
     """Resolve the listen host: explicit host > remote access > default."""
     if host:

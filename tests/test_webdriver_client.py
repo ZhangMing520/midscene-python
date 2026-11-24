@@ -7,7 +7,7 @@ base-URL and session-endpoint suites.
 """
 
 import re
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
 
@@ -16,24 +16,20 @@ class FakeWDAHttp:
     """Records requests and returns canned parsed responses (make_request
     returns the parsed JSON body, so the stub does the same)."""
 
-    def __init__(self, responses: Dict[str, Any]):
+    def __init__(self, responses: dict[str, Any]):
         self.responses = responses
-        self.requests: List[tuple] = []
+        self.requests: list[tuple] = []
 
     async def __call__(self, method, url, json=None):
         self.requests.append((method, url, json))
         tail = url.split("://", 1)[-1].split("/", 1)[-1]
         # normalize /session/<id>/... to /session/... so patterns don't need ids
         key = f"{method} {tail}"
-        normalized = re.sub(
-            r"^(GET|POST|DELETE) session/[^/]+", r"\1 session", key
-        )
+        normalized = re.sub(r"^(GET|POST|DELETE) session/[^/]+", r"\1 session", key)
         for pattern, payload in self.responses.items():
             if normalized.startswith(pattern) or key.startswith(pattern):
                 return payload
-        raise RuntimeError(
-            f"WebDriver request failed (404) {method} {tail}: not found"
-        )
+        raise RuntimeError(f"WebDriver request failed (404) {method} {tail}: not found")
 
 
 @pytest.mark.asyncio
@@ -71,9 +67,7 @@ async def test_take_screenshot_and_window_size():
             "GET session/window/rect": {"value": {"width": 390, "height": 844}},
         }
     )
-    client = WebDriverClient(
-        base_url="http://localhost:8100", session_id="ext-1"
-    )
+    client = WebDriverClient(base_url="http://localhost:8100", session_id="ext-1")
     client.make_request = http
     # external session: owns_session False
     assert client.owns_session is False

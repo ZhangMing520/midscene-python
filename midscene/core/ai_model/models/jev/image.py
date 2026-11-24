@@ -1,11 +1,13 @@
 """Jev image helpers (upstream models/jev/image.ts)."""
 
-from typing import Any, Dict, List, Optional
 import asyncio
 import base64
 import io
+from typing import Any
+
 from midscene.core.ai_model.service_caller.system_one import SystemOneError
 from midscene.core.ai_model.shared.multimodal_prompt import resolve_reference_image
+
 
 def prepare_jev_image(image_url: str) -> str:
     """Normalize an image to a JPEG/PNG data URL under 16 MiB."""
@@ -29,7 +31,7 @@ def prepare_jev_image(image_url: str) -> str:
     return "data:image/jpeg;base64," + raw
 
 
-async def _prepare_jev_references(prompt: Any) -> Dict[str, Any]:
+async def _prepare_jev_references(prompt: Any) -> dict[str, Any]:
     """Reference images from a multimodal prompt (jev/image.ts prepareReferences)."""
     images = prompt.get("images") if isinstance(prompt, dict) else None
     convert_http = (
@@ -37,7 +39,7 @@ async def _prepare_jev_references(prompt: Any) -> Dict[str, Any]:
         if isinstance(prompt, dict)
         else False
     )
-    entries: List[Dict[str, Any]] = []
+    entries: list[dict[str, Any]] = []
     for index, item in enumerate(images or []):
         url = item.get("url") if isinstance(item, dict) else item
         if not isinstance(url, str) or not url:
@@ -51,7 +53,7 @@ async def _prepare_jev_references(prompt: Any) -> Dict[str, Any]:
         )
 
     semaphore = asyncio.Semaphore(5)
-    resolved: Dict[str, Optional[str]] = {}
+    resolved: dict[str, str | None] = {}
 
     async def resolve(url: str) -> None:
         if url.startswith("data:"):
@@ -63,15 +65,15 @@ async def _prepare_jev_references(prompt: Any) -> Dict[str, Any]:
                 resolve_reference_image, {"url": url}, convert_http
             )
 
-    await asyncio.gather(*(resolve(url) for url in dict.fromkeys(
-        entry["url"] for entry in entries
-    )))
+    await asyncio.gather(
+        *(resolve(url) for url in dict.fromkeys(entry["url"] for entry in entries))
+    )
 
-    references: List[Dict[str, Any]] = []
-    image_map: Dict[str, str] = {}
+    references: list[dict[str, Any]] = []
+    image_map: dict[str, str] = {}
     for entry in entries:
         url = resolved.get(entry["url"]) or entry["url"]
-        reference: Dict[str, Any] = {"image": f"`{entry['key']}`"}
+        reference: dict[str, Any] = {"image": f"`{entry['key']}`"}
         if entry["name"]:
             reference["name"] = entry["name"]
         references.append(reference)
@@ -79,12 +81,12 @@ async def _prepare_jev_references(prompt: Any) -> Dict[str, Any]:
     return {"references": references, "images": image_map}
 
 
-async def prepare_references(prompt: Any) -> Dict[str, Any]:
+async def prepare_references(prompt: Any) -> dict[str, Any]:
     """Prepare markdown reference images for a Jev request."""
     return await _prepare_jev_references(prompt)
 
 
-def map_jev_box(box: Dict[str, float], target_size: Dict[str, Any]) -> Dict[str, Any]:
+def map_jev_box(box: dict[str, float], target_size: dict[str, Any]) -> dict[str, Any]:
     """Re-export of ``locate.map_jev_box`` (lazy to avoid an import cycle)."""
     from midscene.core.ai_model.models.jev.locate import map_jev_box as _impl
 

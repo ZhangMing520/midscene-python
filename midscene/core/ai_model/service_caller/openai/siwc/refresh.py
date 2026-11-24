@@ -1,7 +1,7 @@
 """SIWC OAuth refresh flow (upstream openai/siwc/refresh.ts)."""
 
-from typing import Any, Dict, Optional, TypedDict
 import time
+from typing import Any, TypedDict
 
 import httpx
 
@@ -17,24 +17,20 @@ RESOURCE = "https://api.openai.com/v1"
 
 
 class RefreshableCredentials(TypedDict, total=False):
-    client_id: Optional[str]
-    refresh_token: Optional[str]
-    subject: Optional[str]
-    id_token: Optional[str]
+    client_id: str | None
+    refresh_token: str | None
+    subject: str | None
+    id_token: str | None
 
 
 async def refresh_siwc_credentials(
-    saved: Dict[str, Any],
+    saved: dict[str, Any],
     signal: Any = None,
-    dependencies: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    dependencies: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     if signal is not None and hasattr(signal, "throw_if_aborted"):
         signal.throw_if_aborted()
-    proxy = (
-        dependencies.get("proxy")
-        if isinstance(dependencies, dict)
-        else None
-    )
+    proxy = dependencies.get("proxy") if isinstance(dependencies, dict) else None
     client_id = saved.get("client_id")
     refresh_token = saved.get("refresh_token")
     if not client_id or not refresh_token:

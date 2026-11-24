@@ -1,6 +1,6 @@
 """CLI argument parsing and schema validation (upstream cli/cli-args.ts)."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from midscene.shared.cli.cli_error import CLIError
 from midscene.shared.cli.cli_value import (
@@ -20,7 +20,7 @@ __all__ = [
 ]
 
 
-def _walk_cli_args(args: List[str], set_arg_value: Any) -> None:
+def _walk_cli_args(args: list[str], set_arg_value: Any) -> None:
     index = 0
     while index < len(args):
         arg = args[index]
@@ -41,11 +41,11 @@ def _walk_cli_args(args: List[str], set_arg_value: Any) -> None:
         index += 1
 
 
-def _schema_of(defn: Any) -> Dict[str, Dict[str, Any]]:
+def _schema_of(defn: Any) -> dict[str, dict[str, Any]]:
     return getattr(defn, "schema", None) or {}
 
 
-def _cli_options_of(defn: Any) -> Dict[str, Any]:
+def _cli_options_of(defn: Any) -> dict[str, Any]:
     cli = getattr(defn, "cli", None)
     if cli is None:
         return {}
@@ -78,8 +78,8 @@ def _camel_to_snake(name: str) -> str:
     return "".join(result)
 
 
-def _build_cli_field_index(defn: Any) -> Dict[str, Dict[str, Any]]:
-    field_by_cli_name: Dict[str, Dict[str, Any]] = {}
+def _build_cli_field_index(defn: Any) -> dict[str, dict[str, Any]]:
+    field_by_cli_name: dict[str, dict[str, Any]] = {}
     options = _cli_options_of(defn)
     for schema_key, field in _schema_of(defn).items():
         for cli_name in _get_accepted_cli_option_names(
@@ -89,17 +89,15 @@ def _build_cli_field_index(defn: Any) -> Dict[str, Dict[str, Any]]:
     return field_by_cli_name
 
 
-def parse_cli_args(
-    args: List[str], defn: Optional[Any] = None
-) -> Dict[str, Any]:
+def parse_cli_args(args: list[str], defn: Any | None = None) -> dict[str, Any]:
     field_by_cli_name = _build_cli_field_index(defn) if defn else None
-    tokens_by_name: Dict[str, List[Any]] = {}
+    tokens_by_name: dict[str, list[Any]] = {}
     _walk_cli_args(
         args,
         lambda key, raw: tokens_by_name.setdefault(key, []).append(raw),
     )
 
-    result: Dict[str, Any] = {}
+    result: dict[str, Any] = {}
     for key, tokens in tokens_by_name.items():
         element_index = 0
         for raw in tokens:
@@ -128,13 +126,11 @@ def _format_cli_option_name(name: str) -> str:
     return f"--{name}"
 
 
-def get_cli_option_display(
-    key: str, cli_option: Optional[Any] = None
-) -> Dict[str, Any]:
+def get_cli_option_display(key: str, cli_option: Any | None = None) -> dict[str, Any]:
     preferred = _option_attr(cli_option, "preferredName", None) if cli_option else None
     label = _format_cli_option_name(preferred or key)
     raw_aliases = (_option_attr(cli_option, "aliases", []) or []) if cli_option else []
-    aliases: List[str] = []
+    aliases: list[str] = []
     for alias in dict.fromkeys(raw_aliases):
         formatted = _format_cli_option_name(alias)
         if formatted != label:
@@ -143,8 +139,8 @@ def get_cli_option_display(
 
 
 def _get_accepted_cli_option_names(
-    key: str, cli_option: Optional[Any] = None
-) -> List[str]:
+    key: str, cli_option: Any | None = None
+) -> list[str]:
     if cli_option is not None:
         preferred = _option_attr(cli_option, "preferredName", None) or key
         aliases = _option_attr(cli_option, "aliases", []) or []
@@ -152,11 +148,11 @@ def _get_accepted_cli_option_names(
     return list(dict.fromkeys([key, *get_key_aliases(key)]))
 
 
-def _is_optional(field: Dict[str, Any]) -> bool:
+def _is_optional(field: dict[str, Any]) -> bool:
     return bool(field.get("optional", False))
 
 
-def _describe_expected(field: Dict[str, Any]) -> str:
+def _describe_expected(field: dict[str, Any]) -> str:
     names = _type_names(field)
     return " or ".join(names) if names else "value"
 
@@ -169,7 +165,9 @@ def _build_disallowed_cli_spellings(defn: Any) -> set:
         cli_option = options.get(key)
         accepted_names = set(_get_accepted_cli_option_names(key, cli_option))
         known_spellings = {key, *get_key_aliases(key)}
-        preferred = _option_attr(cli_option, "preferredName", None) if cli_option else None
+        preferred = (
+            _option_attr(cli_option, "preferredName", None) if cli_option else None
+        )
         if preferred:
             known_spellings.update(get_key_aliases(preferred))
         known_spellings.update(_option_attr(cli_option, "aliases", []) or [])
@@ -185,8 +183,8 @@ def format_cli_validation_error(
     script_name: str,
     command_name: str,
     defn: Any,
-    raw_args: Dict[str, Any],
-) -> Optional[str]:
+    raw_args: dict[str, Any],
+) -> str | None:
     schema = _schema_of(defn)
     if not schema:
         return None
@@ -253,8 +251,8 @@ def canonicalize_cli_arg_keys(
     script_name: str,
     command_name: str,
     defn: Any,
-    raw_args: Dict[str, Any],
-) -> Dict[str, Any]:
+    raw_args: dict[str, Any],
+) -> dict[str, Any]:
     """Move accepted alias spellings onto the schema's canonical key.
 
     Throws ``CLIError`` on conflicting double-spellings (e.g. both
@@ -272,7 +270,7 @@ def canonicalize_cli_arg_keys(
             schema_key, options.get(schema_key)
         )
 
-        chosen_spelling: Optional[str] = None
+        chosen_spelling: str | None = None
         chosen_value: Any = None
 
         for spelling in accepted_spellings:

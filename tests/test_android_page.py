@@ -4,7 +4,6 @@ Covers the input-routing, action-space registration and scroll geometry cases
 ported by the Python Android device.
 """
 
-from typing import List
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -30,7 +29,7 @@ class TestAndroidInputRouting:
         monkeypatch.setenv("MIDSCENE_ANDROID_IME_STRATEGY", "legacy")
         device = AndroidDevice("emulator-5554")
         device._connected = True
-        commands: List[list] = []
+        commands: list[list] = []
 
         async def fake_run(cmd):
             commands.append(cmd)
@@ -48,7 +47,7 @@ class TestAndroidInputRouting:
 
         device = AndroidDevice("emulator-5554")
         device._connected = True
-        calls: List[str] = []
+        calls: list[str] = []
 
         async def fake_exec(content):
             calls.append(content)
@@ -64,7 +63,7 @@ class TestAndroidInputRouting:
         monkeypatch.setenv("MIDSCENE_ANDROID_IME_STRATEGY", "legacy")
         device = AndroidDevice("emulator-5554")
         device._connected = True
-        commands: List[list] = []
+        commands: list[list] = []
 
         async def fake_run(cmd):
             commands.append(cmd)
@@ -91,7 +90,7 @@ class TestAndroidActionSpace:
             find_action_in_action_space_or_throw,
         )
 
-        executed: List[str] = []
+        executed: list[str] = []
 
         class Device:
             async def run_adb_shell(self, command, timeout=None):
@@ -112,7 +111,7 @@ class TestAndroidActionSpace:
             find_action_in_action_space_or_throw,
         )
 
-        calls: List[tuple] = []
+        calls: list[tuple] = []
 
         class Device:
             async def launch_app(self, uri):
@@ -131,7 +130,9 @@ class TestAndroidActionSpace:
         assert calls == [("launch", "com.a.b"), ("terminate", "com.a.b")]
 
     @pytest.mark.asyncio
-    async def test_launch_param_schema_is_a_zod_object_with_a_uri_zod_string_field(self):
+    async def test_launch_param_schema_is_a_zod_object_with_a_uri_zod_string_field(
+        self,
+    ):
         from midscene.core.device import (
             build_android_action_space,
             find_action_in_action_space_or_throw,
@@ -193,7 +194,7 @@ class TestAndroidScrollGeometry:
         device.device_id = "emulator-5554"
         device._screen_size = Size(width=1080, height=1920)
         device._physical_size = None
-        commands: List[list] = []
+        commands: list[list] = []
 
         async def fake_run(cmd):
             commands.append(cmd)
@@ -227,7 +228,7 @@ class TestAndroidScrollGeometry:
         device.device_id = "emulator-5554"
         device._screen_size = Size(width=1080, height=1920)
         device._physical_size = None
-        commands: List[list] = []
+        commands: list[list] = []
 
         async def fake_run(cmd):
             commands.append(cmd)
@@ -235,14 +236,10 @@ class TestAndroidScrollGeometry:
 
         device._run_adb_command = fake_run
         with patch("midscene.android.device.asyncio.sleep", AsyncMock()):
-            await device.scroll(
-                "down", scroll_type="scrollToBottom", point=(100, 100)
-            )
+            await device.scroll("down", scroll_type="scrollToBottom", point=(100, 100))
         assert len(commands) == 10
         # scroll down reveals lower content: the finger travels up to y=0
-        assert all(
-            cmd[5:10] == ["100", "100", "100", "0", "100"] for cmd in commands
-        )
+        assert all(cmd[5:10] == ["100", "100", "100", "0", "100"] for cmd in commands)
 
     @pytest.mark.asyncio
     async def test_should_warn_when_explicit_scroll_down_distance_exceeds_the_swipe_boundary(
@@ -263,7 +260,7 @@ class TestAndroidScrollGeometry:
             return ""
 
         device._run_adb_command = fake_run
-        messages: List[str] = []
+        messages: list[str] = []
         handler = loguru_logger.add(
             lambda message: messages.append(message.record["message"]),
             level="WARNING",
@@ -287,7 +284,7 @@ class TestAndroidScrollGeometry:
         device.device_id = "emulator-5554"
         device._screen_size = Size(width=1080, height=1920)
         device._physical_size = None
-        commands: List[list] = []
+        commands: list[list] = []
 
         async def fake_run(cmd):
             commands.append(cmd)
@@ -321,7 +318,6 @@ class TestAndroidGestures:
             "AndroidRecentAppsButton",
         } <= names
 
-
     @pytest.mark.asyncio
     async def test_drag_and_drop_resolves_both_points(self):
         from midscene.core.device import _execute_drag_and_drop
@@ -345,7 +341,6 @@ class TestAndroidGestures:
         )
         assert device.calls == [((100, 50), (300, 50))]
 
-
     @pytest.mark.asyncio
     async def test_drag_and_drop_requires_primitive(self):
         from midscene.core.device import _execute_drag_and_drop
@@ -357,7 +352,6 @@ class TestAndroidGestures:
             await _execute_drag_and_drop(
                 {"from": {"prompt": "a"}, "to": {"prompt": "b"}}, NoDrag(), None
             )
-
 
     @pytest.mark.asyncio
     async def test_android_drag_and_drop_uses_swipe(self):
@@ -374,7 +368,6 @@ class TestAndroidGestures:
         await device.drag_and_drop((10, 20), (30, 40))
         assert calls == [(10, 20, 30, 40, 1000)]
 
-
     def test_android_action_space_includes_pinch(self):
         from midscene.core.device import build_action_space_for
 
@@ -383,13 +376,12 @@ class TestAndroidGestures:
         harmony = [a.name for a in build_action_space_for("harmony")]
         assert "Pinch" not in harmony
 
-
     @pytest.mark.asyncio
     async def test_android_pinch_uses_yadb(self, monkeypatch):
         from midscene.android.device import AndroidDevice
 
         device = AndroidDevice("emulator-5554")
-        commands: List[list] = []
+        commands: list[list] = []
 
         async def record(command):
             commands.append(command)
@@ -402,26 +394,24 @@ class TestAndroidGestures:
         monkeypatch.setattr(device, "_run_adb_command", record)
 
         await device.pinch([100, 200], 300, 500, duration=700)
-        assert commands[-1][-6:] == [
-            "-pinch", "100", "200", "300", "500", "700"
-        ]
+        assert commands[-1][-6:] == ["-pinch", "100", "200", "300", "500", "700"]
 
     @pytest.mark.asyncio
     async def test_android_pinch_rejects_non_default_display(self):
         from midscene.android.device import AndroidDevice, AndroidDeviceConfig
 
-        device = AndroidDevice(
-            "d", AndroidDeviceConfig(device_id="d", display_id=2)
-        )
+        device = AndroidDevice("d", AndroidDeviceConfig(device_id="d", display_id=2))
         with pytest.raises(RuntimeError, match="non-default display"):
             await device.pinch([1, 2], 10, 20)
 
 
 class _RecordingPullDevice:
     def __init__(self):
-        self.calls: List[tuple] = []
+        self.calls: list[tuple] = []
 
-    async def pull_gesture(self, direction, start_point=None, distance=None, duration=None):
+    async def pull_gesture(
+        self, direction, start_point=None, distance=None, duration=None
+    ):
         self.calls.append((direction, start_point, distance, duration))
 
 
@@ -436,9 +426,7 @@ class TestPullGesture:
         assert action.locate_fields == ["locate"]
         assert action.param_schema["direction"]["type"] == '"up" | "down"'
         assert action.sample["direction"] == "down"
-        assert "PullGesture" not in [
-            a.name for a in build_action_space_for("web")
-        ]
+        assert "PullGesture" not in [a.name for a in build_action_space_for("web")]
 
     @pytest.mark.asyncio
     async def test_executor_resolves_locate_and_forwards_params(self):
@@ -477,7 +465,7 @@ class TestPullGesture:
         monkeypatch.setattr("midscene.android.device.asyncio.sleep", _no_sleep)
         device = AndroidDevice("emulator-5554")
         device._screen_size = Size(width=1000, height=2000)
-        swipes: List[tuple] = []
+        swipes: list[tuple] = []
 
         async def record_swipe(*args, **kwargs):
             swipes.append((args, kwargs))
@@ -492,7 +480,9 @@ class TestPullGesture:
         # 85% start, 40% travel, 600ms default.
         assert swipes[-1] == (((500, 1700, 500, 900)), {"duration": 600})
 
-        await device.pull_gesture("up", start_point=(100, 1700), distance=500, duration=400)
+        await device.pull_gesture(
+            "up", start_point=(100, 1700), distance=500, duration=400
+        )
         assert swipes[-1] == (((100, 1700, 100, 1200)), {"duration": 400})
 
         with pytest.raises(ValueError, match="Unknown pull direction"):

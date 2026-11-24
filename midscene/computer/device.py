@@ -16,13 +16,17 @@ import os
 import platform
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
 from midscene.computer.input_driver import (
     ComputerInputDriver,
+)
+from midscene.computer.input_driver import (
     load_pyautogui as _pyautogui,
+)
+from midscene.computer.input_driver import (
     normalize_key as _normalize_key_impl,
 )
 from midscene.computer.utils import is_mac as _is_mac
@@ -34,12 +38,12 @@ from midscene.computer.xvfb import (
 from midscene.core.types import (
     AbstractInterface,
     InterfaceType,
+    NodeType,
     Rect,
     Size,
     UIContext,
-    UITree,
     UINode,
-    NodeType,
+    UITree,
 )
 
 # libnut fallback scroll tuning shared with input_driver.upstream constants.
@@ -62,7 +66,7 @@ _display_info_binary_path: Any = None
 _phased_scroll_exec_warned = False
 
 
-def _binary_candidates(file_name: str) -> List[Path]:
+def _binary_candidates(file_name: str) -> list[Path]:
     """Locations where the packaged macOS helper binaries may live."""
     here = Path(__file__).resolve()
     package_root = here.parent.parent  # midscene/
@@ -74,7 +78,7 @@ def _binary_candidates(file_name: str) -> List[Path]:
     ]
 
 
-def get_phased_scroll_binary() -> Optional[str]:
+def get_phased_scroll_binary() -> str | None:
     """Resolve the bundled macOS phased-scroll helper binary."""
     global _phased_scroll_binary_path
     if _phased_scroll_binary_path is not None:
@@ -98,7 +102,7 @@ def get_phased_scroll_binary() -> Optional[str]:
     return None
 
 
-def get_display_info_binary() -> Optional[str]:
+def get_display_info_binary() -> str | None:
     """Resolve the bundled macOS display-info helper binary."""
     global _display_info_binary_path
     if _display_info_binary_path is not None:
@@ -139,7 +143,7 @@ def _is_darwin_display_geometry(value: Any) -> bool:
     )
 
 
-def read_darwin_display_geometries() -> List[Dict[str, Any]]:
+def read_darwin_display_geometries() -> list[dict[str, Any]]:
     """Read native display geometry from the bundled display-info helper."""
     binary = get_display_info_binary()
     if not binary:
@@ -156,19 +160,15 @@ def read_darwin_display_geometries() -> List[Dict[str, Any]]:
         displays = parsed.get("displays")
         if not isinstance(displays, list):
             return []
-        return [
-            display
-            for display in displays
-            if _is_darwin_display_geometry(display)
-        ]
+        return [display for display in displays if _is_darwin_display_geometry(display)]
     except (OSError, ValueError) as error:
         logger.debug(f"display-info helper failed: {error}")
         return []
 
 
 def resolve_darwin_display_geometry_from_list(
-    display_id: Optional[str], displays: List[Dict[str, Any]]
-) -> Optional[Dict[str, Any]]:
+    display_id: str | None, displays: list[dict[str, Any]]
+) -> dict[str, Any] | None:
     """Resolve a screenshot display id against Darwin display geometry."""
     if not displays:
         return None
@@ -203,8 +203,8 @@ def resolve_darwin_display_geometry_from_list(
 
 
 def map_display_local_point_to_global(
-    point: Dict[str, float], geometry: Optional[Dict[str, Any]] = None
-) -> Dict[str, float]:
+    point: dict[str, float], geometry: dict[str, Any] | None = None
+) -> dict[str, float]:
     """Translate display-local coordinates into global desktop coordinates."""
     if not geometry:
         return point
@@ -258,7 +258,7 @@ class ComputerDevice(AbstractInterface):
     # backend (upstream listDisplays); pyautogui only grabs the main display.
     def __init__(
         self,
-        display_id: Optional[str] = None,
+        display_id: str | None = None,
         keyboard_modifier_delay: int = 0,
         headless: bool = False,
     ):
@@ -275,8 +275,8 @@ class ComputerDevice(AbstractInterface):
             keyboard_modifier_delay=keyboard_modifier_delay,
         )
         self._xvfb = None
-        self._previous_display: Optional[str] = None
-        self._description: Optional[str] = None
+        self._previous_display: str | None = None
+        self._description: str | None = None
         self._destroyed = False
         if needs_xvfb(headless) and not os.environ.get("DISPLAY"):
             if not check_xvfb_installed():
@@ -351,7 +351,7 @@ class ComputerDevice(AbstractInterface):
         return f"data:image/png;base64,{body}"
 
     @staticmethod
-    async def list_displays() -> List[Dict[str, Any]]:
+    async def list_displays() -> list[dict[str, Any]]:
         """List available displays; pyautogui exposes the primary one."""
         try:
             pyautogui = await _pyautogui()
@@ -408,10 +408,19 @@ class ComputerDevice(AbstractInterface):
             logger.error(f"Failed to capture desktop context: {e}")
             raise
 
-    async def action_space(self) -> List[str]:
+    async def action_space(self) -> list[str]:
         return [
-            "tap", "right_click", "middle_click", "double_click", "hover",
-            "input", "clear", "key_press", "scroll", "drag", "long_press",
+            "tap",
+            "right_click",
+            "middle_click",
+            "double_click",
+            "hover",
+            "input",
+            "clear",
+            "key_press",
+            "scroll",
+            "drag",
+            "long_press",
             "swipe",
         ]
 
@@ -443,24 +452,22 @@ class ComputerDevice(AbstractInterface):
         await self._input.cursor_move(direction, times)
 
     async def scroll(
-        self, direction: str, distance: Optional[int] = None, **kwargs
+        self, direction: str, distance: int | None = None, **kwargs
     ) -> None:
         await self._input.scroll(direction, distance, **kwargs)
 
-    async def swipe(
-        self, direction: str, distance: Optional[int] = None
-    ) -> None:
+    async def swipe(self, direction: str, distance: int | None = None) -> None:
         await self._input.swipe(direction, distance)
 
     async def swipe_points(
         self,
-        start: List[float],
-        end: List[float],
-        duration: Optional[int] = None,
+        start: list[float],
+        end: list[float],
+        duration: int | None = None,
     ) -> None:
         await self._input.swipe_points(start, end, duration)
 
-    async def size(self) -> Dict[str, int]:
+    async def size(self) -> dict[str, int]:
         """Desktop screen size in logical pixels (upstream size())."""
         pyautogui = await _pyautogui()
         screen = await asyncio.to_thread(pyautogui.size)

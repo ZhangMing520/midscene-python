@@ -1,7 +1,7 @@
 """Synced from upstream packages/core/tests/unit-test/siwc-network.test.ts."""
 
 import json
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
 
@@ -22,10 +22,10 @@ class FakeResponse:
         return self._payload
 
 
-def _install_client(monkeypatch, response: FakeResponse) -> List[Dict[str, Any]]:
+def _install_client(monkeypatch, response: FakeResponse) -> list[dict[str, Any]]:
     from midscene.core.ai_model.service_caller.openai.siwc import network
 
-    captured: List[Dict[str, Any]] = []
+    captured: list[dict[str, Any]] = []
 
     class FakeAsyncClient:
         def __init__(self, **kwargs):
@@ -47,9 +47,7 @@ def _install_client(monkeypatch, response: FakeResponse) -> List[Dict[str, Any]]
 
 class TestSiwcNetwork:
     @pytest.mark.asyncio
-    async def test_prioritizes_the_midscene_http_proxy_over_socks(
-        self, monkeypatch
-    ):
+    async def test_prioritizes_the_midscene_http_proxy_over_socks(self, monkeypatch):
         captured = _install_client(monkeypatch, FakeResponse())
         monkeypatch.setenv("MIDSCENE_MODEL_HTTP_PROXY", "http://localhost:17890")
         monkeypatch.setenv("MIDSCENE_MODEL_SOCKS_PROXY", "socks5://localhost:1080")
@@ -105,9 +103,7 @@ class TestSiwcNetwork:
     async def test_verifies_signatures_with_keys_fetched_through_the_injected_request(
         self,
     ):
-        pytest.importorskip(
-            "jwt", reason="PyJWT is not installed in this environment"
-        )
+        pytest.importorskip("jwt", reason="PyJWT is not installed in this environment")
         pytest.importorskip(
             "cryptography",
             reason="cryptography (PyJWT crypto extra) is not installed",
@@ -116,9 +112,7 @@ class TestSiwcNetwork:
         from cryptography.hazmat.primitives import serialization
         from cryptography.hazmat.primitives.asymmetric import rsa
 
-        private_key = rsa.generate_private_key(
-            public_exponent=65537, key_size=2048
-        )
+        private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
         public_key = private_key.public_key()
         public_jwk = json.loads(jwt.algorithms.RSAAlgorithm.to_jwk(public_key))
         public_jwk["kid"] = "test"
@@ -137,9 +131,7 @@ class TestSiwcNetwork:
         async def request(url, init):
             return FakeResponse({"keys": [public_jwk]})
 
-        resolve = create_siwc_jwk_set(
-            "https://auth.openai.com", object(), request
-        )
+        resolve = create_siwc_jwk_set("https://auth.openai.com", object(), request)
         jwk = await resolve({"alg": "RS256", "kid": "test"}, token)
         payload = jwt.decode(token, jwk.key, algorithms=["RS256"])
 

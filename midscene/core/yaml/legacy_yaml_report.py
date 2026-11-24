@@ -7,7 +7,7 @@ no standalone ReportGenerator port.
 """
 
 import inspect
-from typing import Any, Dict, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -20,7 +20,7 @@ async def _maybe_await(value: Any) -> Any:
     return value
 
 
-async def publish_legacy_yaml_report(options: Dict[str, Any]) -> Dict[str, Any]:
+async def publish_legacy_yaml_report(options: dict[str, Any]) -> dict[str, Any]:
     """Write the YAML execution report and attach its source snapshot."""
     agent = options.get("agent")
     run_id = options["runId"]
@@ -28,7 +28,7 @@ async def publish_legacy_yaml_report(options: Dict[str, Any]) -> Dict[str, Any]:
 
     if agent is not None:
         writer = getattr(agent, "_write_yaml_execution_report", None)
-        report_file: Optional[str] = None
+        report_file: str | None = None
         if callable(writer):
             report_file = await _maybe_await(writer(record))
         if report_file is None:

@@ -1,6 +1,6 @@
 """Synced from upstream ``packages/core/tests/unit-test/action-pinch.test.ts``."""
 
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
 
@@ -25,18 +25,16 @@ async def test_should_reject_invalid_direction():
         async def pinch(self, *args, **kwargs):
             pass
 
-    definition = find_action_in_action_space_or_throw(
-        "Pinch", build_web_action_space()
-    )
+    definition = find_action_in_action_space_or_throw("Pinch", build_web_action_space())
     with pytest.raises(ValueError):
         await definition.execute({"direction": "sideways"}, _PinchDevice(), None)
 
 
 class _RecordingPinchDevice:
     def __init__(self):
-        self.calls: List[tuple] = []
+        self.calls: list[tuple] = []
 
-    async def size(self) -> Dict[str, int]:
+    async def size(self) -> dict[str, int]:
         return {"width": 1000, "height": 600}
 
     async def pinch(self, center, start_distance, end_distance, duration=None):
@@ -44,7 +42,7 @@ class _RecordingPinchDevice:
 
 
 class TestPinchNormalization:
-    def _normalize(self, param: Dict[str, Any]) -> Dict[str, Any]:
+    def _normalize(self, param: dict[str, Any]) -> dict[str, Any]:
         from midscene.core.device import normalize_pinch_param
 
         return normalize_pinch_param(param, {"width": 1000, "height": 600})
@@ -65,14 +63,13 @@ class TestPinchNormalization:
         assert (result["center_x"], result["center_y"]) == (10, 21)
 
     def test_inward_spread_keeps_a_minimum_gap(self):
-        assert self._normalize({"direction": "in", "distance": 1000})[
-            "end_distance"
-        ] == 10
+        assert (
+            self._normalize({"direction": "in", "distance": 1000})["end_distance"] == 10
+        )
 
     def test_rejects_unknown_direction(self):
         with pytest.raises(ValueError, match="direction"):
             self._normalize({"direction": "sideways"})
-
 
     def test_android_action_space_includes_pinch(self):
         from midscene.core.device import build_action_space_for
@@ -81,7 +78,6 @@ class TestPinchNormalization:
         assert android.count("Pinch") == 1
         harmony = [a.name for a in build_action_space_for("harmony")]
         assert "Pinch" not in harmony
-
 
     @pytest.mark.asyncio
     async def test_executor_normalizes_and_forwards(self):
@@ -99,7 +95,6 @@ class TestPinchNormalization:
             _swipe_locate_fn,
         )
         assert device.calls == [([200, 150], 150, 50, 700)]
-
 
 
 async def _swipe_locate_fn(locate):

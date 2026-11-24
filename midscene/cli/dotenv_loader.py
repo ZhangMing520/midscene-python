@@ -1,16 +1,16 @@
 """Load `.env` config from the current directory (upstream dotenv-loader.ts)."""
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Optional
 
 from rich.console import Console
 
 
 def load_dotenv_config(
-    console: Optional[Console] = None,
+    console: Console | None = None,
     override: bool = False,
     debug: bool = False,
-    log: Optional[Callable[[str], None]] = None,
+    log: Callable[[str], None] | None = None,
 ) -> None:
     """Load `.env` from the current directory (upstream dotenv-loader).
 
@@ -45,7 +45,7 @@ def load_dotenv_config(
 
 
 def _load_dotenv(
-    override: bool = False, debug: bool = False, console: Optional[Console] = None
+    override: bool = False, debug: bool = False, console: Console | None = None
 ) -> None:
     """Backward-compatible helper that loads `.env` with a default console."""
     load_dotenv_config(console or Console(), override=override, debug=debug)

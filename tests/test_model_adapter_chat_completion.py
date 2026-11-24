@@ -126,9 +126,9 @@ def test_increases_the_default_temperature_on_a_semantic_retry_without_changing_
     """increases the default temperature on a semantic retry without changing user config"""
     adapter = resolve_chat_completion({})
 
-    assert adapter["build_chat_completion_params"](
-        {"semanticRetryAttempt": 2}
-    ) == {"config": {"temperature": 0.2}}
+    assert adapter["build_chat_completion_params"]({"semanticRetryAttempt": 2}) == {
+        "config": {"temperature": 0.2}
+    }
     assert adapter["build_chat_completion_params"](
         {"semanticRetryAttempt": 1, "userConfig": {"temperature": 0}}
     ) == {"config": {"temperature": 0}}
@@ -137,9 +137,9 @@ def test_increases_the_default_temperature_on_a_semantic_retry_without_changing_
         {"modelName": "mock-model", "intent": "default", "temperature": None},
         adapter=get_model_adapter("default"),
     )
-    retry_body = prepare_chat_completion(
-        [], runtime, {"semanticRetryAttempt": 2}
-    )["request_body"]
+    retry_body = prepare_chat_completion([], runtime, {"semanticRetryAttempt": 2})[
+        "request_body"
+    ]
     assert retry_body["temperature"] == 0.2
 
     runtime_with_user_temperature = ModelRuntime(

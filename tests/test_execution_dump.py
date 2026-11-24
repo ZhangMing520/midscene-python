@@ -4,7 +4,6 @@ agent-report-*.test.ts."""
 import base64
 import json
 import re
-from typing import List
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -22,8 +21,9 @@ from midscene.core.types import (
 
 
 def make_png_base64(width: int = 320, height: int = 240) -> str:
-    from PIL import Image
     import io
+
+    from PIL import Image
 
     image = Image.new("RGB", (width, height), (200, 200, 200))
     buffer = io.BytesIO()
@@ -47,10 +47,10 @@ class MockInterface:
     def __init__(self):
         self.interface_type = "web"
         self._context = None
-        self.tapped: List[tuple] = []
-        self.typed: List[str] = []
-        self.keys: List[str] = []
-        self.scrolled: List[tuple] = []
+        self.tapped: list[tuple] = []
+        self.typed: list[str] = []
+        self.keys: list[str] = []
+        self.scrolled: list[tuple] = []
 
     async def get_context(self) -> UIContext:
         return UIContext(
@@ -218,11 +218,7 @@ async def test_cached_replay_report_marks_cache_hit(
 
     monkeypatch.setenv("MIDSCENE_RUN_DIR", str(tmp_path))
     yaml_workflow = (
-        "tasks:\n"
-        "  - name: t\n"
-        "    flow:\n"
-        "      - type: Sleep\n"
-        "        timeMs: 1\n"
+        "tasks:\n  - name: t\n    flow:\n      - type: Sleep\n        timeMs: 1\n"
     )
     agent = Agent(
         mock_interface,
@@ -331,7 +327,11 @@ async def test_preserves_report_file_name_and_group_metadata(
 
 class TestDump:
     def test_report_dump_structure(self):
-        from midscene.core.dump import ExecutionDumpBuilder, build_execution_task, build_service_dump
+        from midscene.core.dump import (
+            ExecutionDumpBuilder,
+            build_execution_task,
+            build_service_dump,
+        )
 
         builder = ExecutionDumpBuilder(group_name="g", device_type="web")
         service_dump = build_service_dump(
@@ -342,7 +342,9 @@ class TestDump:
             matched_element=[{"center": [1, 2]}],
             deep_locate=True,
         )
-        task = build_execution_task("Insight", "Locate", {"prompt": "the button"}, log=service_dump)
+        task = build_execution_task(
+            "Insight", "Locate", {"prompt": "the button"}, log=service_dump
+        )
         builder.add_execution("Tap - the button", [task])
         dump = builder.to_dict()
 
@@ -361,9 +363,10 @@ class TestDump:
 
         monkeypatch.setenv("MIDSCENE_RUN_DIR", str(tmp_path))
         builder = ExecutionDumpBuilder(group_name="g")
-        builder.add_execution("Sleep", [build_execution_task("Action Space", "Sleep", {"timeMs": 1})])
+        builder.add_execution(
+            "Sleep", [build_execution_task("Action Space", "Sleep", {"timeMs": 1})]
+        )
         path = builder.write_to_disk("unit-dump")
         assert path
         content = json.loads(open(path).read())
         assert content["executions"][0]["tasks"][0]["subType"] == "Sleep"
-

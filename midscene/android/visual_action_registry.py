@@ -5,15 +5,16 @@ post-action frame freshness behavior.
 """
 
 import inspect
-from typing import Any, Awaitable, Callable, Dict
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 
 def create_visual_action_registry(
-    definitions: Dict[str, Callable[..., Any]],
+    definitions: dict[str, Callable[..., Any]],
     on_action_settled: Callable[[str], Awaitable[Any]],
-) -> Dict[str, Callable[..., Awaitable[Any]]]:
+) -> dict[str, Callable[..., Awaitable[Any]]]:
     """Wrap each action so `on_action_settled` runs after it settles."""
-    registered: Dict[str, Callable[..., Awaitable[Any]]] = {}
+    registered: dict[str, Callable[..., Awaitable[Any]]] = {}
 
     for action_name, dispatch in definitions.items():
 

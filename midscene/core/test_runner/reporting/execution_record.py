@@ -1,7 +1,7 @@
 """Project execution records into report input (upstream reporting/execution-record.ts)."""
 
 import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from midscene.core.test_runner.execution_record import (
     WorkflowExecutionRecord,
@@ -13,7 +13,7 @@ from midscene.core.test_runner.reporting.types import (
 )
 
 
-def _parse_iso(value: str) -> Optional[datetime.datetime]:
+def _parse_iso(value: str) -> datetime.datetime | None:
     try:
         return datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
     except (TypeError, ValueError):
@@ -21,14 +21,14 @@ def _parse_iso(value: str) -> Optional[datetime.datetime]:
 
 
 def execution_records_to_report_input(
-    records: List[WorkflowExecutionRecord],
-    options: Dict[str, Any],
+    records: list[WorkflowExecutionRecord],
+    options: dict[str, Any],
 ) -> RunReportInput:
     """Project complete invocations without changing their legacy/API state."""
     if not records:
         raise ValueError("A report requires at least one execution record.")
 
-    grouped: Dict[str, List[WorkflowExecutionRecord]] = {}
+    grouped: dict[str, list[WorkflowExecutionRecord]] = {}
     for record in records:
         project_id = record["document"]["projectId"]
         grouped.setdefault(project_id, []).append(record)
@@ -43,12 +43,12 @@ def execution_records_to_report_input(
         "documentFailures": 0,
         "projectFailures": 0,
     }
-    projects: List[RunReportProjectInput] = []
+    projects: list[RunReportProjectInput] = []
     for project_id, group in grouped.items():
         platform = group[0].get("platform")
         name = group[0].get("projectName") or platform
-        latest: Dict[str, WorkflowExecutionRecord] = {}
-        current_invocation: Dict[str, str] = {}
+        latest: dict[str, WorkflowExecutionRecord] = {}
+        current_invocation: dict[str, str] = {}
         for record in group:
             document_id = record["document"]["documentId"]
             if record.get("attemptIndex") == 0 or document_id not in current_invocation:
@@ -92,8 +92,7 @@ def execution_records_to_report_input(
                 "status": (
                     "failed"
                     if any(
-                        record.get("status") == "failed"
-                        for record in latest.values()
+                        record.get("status") == "failed" for record in latest.values()
                     )
                     else "success"
                 ),
@@ -112,12 +111,12 @@ def execution_records_to_report_input(
             }
         )
 
-    started_at = options.get("startedAt") or sorted(
-        record["startedAt"] for record in records
-    )[0]
-    ended_at = options.get("endedAt") or sorted(
-        record["endedAt"] for record in records
-    )[-1]
+    started_at = (
+        options.get("startedAt") or sorted(record["startedAt"] for record in records)[0]
+    )
+    ended_at = (
+        options.get("endedAt") or sorted(record["endedAt"] for record in records)[-1]
+    )
     start = _parse_iso(started_at)
     end = _parse_iso(ended_at)
     duration_ms = (

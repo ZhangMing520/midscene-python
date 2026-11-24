@@ -5,7 +5,7 @@ progress events. Formatting for display stays with consumers.
 """
 
 import math
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 _MAX_COMPACT_STRING_LENGTH = 180
 _LOCATOR_PARAM_KEYS = ("locate", "from", "to", "start", "end")
@@ -20,7 +20,7 @@ def _compact_progress_value(value: Any) -> Any:
         return value
     if isinstance(value, str):
         if len(value) > _MAX_COMPACT_STRING_LENGTH:
-            return f"{value[:_MAX_COMPACT_STRING_LENGTH - 3]}..."
+            return f"{value[: _MAX_COMPACT_STRING_LENGTH - 3]}..."
         return value
     if isinstance(value, (int, float, bool)):
         return value
@@ -31,8 +31,7 @@ def _compact_progress_value(value: Any) -> Any:
     if not _is_record(value):
         return str(value)
     return {
-        key: _compact_progress_value(entry)
-        for key, entry in list(value.items())[:6]
+        key: _compact_progress_value(entry) for key, entry in list(value.items())[:6]
     }
 
 
@@ -44,7 +43,7 @@ def _summarize_param(param: Any) -> Any:
         return _compact_progress_value(param["prompt"])
     locate = param.get("locate")
     if isinstance(locate, dict):
-        summary: Dict[str, Any] = {
+        summary: dict[str, Any] = {
             "locate": _compact_progress_value(locate.get("prompt"))
         }
         for key, value in list(param.items()):
@@ -62,7 +61,7 @@ def error_message_for_ai_act(error: Any) -> str:
     return str(error)
 
 
-def _number(value: Any) -> Optional[float]:
+def _number(value: Any) -> float | None:
     if (
         isinstance(value, (int, float))
         and not isinstance(value, bool)
@@ -73,8 +72,8 @@ def _number(value: Any) -> Optional[float]:
 
 
 def _bbox_from_property(
-    value: Dict[str, Any], key: str
-) -> Optional[Tuple[float, float, float, float]]:
+    value: dict[str, Any], key: str
+) -> tuple[float, float, float, float] | None:
     bbox = value.get(key)
     if not isinstance(bbox, (list, tuple)) or len(bbox) < 4:
         return None
@@ -84,9 +83,7 @@ def _bbox_from_property(
     return (left, top, right, bottom)
 
 
-def _point_from_locate_like(
-    value: Dict[str, Any]
-) -> Optional[Tuple[float, float]]:
+def _point_from_locate_like(value: dict[str, Any]) -> tuple[float, float] | None:
     center = value.get("center")
     if isinstance(center, (list, tuple)) and len(center) >= 2:
         x, y = _number(center[0]), _number(center[1])
@@ -96,8 +93,8 @@ def _point_from_locate_like(
 
 
 def _bbox_from_locate_like(
-    value: Dict[str, Any]
-) -> Optional[Tuple[float, float, float, float]]:
+    value: dict[str, Any],
+) -> tuple[float, float, float, float] | None:
     bbox = _bbox_from_property(value, "bbox")
     if bbox:
         return bbox
@@ -114,7 +111,7 @@ def _bbox_from_locate_like(
     return (left, top, left + width, top + height)
 
 
-def _target_text_from_locate_like(value: Dict[str, Any]) -> str:
+def _target_text_from_locate_like(value: dict[str, Any]) -> str:
     if isinstance(value.get("description"), str):
         return value["description"]
     if isinstance(value.get("prompt"), str):
@@ -139,7 +136,7 @@ def _is_locate_like(value: Any) -> bool:
     )
 
 
-def _first_locate_like_param(param: Any) -> Optional[Dict[str, Any]]:
+def _first_locate_like_param(param: Any) -> dict[str, Any] | None:
     if not _is_record(param):
         return None
     for key in _LOCATOR_PARAM_KEYS:
@@ -163,11 +160,11 @@ def _has_unresolved_locate_like_param(param: Any) -> bool:
     return False
 
 
-def extract_progress_action(task: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def extract_progress_action(task: dict[str, Any]) -> dict[str, Any] | None:
     """Extract the structured action descriptor for an Action Space task."""
-    if (
-        task.get("type") != "Action Space"
-        or task.get("subType") in ("Finished", "Error")
+    if task.get("type") != "Action Space" or task.get("subType") in (
+        "Finished",
+        "Error",
     ):
         return None
 
@@ -178,7 +175,7 @@ def extract_progress_action(task: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     if locate:
         point = _point_from_locate_like(locate)
         if point:
-            action: Dict[str, Any] = {"name": name, "point": point}
+            action: dict[str, Any] = {"name": name, "point": point}
             target = _target_text_from_locate_like(locate)
             if target:
                 action["target"] = target
@@ -202,7 +199,7 @@ def extract_progress_action(task: Dict[str, Any]) -> Optional[Dict[str, Any]]:
 def create_ai_act_action_reporter(plan_index: int, plan_limit: int, emit):
     """Map runner task-lifecycle events to aiAct action progress."""
 
-    async def reporter(event: Dict[str, Any]) -> None:
+    async def reporter(event: dict[str, Any]) -> None:
         action = extract_progress_action(event.get("task") or {})
         if not action:
             return

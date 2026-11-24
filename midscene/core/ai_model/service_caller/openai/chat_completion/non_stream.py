@@ -1,22 +1,22 @@
 """Non-streaming chat-completion parsing (upstream chat-completion/non-stream.ts)."""
 
-from typing import Any, Dict
 import json
+from typing import Any
 
+from midscene.core.ai_model.service_caller.openai.chat_completion.utils import (
+    resolve_content_with_reasoning_fallback,
+)
 from midscene.core.ai_model.service_caller.types import AIResponseParseError
 from midscene.core.ai_model.service_caller.utils import (
     extract_content_and_reasoning,
     has_usable_text,
 )
-from midscene.core.ai_model.service_caller.openai.chat_completion.utils import (
-    resolve_content_with_reasoning_fallback,
-)
 
 
 def call_chat_completion_non_streaming(
-    payload: Dict[str, Any],
+    payload: dict[str, Any],
     adapter: Any,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     if not payload.get("choices"):
         raise RuntimeError(
             f"invalid response from LLM service: {json.dumps(payload)[:2000]}"

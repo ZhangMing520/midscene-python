@@ -22,4 +22,3 @@ class TestActionParamValidation:
             None,
         )
         assert device.typed == "hi"
-

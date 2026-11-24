@@ -120,7 +120,7 @@ async def test_runs_auto_glm_custom_locate_and_maps_normalized_coordinates_to_a_
     call = AsyncMock(
         return_value={
             "content": (
-                '<think>Found submit</think><answer>'
+                "<think>Found submit</think><answer>"
                 'do(action="Tap", element=[500,500])</answer>'
             ),
             "usage": {"total_tokens": 8},
@@ -137,8 +137,7 @@ async def test_runs_auto_glm_custom_locate_and_maps_normalized_coordinates_to_a_
     messages = call.call_args.args[0]
     assert any(message.get("role") == "system" for message in messages)
     assert any(
-        message.get("role") == "user"
-        and _has_text(message, "Tap: submit button")
+        message.get("role") == "user" and _has_text(message, "Tap: submit button")
         for message in messages
     )
 
@@ -156,7 +155,7 @@ async def test_uses_search_area_image_size_for_planning_and_maps_the_point_back_
     call = AsyncMock(
         return_value={
             "content": (
-                '<think>Found item in crop</think><answer>'
+                "<think>Found item in crop</think><answer>"
                 'do(action="Tap", element=[500,500])</answer>'
             )
         }
@@ -193,9 +192,7 @@ async def test_uses_search_area_image_size_for_planning_and_maps_the_point_back_
 async def test_returns_parse_errors_from_auto_glm_custom_locate_responses():
     """returns parse errors from Auto-GLM custom locate responses"""
     call = AsyncMock(
-        return_value={
-            "content": 'do(action="Swipe", start=[100,200], end=[300,400])'
-        }
+        return_value={"content": 'do(action="Swipe", start=[100,200], end=[300,400])'}
     )
 
     with patch(AUTO_GLM_LOCATE_CALL, new=call):
@@ -218,7 +215,7 @@ async def test_appends_reference_image_messages_for_multimodal_locate_prompts():
     call = AsyncMock(
         return_value={
             "content": (
-                '<think>Found matching icon</think><answer>'
+                "<think>Found matching icon</think><answer>"
                 'do(action="Tap", element=[500,500])</answer>'
             )
         }
@@ -241,8 +238,7 @@ async def test_appends_reference_image_messages_for_multimodal_locate_prompts():
 
     messages = call.call_args.args[0]
     assert any(
-        message.get("role") == "user"
-        and _has_text(message, "reference images")
+        message.get("role") == "user" and _has_text(message, "reference images")
         for message in messages
     )
     assert any(

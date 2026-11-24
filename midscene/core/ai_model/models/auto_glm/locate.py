@@ -1,6 +1,6 @@
 """AutoGLM planning-tap locator (upstream ai-model/models/auto-glm/locate.ts)."""
 
-from typing import Any, Dict
+from typing import Any
 
 from midscene.core.ai_model.model_adapter.custom_planning_action import (
     get_tap_located_pixel_result,
@@ -28,10 +28,10 @@ def create_auto_glm_planning_tap_locator(
     is_multilingual: bool,
 ) -> PlanningTapLocatorDefinition:
     def transform_actions(
-        parsed: Dict[str, Any],
+        parsed: dict[str, Any],
         model_runtime: Any,
-        prepared: Dict[str, Any],
-        shot_size: Dict[str, int],
+        prepared: dict[str, Any],
+        shot_size: dict[str, int],
     ):
         actions = transform_auto_glm_action(
             parsed["action"],
@@ -65,9 +65,9 @@ def create_auto_glm_planning_tap_locator(
 
 async def auto_glm_locate(
     target_element_description: Any,
-    locate_image: Dict[str, Any],
+    locate_image: dict[str, Any],
     model_runtime: Any,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Auto-GLM planning-tap-locator (models/auto-glm/locate.ts)."""
     locator = create_auto_glm_planning_tap_locator(
         model_runtime.adapter.family == "auto-glm-multilingual"

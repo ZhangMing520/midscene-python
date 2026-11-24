@@ -4,7 +4,7 @@ import inspect
 import time
 import traceback
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -28,7 +28,7 @@ def truncate_serialized_error_string(value: str) -> str:
     return f"{value[:keep]}{TRUNCATED_STRING_SUFFIX}"
 
 
-def _read_diagnostic(error: Any, keys: List[str]) -> Optional[Any]:
+def _read_diagnostic(error: Any, keys: list[str]) -> Any | None:
     for key in keys:
         value = getattr(error, key, None)
         if isinstance(value, (int, float)) and not isinstance(value, bool):
@@ -38,7 +38,7 @@ def _read_diagnostic(error: Any, keys: List[str]) -> Optional[Any]:
     return None
 
 
-def _error_stack(error: Any) -> Optional[str]:
+def _error_stack(error: Any) -> str | None:
     if isinstance(error, BaseException) and error.__traceback__ is not None:
         return "".join(
             traceback.format_exception(type(error), error, error.__traceback__)
@@ -47,7 +47,7 @@ def _error_stack(error: Any) -> Optional[str]:
     return stack if isinstance(stack, str) else None
 
 
-def serialize_error(error: Any) -> Dict[str, Any]:
+def serialize_error(error: Any) -> dict[str, Any]:
     """Bounded diagnostic object for reports and transports."""
     if not isinstance(error, BaseException) and not hasattr(error, "message"):
         message = truncate_serialized_error_string(str(error))
@@ -61,7 +61,7 @@ def serialize_error(error: Any) -> Dict[str, Any]:
     message = getattr(error, "message", None)
     if not isinstance(message, str) or not message:
         message = str(error) or None
-    serialized: Dict[str, Any] = {
+    serialized: dict[str, Any] = {
         "name": serialized_name,
         "message": truncate_serialized_error_string(
             message or f"{serialized_name} without a message"
@@ -83,7 +83,7 @@ def serialize_error(error: Any) -> Dict[str, Any]:
     return serialized
 
 
-def serialize_task_error(error: Any, signal: Any = None) -> Dict[str, Any]:
+def serialize_task_error(error: Any, signal: Any = None) -> dict[str, Any]:
     serialized = serialize_error(error)
     # Do not relabel an unrelated error that races with cancellation.
     if signal is not None and getattr(signal, "aborted", False):
@@ -95,10 +95,10 @@ def serialize_task_error(error: Any, signal: Any = None) -> Dict[str, Any]:
     return serialized
 
 
-def serialize_error_task(task: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+def serialize_error_task(task: dict[str, Any] | None) -> dict[str, Any] | None:
     if not task:
         return None
-    result: Dict[str, Any] = {
+    result: dict[str, Any] = {
         "taskId": truncate_serialized_error_string(str(task.get("taskId", ""))),
         "type": task.get("type"),
         "status": task.get("status"),
@@ -120,7 +120,7 @@ class TaskExecutionError(Exception):
     code = "TASK_EXECUTION_FAILED"
 
     def __init__(
-        self, error: Dict[str, Any], task: Optional[Dict[str, Any]] = None
+        self, error: dict[str, Any], task: dict[str, Any] | None = None
     ) -> None:
         super().__init__(error.get("message"))
         self.name = "TaskExecutionError"
@@ -130,8 +130,8 @@ class TaskExecutionError(Exception):
             "".join(traceback.format_exception(type(self), self, None))
         )
 
-    def to_json(self) -> Dict[str, Any]:
-        result: Dict[str, Any] = {
+    def to_json(self) -> dict[str, Any]:
+        result: dict[str, Any] = {
             "name": self.name,
             "code": self.code,
             "message": self.message,
@@ -153,13 +153,13 @@ class TaskRunner:
         self,
         name: str,
         ui_context_builder: Any,
-        options: Optional[Dict[str, Any]] = None,
+        options: dict[str, Any] | None = None,
     ) -> None:
         options = options or {}
         self.id = uuid.uuid4().hex
         initial_tasks = options.get("tasks") or []
         self.name = name
-        self.tasks: List[Dict[str, Any]] = [
+        self.tasks: list[dict[str, Any]] = [
             self._mark_task_as_pending(task) for task in initial_tasks
         ]
         self.status = "pending" if initial_tasks else "init"
@@ -174,7 +174,7 @@ class TaskRunner:
             for image in options.get("referenceImages") or []
         }
         self._reference_image_urls.discard(None)
-        self._last_ui_context: Optional[Dict[str, Any]] = None
+        self._last_ui_context: dict[str, Any] | None = None
 
     # -- lifecycle helpers -------------------------------------------------
 
@@ -184,7 +184,7 @@ class TaskRunner:
         ):
             self._abort_signal.throw_if_aborted()
 
-    def _mark_task_as_pending(self, task: Dict[str, Any]) -> Dict[str, Any]:
+    def _mark_task_as_pending(self, task: dict[str, Any]) -> dict[str, Any]:
         return {"taskId": uuid.uuid4().hex, "status": "pending", **task}
 
     async def _emit_snapshot_change(self, error: Any = None) -> None:
@@ -192,7 +192,7 @@ class TaskRunner:
             return
         await _maybe_await(self._on_snapshot_change(self, error))
 
-    async def _emit_task_event(self, kind: str, task: Dict[str, Any]) -> None:
+    async def _emit_task_event(self, kind: str, task: dict[str, Any]) -> None:
         if self._on_task_event is None:
             return
         try:
@@ -204,7 +204,7 @@ class TaskRunner:
 
     async def _get_ui_context(
         self, force_refresh: bool = False
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         self._throw_if_aborted()
         now = int(time.time() * 1000)
         if (
@@ -215,7 +215,9 @@ class TaskRunner:
         ):
             return self._last_ui_context["uiContext"]
         try:
-            ui_context = await _maybe_await(self._ui_context_builder(self._abort_signal))
+            ui_context = await _maybe_await(
+                self._ui_context_builder(self._abort_signal)
+            )
             self._throw_if_aborted()
             if ui_context is not None:
                 self._last_ui_context = {
@@ -244,7 +246,7 @@ class TaskRunner:
         return None
 
     def _attach_recorder_item(
-        self, task: Dict[str, Any], screenshot: Any, phase: str
+        self, task: dict[str, Any], screenshot: Any, phase: str
     ) -> None:
         if not phase or screenshot is None:
             return
@@ -258,7 +260,7 @@ class TaskRunner:
         )
 
     def _normalize_status_from_error(
-        self, options: Optional[Dict[str, Any]] = None, message: Optional[str] = None
+        self, options: dict[str, Any] | None = None, message: str | None = None
     ) -> None:
         if self.status != "error":
             return
@@ -277,7 +279,7 @@ class TaskRunner:
     async def append(
         self,
         task: Any,
-        options: Optional[Dict[str, Any]] = None,
+        options: dict[str, Any] | None = None,
     ) -> None:
         self._throw_if_aborted()
         self._normalize_status_from_error(
@@ -293,21 +295,19 @@ class TaskRunner:
             await self._emit_task_event("append", appended_task)
 
     async def append_and_flush(
-        self, task: Any, options: Optional[Dict[str, Any]] = None
-    ) -> Optional[Dict[str, Any]]:
+        self, task: Any, options: dict[str, Any] | None = None
+    ) -> dict[str, Any] | None:
         await self.append(task, options)
         return await self.flush(options)
 
     async def flush(
-        self, options: Optional[Dict[str, Any]] = None
-    ) -> Optional[Dict[str, Any]]:
+        self, options: dict[str, Any] | None = None
+    ) -> dict[str, Any] | None:
         if self.status == "init" and self.tasks:
             logger.warning(
                 "illegal state for task runner, status is init but tasks are not empty"
             )
-        self._normalize_status_from_error(
-            options, "task runner is in error state"
-        )
+        self._normalize_status_from_error(options, "task runner is in error state")
         if self.status == "running":
             raise AssertionError("task runner is already running")
         if self.status == "completed":
@@ -328,8 +328,8 @@ class TaskRunner:
         await self._emit_snapshot_change()
         task_index = next_pending_index
         successfully_completed = True
-        previous_find_output: Optional[Dict[str, Any]] = None
-        finalize_error: Optional[TaskExecutionError] = None
+        previous_find_output: dict[str, Any] | None = None
+        finalize_error: TaskExecutionError | None = None
 
         while task_index < len(self.tasks):
             task = self.tasks[task_index]
@@ -348,9 +348,7 @@ class TaskRunner:
                 self._throw_if_aborted()
                 try:
                     if self.on_task_start is not None:
-                        await _maybe_await(
-                            self.on_task_start(task, self._abort_signal)
-                        )
+                        await _maybe_await(self.on_task_start(task, self._abort_signal))
                 except Exception as error:  # noqa: BLE001
                     logger.error(f"error in onTaskStart: {error}")
                 self._throw_if_aborted()
@@ -434,9 +432,7 @@ class TaskRunner:
             except BaseException as error:
                 if isinstance(error, Exception):
                     successfully_completed = False
-                    serialized_error = serialize_task_error(
-                        error, self._abort_signal
-                    )
+                    serialized_error = serialize_task_error(error, self._abort_signal)
                     task["error"] = serialized_error
                     task["errorMessage"] = serialized_error["message"]
                     task["errorStack"] = serialized_error.get("stack")
@@ -454,7 +450,7 @@ class TaskRunner:
                     break
                 raise
 
-        cancelled_tasks: List[Dict[str, Any]] = []
+        cancelled_tasks: list[dict[str, Any]] = []
         for index in range(task_index + 1, len(self.tasks)):
             self.tasks[index]["status"] = "cancelled"
             cancelled_tasks.append(self.tasks[index])
@@ -476,9 +472,7 @@ class TaskRunner:
                 )
             else:
                 error = {"name": "Error", "message": "Task execution failed"}
-            finalize_error = TaskExecutionError(
-                error, serialize_error_task(error_task)
-            )
+            finalize_error = TaskExecutionError(error, serialize_error_task(error_task))
             await self._emit_snapshot_change(finalize_error)
         else:
             self.status = "completed"
@@ -499,7 +493,7 @@ class TaskRunner:
     def is_in_error_state(self) -> bool:
         return self.status == "error"
 
-    def latest_error_task(self) -> Optional[Dict[str, Any]]:
+    def latest_error_task(self) -> dict[str, Any] | None:
         if self.status != "error":
             return None
         for task in reversed(self.tasks):
@@ -507,15 +501,14 @@ class TaskRunner:
                 return task
         return None
 
-    def dump(self) -> Dict[str, Any]:
+    def dump(self) -> dict[str, Any]:
         """Serialize tasks in the upstream ExecutionDump shape."""
         return {
             "id": self.id,
             "logTime": self._execution_log_time,
             "name": self.name,
             "tasks": [
-                {**task, "recorder": task.get("recorder") or []}
-                for task in self.tasks
+                {**task, "recorder": task.get("recorder") or []} for task in self.tasks
             ],
             "referenceImageUrls": [
                 url
@@ -524,9 +517,7 @@ class TaskRunner:
             ],
         }
 
-    async def append_error_plan(
-        self, error_msg: str
-    ) -> Dict[str, Any]:
+    async def append_error_plan(self, error_msg: str) -> dict[str, Any]:
         async def _raise(_context: Any) -> None:
             raise RuntimeError(error_msg or "error without thought")
 

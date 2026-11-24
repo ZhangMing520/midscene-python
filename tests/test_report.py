@@ -74,9 +74,7 @@ def test_should_merge_3_mocked_reports(tmp_path):
     expected_contents = generate_n_reports(
         3, "report content", tool, tmp_path, True, "merge-3-test"
     )
-    merged_report_path = tool.merge_reports(
-        opts={"outputDir": str(tmp_path / "out")}
-    )
+    merged_report_path = tool.merge_reports(opts={"outputDir": str(tmp_path / "out")})
     merged_report_content = Path(merged_report_path).read_text(encoding="utf-8")
     for content in expected_contents:
         assert content in merged_report_content
@@ -280,9 +278,9 @@ def test_should_merge_directory_mode_reports_and_copy_screenshots(tmp_path):
         parsed = json.loads(script["content"])
         for frame in parsed["executions"][0]["tasks"][0]["recorder"]:
             contents.append(
-                (
-                    Path(merged_path).parent / frame["screenshot"]["path"]
-                ).read_text(encoding="utf-8")
+                (Path(merged_path).parent / frame["screenshot"]["path"]).read_text(
+                    encoding="utf-8"
+                )
             )
     assert sorted(contents) == [
         "fake-png-0-0",
@@ -306,9 +304,7 @@ def test_should_delete_entire_directory_for_directory_mode_reports_when_rm_origi
         (screenshots_dir / f"img-{report_index}.png").write_text(
             f"fake-png-{report_index}", encoding="utf-8"
         )
-        dump_json = json.dumps(
-            {"groupName": f"test-{report_index}", "executions": []}
-        )
+        dump_json = json.dumps({"groupName": f"test-{report_index}", "executions": []})
         (report_dir / "index.html").write_text(
             f"{get_report_tpl()}\n"
             f'<script type="midscene_web_dump">{dump_json}</script>',
@@ -364,9 +360,7 @@ def test_detects_directory_mode_from_metadata_even_without_a_screenshots_dir(
 ):
     """detects directory mode from metadata even without a screenshots dir"""
     no_shots = _write_dir_mode_report(tmp_path / "no-shots", "no-shots", False)
-    with_shots = _write_dir_mode_report(
-        tmp_path / "with-shots", "with-shots", True
-    )
+    with_shots = _write_dir_mode_report(tmp_path / "with-shots", "with-shots", True)
     assert is_directory_mode_report(no_shots) is True
     assert is_directory_mode_report(with_shots) is True
 
@@ -424,9 +418,7 @@ def test_removes_the_folder_of_a_legacy_inline_screenshot_directory_report_on_rm
             f"{get_report_tpl()}\n"
             f'<script type="midscene_web_dump" data-group-id="{name}">'
             f"{dump_json}</script>\n"
-            + generate_image_script_tag(
-                f"{name}-img", "data:image/png;base64,AAAA"
-            ),
+            + generate_image_script_tag(f"{name}-img", "data:image/png;base64,AAAA"),
             encoding="utf-8",
         )
         tool.append(
@@ -460,9 +452,7 @@ def test_removes_the_folder_of_a_legacy_inline_screenshot_directory_report_on_rm
 def test_should_merge_a_single_report(tmp_path):
     """should merge a single report"""
     tool = ReportMergingTool()
-    generate_n_reports(
-        1, "single report content", tool, tmp_path, True, "merge-1-test"
-    )
+    generate_n_reports(1, "single report content", tool, tmp_path, True, "merge-1-test")
     merged_report_path = tool.merge_reports(
         "single-report-merge",
         {"overwrite": True, "outputDir": str(tmp_path / "out")},
@@ -475,9 +465,7 @@ def test_should_merge_a_single_report(tmp_path):
 def test_should_handle_reports_with_undefined_report_file_path(tmp_path):
     """should handle reports with undefined reportFilePath (e.g. skipped tests)"""
     tool = ReportMergingTool()
-    generate_n_reports(
-        1, "normal report", tool, tmp_path, True, "merge-with-skipped"
-    )
+    generate_n_reports(1, "normal report", tool, tmp_path, True, "merge-with-skipped")
     tool.append(
         {
             "reportFilePath": None,
@@ -623,49 +611,42 @@ def test_should_use_constant_memory_when_merging_reports_with_large_inline_image
                 )
                 + "\n"
             )
-        content = (
-            f"{get_report_tpl()}\n"
-            f"{image_scripts}\n"
-            + generate_dump_script_tag(
-                json.dumps(
-                    {
-                        "sdkVersion": get_version(),
-                        "groupName": f"test-{report_index}",
-                        "modelBriefs": [],
-                        "executions": [
-                            {
-                                "id": f"large-{report_index}",
-                                "name": f"large {report_index}",
-                                "logTime": 0,
-                                "tasks": [
-                                    {
-                                        "taskId": f"task-{report_index}",
-                                        "type": "Log",
-                                        "status": "finished",
-                                        "param": {
-                                            "images": [
-                                                {
-                                                    "type": "midscene_image_url_ref",
-                                                    "id": (
-                                                        f"img-{report_index}-"
-                                                        f"{image_index}"
-                                                    ),
-                                                    "mimeType": "image/png",
-                                                    "storage": "inline",
-                                                }
-                                                for image_index in range(
-                                                    images_per_report
-                                                )
-                                            ]
-                                        },
-                                    }
-                                ],
-                            }
-                        ],
-                    }
-                ),
-                {"data-group-id": f"large-{report_index}"},
-            )
+        content = f"{get_report_tpl()}\n{image_scripts}\n" + generate_dump_script_tag(
+            json.dumps(
+                {
+                    "sdkVersion": get_version(),
+                    "groupName": f"test-{report_index}",
+                    "modelBriefs": [],
+                    "executions": [
+                        {
+                            "id": f"large-{report_index}",
+                            "name": f"large {report_index}",
+                            "logTime": 0,
+                            "tasks": [
+                                {
+                                    "taskId": f"task-{report_index}",
+                                    "type": "Log",
+                                    "status": "finished",
+                                    "param": {
+                                        "images": [
+                                            {
+                                                "type": "midscene_image_url_ref",
+                                                "id": (
+                                                    f"img-{report_index}-{image_index}"
+                                                ),
+                                                "mimeType": "image/png",
+                                                "storage": "inline",
+                                            }
+                                            for image_index in range(images_per_report)
+                                        ]
+                                    },
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ),
+            {"data-group-id": f"large-{report_index}"},
         )
         report_path.write_text(content, encoding="utf-8")
         tool.append(

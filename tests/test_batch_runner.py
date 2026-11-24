@@ -45,8 +45,16 @@ def _factory(behaviors=None):
 
 @pytest.fixture
 def scripts(tmp_path):
-    for name in ("file1.yml", "file2.yml", "file3.yml", "login.yml",
-                 "search.yml", "report.yml", "prepare.yml", "main.yml"):
+    for name in (
+        "file1.yml",
+        "file2.yml",
+        "file3.yml",
+        "login.yml",
+        "search.yml",
+        "report.yml",
+        "prepare.yml",
+        "main.yml",
+    ):
         (tmp_path / name).write_text(
             "tasks:\n  - name: task\n    flow:\n      - sleep: 1\n",
             encoding="utf-8",
@@ -338,9 +346,7 @@ class TestBatchRunnerSetup:
 
         assert run_order == ["prepare.yml", "prepare.yml", "main.yml"]
         assert setup_creation_count == 2
-        setup_result = next(
-            result for result in results if result["file"] == prepare
-        )
+        setup_result = next(result for result in results if result["file"] == prepare)
         assert setup_result["success"] is True
         assert setup_result["attempts"] == [
             {"attempt": 1, "success": False},
@@ -348,7 +354,7 @@ class TestBatchRunnerSetup:
         ]
 
     def test_rejects_reuse_page_without_share_browser_context(self, scripts):
-        with pytest.raises(ValueError, match='reusePage.*requires'):
+        with pytest.raises(ValueError, match="reusePage.*requires"):
             BatchRunner(
                 {
                     "files": [str(scripts / "file1.yml")],
@@ -360,7 +366,7 @@ class TestBatchRunnerSetup:
             )
 
     def test_rejects_reuse_page_for_concurrent_batches(self, scripts):
-        with pytest.raises(ValueError, match='reusePage.*requires'):
+        with pytest.raises(ValueError, match="reusePage.*requires"):
             BatchRunner(
                 {
                     "files": [str(scripts / "file1.yml")],
@@ -372,7 +378,10 @@ class TestBatchRunnerSetup:
             )
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("target_name", ["Web bridge mode", "Android", "iOS", "HarmonyOS", "Computer", "Interface"])
+    @pytest.mark.parametrize(
+        "target_name",
+        ["Web bridge mode", "Android", "iOS", "HarmonyOS", "Computer", "Interface"],
+    )
     async def test_allows_target_setup_without_share_browser_context(
         self, scripts, target_name
     ):
@@ -394,7 +403,9 @@ class TestBatchRunnerSetup:
 
 class TestBatchRunnerSharedBrowser:
     @pytest.mark.skip(reason="Python batch runner does not manage Puppeteer browsers")
-    def test_should_create_one_browser_instance_when_share_browser_context_is_true(self):
+    def test_should_create_one_browser_instance_when_share_browser_context_is_true(
+        self,
+    ):
         pass
 
     @pytest.mark.skip(reason="Python batch runner does not manage Puppeteer browsers")
@@ -414,7 +425,9 @@ class TestBatchRunnerSharedBrowser:
         pass
 
     @pytest.mark.skip(reason="Python batch runner does not manage Puppeteer browsers")
-    def test_should_pass_accept_insecure_certs_from_global_config_to_puppeteer_launch(self):
+    def test_should_pass_accept_insecure_certs_from_global_config_to_puppeteer_launch(
+        self,
+    ):
         pass
 
     @pytest.mark.skip(reason="Python batch runner does not manage Puppeteer browsers")
@@ -849,10 +862,7 @@ class TestBatchRunnerGlobalConfig:
     ):
         path = scripts / "file1.yml"
         path.write_text(
-            "tasks:\n"
-            "  - name: test task\n"
-            "    flow:\n"
-            "      - ai: do something\n",
+            "tasks:\n  - name: test task\n    flow:\n      - ai: do something\n",
             encoding="utf-8",
         )
         captured = []

@@ -27,13 +27,25 @@ from midscene.core.types import (
     UITree,
 )
 from midscene.core.agent.agent_options import AgentOptions
-from midscene.core.device import DeviceAction, build_web_action_space, build_android_action_space
+from midscene.core.device import (
+    DeviceAction,
+    build_android_action_space,
+    build_web_action_space,
+)
 from midscene.core.agent.task_cache import TaskCache
 from midscene.core.yaml import ScriptPlayer, parse_yaml_script
-from midscene.core.dump import ExecutionDumpBuilder, build_execution_task, build_service_dump
-from midscene.core.dump import get_task_search_area, get_task_service_dump
-from midscene.core.agent.ui_observer import UIObserver, UIObservation
-from midscene.core.agent.run_gherkin_scenario import run_gherkin_scenario, parse_gherkin_scenario
+from midscene.core.dump import (
+    ExecutionDumpBuilder,
+    build_execution_task,
+    build_service_dump,
+    get_task_search_area,
+    get_task_service_dump,
+)
+from midscene.core.agent.ui_observer import UIObservation, UIObserver
+from midscene.core.agent.run_gherkin_scenario import (
+    parse_gherkin_scenario,
+    run_gherkin_scenario,
+)
 from midscene.core.common import build_yaml_flow_from_plans, user_prompt_to_string
 from midscene.core.errors import ServiceError
 from midscene.core.service import Service

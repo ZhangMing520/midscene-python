@@ -3,7 +3,7 @@
 (``waits after every successful action on %s``)."""
 
 import asyncio
-from typing import Any, Dict, List
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -31,7 +31,7 @@ def _agent(wait_after_action_ms: int = 0):
 @pytest.mark.asyncio
 async def test_waits_after_every_successful_action_on_android():
     agent = _agent(wait_after_action_ms=0)
-    sleeps: List[float] = []
+    sleeps: list[float] = []
 
     real_sleep = asyncio.sleep
 
@@ -53,14 +53,17 @@ async def test_waits_after_every_successful_action_on_android():
         calls["n"] += 1
         return {"content": responses[calls["n"] - 1], "usage": {"total_tokens": 3}}
 
-    readiness_calls: List[Dict[str, Any]] = []
+    readiness_calls: list[dict[str, Any]] = []
 
     async def readiness(context):
         readiness_calls.append(context)
 
-    with patch("asyncio.sleep", new=fake_sleep), patch_model_call(
-        "midscene.core.ai_model.workflows.planning.standard_planning",
-        planning_handler,
+    with (
+        patch("asyncio.sleep", new=fake_sleep),
+        patch_model_call(
+            "midscene.core.ai_model.workflows.planning.standard_planning",
+            planning_handler,
+        ),
     ):
         agent.options.wait_for_action_ready = readiness
         await agent.ai_act("run")

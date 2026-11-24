@@ -5,7 +5,7 @@ import random
 import string
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from midscene.shared.env import get_midscene_run_dir
 
@@ -15,8 +15,7 @@ _VERSION = 1
 
 def _sanitize_session_name(session_name: str) -> str:
     sanitized = "".join(
-        char if (char.isalnum() or char in "._-") else "_"
-        for char in session_name
+        char if (char.isalnum() or char in "._-") else "_" for char in session_name
     )
     return sanitized or "default"
 
@@ -53,13 +52,14 @@ def _get_cli_report_session_dir() -> str:
 
 def _get_cli_report_session_path(session_name: str) -> str:
     return str(
-        Path(_get_cli_report_session_dir()) / f"{_sanitize_session_name(session_name)}.json"
+        Path(_get_cli_report_session_dir())
+        / f"{_sanitize_session_name(session_name)}.json"
     )
 
 
 def generate_cli_report_session(
-    session_name: str, target_identity: Optional[str] = None
-) -> Dict[str, Any]:
+    session_name: str, target_identity: str | None = None
+) -> dict[str, Any]:
     identity_segment = (
         f"-{_sanitize_file_segment(target_identity)}" if target_identity else ""
     )
@@ -68,10 +68,9 @@ def generate_cli_report_session(
         f"{identity_segment}-{_format_date_for_file_name(datetime.now())}-{_random_id()}"
     )
     report_path = str(
-        Path(get_midscene_run_dir("report"))
-        / _ensure_html_file_name(report_file_name)
+        Path(get_midscene_run_dir("report")) / _ensure_html_file_name(report_file_name)
     )
-    session: Dict[str, Any] = {
+    session: dict[str, Any] = {
         "version": _VERSION,
         "sessionName": session_name,
         "reportFileName": report_file_name,
@@ -83,7 +82,7 @@ def generate_cli_report_session(
     return session
 
 
-def write_cli_report_session(session: Dict[str, Any]) -> None:
+def write_cli_report_session(session: dict[str, Any]) -> None:
     path = _get_cli_report_session_path(session["sessionName"])
     Path(path).write_text(
         json.dumps(session, indent=2, ensure_ascii=False), encoding="utf-8"
@@ -91,14 +90,14 @@ def write_cli_report_session(session: Dict[str, Any]) -> None:
 
 
 def create_cli_report_session(
-    session_name: str, target_identity: Optional[str] = None
-) -> Dict[str, Any]:
+    session_name: str, target_identity: str | None = None
+) -> dict[str, Any]:
     session = generate_cli_report_session(session_name, target_identity)
     write_cli_report_session(session)
     return session
 
 
-def read_cli_report_session(session_name: str) -> Optional[Dict[str, Any]]:
+def read_cli_report_session(session_name: str) -> dict[str, Any] | None:
     session_path = _get_cli_report_session_path(session_name)
     if not Path(session_path).exists():
         return None

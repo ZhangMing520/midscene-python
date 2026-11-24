@@ -1,7 +1,7 @@
 """Web element wrapper (upstream web-integration/web-element.ts)."""
 
 import math
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 from playwright.async_api import Page
@@ -47,9 +47,9 @@ class WebElementInfoImpl(BaseElement):
         content: str,
         rect: Rect,
         id: str,
-        attributes: Dict[str, Any],
+        attributes: dict[str, Any],
         index_id: int,
-        xpaths: Optional[List[str]] = None,
+        xpaths: list[str] | None = None,
         is_visible: bool,
     ):
         node_type = attributes.get("nodeType") or attributes.get("node_type")

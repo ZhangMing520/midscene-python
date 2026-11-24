@@ -1,19 +1,20 @@
 """Search-area coordinate mapping (upstream workflows/grounding/search-area-mapping.ts)."""
 
-from typing import Any, Dict, List, Optional, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 
 def map_search_area_point_to_original_point(
-    point: Sequence[float], mapping: Optional[Dict[str, Any]] = None
-) -> List[float]:
+    point: Sequence[float], mapping: dict[str, Any] | None = None
+) -> list[float]:
     scale = (mapping or {}).get("scale", 1)
     offset = (mapping or {}).get("offset", {"x": 0, "y": 0})
     return [point[0] / scale + offset["x"], point[1] / scale + offset["y"]]
 
 
 def map_search_area_rect_to_original_rect(
-    rect: Dict[str, float], mapping: Optional[Dict[str, Any]] = None
-) -> Dict[str, float]:
+    rect: dict[str, float], mapping: dict[str, Any] | None = None
+) -> dict[str, float]:
     left, top = map_search_area_point_to_original_point(
         [rect["left"], rect["top"]], mapping
     )
@@ -27,10 +28,10 @@ def map_search_area_rect_to_original_rect(
 
 
 def map_search_area_result_to_original_result(
-    result: Dict[str, Any], mapping: Optional[Dict[str, Any]] = None
-) -> Dict[str, Any]:
+    result: dict[str, Any], mapping: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """Restore a complete locate result; center and bbox map independently."""
-    mapped: Dict[str, Any] = {
+    mapped: dict[str, Any] = {
         "center": map_search_area_point_to_original_point(result["center"], mapping)
     }
     if result.get("rect"):

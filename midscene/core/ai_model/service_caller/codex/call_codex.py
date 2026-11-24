@@ -1,10 +1,11 @@
 """Codex app-server call preparation/execution (upstream codex/call-codex.ts)."""
 
-from typing import Any, Callable, Dict, List, Optional
 import asyncio
 import inspect
 import time
 import traceback
+from collections.abc import Callable
+from typing import Any
 
 from midscene.core.ai_model.model_adapter.codex_app_server import (
     build_default_codex_app_server_params,
@@ -27,15 +28,15 @@ def _throw_if_aborted(abort_signal: Any) -> None:
 
 def _build_resolve_image_detail(
     adapter: Any,
-    model_config: Dict[str, Any],
-    options: Dict[str, Any],
-) -> Callable[[Dict[str, Any]], str]:
+    model_config: dict[str, Any],
+    options: dict[str, Any],
+) -> Callable[[dict[str, Any]], str]:
     intent = model_config.get("intent")
     requires_original = bool(options.get("requiresOriginalImageDetail"))
     adapter_resolver = getattr(adapter, "resolve_image_detail", None)
     if callable(adapter_resolver):
 
-        def resolve_from_adapter(input_data: Dict[str, Any]) -> str:
+        def resolve_from_adapter(input_data: dict[str, Any]) -> str:
             return adapter_resolver(
                 {
                     "imageDetail": input_data.get("imageDetail"),
@@ -46,7 +47,7 @@ def _build_resolve_image_detail(
 
         return resolve_from_adapter
 
-    def resolve_default(input_data: Dict[str, Any]) -> str:
+    def resolve_default(input_data: dict[str, Any]) -> str:
         return resolve_image_detail(
             input_data.get("imageDetail") or "high", intent, requires_original
         )
@@ -55,10 +56,10 @@ def _build_resolve_image_detail(
 
 
 def prepare_codex_call(
-    messages: List[Dict[str, Any]],
+    messages: list[dict[str, Any]],
     model_runtime: Any,
-    options: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    options: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Build Codex turn params and the image-detail resolver for a call."""
     options = options or {}
     model_config = model_runtime.config
@@ -95,13 +96,13 @@ def prepare_codex_call(
 
 async def call_codex(
     model_runtime: Any,
-    options: Optional[Dict[str, Any]],
-    messages: List[Dict[str, Any]],
-    request_params: Optional[Dict[str, Any]] = None,
-    resolve_image_detail: Optional[Callable[[Dict[str, Any]], str]] = None,
-    record_event: Optional[Callable[[Dict[str, Any]], Any]] = None,
+    options: dict[str, Any] | None,
+    messages: list[dict[str, Any]],
+    request_params: dict[str, Any] | None = None,
+    resolve_image_detail: Callable[[dict[str, Any]], str] | None = None,
+    record_event: Callable[[dict[str, Any]], Any] | None = None,
     request_signal: Any = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run a Codex turn and return the same shape as ``call_openai``."""
     options = options or {}
     if resolve_image_detail is None:
@@ -112,7 +113,7 @@ async def call_codex(
     protocol_chunk_sequence = 0
     codex_start_time = time.time()
 
-    def record_codex_event(event: Dict[str, Any]) -> None:
+    def record_codex_event(event: dict[str, Any]) -> None:
         nonlocal protocol_chunk_sequence
         if record_event is None:
             return

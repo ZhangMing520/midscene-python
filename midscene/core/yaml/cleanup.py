@@ -1,11 +1,12 @@
 """Run registered cleanup callbacks (upstream yaml/cleanup.ts)."""
 
-from typing import Any, Awaitable, Callable, List
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 
-async def run_free_fn_cleanup(free_fns: List[Callable[[], Awaitable[Any]]]) -> None:
+async def run_free_fn_cleanup(free_fns: list[Callable[[], Awaitable[Any]]]) -> None:
     """Run every cleanup, then re-raise the first or an aggregate error."""
-    errors: List[BaseException] = []
+    errors: list[BaseException] = []
     for cleanup in free_fns:
         try:
             await cleanup()

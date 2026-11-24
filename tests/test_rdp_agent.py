@@ -6,14 +6,12 @@ pointer and keyboard primitives, the unimplemented default transport and the
 per-platform helper binary lookup.
 """
 
-from typing import List
-
 import pytest
 
 
 class FakeRDPBackend:
     def __init__(self):
-        self.calls: List[tuple] = []
+        self.calls: list[tuple] = []
 
     async def connect(self, config):
         self.calls.append(("connect", config))

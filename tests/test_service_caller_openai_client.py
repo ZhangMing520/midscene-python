@@ -16,9 +16,7 @@ class TestCreateClient:
                 "modelConfig": {
                     "openaiBaseURL": "https://api.example.com/v1/",
                     "openaiApiKey": "sk-test",
-                    "openaiExtraConfig": {
-                        "defaultHeaders": {"x-provider": "value"}
-                    },
+                    "openaiExtraConfig": {"defaultHeaders": {"x-provider": "value"}},
                 },
                 "effectiveTimeoutMs": 5000,
                 "executionId": "exec-1",
@@ -32,9 +30,7 @@ class TestCreateClient:
             assert client.headers["x-provider"] == "value"
             assert client.headers["x-midscene-execution-id"] == "exec-1"
             assert client.timeout.read == 5.0
-            assert result["openAIRequestContext"] == {
-                "recordEvent": events.append
-            }
+            assert result["openAIRequestContext"] == {"recordEvent": events.append}
         finally:
             await client.aclose()
 
@@ -82,9 +78,7 @@ class TestProxy:
         )
 
         assert (
-            create_proxy_agent_if_needed(
-                socks_proxy="socks5://localhost:1080"
-            )
+            create_proxy_agent_if_needed(socks_proxy="socks5://localhost:1080")
             == "socks5://localhost:1080"
         )
 

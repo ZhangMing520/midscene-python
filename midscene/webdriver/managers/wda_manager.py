@@ -6,7 +6,6 @@ and reports the configured endpoint, but never launches Xcode for the caller.
 
 import asyncio
 import time
-from typing import Dict, Optional
 from urllib.parse import urlparse
 
 import httpx
@@ -20,19 +19,17 @@ from midscene.webdriver.utils.base_url import normalize_webdriver_base_url
 class WDAManager(BaseServiceManager):
     """Process-wide WDA manager keyed by endpoint."""
 
-    _instances: Dict[str, "WDAManager"] = {}
+    _instances: dict[str, "WDAManager"] = {}
 
     def __init__(
         self,
         port: int = DEFAULT_WDA_PORT,
-        host: Optional[str] = None,
-        base_url: Optional[str] = None,
+        host: str | None = None,
+        base_url: str | None = None,
     ):
         address = urlparse(base_url) if base_url else None
         if address is not None:
-            parsed_port = address.port or (
-                443 if address.scheme == "https" else 80
-            )
+            parsed_port = address.port or (443 if address.scheme == "https" else 80)
             parsed_host = address.hostname or host or "localhost"
         else:
             parsed_port = port
@@ -46,8 +43,8 @@ class WDAManager(BaseServiceManager):
     def get_instance(
         cls,
         port: int = DEFAULT_WDA_PORT,
-        host: Optional[str] = None,
-        base_url: Optional[str] = None,
+        host: str | None = None,
+        base_url: str | None = None,
     ) -> "WDAManager":
         key = (
             normalize_webdriver_base_url(base_url)
@@ -77,9 +74,7 @@ class WDAManager(BaseServiceManager):
             logger.debug("WDA started successfully")
         except Exception as error:  # noqa: BLE001 - mirror upstream wrapping
             logger.debug(f"Failed to start WDA: {error}")
-            raise RuntimeError(
-                f"Failed to start WebDriverAgent: {error}"
-            ) from error
+            raise RuntimeError(f"Failed to start WebDriverAgent: {error}") from error
 
     async def stop(self) -> None:
         if not self._is_started:
@@ -135,9 +130,7 @@ class WDAManager(BaseServiceManager):
             if await self._is_wda_running():
                 return
             await asyncio.sleep(1)
-        raise RuntimeError(
-            f"WebDriverAgent did not start within {timeout}ms"
-        )
+        raise RuntimeError(f"WebDriverAgent did not start within {timeout}ms")
 
 
 __all__ = ["WDAManager"]

@@ -1,6 +1,6 @@
 """Model adapter registry and runtime (upstream ai-model/models/registry.ts)."""
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from midscene.core.ai_model.model_adapter.resolve import ModelAdapter
 from midscene.core.ai_model.model_adapter.types import ModelRuntime
@@ -65,12 +65,12 @@ from midscene.core.ai_model.models.mimo import (
     mimo_adapters,
 )
 from midscene.core.ai_model.models.qwen import (
-    QWEN25_LOCATE_FORMAT,
     QWEN3_LOCATE_FORMAT,
     QWEN4_LOCATE_FORMAT,
-    _build_qwen25_params,
+    QWEN25_LOCATE_FORMAT,
     _build_qwen3_params,
     _build_qwen4_params,
+    _build_qwen25_params,
     _build_qwen_params,
     _parse_qwen_locate_json,
     qwen_adapters,
@@ -164,7 +164,7 @@ def _qwen4_adapter() -> ModelAdapter:
     )
 
 
-def _adapter_registry() -> Dict[str, ModelAdapter]:
+def _adapter_registry() -> dict[str, ModelAdapter]:
     qwen3 = _qwen3_adapter()
     ui_tars_doubao = ModelAdapter(
         family="vlm-ui-tars-doubao",
@@ -204,7 +204,7 @@ def _adapter_registry() -> Dict[str, ModelAdapter]:
         locate_element_format=DOUBAO_LOCATE_FORMAT,
     )
 
-    registry: Dict[str, ModelAdapter] = {
+    registry: dict[str, ModelAdapter] = {
         "default": _default_adapter(),
         "qwen2.5-vl": ModelAdapter(
             family="qwen2.5-vl",
@@ -349,18 +349,20 @@ def _adapter_registry() -> Dict[str, ModelAdapter]:
     return registry
 
 
-_ADAPTER_CACHE: Dict[str, ModelAdapter] = {}
+_ADAPTER_CACHE: dict[str, ModelAdapter] = {}
 
 
-_REGISTRY: Optional[Dict[str, ModelAdapter]] = None
+_REGISTRY: dict[str, ModelAdapter] | None = None
 
 
-def get_model_adapter(model_family: Optional[str] = None) -> ModelAdapter:
+def get_model_adapter(model_family: str | None = None) -> ModelAdapter:
     global _REGISTRY
     if _REGISTRY is None:
         _REGISTRY = _adapter_registry()
         # Bind custom planners (UI-TARS / Auto-GLM) to their adapters on first use.
-        from midscene.core.ai_model.workflows.planning.custom_planning import register_custom_planners
+        from midscene.core.ai_model.workflows.planning.custom_planning import (
+            register_custom_planners,
+        )
 
         register_custom_planners()
     cache_key = model_family or "default"
@@ -379,7 +381,7 @@ def get_model_adapter(model_family: Optional[str] = None) -> ModelAdapter:
     return adapter
 
 
-def get_model_runtime(config: Dict[str, Any]) -> ModelRuntime:
+def get_model_runtime(config: dict[str, Any]) -> ModelRuntime:
     return ModelRuntime(
         config=config, adapter=get_model_adapter(config.get("modelFamily"))
     )

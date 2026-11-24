@@ -9,7 +9,7 @@ import base64
 import io
 import re
 import struct
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 PNG_IEND_CHUNK = b"\x00\x00\x00\x00IEND\xaeB`\x82"
@@ -19,7 +19,7 @@ def _is_jpeg_start_of_frame_marker(marker: int) -> bool:
     return 0xC0 <= marker <= 0xCF and marker not in (0xC4, 0xC8, 0xCC)
 
 
-def _jpeg_info_from_buffer(image_buffer: bytes) -> Dict[str, int]:
+def _jpeg_info_from_buffer(image_buffer: bytes) -> dict[str, int]:
     offset = 2
     length = len(image_buffer)
     while offset < length:
@@ -57,7 +57,7 @@ def _jpeg_info_from_buffer(image_buffer: bytes) -> Dict[str, int]:
     raise ValueError("Invalid image: cannot get JPEG width or height")
 
 
-def encoded_image_info_of_buffer(image_buffer: bytes) -> Dict[str, int]:
+def encoded_image_info_of_buffer(image_buffer: bytes) -> dict[str, int]:
     """Read PNG/JPEG dimensions from the encoded header."""
     if is_valid_png_image_buffer(image_buffer):
         width = struct.unpack(">I", image_buffer[16:20])[0]
@@ -70,9 +70,7 @@ def encoded_image_info_of_buffer(image_buffer: bytes) -> Dict[str, int]:
     raise ValueError("Invalid image: unsupported format")
 
 
-def image_info_of_base64(
-    image_base64: Union[str, bytes, bytearray]
-) -> Dict[str, int]:
+def image_info_of_base64(image_base64: str | bytes | bytearray) -> dict[str, int]:
     """Decode a base64 image (with or without data URL prefix) via Pillow."""
     if isinstance(image_base64, (bytes, bytearray)):
         image_base64 = bytes(image_base64).decode("ascii")
@@ -103,7 +101,7 @@ def image_info_of_base64(
     return {"width": width, "height": height}
 
 
-def is_valid_png_image_buffer(buffer: Optional[bytes]) -> bool:
+def is_valid_png_image_buffer(buffer: bytes | None) -> bool:
     """A PNG must carry the signature and end with the IEND chunk."""
     if not buffer or len(buffer) < 20:
         return False
@@ -112,18 +110,18 @@ def is_valid_png_image_buffer(buffer: Optional[bytes]) -> bool:
     return buffer.endswith(PNG_IEND_CHUNK)
 
 
-def is_valid_jpeg_image_buffer(buffer: Optional[bytes]) -> bool:
+def is_valid_jpeg_image_buffer(buffer: bytes | None) -> bool:
     if not buffer or len(buffer) < 3:
         return False
     return buffer[0] == 0xFF and buffer[1] == 0xD8 and buffer[2] == 0xFF
 
 
-def is_valid_image_buffer(buffer: Optional[bytes]) -> bool:
+def is_valid_image_buffer(buffer: bytes | None) -> bool:
     return is_valid_png_image_buffer(buffer) or is_valid_jpeg_image_buffer(buffer)
 
 
 def validate_screenshot_buffer(
-    screenshot_buffer: Optional[bytes],
+    screenshot_buffer: bytes | None,
     *,
     label: str,
     min_buffer_size: int = 0,

@@ -7,8 +7,8 @@ helpers classify files before any browser, device, or Agent is created.
 """
 
 import re
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 from midscene.core.test_runner.parser.document_format import (
     WorkflowDocumentFormat,

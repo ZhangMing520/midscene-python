@@ -1,7 +1,7 @@
 """Report-facing execution plan (upstream test-runner/reporting/test-plan.ts)."""
 
 import copy
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 from midscene.core.test_run_report import (
     TestRunReportCasePlan,
@@ -18,7 +18,7 @@ from midscene.core.test_runner.reporting.sanitize import (
 )
 
 
-def _step_title(input_value: Dict[str, Any]) -> Optional[str]:
+def _step_title(input_value: dict[str, Any]) -> str | None:
     candidate = (
         input_value.get("prompt")
         or input_value.get("script")
@@ -36,15 +36,17 @@ def _step_title(input_value: Dict[str, Any]) -> Optional[str]:
 
 def _build_steps(
     document: CollectedWorkflowDocument,
-    items: List[NormalizedStep],
+    items: list[NormalizedStep],
     phase: str,
     owner: str,
-    default_timeout_ms: Optional[float],
-) -> List[TestRunReportPlannedStep]:
-    planned: List[TestRunReportPlannedStep] = []
+    default_timeout_ms: float | None,
+) -> list[TestRunReportPlannedStep]:
+    planned: list[TestRunReportPlannedStep] = []
     for step_index, step in enumerate(items):
         template_input = step.get("templateInput")
-        input_value = template_input if template_input is not None else step.get("input", {})
+        input_value = (
+            template_input if template_input is not None else step.get("input", {})
+        )
         title = _step_title(input_value)
         timeout_ms = step.get("meta", {}).get("timeoutMs", default_timeout_ms)
         entry: TestRunReportPlannedStep = {
@@ -67,18 +69,18 @@ def _build_steps(
 
 def build_test_run_report_plan(
     document: CollectedWorkflowDocument,
-    options: Optional[Dict[str, Any]] = None,
+    options: dict[str, Any] | None = None,
 ) -> TestRunReportDocumentPlan:
     options = options or {}
     default_timeout_ms = options.get("defaultTimeoutMs")
     selected_case_ids = options.get("selectedCaseIds")
-    selected: Set[str] = (
+    selected: set[str] = (
         set(selected_case_ids)
         if selected_case_ids is not None
         else {item["caseId"] for item in document["cases"]}
     )
 
-    cases: List[TestRunReportCasePlan] = []
+    cases: list[TestRunReportCasePlan] = []
     for item in document["cases"]:
         definition = item["definition"]
         case_plan: TestRunReportCasePlan = {

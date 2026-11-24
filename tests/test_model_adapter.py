@@ -53,7 +53,6 @@ class TestModelAdapter:
         assert "thinking" not in params
 
 
-
 class TestAdapterDefinitions:
     def test_registry_map_matches_upstream_families(self):
         from midscene.core.ai_model.models.registry import MODEL_ADAPTER_CONFIGS
@@ -159,9 +158,7 @@ class TestAdapterDefinitions:
         assert adapter["replay_raw_assistant_output"] is False
         adapter = resolve_responses({"replay_raw_assistant_output": True})
         assert adapter["replay_raw_assistant_output"] is True
-        assert adapter["build_responses_params"]({}) == {
-            "config": {"temperature": 0}
-        }
+        assert adapter["build_responses_params"]({}) == {"config": {"temperature": 0}}
 
     def test_build_open_router_reasoning_params(self):
         from midscene.core.ai_model.model_adapter.openrouter_reasoning import (
@@ -171,21 +168,26 @@ class TestAdapterDefinitions:
         assert build_open_router_reasoning_params({}) == {
             "reasoning": {"enabled": False}
         }
-        assert build_open_router_reasoning_params(
-            {"reasoningEnabled": "default", "reasoningEffort": "high"}
-        ) == {}
+        assert (
+            build_open_router_reasoning_params(
+                {"reasoningEnabled": "default", "reasoningEffort": "high"}
+            )
+            == {}
+        )
         assert build_open_router_reasoning_params(
             {
                 "reasoningEnabled": True,
                 "reasoningEffort": "high",
                 "reasoningBudget": 4096,
             }
-        ) == {
-            "reasoning": {"enabled": True, "effort": "high", "max_tokens": 4096}
-        }
+        ) == {"reasoning": {"enabled": True, "effort": "high", "max_tokens": 4096}}
         assert build_open_router_reasoning_params(
             {"reasoningEnabled": False},
-            {"type": "effort", "defaultEnabledEffort": "medium", "disabledEffort": "low"},
+            {
+                "type": "effort",
+                "defaultEnabledEffort": "medium",
+                "disabledEffort": "low",
+            },
         ) == {"reasoning": {"effort": "low"}}
 
     def test_temperature_with_semantic_retry(self):

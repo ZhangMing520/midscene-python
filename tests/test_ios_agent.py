@@ -98,7 +98,9 @@ def _reset_instances():
 
 
 @pytest.mark.asyncio
-async def test_should_create_default_ios_device_when_no_override_is_provided(monkeypatch):
+async def test_should_create_default_ios_device_when_no_override_is_provided(
+    monkeypatch,
+):
     """should create default IOSDevice when no override is provided"""
     monkeypatch.delenv("MIDSCENE_IOS_DEVICE_CLASS_OVERRIDE", raising=False)
     monkeypatch.setattr("midscene.ios.agent.IOSDevice", FakeDevice)
@@ -133,9 +135,7 @@ async def test_should_load_override_device_class_from_documented_option(monkeypa
 @pytest.mark.asyncio
 async def test_should_load_override_device_class_from_env(monkeypatch):
     """should load override device class from env"""
-    monkeypatch.setenv(
-        "MIDSCENE_IOS_DEVICE_CLASS_OVERRIDE", "test-ios-device-override"
-    )
+    monkeypatch.setenv("MIDSCENE_IOS_DEVICE_CLASS_OVERRIDE", "test-ios-device-override")
     monkeypatch.setattr("midscene.ios.agent.IOSDevice", FakeDevice)
     monkeypatch.setattr(
         "midscene.ios.agent.importlib.import_module",
@@ -152,9 +152,7 @@ async def test_should_load_override_device_class_from_env(monkeypatch):
 async def test_should_throw_clear_error_when_override_package_is_missing():
     """should throw clear error when override package is missing"""
 
-    with pytest.raises(
-        RuntimeError, match="Failed to load iOS device class override"
-    ):
+    with pytest.raises(RuntimeError, match="Failed to load iOS device class override"):
         await agent_from_web_driver_agent(
             {
                 "modelConfig": MODEL_CONFIG,

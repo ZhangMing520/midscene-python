@@ -7,8 +7,6 @@ the same logical events. Observation window facts mirror the upstream fixture
 (4 frames, 100ms -> 900ms).
 """
 
-from typing import List
-
 import pytest
 
 from midscene.core.agent.observe_node import execute_observe
@@ -27,7 +25,7 @@ class _FakeObservation:
     started_at = 100
     ended_at = 900
 
-    def __init__(self, passed: bool, order: List[str]) -> None:
+    def __init__(self, passed: bool, order: list[str]) -> None:
         self.passed = passed
         self._order = order
 
@@ -43,7 +41,7 @@ class _FakeObservation:
 class _FakeObserver:
     buffered_frame_count = 1
 
-    def __init__(self, observation: _FakeObservation, order: List[str]) -> None:
+    def __init__(self, observation: _FakeObservation, order: list[str]) -> None:
         self.observation = observation
         self._order = order
         self.disposed = False
@@ -62,7 +60,7 @@ class _FakeObserver:
 
 class _FakeAgent:
     def __init__(self, passed: bool = True, lite: bool = False) -> None:
-        self.order: List[str] = []
+        self.order: list[str] = []
         self.observation = _FakeObservation(passed, self.order)
         self.observer = _FakeObserver(self.observation, self.order)
         self.acted = None

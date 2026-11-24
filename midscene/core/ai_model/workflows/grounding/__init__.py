@@ -1,7 +1,6 @@
 """Grounding workflows (upstream ai-model/workflows/grounding)."""
 
 from midscene.core.ai_model.workflows.grounding.locate import ai_locate_element
-from midscene.core.ai_model.workflows.grounding.section_locate import ai_locate_section
 from midscene.core.ai_model.workflows.grounding.search_area import (
     build_search_area_config,
     expand_search_area,
@@ -10,6 +9,7 @@ from midscene.core.ai_model.workflows.grounding.search_area import (
     map_search_area_result_to_original_result,
     merge_search_area_results,
 )
+from midscene.core.ai_model.workflows.grounding.section_locate import ai_locate_section
 from midscene.core.ai_model.workflows.grounding.utils import (
     format_locate_model_context,
     prepare_locate_model_input,

@@ -1,7 +1,7 @@
 """Synced from upstream ``packages/core/tests/unit-test/agent-metrics.test.ts``
 (``collects usage reported through the model runtime onUsage callback``)."""
 
-from typing import Any, Dict, List
+from typing import Any
 
 
 def _agent(on_llm_usage):
@@ -107,7 +107,7 @@ class TestMetricsCollector:
 
 
 def test_collects_usage_reported_through_the_model_runtime_on_usage_callback():
-    usages: List[Dict[str, Any]] = []
+    usages: list[dict[str, Any]] = []
     agent = _agent(on_llm_usage=usages.append)
     runtime = agent.model_runtime("planning")
     usage = {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}

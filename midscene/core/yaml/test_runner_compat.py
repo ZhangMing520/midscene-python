@@ -2,7 +2,7 @@
 
 import math
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from midscene.core.test_runner.parser.types import (
     CollectedCase,
@@ -55,11 +55,7 @@ def _is_string_param_schema(schema: Any) -> bool:
         "nullable",
         "default",
     ):
-        inner = (
-            schema.get("innerType")
-            or schema.get("inner")
-            or schema.get("schema")
-        )
+        inner = schema.get("innerType") or schema.get("inner") or schema.get("schema")
         return _is_string_param_schema(inner)
     if type_name in ("ZodEffects", "effects"):
         return _is_string_param_schema(schema.get("schema"))
@@ -74,8 +70,8 @@ def _is_string_param_schema(schema: Any) -> bool:
 
 
 def _build_shortcut_action_param(
-    action_name: str, interface_alias: Optional[str], value: str
-) -> Optional[Dict[str, str]]:
+    action_name: str, interface_alias: str | None, value: str
+) -> dict[str, str] | None:
     if action_name == "Launch" or interface_alias == "launch":
         return {"uri": value}
     if action_name == "Terminate" or interface_alias == "terminate":
@@ -100,7 +96,7 @@ def _has_prompt(value: Any) -> bool:
 
 def compile_legacy_flow_item(
     flow_item: Any,
-    action_space: Optional[List[Any]] = None,
+    action_space: list[Any] | None = None,
 ) -> NormalizedStep:
     """Translate known syntax; defer ActionSpace-dependent grammar to the YAML host."""
     action_space = action_space or []
@@ -115,9 +111,9 @@ def compile_legacy_flow_item(
     flow = {key: value for key, value in raw.items() if key != "name"}
 
     def step(
-        node: str, input_value: Dict[str, Any], capture_result: bool = False
+        node: str, input_value: dict[str, Any], capture_result: bool = False
     ) -> NormalizedStep:
-        meta: Dict[str, Any] = {"continueOnError": False}
+        meta: dict[str, Any] = {"continueOnError": False}
         if capture_result:
             meta["captureResult"] = True
             if isinstance(name, str) and name:
@@ -185,9 +181,7 @@ def compile_legacy_flow_item(
     for node in _INSIGHT_NODES:
         if node in flow:
             prompt = flow[node]
-            options = {
-                key: value for key, value in flow.items() if key != node
-            }
+            options = {key: value for key, value in flow.items() if key != node}
             if not prompt:
                 return invalid(f"missing prompt for {node}")
             if "observe" in raw:
@@ -225,9 +219,7 @@ def compile_legacy_flow_item(
             or not math.isfinite(ms)
             or ms <= 0
         ):
-            return invalid(
-                f"ms for sleep must be greater than 0, but got {raw_sleep}"
-            )
+            return invalid(f"ms for sleep must be greater than 0, but got {raw_sleep}")
         return step("sleep", {"ms": ms})
     if "javascript" in flow:
         return step("javascript", {"script": flow["javascript"]}, True)
@@ -245,13 +237,11 @@ def compile_legacy_flow_item(
         ai_input = flow["aiInput"]
         raw_value = flow.get("value")
         options = {
-            key: value
-            for key, value in flow.items()
-            if key not in ("aiInput", "value")
+            key: value for key, value in flow.items() if key not in ("aiInput", "value")
         }
         prompt = options.get("locate") or ai_input or ""
         value = (ai_input or raw_value) if options.get("locate") else raw_value
-        params: Dict[str, Any] = dict(options)
+        params: dict[str, Any] = dict(options)
         if value is not None:
             params["value"] = str(value)
         if prompt:
@@ -329,9 +319,11 @@ def compile_legacy_flow_item(
         if locate_prompt:
             return step("aiTap", {"prompt": locate_prompt, "options": options})
         return invalid("missing prompt for aiTap")
-    if isinstance(flow.get("runAdbShell"), str) and isinstance(
-        flow.get("timeout"), (int, float)
-    ) and not isinstance(flow.get("timeout"), bool):
+    if (
+        isinstance(flow.get("runAdbShell"), str)
+        and isinstance(flow.get("timeout"), (int, float))
+        and not isinstance(flow.get("timeout"), bool)
+    ):
         return step(
             "runAdbShell",
             {"command": flow["runAdbShell"], "timeout": flow["timeout"]},
@@ -354,19 +346,13 @@ def compile_legacy_flow_item(
     action_name = _action_attr(action, "name")
     interface_alias = _action_attr(action, "interface_alias")
     key = (
-        interface_alias
-        if interface_alias and interface_alias in flow
-        else action_name
+        interface_alias if interface_alias and interface_alias in flow else action_name
     )
     value = flow.get(key)
     if isinstance(value, str):
-        shortcut = _build_shortcut_action_param(
-            action_name, interface_alias, value
-        )
+        shortcut = _build_shortcut_action_param(action_name, interface_alias, value)
         if shortcut:
-            return step(
-                "action", {"name": action_name, "params": shortcut}, True
-            )
+            return step("action", {"name": action_name, "params": shortcut}, True)
         if _is_string_param_schema(_action_attr(action, "param_schema")):
             return step("action", {"name": action_name, "params": value}, True)
     prompt = value if isinstance(value, str) else ""
@@ -394,18 +380,17 @@ def _legacy_document_id(source_path: str) -> str:
 
 
 def collect_legacy_yaml_task(
-    task: Dict[str, Any],
+    task: dict[str, Any],
     task_index: int,
     source_path: str = "<inline-yaml>",
-    action_space: Optional[List[Any]] = None,
+    action_space: list[Any] | None = None,
 ) -> CollectedCase:
     """Compile one legacy task into a Runner Case with its original task index."""
     document_id = _legacy_document_id(source_path)
     flow = task.get("flow")
     if isinstance(flow, list):
         steps = [
-            compile_legacy_flow_item(flow_item, action_space)
-            for flow_item in flow
+            compile_legacy_flow_item(flow_item, action_space) for flow_item in flow
         ]
     else:
         steps = [
@@ -431,7 +416,7 @@ def collect_legacy_yaml_task(
 
 
 def _legacy_yaml_document(
-    source_path: str, cases: List[CollectedCase]
+    source_path: str, cases: list[CollectedCase]
 ) -> CollectedWorkflowDocument:
     return {
         "documentId": _legacy_document_id(source_path),
@@ -448,35 +433,29 @@ def _legacy_yaml_document(
 
 
 def collect_legacy_yaml_task_document(
-    task: Dict[str, Any],
+    task: dict[str, Any],
     task_index: int,
     source_path: str = "<inline-yaml>",
-    action_space: Optional[List[Any]] = None,
+    action_space: list[Any] | None = None,
 ) -> CollectedWorkflowDocument:
     """Compile one legacy task into a one-Case Runner document."""
     return _legacy_yaml_document(
         source_path,
-        [
-            collect_legacy_yaml_task(
-                task, task_index, source_path, action_space
-            )
-        ],
+        [collect_legacy_yaml_task(task, task_index, source_path, action_space)],
     )
 
 
 def collect_legacy_yaml_document(
-    script: Dict[str, Any],
+    script: dict[str, Any],
     source_path: str = "<inline-yaml>",
-    action_space: Optional[List[Any]] = None,
-    identity: Optional[CollectedWorkflowDocument] = None,
+    action_space: list[Any] | None = None,
+    identity: CollectedWorkflowDocument | None = None,
 ) -> CollectedWorkflowDocument:
     """Compile the legacy tasks/flow shape into the Runner document/case/step IR."""
     document = _legacy_yaml_document(
         source_path,
         [
-            collect_legacy_yaml_task(
-                task, task_index, source_path, action_space
-            )
+            collect_legacy_yaml_task(task, task_index, source_path, action_space)
             for task_index, task in enumerate(script.get("tasks") or [])
         ],
     )

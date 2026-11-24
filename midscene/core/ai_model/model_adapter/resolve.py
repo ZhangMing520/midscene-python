@@ -1,7 +1,8 @@
 """Resolved model adapter (upstream ai-model/model-adapter/resolve.ts)."""
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 from midscene.core.ai_model.model_adapter.chat_completion import (
     resolve_chat_completion,
@@ -30,23 +31,21 @@ class ResolvedModelAdapter:
     """
 
     model_type: str = "generative"
-    allowed_task_types: Optional[List[str]] = None
-    supported_protocols: List[str] = field(
-        default_factory=lambda: ["openai-chat"]
-    )
-    json_parser: Optional[Callable[..., Any]] = None
-    chat_completion: Dict[str, Any] = field(default_factory=dict)
-    resolve_image_detail: Optional[Callable[..., Any]] = None
-    responses: Dict[str, Any] = field(default_factory=dict)
-    build_codex_app_server_params: Optional[Callable[..., Any]] = None
-    image_preprocess: Dict[str, Any] = field(default_factory=dict)
-    insight: Dict[str, Any] = field(default_factory=dict)
-    planning: Dict[str, Any] = field(default_factory=dict)
-    locate: Dict[str, Any] = field(default_factory=dict)
+    allowed_task_types: list[str] | None = None
+    supported_protocols: list[str] = field(default_factory=lambda: ["openai-chat"])
+    json_parser: Callable[..., Any] | None = None
+    chat_completion: dict[str, Any] = field(default_factory=dict)
+    resolve_image_detail: Callable[..., Any] | None = None
+    responses: dict[str, Any] = field(default_factory=dict)
+    build_codex_app_server_params: Callable[..., Any] | None = None
+    image_preprocess: dict[str, Any] = field(default_factory=dict)
+    insight: dict[str, Any] = field(default_factory=dict)
+    planning: dict[str, Any] = field(default_factory=dict)
+    locate: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_config(
-        cls, config: Optional[Dict[str, Any]] = None, model_family: str = "default"
+        cls, config: dict[str, Any] | None = None, model_family: str = "default"
     ) -> "ResolvedModelAdapter":
         config = config or {}
         return cls(
@@ -75,31 +74,31 @@ class ModelAdapter:
     def __init__(
         self,
         family: str,
-        build_chat_completion_params: Optional[Callable] = None,
-        unsupported_user_config: Optional[List[str]] = None,
+        build_chat_completion_params: Callable | None = None,
+        unsupported_user_config: list[str] | None = None,
         use_reasoning_as_content_fallback: bool = False,
-        reasoning_content_keys: Optional[List[str]] = None,
-        locate_element_format: Optional[Dict[str, Any]] = None,
-        image_pad_block_size: Optional[int] = None,
-        supported_protocols: Optional[List[str]] = None,
-        build_responses_params: Optional[Callable] = None,
-        responses_unsupported_user_config: Optional[List[str]] = None,
-        search_area_locate_format: Optional[Dict[str, Any]] = None,
-        search_area_protocol: Optional[Dict[str, Any]] = None,
-        element_protocol: Optional[Dict[str, Any]] = None,
-        allowed_task_types: Optional[List[str]] = None,
-        replanning_cycle_limit: Optional[int] = None,
+        reasoning_content_keys: list[str] | None = None,
+        locate_element_format: dict[str, Any] | None = None,
+        image_pad_block_size: int | None = None,
+        supported_protocols: list[str] | None = None,
+        build_responses_params: Callable | None = None,
+        responses_unsupported_user_config: list[str] | None = None,
+        search_area_locate_format: dict[str, Any] | None = None,
+        search_area_protocol: dict[str, Any] | None = None,
+        element_protocol: dict[str, Any] | None = None,
+        allowed_task_types: list[str] | None = None,
+        replanning_cycle_limit: int | None = None,
         cache_enabled: bool = True,
         planning_kind: str = "standard",
-        planning_plan_fn: Optional[Callable] = None,
+        planning_plan_fn: Callable | None = None,
         locate_kind: str = "standard",
-        locate_fn: Optional[Callable] = None,
-        locate_prompt_order: Optional[str] = None,
+        locate_fn: Callable | None = None,
+        locate_prompt_order: str | None = None,
         replay_raw_assistant_message: bool = False,
-        supports_action_deep_locate: Optional[bool] = None,
-        insight_boolean_fn: Optional[Callable] = None,
-        json_parser: Optional[Callable] = None,
-        extract_content_and_reasoning: Optional[Callable] = None,
+        supports_action_deep_locate: bool | None = None,
+        insight_boolean_fn: Callable | None = None,
+        json_parser: Callable | None = None,
+        extract_content_and_reasoning: Callable | None = None,
     ):
         self.family = family
         self._build_params = build_chat_completion_params or _build_default_params
@@ -110,9 +109,7 @@ class ModelAdapter:
         self.image_pad_block_size = image_pad_block_size
         self.supported_protocols_list = supported_protocols or ["openai-chat"]
         self.build_responses_params = build_responses_params
-        self.responses_unsupported_user_config = (
-            responses_unsupported_user_config or []
-        )
+        self.responses_unsupported_user_config = responses_unsupported_user_config or []
         self._search_area_locate_format = search_area_locate_format
         self._search_area_protocol = search_area_protocol
         self._element_protocol = element_protocol
@@ -124,7 +121,7 @@ class ModelAdapter:
         self.locate_kind = locate_kind
         self.locate_fn = locate_fn
         self._locate_prompt_order_source = locate_prompt_order
-        self._locate_prompt_order: Optional[Dict[str, Any]] = None
+        self._locate_prompt_order: dict[str, Any] | None = None
         self.replay_raw_assistant_message = replay_raw_assistant_message
         self.supports_action_deep_locate = (
             supports_action_deep_locate
@@ -134,19 +131,19 @@ class ModelAdapter:
         self.insight_boolean_fn = insight_boolean_fn
         self.json_parser = json_parser
         self.extract_content_and_reasoning = extract_content_and_reasoning
-        self._locate_codec: Optional[Any] = None
-        self._locate_protocol: Optional[Any] = None
-        self._planning_protocol: Optional[Any] = None
+        self._locate_codec: Any | None = None
+        self._locate_protocol: Any | None = None
+        self._planning_protocol: Any | None = None
 
     def supports_protocol(self, protocol: str) -> bool:
         return protocol in self.supported_protocols_list
 
     def build_chat_completion_params(
         self,
-        midscene_defaults: Dict[str, Any],
+        midscene_defaults: dict[str, Any],
         user_config: ModelRequestUserConfig,
         expected_json_object_response: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         merged_user_config = dict(user_config)
         for key in self.unsupported_user_config:
             merged_user_config.pop(key, None)
@@ -184,13 +181,11 @@ class ModelAdapter:
     @property
     def locate_result_codec(self):
         if self._locate_codec is None:
-            self._locate_codec = create_locate_result_codec(
-                self._locate_element_format
-            )
+            self._locate_codec = create_locate_result_codec(self._locate_element_format)
         return self._locate_codec
 
     @property
-    def locate_prompt_order(self) -> Dict[str, Any]:
+    def locate_prompt_order(self) -> dict[str, Any]:
         """Parsed locate prompt ordering (adapter-definition level)."""
         if self._locate_prompt_order is None:
             from midscene.core.ai_model.model_adapter.locate_prompt_order import (

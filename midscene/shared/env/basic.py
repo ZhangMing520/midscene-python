@@ -5,12 +5,11 @@ keys without importing the model configuration layer.
 """
 
 import os
-from typing import Optional
 
 from midscene.shared.env.constants import BASIC_ENV_KEYS
 
 
-def get_basic_env_value(key: str) -> Optional[str]:
+def get_basic_env_value(key: str) -> str | None:
     """Read a basic env value from the process environment."""
     if key not in BASIC_ENV_KEYS:
         raise ValueError(f"getBasicEnvValue with key {key} is not supported.")

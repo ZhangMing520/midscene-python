@@ -37,7 +37,9 @@ def test_get_connected_displays_delegates_to_the_device(monkeypatch):
     async def fake_list_displays():
         return displays
 
-    monkeypatch.setattr(ComputerDevice, "list_displays", staticmethod(fake_list_displays))
+    monkeypatch.setattr(
+        ComputerDevice, "list_displays", staticmethod(fake_list_displays)
+    )
 
     assert asyncio.run(get_connected_displays()) == displays
 

@@ -5,19 +5,21 @@ synced; the upstream cases that build whole-file retry histories through
 ScriptPlayer remain covered by their own upstream-named suites.
 """
 
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
 
-from midscene.core.test_runner.reporting.test_run_report import (
-    build_test_run_report_dump,
-)
 from midscene.core.test_runner.reporting.execution_record import (
     execution_records_to_report_input,
 )
+from midscene.core.test_runner.reporting.test_run_report import (
+    build_test_run_report_dump,
+)
 
 
-def _step(node: str = "echo", meta: Dict[str, Any] = None, **input_value) -> Dict[str, Any]:
+def _step(
+    node: str = "echo", meta: dict[str, Any] = None, **input_value
+) -> dict[str, Any]:
     return {
         "node": node,
         "input": input_value,
@@ -25,7 +27,7 @@ def _step(node: str = "echo", meta: Dict[str, Any] = None, **input_value) -> Dic
     }
 
 
-def _document(steps: List[Dict[str, Any]], **lifecycle) -> Dict[str, Any]:
+def _document(steps: list[dict[str, Any]], **lifecycle) -> dict[str, Any]:
     return {
         "documentId": "doc-1",
         "projectId": "project-1",
@@ -291,7 +293,9 @@ def test_retains_independently_captured_usage_when_agent_detail_storage_fails():
         "modelUsageUnavailable": True,
     }
     diagnostics = [
-        item for item in dump["diagnostics"] if item["code"] == "agent-detail-unresolved"
+        item
+        for item in dump["diagnostics"]
+        if item["code"] == "agent-detail-unresolved"
     ]
     assert diagnostics and diagnostics[0]["executionId"] == "exec-missing"
     assert dump["metrics"]["collection"]["status"] == "unknown"

@@ -2,7 +2,7 @@
 
 import asyncio
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -13,23 +13,21 @@ DETAIL_LOOKUP_ADB_TIMEOUT_MS = 8000
 DETAIL_LOOKUP_STEP_TIMEOUT_MS = 2000
 
 
-def _get_device_option(
-    device_options: Optional[Dict[str, Any]], *keys: str
-) -> Any:
+def _get_device_option(device_options: dict[str, Any] | None, *keys: str) -> Any:
     for key in keys:
         if device_options and key in device_options:
             return device_options[key]
     return None
 
 
-def _clean_prop(value: Any) -> Optional[str]:
+def _clean_prop(value: Any) -> str | None:
     if value is None:
         return None
     normalized = str(value).strip()
     return normalized or None
 
 
-def _parse_resolution(stdout: str) -> Optional[str]:
+def _parse_resolution(stdout: str) -> str | None:
     override_size = re.search(r"Override size:\s*([^\r\n]+)", stdout)
     if override_size and override_size.group(1):
         return override_size.group(1).strip()
@@ -39,10 +37,9 @@ def _parse_resolution(stdout: str) -> Optional[str]:
     return None
 
 
-
-def parse_adb_devices_output(output: str) -> List[str]:
+def parse_adb_devices_output(output: str) -> list[str]:
     """Extract device serials from `adb devices` output."""
-    devices: List[str] = []
+    devices: list[str] = []
     for line in output.strip().split("\n")[1:]:  # Skip header
         if "\t" in line:
             device_id = line.split("\t")[0]
@@ -51,7 +48,7 @@ def parse_adb_devices_output(output: str) -> List[str]:
     return devices
 
 
-def parse_screen_size_output(output: str) -> Optional[Size]:
+def parse_screen_size_output(output: str) -> Size | None:
     """Parse `wm size` output, preferring the physical size."""
     for line in output.strip().splitlines():
         if "Physical size:" in line and "x" in line:
@@ -78,10 +75,10 @@ def parse_screen_density(output: str) -> int:
 
 
 async def get_connected_devices(
-    device_options: Optional[Dict[str, Any]] = None,
-) -> List[Dict[str, str]]:
+    device_options: dict[str, Any] | None = None,
+) -> list[dict[str, str]]:
     """List connected Android devices (upstream getConnectedDevices)."""
-    adb_executable: Optional[str] = None
+    adb_executable: str | None = None
     try:
         adb = await create_android_adb(
             adb_exec_timeout=60000,
@@ -94,9 +91,7 @@ async def get_connected_devices(
     except Exception as error:  # noqa: BLE001 - mirror upstream error wrapping
         logger.error(f"Failed to get device list: {error}")
         executable_context = (
-            f" (ADB executable: {adb_executable})"
-            if adb_executable
-            else ""
+            f" (ADB executable: {adb_executable})" if adb_executable else ""
         )
         raise RuntimeError(
             "Unable to get connected Android device list"
@@ -111,22 +106,22 @@ async def _timed_detail_lookup(coro, label: str) -> Any:
         return await asyncio.wait_for(
             coro, timeout=DETAIL_LOOKUP_STEP_TIMEOUT_MS / 1000.0
         )
-    except asyncio.TimeoutError as error:
+    except TimeoutError as error:
         raise RuntimeError(
             f"{label} timed out after {DETAIL_LOOKUP_STEP_TIMEOUT_MS}ms"
         ) from error
 
 
 async def get_connected_devices_with_details(
-    device_options: Optional[Dict[str, Any]] = None,
-) -> List[Dict[str, Any]]:
+    device_options: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
     """Enrich the connected-device list with model/brand/resolution/density."""
     devices = await get_connected_devices(device_options)
     if not devices:
         return []
 
-    async def enrich(device: Dict[str, str]) -> Dict[str, Any]:
-        detailed_device: Dict[str, Any] = dict(device)
+    async def enrich(device: dict[str, str]) -> dict[str, Any]:
+        detailed_device: dict[str, Any] = dict(device)
         udid = device.get("udid")
         try:
             adb = await create_android_adb(
@@ -135,26 +130,29 @@ async def get_connected_devices_with_details(
             )
             adb.set_device_id(udid)
 
-            model_result, brand_result, size_result, density_result = (
-                await asyncio.gather(
-                    _timed_detail_lookup(
-                        adb.shell(["getprop", "ro.product.model"]),
-                        f"Android model lookup for {udid}",
-                    ),
-                    _timed_detail_lookup(
-                        adb.shell(["getprop", "ro.product.brand"]),
-                        f"Android brand lookup for {udid}",
-                    ),
-                    _timed_detail_lookup(
-                        adb.shell(["wm", "size"]),
-                        f"Android resolution lookup for {udid}",
-                    ),
-                    _timed_detail_lookup(
-                        adb.get_screen_density(),
-                        f"Android density lookup for {udid}",
-                    ),
-                    return_exceptions=True,
-                )
+            (
+                model_result,
+                brand_result,
+                size_result,
+                density_result,
+            ) = await asyncio.gather(
+                _timed_detail_lookup(
+                    adb.shell(["getprop", "ro.product.model"]),
+                    f"Android model lookup for {udid}",
+                ),
+                _timed_detail_lookup(
+                    adb.shell(["getprop", "ro.product.brand"]),
+                    f"Android brand lookup for {udid}",
+                ),
+                _timed_detail_lookup(
+                    adb.shell(["wm", "size"]),
+                    f"Android resolution lookup for {udid}",
+                ),
+                _timed_detail_lookup(
+                    adb.get_screen_density(),
+                    f"Android density lookup for {udid}",
+                ),
+                return_exceptions=True,
             )
 
             if not isinstance(model_result, BaseException):
@@ -162,9 +160,7 @@ async def get_connected_devices_with_details(
             if not isinstance(brand_result, BaseException):
                 detailed_device["brand"] = _clean_prop(brand_result)
             if not isinstance(size_result, BaseException):
-                detailed_device["resolution"] = _parse_resolution(
-                    str(size_result)
-                )
+                detailed_device["resolution"] = _parse_resolution(str(size_result))
             if not isinstance(density_result, BaseException) and isinstance(
                 density_result, int
             ):

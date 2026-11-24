@@ -7,7 +7,7 @@ import json
 import re
 import time
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from midscene.core.ai_model.service_caller.types import AIResponseParseError
 from midscene.core.ai_model.shared.json import extract_json_from_code_block
@@ -32,35 +32,29 @@ DESCRIBE_DEEP_CONTEXT_CONFIG = {
 }
 
 
-def clamp_rect(rect: Dict[str, float], size: Dict[str, Any]) -> Dict[str, float]:
+def clamp_rect(rect: dict[str, float], size: dict[str, Any]) -> dict[str, float]:
     """Clamp a rect into the image bounds."""
     width = min(float(rect["width"]), float(size["width"]))
     height = min(float(rect["height"]), float(size["height"]))
     return {
-        "left": max(
-            0.0, min(float(rect["left"]), float(size["width"]) - width)
-        ),
-        "top": max(
-            0.0, min(float(rect["top"]), float(size["height"]) - height)
-        ),
+        "left": max(0.0, min(float(rect["left"]), float(size["width"]) - width)),
+        "top": max(0.0, min(float(rect["top"]), float(size["height"]) - height)),
         "width": width,
         "height": height,
     }
 
 
 def get_describe_deep_context_areas(
-    rect: Dict[str, float], screen_size: Dict[str, Any]
-) -> List[Dict[str, Any]]:
-    return [
-        {"kind": "focused", "rect": expand_search_area(rect, screen_size)}
-    ]
+    rect: dict[str, float], screen_size: dict[str, Any]
+) -> list[dict[str, Any]]:
+    return [{"kind": "focused", "rect": expand_search_area(rect, screen_size)}]
 
 
 def get_rect_in_crop(
-    rect: Dict[str, float],
-    crop_rect: Dict[str, float],
-    crop_size: Dict[str, Any],
-) -> Dict[str, float]:
+    rect: dict[str, float],
+    crop_rect: dict[str, float],
+    crop_size: dict[str, Any],
+) -> dict[str, float]:
     return clamp_rect(
         {
             "left": rect["left"] - crop_rect["left"],
@@ -72,16 +66,14 @@ def get_rect_in_crop(
     )
 
 
-def get_describe_marker_rect(rect: Dict[str, float]) -> Dict[str, float]:
+def get_describe_marker_rect(rect: dict[str, float]) -> dict[str, float]:
     if rect["width"] < DESCRIBE_WIDE_MARKER_INSET_MIN_WIDTH:
         return rect
 
     horizontal_inset = round(
         rect["width"] * _DESCRIBE_WIDE_MARKER_HORIZONTAL_INSET_RATIO
     )
-    vertical_inset = round(
-        rect["height"] * _DESCRIBE_WIDE_MARKER_VERTICAL_INSET_RATIO
-    )
+    vertical_inset = round(rect["height"] * _DESCRIBE_WIDE_MARKER_VERTICAL_INSET_RATIO)
 
     return {
         "left": rect["left"] + horizontal_inset,
@@ -91,7 +83,7 @@ def get_describe_marker_rect(rect: Dict[str, float]) -> Dict[str, float]:
     }
 
 
-def get_describe_marker_border_thickness(rect: Dict[str, float]) -> int:
+def get_describe_marker_border_thickness(rect: dict[str, float]) -> int:
     if (
         rect["width"] <= DESCRIBE_POINT_MARKER_MAX_SIZE
         and rect["height"] <= DESCRIBE_POINT_MARKER_MAX_SIZE
@@ -101,15 +93,13 @@ def get_describe_marker_border_thickness(rect: Dict[str, float]) -> int:
 
 
 def get_describe_deep_locate_resize_size(
-    size: Dict[str, Any]
-) -> Optional[Dict[str, int]]:
+    size: dict[str, Any],
+) -> dict[str, int] | None:
     max_edge = max(float(size["width"]), float(size["height"]))
     if not max_edge:
         return None
     resize = DESCRIBE_DEEP_CONTEXT_CONFIG["resize"]
-    scale = min(
-        resize["cropUpscaleMaxRatio"], resize["cropMaxLongEdge"] / max_edge
-    )
+    scale = min(resize["cropUpscaleMaxRatio"], resize["cropMaxLongEdge"] / max_edge)
     if scale <= 1.05:
         return None
     return {
@@ -118,7 +108,7 @@ def get_describe_deep_locate_resize_size(
     }
 
 
-def create_service_dump(data: Dict[str, Any]) -> Dict[str, Any]:
+def create_service_dump(data: dict[str, Any]) -> dict[str, Any]:
     """Create one ServiceDump entry, filling log id and time."""
     return {
         "logId": uuid.uuid4().hex,
@@ -127,21 +117,15 @@ def create_service_dump(data: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _read_next_significant_char(
-    value: str, start_index: int
-) -> Optional[str]:
+def _read_next_significant_char(value: str, start_index: int) -> str | None:
     index = start_index
     while index < len(value) and value[index].isspace():
         index += 1
     return value[index] if index < len(value) else None
 
 
-def _extract_possibly_malformed_string_field(
-    value: str, field_name: str
-) -> Optional[str]:
-    pattern = re.compile(
-        rf'"{re.escape(field_name)}"\s*:\s*"'
-    )
+def _extract_possibly_malformed_string_field(value: str, field_name: str) -> str | None:
+    pattern = re.compile(rf'"{re.escape(field_name)}"\s*:\s*"')
     field_start = pattern.search(value)
     if not field_start:
         return None
@@ -182,7 +166,7 @@ def _extract_possibly_malformed_string_field(
 
 def recover_describe_response_from_parse_error(
     error: BaseException,
-) -> Optional[Dict[str, str]]:
+) -> dict[str, str] | None:
     """Recover a `description` from a malformed describe response."""
     message = str(error)
     if isinstance(error, AIResponseParseError):

@@ -39,9 +39,9 @@ class TestUiTars:
 
     def test_transform_hotkey(self):
         from midscene.core.ai_model.workflows.planning.custom_planning import (
+            _transform_hotkey_input,
             parse_ui_tars_action_calls,
             transform_ui_tars_actions,
-            _transform_hotkey_input,
         )
 
         assert _transform_hotkey_input("ctrl a") == ["Control", "a"]
@@ -81,7 +81,6 @@ class TestUiTars:
         box = json.loads(actions[0]["action_inputs"]["start_box"])
         # center of (100,200)-(300,400) = (200,300) -> /1000
         assert box == pytest.approx([0.2, 0.3, 0.2, 0.3], abs=1e-6)
-
 
 
 def test_ui_tars_get_summary_strips_reflection():

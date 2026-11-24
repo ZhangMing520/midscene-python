@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, TypedDict
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, TypedDict
 
+from midscene.core.ai_model.model_adapter.planning_protocol import (
+    StandardPlanningProtocol,
+)
 from midscene.core.ai_model.shared.model_locate_result import (
     LocateResultCodec,
     create_locate_result_codec,
     resolve_locate_result_coordinates,
-)
-from midscene.core.ai_model.model_adapter.planning_protocol import (
-    StandardPlanningProtocol,
 )
 
 if TYPE_CHECKING:
@@ -20,11 +21,11 @@ DEFAULT_REPLANNING_CYCLE_LIMIT = 20
 
 
 class ResolvedCustomPlanningDefinition(TypedDict, total=False):
-    messages: Dict[str, Any]
-    coordinates: Dict[str, Any]
-    coordinate_system: Dict[str, Any]
+    messages: dict[str, Any]
+    coordinates: dict[str, Any]
+    coordinate_system: dict[str, Any]
     coordinate_normalizer: LocateResultCodec
-    parse_response: Callable[..., Dict[str, Any]]
+    parse_response: Callable[..., dict[str, Any]]
     transform_actions: Callable[..., Any]
     should_continue_planning: Callable[..., bool]
     build_response_log: Callable[..., Any]
@@ -35,13 +36,13 @@ class PlanningAdapter(TypedDict, total=False):
     cache_enabled: bool
     default_replanning_cycle_limit: int
     supports_action_deep_locate: bool
-    plan_fn: Optional[PlanFn]
+    plan_fn: PlanFn | None
     protocol: StandardPlanningProtocol
-    locate_result_codec: Optional[LocateResultCodec]
+    locate_result_codec: LocateResultCodec | None
 
 
 def resolve_custom_planning_definition(
-    config: Dict[str, Any],
+    config: dict[str, Any],
 ) -> ResolvedCustomPlanningDefinition:
     """Attach the resolved coordinate system and normalizer to a config."""
     coordinates = config.get("coordinates") or {}
@@ -56,7 +57,7 @@ def resolve_custom_planning_definition(
 
 def resolve_planning(
     adapter: Any,
-    protocol_context: Optional[Dict[str, Any]] = None,
+    protocol_context: dict[str, Any] | None = None,
 ) -> PlanningAdapter:
     """Resolve the custom or standard planning adapter for a model adapter."""
     cycle_limit = (

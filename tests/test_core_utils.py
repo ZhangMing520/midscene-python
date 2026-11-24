@@ -210,15 +210,11 @@ class TestAgentUtils:
             def get_env_config_in_boolean(self, _key):
                 return self.quiet
 
-        monkeypatch.setattr(
-            utils, "get_global_config_manager", lambda: _Config(True)
-        )
+        monkeypatch.setattr(utils, "get_global_config_manager", lambda: _Config(True))
         utils.print_report_msg("report.html")
         assert messages == []
 
-        monkeypatch.setattr(
-            utils, "get_global_config_manager", lambda: _Config(False)
-        )
+        monkeypatch.setattr(utils, "get_global_config_manager", lambda: _Config(False))
         utils.print_report_msg("report.html")
         assert messages == ["Midscene - report file updated: report.html"]
 
@@ -255,7 +251,10 @@ async def test_upload_test_info_to_server_reports_each_repo_once(monkeypatch):
     calls = []
 
     async def fake_git_info():
-        return {"repoUrl": "git@example.com:org/repo.git", "userEmail": "dev@example.com"}
+        return {
+            "repoUrl": "git@example.com:org/repo.git",
+            "userEmail": "dev@example.com",
+        }
 
     async def fake_post(server_url, payload):
         calls.append((server_url, payload))

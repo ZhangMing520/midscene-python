@@ -95,9 +95,7 @@ def test_reads_and_filters_darwin_display_geometries(tmp_path, monkeypatch):
         "'bounds': {'x': float('inf'), 'y': 0, 'width': 1, 'height': 1}}"
         "]}))\n",
     )
-    monkeypatch.setattr(
-        device_module, "get_display_info_binary", lambda: helper
-    )
+    monkeypatch.setattr(device_module, "get_display_info_binary", lambda: helper)
 
     displays = read_darwin_display_geometries()
 
@@ -110,9 +108,7 @@ def test_rejects_unparseable_display_info_output(tmp_path, monkeypatch):
     helper = _fake_helper(
         tmp_path, "display-info", "#!/usr/bin/env python3\nprint('not json')\n"
     )
-    monkeypatch.setattr(
-        device_module, "get_display_info_binary", lambda: helper
-    )
+    monkeypatch.setattr(device_module, "get_display_info_binary", lambda: helper)
 
     assert read_darwin_display_geometries() == []
 
@@ -138,7 +134,10 @@ def test_resolves_darwin_display_geometry_by_primary_index_and_cg_id():
     assert resolve_darwin_display_geometry_from_list("10", displays) is displays[0]
     for invalid in ("abc", "1.5", "-1", ""):
         if invalid == "":
-            assert resolve_darwin_display_geometry_from_list(invalid, displays) is displays[1]
+            assert (
+                resolve_darwin_display_geometry_from_list(invalid, displays)
+                is displays[1]
+            )
         else:
             assert resolve_darwin_display_geometry_from_list(invalid, displays) is None
     assert resolve_darwin_display_geometry_from_list("7", displays) is None
@@ -146,9 +145,7 @@ def test_resolves_darwin_display_geometry_by_primary_index_and_cg_id():
 
 
 def test_maps_display_local_points_to_global_coordinates():
-    geometry = {
-        "bounds": {"x": 1920, "y": -200, "width": 1920, "height": 1080}
-    }
+    geometry = {"bounds": {"x": 1920, "y": -200, "width": 1920, "height": 1080}}
 
     assert map_display_local_point_to_global({"x": 10, "y": 20}, geometry) == {
         "x": 1930,
@@ -160,10 +157,14 @@ def test_maps_display_local_points_to_global_coordinates():
 
 def test_run_phased_scroll_reports_helper_exit_status(tmp_path, monkeypatch):
     success = _fake_helper(
-        tmp_path, "phased-scroll-ok", "#!/usr/bin/env python3\nimport sys\nsys.exit(0)\n"
+        tmp_path,
+        "phased-scroll-ok",
+        "#!/usr/bin/env python3\nimport sys\nsys.exit(0)\n",
     )
     failure = _fake_helper(
-        tmp_path, "phased-scroll-fail", "#!/usr/bin/env python3\nimport sys\nsys.exit(3)\n"
+        tmp_path,
+        "phased-scroll-fail",
+        "#!/usr/bin/env python3\nimport sys\nsys.exit(3)\n",
     )
 
     monkeypatch.setattr(device_module, "_phased_scroll_exec_warned", False)

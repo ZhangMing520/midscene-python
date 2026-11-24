@@ -1,7 +1,7 @@
 """Shell-text escaping and Yadb routing (upstream adb-shell.ts)."""
 
 import re
-from typing import Any, Dict, Optional
+from typing import Any
 
 YADB_VERSION = "v1.1.1"
 YADB_DEVICE_PATH = "/data/local/tmp/yadb"
@@ -63,7 +63,7 @@ def _truncate_adb_shell_stream(output: str, stream_name: str) -> str:
 def build_run_adb_shell_planning_feedback(
     command: Any = None,
     stdout: str = "",
-) -> Optional[str]:
+) -> str | None:
     """Build the planning feedback for a RunAdbShell result (upstream).
 
     Passes the full stdout through; context truncation belongs to the planning
@@ -73,9 +73,7 @@ def build_run_adb_shell_planning_feedback(
         return None
 
     command_text = (
-        f"Command: {command}\n"
-        if isinstance(command, str) and len(command) > 0
-        else ""
+        f"Command: {command}\n" if isinstance(command, str) and len(command) > 0 else ""
     )
     return f"{command_text}Stdout:\n{stdout}"
 
@@ -120,7 +118,7 @@ def get_adb_shell_stdout_or_throw(
 async def run_adb_shell_stdout_or_throw(
     adb: Any,
     command: str,
-    options: Optional[Dict[str, Any]] = None,
+    options: dict[str, Any] | None = None,
 ) -> str:
     """Run `adb shell` and return stdout, raising when stderr is non-empty."""
     options = dict(options or {})
@@ -151,4 +149,3 @@ __all__ = [
     "shell_escape_arg",
     "should_use_yadb_for_text",
 ]
-

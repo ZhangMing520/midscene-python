@@ -4,8 +4,9 @@ Upstream uses the official OpenAI SDK (``openai/openai-client.ts``); the
 Python SDK talks to the same wire protocol over httpx.
 """
 
-from typing import Any, AsyncIterator, Dict, Optional
 import json
+from collections.abc import AsyncIterator
+from typing import Any
 
 import httpx
 
@@ -15,7 +16,7 @@ from midscene.core.ai_model.service_caller.openai.siwc.errors import (
 )
 
 
-def resolve_endpoint(model_config: Dict[str, Any], protocol: str) -> str:
+def resolve_endpoint(model_config: dict[str, Any], protocol: str) -> str:
     base_url = (
         model_config.get("openaiBaseURL") or "https://api.openai.com/v1"
     ).rstrip("/")
@@ -25,9 +26,9 @@ def resolve_endpoint(model_config: Dict[str, Any], protocol: str) -> str:
 
 
 def request_headers(
-    model_config: Dict[str, Any],
-    execution_id: Optional[str] = None,
-) -> Dict[str, str]:
+    model_config: dict[str, Any],
+    execution_id: str | None = None,
+) -> dict[str, str]:
     headers = {"Content-Type": "application/json"}
     api_key = model_config.get("openaiApiKey")
     if api_key:
@@ -47,7 +48,7 @@ def request_headers(
     return headers
 
 
-def resolve_proxy(model_config: Dict[str, Any]) -> Optional[str]:
+def resolve_proxy(model_config: dict[str, Any]) -> str | None:
     from midscene.core.ai_model.service_caller.proxy.proxy import (
         resolve_proxy_agent,
     )
@@ -58,7 +59,7 @@ def resolve_proxy(model_config: Dict[str, Any]) -> Optional[str]:
     )
 
 
-def _timeout_seconds(effective_timeout: Optional[float]) -> Optional[float]:
+def _timeout_seconds(effective_timeout: float | None) -> float | None:
     return effective_timeout / 1000 if effective_timeout is not None else None
 
 
@@ -76,7 +77,7 @@ def _is_siwc_token_expired(status_code: int, body: str) -> bool:
 def _raise_http_error(
     status_code: int,
     body: str,
-    context: Optional[openai_request_context.OpenAIRequestContext] = None,
+    context: openai_request_context.OpenAIRequestContext | None = None,
 ) -> None:
     if _is_siwc_token_expired(status_code, body):
         raise SiwcTokenExpiredError(body[:2000])
@@ -90,7 +91,7 @@ def _raise_http_error(
 
 
 def _context_for_response(
-    response: httpx.Response, body: Optional[str] = None
+    response: httpx.Response, body: str | None = None
 ) -> openai_request_context.OpenAIRequestContext:
     request_id = openai_request_context.request_id_from_headers(response.headers)
     ok = response.status_code < 400
@@ -115,13 +116,13 @@ def _context_for_response(
 
 async def post_json(
     url: str,
-    headers: Dict[str, str],
-    request_body: Dict[str, Any],
-    effective_timeout: Optional[float],
-    proxy: Optional[str],
+    headers: dict[str, str],
+    request_body: dict[str, Any],
+    effective_timeout: float | None,
+    proxy: str | None,
     stream: bool = False,
-    on_chunk: Optional[Any] = None,
-    record_event: Optional[Any] = None,
+    on_chunk: Any | None = None,
+    record_event: Any | None = None,
 ):
     """POST a JSON body and return parsed JSON (or an aggregated stream)."""
     if stream:
@@ -156,10 +157,10 @@ async def post_json(
             response = await client.post(url, headers=headers, json=request_body)
     except httpx.TimeoutException as e:
         if record_event:
-            record_event({"type": "error", "error": f"timeout after {effective_timeout}ms"})
-        raise RuntimeError(
-            f"model request timeout after {effective_timeout}ms"
-        ) from e
+            record_event(
+                {"type": "error", "error": f"timeout after {effective_timeout}ms"}
+            )
+        raise RuntimeError(f"model request timeout after {effective_timeout}ms") from e
     except httpx.HTTPError as e:
         fetch_error = openai_request_context.format_fetch_error(e)
         if record_event:
@@ -179,11 +180,11 @@ async def post_json(
 
 async def stream_lines(
     url: str,
-    headers: Dict[str, str],
-    request_body: Dict[str, Any],
-    effective_timeout: Optional[float],
-    proxy: Optional[str],
-    record_event: Optional[Any] = None,
+    headers: dict[str, str],
+    request_body: dict[str, Any],
+    effective_timeout: float | None,
+    proxy: str | None,
+    record_event: Any | None = None,
 ) -> AsyncIterator[str]:
     """Yield SSE lines from a streaming request."""
     timeout_seconds = _timeout_seconds(effective_timeout)
@@ -214,10 +215,10 @@ async def stream_lines(
                     yield line
     except httpx.TimeoutException as e:
         if record_event:
-            record_event({"type": "error", "error": f"timeout after {effective_timeout}ms"})
-        raise RuntimeError(
-            f"model request timeout after {effective_timeout}ms"
-        ) from e
+            record_event(
+                {"type": "error", "error": f"timeout after {effective_timeout}ms"}
+            )
+        raise RuntimeError(f"model request timeout after {effective_timeout}ms") from e
     except httpx.HTTPError as e:
         fetch_error = openai_request_context.format_fetch_error(e)
         if record_event:
@@ -225,7 +226,7 @@ async def stream_lines(
         raise RuntimeError(f"OpenAI fetch error: {fetch_error}") from e
 
 
-async def create_client(options: Dict[str, Any]) -> Dict[str, Any]:
+async def create_client(options: dict[str, Any]) -> dict[str, Any]:
     """Create the HTTP transport and request-diagnostics context.
 
     Upstream builds an OpenAI SDK client; the Python SDK talks to the same wire
@@ -245,15 +246,13 @@ async def create_client(options: Dict[str, Any]) -> Dict[str, Any]:
     base_url = (
         model_config.get("openaiBaseURL") or "https://api.openai.com/v1"
     ).rstrip("/")
-    client_kwargs: Dict[str, Any] = {
+    client_kwargs: dict[str, Any] = {
         "base_url": base_url,
         "headers": request_headers(model_config, execution_id),
         "proxy": resolve_proxy(model_config),
     }
     if effective_timeout is not None:
-        client_kwargs["timeout"] = httpx.Timeout(
-            effective_timeout / 1000
-        )
+        client_kwargs["timeout"] = httpx.Timeout(effective_timeout / 1000)
 
     return {
         "openai": httpx.AsyncClient(**client_kwargs),
@@ -261,7 +260,7 @@ async def create_client(options: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _client_option(options: Dict[str, Any], *keys: str, default: Any = None) -> Any:
+def _client_option(options: dict[str, Any], *keys: str, default: Any = None) -> Any:
     for key in keys:
         if key in options:
             return options[key]

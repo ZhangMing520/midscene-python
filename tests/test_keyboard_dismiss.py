@@ -68,8 +68,7 @@ def test_selects_one_right_edge_control_when_navigation_controls_exist_on_the_le
 def test_rejects_a_custom_toolbar_with_only_a_right_side_business_action():
     """rejects a custom toolbar with only a right-side business action"""
     assert (
-        select_keyboard_accessory_dismiss_button(TOOLBAR_RECT, [RIGHT_BUTTON])
-        is None
+        select_keyboard_accessory_dismiss_button(TOOLBAR_RECT, [RIGHT_BUTTON]) is None
     )
 
 
@@ -111,9 +110,7 @@ def test_rejects_a_right_side_control_that_is_not_aligned_to_the_right_edge():
 def test_accepts_configured_controls_only_inside_the_keyboard_region():
     """accepts configured controls only inside the keyboard region"""
     assert (
-        is_named_dismiss_button_near_keyboard(
-            RIGHT_BUTTON["rect"], KEYBOARD_RECT
-        )
+        is_named_dismiss_button_near_keyboard(RIGHT_BUTTON["rect"], KEYBOARD_RECT)
         is True
     )
     assert (

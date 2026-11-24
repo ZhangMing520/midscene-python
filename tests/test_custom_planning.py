@@ -37,17 +37,13 @@ async def test_consumes_pending_feedback_in_the_latest_screenshot_message(monkey
         captured["messages"] = messages
         return {"content": "[]", "usage": None}
 
-    monkeypatch.setattr(
-        custom_planning, "call_ai_with_string_response", fake_call
-    )
+    monkeypatch.setattr(custom_planning, "call_ai_with_string_response", fake_call)
 
     context = SimpleNamespace(
         screenshot_base64="data:image/png;base64,SCREENSHOT==",
         size=SimpleNamespace(width=1000, height=800),
     )
-    model_runtime = SimpleNamespace(
-        adapter=SimpleNamespace(image_pad_block_size=None)
-    )
+    model_runtime = SimpleNamespace(adapter=SimpleNamespace(image_pad_block_size=None))
 
     await custom_planning.run_custom_planning(
         "click save",
@@ -103,9 +99,7 @@ class TestBuildCustomPlanningMessages:
             "type": "input-message",
             "message": {
                 "role": "user",
-                "content": [
-                    {"type": "image", "url": "data:image/png;base64,abc"}
-                ],
+                "content": [{"type": "image", "url": "data:image/png;base64,abc"}],
             },
         }
 

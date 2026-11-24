@@ -189,9 +189,7 @@ async def test_decodes_frames_from_a_streamed_mjpeg_response_and_exposes_the_lat
     assert latest is not None
     assert latest["base64"].startswith("data:image/jpeg;base64,")
     # last frame in the stream is jpeg(0x02)
-    decoded = base64.b64decode(
-        latest["base64"].replace("data:image/jpeg;base64,", "")
-    )
+    decoded = base64.b64decode(latest["base64"].replace("data:image/jpeg;base64,", ""))
     assert decoded[2] == 0x02
     source.stop()
     await asyncio.sleep(0)
@@ -215,9 +213,7 @@ async def test_does_not_include_a_signed_stream_url_in_a_startup_timeout(
         clock["value"] += 1000
         return clock["value"]
 
-    source = MjpegFrameSource(
-        "https://stream.example/live/mjpeg?token=secret", now
-    )
+    source = MjpegFrameSource("https://stream.example/live/mjpeg?token=secret", now)
     try:
         with pytest.raises(RuntimeError) as excinfo:
             await source.ensure_started(3000)

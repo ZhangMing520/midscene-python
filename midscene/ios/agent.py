@@ -5,7 +5,7 @@ import importlib.util
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -31,15 +31,15 @@ class IOSAgent(Agent):
     """AI agent controlling an iOS device through WebDriverAgent."""
 
     @staticmethod
-    def get_test_runner_node_definitions() -> List[Any]:
+    def get_test_runner_node_definitions() -> list[Any]:
         """Common Agent nodes (platform bindings live in the Node-only module)."""
         return Agent.get_test_runner_node_definitions()
 
     def __init__(
         self,
-        device: Optional[IOSDevice] = None,
-        options: Optional[Any] = None,
-        app_name_mapping: Optional[Dict[str, str]] = None,
+        device: IOSDevice | None = None,
+        options: Any | None = None,
+        app_name_mapping: dict[str, str] | None = None,
     ):
         app_name_mapping = app_name_mapping or _option(
             options, "appNameMapping", "app_name_mapping"
@@ -99,7 +99,7 @@ def _load_overridden_device_class(module_target: str) -> Any:
 
 
 async def agent_from_web_driver_agent(
-    options: Optional[Any] = None,
+    options: Any | None = None,
 ) -> IOSAgent:
     """Create an iOS agent backed by a running WebDriverAgent (upstream)."""
     if isinstance(options, dict):
@@ -109,9 +109,9 @@ async def agent_from_web_driver_agent(
     override_module = None
     if isinstance(options, dict):
         override_module = options.get("iOSDeviceClassOverride")
-    override_module = (
-        str(override_module).strip() if override_module else None
-    ) or (os.environ.get(MIDSCENE_IOS_DEVICE_CLASS_OVERRIDE) or "").strip()
+    override_module = (str(override_module).strip() if override_module else None) or (
+        os.environ.get(MIDSCENE_IOS_DEVICE_CLASS_OVERRIDE) or ""
+    ).strip()
 
     device_class = IOSDevice
     if override_module:

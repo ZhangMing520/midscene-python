@@ -2,7 +2,7 @@
 (fetch diagnostics subset)."""
 
 import json
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 
@@ -40,7 +40,7 @@ class TestOpenAIRequestContext:
         context_module = _install_fetch(
             monkeypatch, lambda input, init: _resolve(response)
         )
-        context: Dict[str, Any] = {}
+        context: dict[str, Any] = {}
 
         wrapped = await context_module.wrap_open_ai_compatible_fetch(context)(
             "https://example.com/v1/chat/completions", {"method": "POST"}
@@ -66,7 +66,7 @@ class TestOpenAIRequestContext:
         context_module = _install_fetch(
             monkeypatch, lambda input, init: _resolve(response)
         )
-        context: Dict[str, Any] = {}
+        context: dict[str, Any] = {}
 
         wrapped = await context_module.wrap_open_ai_compatible_fetch(context)(
             "https://example.com"
@@ -76,9 +76,7 @@ class TestOpenAIRequestContext:
         assert context == {}
 
     @pytest.mark.asyncio
-    async def test_does_not_include_request_headers_in_record_events(
-        self, monkeypatch
-    ):
+    async def test_does_not_include_request_headers_in_record_events(self, monkeypatch):
         response = FakeResponse("", 200, {})
         context_module = _install_fetch(
             monkeypatch, lambda input, init: _resolve(response)
@@ -126,7 +124,7 @@ class TestOpenAIRequestContext:
             raise fetch_error
 
         context_module = _install_fetch(monkeypatch, raise_fetch)
-        context: Dict[str, Any] = {}
+        context: dict[str, Any] = {}
 
         with pytest.raises(TypeError) as exc_info:
             await context_module.wrap_open_ai_compatible_fetch(context)(
@@ -145,9 +143,7 @@ class TestOpenAIRequestContext:
         )
 
     @pytest.mark.asyncio
-    async def test_keeps_request_details_isolated_between_attempts(
-        self, monkeypatch
-    ):
+    async def test_keeps_request_details_isolated_between_attempts(self, monkeypatch):
         responses = [
             FakeResponse("first failure", 500, {"x-request-id": "first_request"}),
             FakeResponse("second failure", 502),
@@ -158,8 +154,8 @@ class TestOpenAIRequestContext:
             return next(calls)
 
         context_module = _install_fetch(monkeypatch, handler)
-        first_context: Dict[str, Any] = {}
-        second_context: Dict[str, Any] = {}
+        first_context: dict[str, Any] = {}
+        second_context: dict[str, Any] = {}
 
         await context_module.wrap_open_ai_compatible_fetch(first_context)(
             "https://example.com"
@@ -177,14 +173,13 @@ class TestOpenAIRequestContext:
             },
         }
         assert second_context == {"rawResponseBody": "second failure"}
-        assert context_module.format_open_aiapi_error_details(
-            None, second_context
-        ) == "\nOpenAI raw error response body: second failure"
+        assert (
+            context_module.format_open_aiapi_error_details(None, second_context)
+            == "\nOpenAI raw error response body: second failure"
+        )
 
     @pytest.mark.asyncio
-    async def test_records_http_response_and_error_event_for_non_2xx(
-        self, monkeypatch
-    ):
+    async def test_records_http_response_and_error_event_for_non_2xx(self, monkeypatch):
         response = FakeResponse(
             "temporary failure", 500, {"content-type": "application/json"}
         )

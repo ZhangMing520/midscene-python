@@ -1,11 +1,11 @@
 """Test run health summaries (upstream core/src/test-run-health.ts)."""
 
-from typing import Any, Dict, List
+from typing import Any
 
 TEST_RUN_CASE_HEALTH_STATUSES = ("passed", "retry-passed", "failed", "not-run")
 
 
-def _case_attempts(test_case: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _case_attempts(test_case: dict[str, Any]) -> list[dict[str, Any]]:
     attempts = test_case.get("attempts")
     if attempts is not None:
         return list(attempts)
@@ -13,16 +13,14 @@ def _case_attempts(test_case: Dict[str, Any]) -> List[Dict[str, Any]]:
     return [run] if run else []
 
 
-def classify_test_run_case(test_case: Dict[str, Any]) -> str:
+def classify_test_run_case(test_case: dict[str, Any]) -> str:
     """Classify one logical Case using the retry evidence available to its caller."""
     if test_case.get("status") == "not-run":
         return "not-run"
     if test_case.get("status") == "failed":
         return "failed"
     attempts = _case_attempts(test_case)
-    last_attempt_index = (
-        (attempts[-1].get("attemptIndex") or 0) if attempts else 0
-    )
+    last_attempt_index = (attempts[-1].get("attemptIndex") or 0) if attempts else 0
     retried = (
         (test_case.get("retryCount") or 0) > 0
         or last_attempt_index > 0
@@ -32,7 +30,7 @@ def classify_test_run_case(test_case: Dict[str, Any]) -> str:
     return "retry-passed" if retried else "passed"
 
 
-def calculate_test_run_health(cases: List[Dict[str, Any]]) -> Dict[str, Any]:
+def calculate_test_run_health(cases: list[dict[str, Any]]) -> dict[str, Any]:
     passed = 0
     failed = 0
     not_run = 0

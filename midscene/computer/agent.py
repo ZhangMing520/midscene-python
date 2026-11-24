@@ -2,12 +2,12 @@
 
 import re
 from dataclasses import fields
-from typing import Any, Dict, Optional
+from typing import Any
 
-from midscene.core.agent.agent import Agent
-from midscene.core.agent.agent_options import AgentOptions
 from midscene.computer.device import ComputerDevice
 from midscene.computer.rdp.device import RDPDevice
+from midscene.core.agent.agent import Agent
+from midscene.core.agent.agent_options import AgentOptions
 
 
 def _camel_to_snake(value: str) -> str:
@@ -31,7 +31,7 @@ def _option(opts: Any, name: str, default: Any = None) -> Any:
     return getattr(opts, camel, default)
 
 
-def _agent_options(opts: Any) -> Optional[AgentOptions]:
+def _agent_options(opts: Any) -> AgentOptions | None:
     """Build AgentOptions from a mapping while ignoring device-only keys."""
     if opts is None:
         return None
@@ -53,8 +53,8 @@ class ComputerAgent(Agent):
 
     def __init__(
         self,
-        device: Optional[ComputerDevice] = None,
-        options: Optional[AgentOptions] = None,
+        device: ComputerDevice | None = None,
+        options: AgentOptions | None = None,
     ):
         super().__init__(device or ComputerDevice(), options)
 
@@ -85,7 +85,7 @@ async def agent_for_rdp_computer(opts: Any) -> ComputerAgent:
         "desktop_width",
         "desktop_height",
     )
-    config: Dict[str, Any] = {}
+    config: dict[str, Any] = {}
     for key in config_keys:
         value = _option(opts, key)
         if value is None:

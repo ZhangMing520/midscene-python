@@ -7,7 +7,7 @@ tab.  ``BridgeWebPage`` is the Python page proxy, so this module only adds the
 
 import asyncio
 import inspect
-from typing import Any, Dict, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -21,14 +21,14 @@ from midscene.web_integration.bridge_mode.page_browser_side import BridgeWebPage
 
 
 def get_bridge_page_in_cli_side(
-    host: Optional[str] = None,
-    port: Optional[int] = None,
-    listening_timeout: Optional[float] = 30.0,
+    host: str | None = None,
+    port: int | None = None,
+    listening_timeout: float | None = 30.0,
     close_conflict_server: bool = True,
     allow_remote_access: bool = False,
-    input_strategy: Optional[str] = None,
-    keyboard_type_delay: Optional[float] = None,
-    connect_options: Optional[Dict[str, Any]] = None,
+    input_strategy: str | None = None,
+    keyboard_type_delay: float | None = None,
+    connect_options: dict[str, Any] | None = None,
 ) -> BridgeWebPage:
     """Build the bridge page proxy without opening a socket yet."""
     return BridgeWebPage(
@@ -47,18 +47,18 @@ class AgentOverChromeBridge(Agent):
 
     def __init__(
         self,
-        options: Optional[AgentOptions] = None,
+        options: AgentOptions | None = None,
         *,
-        page: Optional[BridgeWebPage] = None,
+        page: BridgeWebPage | None = None,
         allow_remote_access: bool = False,
-        host: Optional[str] = None,
-        port: Optional[int] = None,
+        host: str | None = None,
+        port: int | None = None,
         close_new_tabs_after_disconnect: bool = False,
-        server_listening_timeout: Optional[float] = 30.0,
+        server_listening_timeout: float | None = 30.0,
         close_conflict_server: bool = True,
         enable_water_flow_animation: bool = True,
-        input_strategy: Optional[str] = None,
-        keyboard_type_delay: Optional[float] = None,
+        input_strategy: str | None = None,
+        keyboard_type_delay: float | None = None,
     ):
         if page is None:
             page = get_bridge_page_in_cli_side(
@@ -96,7 +96,7 @@ class AgentOverChromeBridge(Agent):
             await self.interface.set_destroy_options({"closeTab": True})
 
     async def connect_new_tab_with_url(
-        self, url: str, options: Optional[Dict[str, Any]] = None
+        self, url: str, options: dict[str, Any] | None = None
     ) -> None:
         await self.interface.connect_new_tab_with_url(
             url,
@@ -109,9 +109,7 @@ class AgentOverChromeBridge(Agent):
         await asyncio.sleep(0.5)
         await self.set_destroy_options_after_connect()
 
-    async def connect_current_tab(
-        self, options: Optional[Dict[str, Any]] = None
-    ) -> None:
+    async def connect_current_tab(self, options: dict[str, Any] | None = None) -> None:
         await self.interface.connect_current_tab(
             {
                 **(options or {}),
@@ -132,7 +130,7 @@ class AgentOverChromeBridge(Agent):
         await self.interface.show_status_message(message)
 
     async def destroy(
-        self, close_new_tabs_after_disconnect: Optional[bool] = None
+        self, close_new_tabs_after_disconnect: bool | None = None
     ) -> None:
         if close_new_tabs_after_disconnect is not None:
             await self.interface.set_destroy_options(

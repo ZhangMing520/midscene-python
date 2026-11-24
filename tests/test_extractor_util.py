@@ -334,7 +334,11 @@ class TestDomHelpers:
         assert fake_window.midsceneGenerateHash is util.midscene_generate_hash
         assert fake_window.midsceneVisibleRect is util.element_rect
 
-        extractor = lambda *args, **kwargs: args
-        monkeypatch.setattr(util, "extract_text_with_position", extractor, raising=False)
+        def extractor(*args, **kwargs):
+            return args
+
+        monkeypatch.setattr(
+            util, "extract_text_with_position", extractor, raising=False
+        )
         util.set_extract_text_with_position_on_window()
         assert fake_window.extractTextWithPosition is extractor

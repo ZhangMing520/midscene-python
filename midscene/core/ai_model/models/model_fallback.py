@@ -1,6 +1,7 @@
 """Task-type model fallback resolution (upstream ai-model/models/model-fallback.ts)."""
 
-from typing import Any, Callable, Dict
+from collections.abc import Callable
+from typing import Any
 
 from loguru import logger
 
@@ -9,8 +10,9 @@ from midscene.core.ai_model.models.registry import (
     get_model_runtime,
 )
 
+
 def resolve_model_for_task_type(
-    get_model_config: Callable[[str], Dict[str, Any]],
+    get_model_config: Callable[[str], dict[str, Any]],
     intent: str,
     task_type: str,
 ) -> ModelRuntime:

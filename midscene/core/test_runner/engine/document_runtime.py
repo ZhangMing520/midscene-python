@@ -4,7 +4,8 @@ import asyncio
 import datetime
 import inspect
 import uuid
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 from loguru import logger
 
@@ -35,14 +36,14 @@ from midscene.core.test_runner.reporting.test_plan import build_test_run_report_
 
 
 def _now() -> datetime.datetime:
-    return datetime.datetime.now(datetime.timezone.utc)
+    return datetime.datetime.now(datetime.UTC)
 
 
 def _iso(value: datetime.datetime) -> str:
     return value.isoformat().replace("+00:00", "Z")
 
 
-async def _call(callback: Optional[Callable[..., Any]], *args: Any) -> None:
+async def _call(callback: Callable[..., Any] | None, *args: Any) -> None:
     if callback is None:
         return
     result = callback(*args)
@@ -56,14 +57,14 @@ async def _maybe_await(value: Any) -> Any:
     return value
 
 
-def _teardown_timeout(options: Dict[str, Any]) -> Optional[float]:
+def _teardown_timeout(options: dict[str, Any]) -> float | None:
     value = options.get("teardownTimeoutMs")
     if value is None:
         return None
     return value() if callable(value) else value
 
 
-def _document_setup_parts(definition: Any) -> Optional[Dict[str, Any]]:
+def _document_setup_parts(definition: Any) -> dict[str, Any] | None:
     if definition is None:
         return None
     if isinstance(definition, dict):
@@ -85,14 +86,12 @@ class DocumentRuntime:
     def __init__(
         self,
         document: CollectedWorkflowDocument,
-        options: Dict[str, Any],
+        options: dict[str, Any],
     ) -> None:
         self._document = document
         self._options = options
         create_run_id = options.get("createDocumentRunId")
-        self._document_run_id = (
-            create_run_id() if create_run_id else uuid.uuid4().hex
-        )
+        self._document_run_id = create_run_id() if create_run_id else uuid.uuid4().hex
         self._project = options.get("project") or {
             "projectId": document.get("projectId"),
             "name": document.get("projectId"),
@@ -109,8 +108,8 @@ class DocumentRuntime:
             },
         )
         self._started_at = _now()
-        self._before_all: List[Dict[str, Any]] = []
-        self._after_all: List[Dict[str, Any]] = []
+        self._before_all: list[dict[str, Any]] = []
+        self._after_all: list[dict[str, Any]] = []
         self._nodes = {
             "beforeAll": [
                 options["resolveNode"](step.get("node"))
@@ -127,19 +126,17 @@ class DocumentRuntime:
         set_resource_operation_identity(
             self._signal, {"scopeId": self._document_run_id}
         )
-        self._node_teardown_stack: List[Dict[str, Any]] = []
+        self._node_teardown_stack: list[dict[str, Any]] = []
         self._accepting_node_teardowns = True
         self._started = False
-        self._finish_task: Optional["asyncio.Future[Any]"] = None
-        self._report_paths: List[str] = []
-        self._report_sources: List[Dict[str, Any]] = []
-        self._captured_sources: Dict[str, Dict[str, Any]] = {}
-        self._execution_errors: List[Any] = []
-        self._host_errors: List[Dict[str, Any]] = []
+        self._finish_task: asyncio.Future[Any] | None = None
+        self._report_paths: list[str] = []
+        self._report_sources: list[dict[str, Any]] = []
+        self._captured_sources: dict[str, dict[str, Any]] = {}
+        self._execution_errors: list[Any] = []
+        self._host_errors: list[dict[str, Any]] = []
         self._accepting_setup_teardowns = False
-        self._document_setup = _document_setup_parts(
-            options.get("documentSetup")
-        )
+        self._document_setup = _document_setup_parts(options.get("documentSetup"))
 
     @property
     def signal(self) -> Any:
@@ -166,14 +163,12 @@ class DocumentRuntime:
             and not self._execution_errors
             and not self._host_errors
             and not is_aborted(self._signal)
-            and not any(
-                step.get("status") != "success" for step in self._before_all
-            )
+            and not any(step.get("status") != "success" for step in self._before_all)
         )
 
     def _create_result(
-        self, teardown_errors: Optional[List[Any]] = None
-    ) -> Dict[str, Any]:
+        self, teardown_errors: list[Any] | None = None
+    ) -> dict[str, Any]:
         teardown_errors = teardown_errors or []
         document = self._document
         ended_at = _now()
@@ -218,7 +213,7 @@ class DocumentRuntime:
             for error in self._execution_errors
             if not any(host.get("error") is error for host in self._host_errors)
         ]
-        result: Dict[str, Any] = {
+        result: dict[str, Any] = {
             "plan": self._plan,
             "documentId": document["documentId"],
             "documentRunId": self._document_run_id,
@@ -227,11 +222,7 @@ class DocumentRuntime:
             "sourcePath": document.get("sourcePath"),
             "status": "failed" if failed else "success",
             "executionStatus": (
-                "failed"
-                if has_failed_phase
-                else "not-run"
-                if not_run
-                else "success"
+                "failed" if has_failed_phase else "not-run" if not_run else "success"
             ),
             "phases": phase_results,
             "cleanup": cleanup,
@@ -265,16 +256,14 @@ class DocumentRuntime:
     async def _run_phase(
         self,
         phase: str,
-        results: List[Dict[str, Any]],
+        results: list[dict[str, Any]],
         execution_signal: Any = None,
     ) -> None:
         signal = self._signal if execution_signal is None else execution_signal
         steps = self._document["lifecycle"][phase]
         for step_index, step in enumerate(steps):
             wait_for_previous_ms = (
-                await recover_cancelled_scope_resources(signal)
-                if step_index > 0
-                else 0
+                await recover_cancelled_scope_resources(signal) if step_index > 0 else 0
             )
             document_context = {
                 "documentId": self._document["documentId"],
@@ -344,7 +333,7 @@ class DocumentRuntime:
             }
         )
 
-    async def start(self) -> Dict[str, Any]:
+    async def start(self) -> dict[str, Any]:
         if self._started:
             raise WorkflowLifecycleError(
                 "Workflow document runtime has already started.",
@@ -365,24 +354,18 @@ class DocumentRuntime:
                         setup_fn(
                             {
                                 "project": self._project,
-                                "projectContext": self._options.get(
-                                    "projectContext"
-                                ),
+                                "projectContext": self._options.get("projectContext"),
                                 "document": {
                                     "documentId": self._document["documentId"],
                                     "documentRunId": self._document_run_id,
-                                    "sourcePath": self._document.get(
-                                        "sourcePath"
-                                    ),
+                                    "sourcePath": self._document.get("sourcePath"),
                                     "attemptIndex": self._options.get(
                                         "documentAttemptIndex", 0
                                     ),
                                 },
                                 "signal": self._signal,
                                 "onTeardown": lambda teardown: (
-                                    self._register_setup_teardown(
-                                        setup_name, teardown
-                                    )
+                                    self._register_setup_teardown(setup_name, teardown)
                                 ),
                             }
                         )
@@ -430,7 +413,7 @@ class DocumentRuntime:
             }
         )
 
-    async def finish(self) -> Dict[str, Any]:
+    async def finish(self) -> dict[str, Any]:
         if self._finish_task is not None:
             return await self._finish_task
         if not self._started:
@@ -444,9 +427,9 @@ class DocumentRuntime:
         self._finish_task = asyncio.ensure_future(self._finish_impl())
         return await self._finish_task
 
-    async def _finish_impl(self) -> Dict[str, Any]:
-        teardown_errors: List[Any] = []
-        cleanup_execution_errors: List[Any] = []
+    async def _finish_impl(self) -> dict[str, Any]:
+        teardown_errors: list[Any] = []
+        cleanup_execution_errors: list[Any] = []
         deferred_cleanup = False
 
         async def cleanup() -> None:
@@ -456,18 +439,14 @@ class DocumentRuntime:
                 try:
                     released = await _maybe_await(entry["teardown"]())
                     if isinstance(released, dict):
-                        self._report_sources.extend(
-                            released.get("reportSources") or []
-                        )
+                        self._report_sources.extend(released.get("reportSources") or [])
                     for path in report_paths_from_teardown(released):
                         if path not in self._report_paths:
                             self._report_paths.append(path)
                 except Exception as error:
                     if entry.get("host"):
                         failure = as_execution_error(error)
-                        self._host_errors.append(
-                            {"phase": "cleanup", "error": failure}
-                        )
+                        self._host_errors.append({"phase": "cleanup", "error": failure})
                         self._execution_errors.append(failure)
                         cleanup_execution_errors.append(error)
                         continue
@@ -478,9 +457,7 @@ class DocumentRuntime:
                                 "scope": "document",
                                 "scopeId": self._document_run_id,
                                 "node": entry["node"],
-                                "registrationIndex": entry[
-                                    "registrationIndex"
-                                ],
+                                "registrationIndex": entry["registrationIndex"],
                             },
                         )
                     )
@@ -493,13 +470,8 @@ class DocumentRuntime:
 
         async def before_cleanup(cleanup_signal: Any) -> None:
             try:
-                if not any(
-                    host.get("phase") == "setup"
-                    for host in self._host_errors
-                ):
-                    await self._run_phase(
-                        "afterAll", self._after_all, cleanup_signal
-                    )
+                if not any(host.get("phase") == "setup" for host in self._host_errors):
+                    await self._run_phase("afterAll", self._after_all, cleanup_signal)
             except Exception as error:
                 self._execution_errors.append(error)
                 cleanup_execution_errors.append(error)
@@ -563,7 +535,7 @@ class DocumentRuntime:
 
 def create_document_runtime(
     document: CollectedWorkflowDocument,
-    options: Dict[str, Any],
+    options: dict[str, Any],
 ) -> DocumentRuntime:
     return DocumentRuntime(document, options)
 

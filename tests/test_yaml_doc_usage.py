@@ -13,10 +13,7 @@ class TestYamlEnvironment:
 
         monkeypatch.setenv("TASK_NAME", "hello")
         script = parse_yaml_script(
-            "tasks:\n"
-            "  - name: ${TASK_NAME}\n"
-            "    flow:\n"
-            "      - sleep: 10\n"
+            "tasks:\n  - name: ${TASK_NAME}\n    flow:\n      - sleep: 10\n"
         )
         assert script["tasks"][0]["name"] == "hello"
 
@@ -25,10 +22,7 @@ class TestYamlEnvironment:
 
         monkeypatch.delenv("NOT_DEFINED_VAR", raising=False)
         script = parse_yaml_script(
-            "tasks:\n"
-            "  - name: ${NOT_DEFINED_VAR}\n"
-            "    flow:\n"
-            "      - sleep: 10\n"
+            "tasks:\n  - name: ${NOT_DEFINED_VAR}\n    flow:\n      - sleep: 10\n"
         )
         assert script["tasks"][0]["name"] == "${NOT_DEFINED_VAR}"
 
@@ -37,10 +31,7 @@ class TestYamlEnvironment:
 
         monkeypatch.delenv("NOT_DEFINED_VAR", raising=False)
         with pytest.raises(ValueError, match="NOT_DEFINED_VAR"):
-            parse_yaml_script(
-                "web:\n  url: ${NOT_DEFINED_VAR}\ntasks: []\n"
-            )
-
+            parse_yaml_script("web:\n  url: ${NOT_DEFINED_VAR}\ntasks: []\n")
 
 
 def _make_agent(interface):

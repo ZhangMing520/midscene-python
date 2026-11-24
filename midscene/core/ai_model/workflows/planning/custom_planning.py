@@ -10,8 +10,20 @@ AutoGLM prompts derive from Open-AutoGLM (zai-org, Apache-2.0).
 """
 
 import json
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
+from midscene.core.ai_model.model_adapter.custom_planning_action import (
+    _normalize_custom_locate_fields,
+    get_tap_located_pixel_result,
+    normalize_custom_locate_fields,
+)
+from midscene.core.ai_model.model_adapter.image_preprocess import (
+    prepare_model_image,
+)
+from midscene.core.ai_model.model_adapter.planning import (
+    resolve_custom_planning_definition,
+)
 from midscene.core.ai_model.models.auto_glm.actions import transform_auto_glm_action
 from midscene.core.ai_model.models.auto_glm.locate import auto_glm_locate
 from midscene.core.ai_model.models.auto_glm.parser import (
@@ -30,34 +42,23 @@ from midscene.core.ai_model.models.ui_tars.parser import (
     parse_ui_tars_planning_response,
 )
 from midscene.core.ai_model.models.ui_tars.planning import create_ui_tars_planner
-from midscene.core.ai_model.model_adapter.custom_planning_action import (
-    _normalize_custom_locate_fields,
-    get_tap_located_pixel_result,
-    normalize_custom_locate_fields,
-)
-from midscene.core.ai_model.model_adapter.planning import (
-    resolve_custom_planning_definition,
-)
 from midscene.core.ai_model.service_caller.call_ai import (
     call_ai_with_string_response,
 )
 from midscene.core.ai_model.service_caller.types import AIResponseParseError
-from midscene.core.ai_model.model_adapter.image_preprocess import (
-    prepare_model_image,
-)
 from midscene.core.ai_model.shared.multimodal_prompt import (
     ensure_data_url,
     get_screenshot_base64,
     get_shot_size,
 )
 
-
 # ---------------------------------------------------------------------------
 # Custom planning framework (custom-planning.ts)
 # ---------------------------------------------------------------------------
 
+
 def _append_action_context(
-    system_prompt: str, action_context: Optional[str] = None
+    system_prompt: str, action_context: str | None = None
 ) -> str:
     return system_prompt + (f"{action_context}\n" if action_context else "")
 
@@ -66,11 +67,11 @@ def build_custom_planning_messages(
     system_prompt: str,
     user_instruction_text: str,
     conversation_history: Any,
-    messages_config: Dict[str, Any],
+    messages_config: dict[str, Any],
     screenshot_url: str,
-    action_context: Optional[str] = None,
+    action_context: str | None = None,
     include_screenshot: bool = True,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Build the chat messages for one custom planning turn.
 
     Mirrors upstream ``buildCustomPlanningMessages``: the system prompt and
@@ -78,9 +79,9 @@ def build_custom_planning_messages(
     the latest screenshot is appended to the conversation history first.
     """
     system_prompt = _append_action_context(system_prompt, action_context)
-    user_instruction = messages_config.get(
-        "build_user_instruction", lambda text: text
-    )(user_instruction_text)
+    user_instruction = messages_config.get("build_user_instruction", lambda text: text)(
+        user_instruction_text
+    )
 
     if conversation_history.pending_feedback_message:
         conversation_history.append_message(
@@ -126,12 +127,12 @@ async def run_custom_planning(
     user_instruction: str,
     context: Any,
     model_runtime: ModelRuntime,
-    action_space: List[Any],
+    action_space: list[Any],
     conversation_history: Any,
-    config: Dict[str, Any],
+    config: dict[str, Any],
     include_locate_in_planning: bool = False,
-    action_context: Optional[str] = None,
-) -> Dict[str, Any]:
+    action_context: str | None = None,
+) -> dict[str, Any]:
     """Run one custom-planner turn (system prompt + screenshot + history)."""
     messages_config = config["messages"]
     system_prompt = messages_config["build_system_prompt"]()
@@ -161,7 +162,9 @@ async def run_custom_planning(
     )
 
     response = await call_ai_with_string_response(
-        messages, model_runtime, {"requiresOriginalImageDetail": include_locate_in_planning}
+        messages,
+        model_runtime,
+        {"requiresOriginalImageDetail": include_locate_in_planning},
     )
     content = response["content"]
     usage = response.get("usage")
@@ -185,13 +188,15 @@ async def run_custom_planning(
     except Exception as parse_error:
         raise AIResponseParseError(
             f"Parse error: {parse_error}",
-            json.dumps(content, ensure_ascii=False, indent=2) if not isinstance(content, str) else content,
+            json.dumps(content, ensure_ascii=False, indent=2)
+            if not isinstance(content, str)
+            else content,
             usage,
         ) from parse_error
 
-    assistant_content = messages_config.get("build_assistant_content", lambda p, c: None)(
-        parsed, content
-    )
+    assistant_content = messages_config.get(
+        "build_assistant_content", lambda p, c: None
+    )(parsed, content)
     if assistant_content:
         conversation_history.append_message(
             {"role": "assistant", "content": assistant_content}
@@ -209,6 +214,7 @@ async def run_custom_planning(
 # ---------------------------------------------------------------------------
 # Adapter wiring: bind custom plan/locate functions to their adapters
 # ---------------------------------------------------------------------------
+
 
 def register_custom_planners() -> None:
     """Attach the custom planning/locate callables to their model adapters."""
@@ -232,12 +238,12 @@ def _make_auto_glm_plan_fn(is_multilingual: bool) -> Callable:
         instruction: str,
         context: Any,
         model_runtime: ModelRuntime,
-        action_space: List[Any],
+        action_space: list[Any],
         conversation_history: Any,
         include_locate_in_planning: bool = False,
-        action_context: Optional[str] = None,
+        action_context: str | None = None,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         result = await run_custom_planning(
             instruction,
             context,
@@ -261,12 +267,12 @@ def _make_ui_tars_plan_fn() -> Callable:
         instruction: str,
         context: Any,
         model_runtime: ModelRuntime,
-        action_space: List[Any],
+        action_space: list[Any],
         conversation_history: Any,
         include_locate_in_planning: bool = False,
-        action_context: Optional[str] = None,
+        action_context: str | None = None,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         result = await run_custom_planning(
             instruction,
             context,
@@ -283,7 +289,7 @@ def _make_ui_tars_plan_fn() -> Callable:
     return plan
 
 
-def _yaml_flow_of(actions: List[Dict[str, Any]]) -> str:
+def _yaml_flow_of(actions: list[dict[str, Any]]) -> str:
     import yaml
 
     flow = [

@@ -1,9 +1,10 @@
 """Default insight protocol (upstream ai-model/model-adapter/default-insight-protocol.ts)."""
 
+from typing import Any
+
+from midscene.core.ai_model.model_adapter.insight_protocol import InsightProtocol
 from midscene.core.ai_model.shared.json import parse_model_response_json
 from midscene.core.ai_model.shared.xml import extract_xml_tag
-from midscene.core.ai_model.model_adapter.insight_protocol import InsightProtocol
-from typing import Any
 
 INSIGHT_DATA_OUTPUT_TAG_NAME = "data-json"
 
@@ -18,7 +19,7 @@ def create_default_insight_protocol() -> InsightProtocol:
         try:
             return parse_model_response_json(data_json_content, source="generic-object")
         except Exception as error:
-            raise ValueError(f"Failed to parse data-json: {error}")
+            raise ValueError(f"Failed to parse data-json: {error}") from error
 
     return {
         "response_prefix": None,

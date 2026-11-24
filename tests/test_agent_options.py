@@ -56,9 +56,7 @@ def test_retains_deprecated_context_precedence(options, expected):
 @pytest.mark.parametrize("ai_contexts", [None, [], "context"])
 def test_rejects_an_invalid_context_map(ai_contexts):
     options = with_agent_defaults({"aiContexts": ai_contexts})
-    with pytest.raises(
-        TypeError, match="opts.aiContexts must be a plain object"
-    ):
+    with pytest.raises(TypeError, match="opts.aiContexts must be a plain object"):
         normalize_agent_options(options, lambda _message: None)
 
 
@@ -79,13 +77,9 @@ def test_preserves_context_validation_errors(ai_contexts, message):
 
 def test_emits_the_deprecation_warning_before_rejecting_an_invalid_model_config():
     warnings = []
-    with pytest.raises(
-        TypeError, match="opts.modelConfig must be a plain object map"
-    ):
+    with pytest.raises(TypeError, match="opts.modelConfig must be a plain object map"):
         normalize_agent_options(
-            with_agent_defaults(
-                {"aiActContext": "legacy", "modelConfig": []}
-            ),
+            with_agent_defaults({"aiActContext": "legacy", "modelConfig": []}),
             warnings.append,
         )
     assert len(warnings) == 1

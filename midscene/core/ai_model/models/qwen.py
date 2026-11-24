@@ -1,11 +1,7 @@
 """Qwen 2.5 / 3-VL / 3 / 4 adapters (upstream ai-model/models/qwen.ts)."""
 
-from typing import Any, Dict
+from typing import Any
 
-from midscene.core.ai_model.shared.model_locate_result import (
-    create_locate_result_value,
-    unwrap_coordinate_list_like_input,
-)
 from midscene.core.ai_model.model_adapter.chat_completion import (
     _json_object_config,
 )
@@ -25,14 +21,19 @@ from midscene.core.ai_model.model_adapter.types import (
 from midscene.core.ai_model.models.default import (
     build_chat_completion_params_from_context,
 )
+from midscene.core.ai_model.shared.model_locate_result import (
+    create_locate_result_value,
+    unwrap_coordinate_list_like_input,
+)
+
 
 def _build_qwen_params(
-    midscene_defaults: Dict[str, Any],
+    midscene_defaults: dict[str, Any],
     user_config: ModelRequestUserConfig,
     expected_json_object_response: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """qwen3-vl: native thinking controls only, no OpenRouter branch."""
-    config: Dict[str, Any] = dict(midscene_defaults)
+    config: dict[str, Any] = dict(midscene_defaults)
     _apply_temperature(config, user_config)
     reasoning_enabled = _reasoning_enabled(user_config)
     if reasoning_enabled != "default":
@@ -45,12 +46,12 @@ def _build_qwen_params(
 
 
 def _build_qwen3_params(
-    midscene_defaults: Dict[str, Any],
+    midscene_defaults: dict[str, Any],
     user_config: ModelRequestUserConfig,
     expected_json_object_response: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """qwen3 / qwen3.5 / qwen3.6: native or OpenRouter reasoning controls."""
-    config: Dict[str, Any] = dict(midscene_defaults)
+    config: dict[str, Any] = dict(midscene_defaults)
     _apply_temperature(config, user_config)
     reasoning_enabled = _reasoning_enabled(user_config)
     if _is_openrouter(user_config.get("baseURL")):
@@ -66,11 +67,11 @@ def _build_qwen3_params(
 
 
 def _build_qwen4_params(
-    midscene_defaults: Dict[str, Any],
+    midscene_defaults: dict[str, Any],
     user_config: ModelRequestUserConfig,
     expected_json_object_response: bool = False,
-) -> Dict[str, Any]:
-    config: Dict[str, Any] = dict(midscene_defaults)
+) -> dict[str, Any]:
+    config: dict[str, Any] = dict(midscene_defaults)
     _apply_temperature(config, user_config)
     config.update(_json_object_config(user_config, expected_json_object_response))
     reasoning_enabled = _reasoning_enabled(user_config)
@@ -90,17 +91,17 @@ def _build_qwen4_params(
 
 
 def _build_qwen25_params(
-    midscene_defaults: Dict[str, Any],
+    midscene_defaults: dict[str, Any],
     user_config: ModelRequestUserConfig,
     expected_json_object_response: bool = False,
-) -> Dict[str, Any]:
-    config: Dict[str, Any] = dict(midscene_defaults)
+) -> dict[str, Any]:
+    config: dict[str, Any] = dict(midscene_defaults)
     _apply_temperature(config, user_config)
     config["vl_high_resolution_images"] = True
     return config
 
 
-def _parse_qwen25_raw_locate_value(input_value: Any) -> Dict[str, Any]:
+def _parse_qwen25_raw_locate_value(input_value: Any) -> dict[str, Any]:
     bbox = unwrap_coordinate_list_like_input(input_value)
     if len(bbox) < 2:
         raise ValueError(f"invalid bbox data for qwen-vl mode: {bbox!r} ")

@@ -11,8 +11,9 @@ import shutil
 import subprocess
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Optional, TypedDict
+from typing import TypedDict
 
 from loguru import logger
 
@@ -61,7 +62,7 @@ class XvfbInstance:
 
 
 def schedule_xvfb_stop_after_process_exit(
-    instance: XvfbInstance, parent_pid: Optional[int] = None
+    instance: XvfbInstance, parent_pid: int | None = None
 ) -> subprocess.Popen:
     """Stop Xvfb only after the owning process exits.
 
@@ -70,9 +71,7 @@ def schedule_xvfb_stop_after_process_exit(
     """
     xvfb_pid = instance.process.pid
     if not xvfb_pid:
-        raise RuntimeError(
-            "Cannot schedule Xvfb cleanup before its process starts"
-        )
+        raise RuntimeError("Cannot schedule Xvfb cleanup before its process starts")
     monitor = subprocess.Popen(
         [
             sys.executable,
@@ -114,12 +113,11 @@ def find_available_display(start_from: int = DEFAULT_DISPLAY_START) -> int:
         if not os.path.exists(_display_lock_path(display_number)):
             return display_number
     raise RuntimeError(
-        "No available display number found "
-        f"(checked {start_from} to {start_from + 99})"
+        f"No available display number found (checked {start_from} to {start_from + 99})"
     )
 
 
-def start_xvfb(options: Optional[XvfbOptions] = None) -> XvfbInstance:
+def start_xvfb(options: XvfbOptions | None = None) -> XvfbInstance:
     """Start Xvfb and return the instance (raises when it cannot start)."""
     options = options or {}
     resolution = options.get("resolution") or DEFAULT_RESOLUTION
@@ -154,7 +152,7 @@ def start_xvfb(options: Optional[XvfbOptions] = None) -> XvfbInstance:
     return XvfbInstance(process=process, display=display)
 
 
-def needs_xvfb(explicit_opt: Optional[bool] = None) -> bool:
+def needs_xvfb(explicit_opt: bool | None = None) -> bool:
     """Xvfb is only needed on Linux and only when explicitly requested."""
     if not sys.platform.startswith("linux"):
         return False

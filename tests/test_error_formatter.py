@@ -25,7 +25,9 @@ class TestGetErrorMessage:
             == "Error without a message"
         )
 
-    @pytest.mark.skip(reason="Python str(None) is 'None'; upstream null/undefined map to 'null'/'undefined'")
+    @pytest.mark.skip(
+        reason="Python str(None) is 'None'; upstream null/undefined map to 'null'/'undefined'"
+    )
     def test_stringifies_null_and_undefined(self):
         pass
 
@@ -191,9 +193,7 @@ class TestSerializeError:
         def _throwing_code(_self):
             raise Error("code getter failed")
 
-        broken_error = type(
-            "Error", (Exception,), {"code": property(_throwing_code)}
-        )
+        broken_error = type("Error", (Exception,), {"code": property(_throwing_code)})
         error = broken_error("safe message")
 
         serialize_error(error)

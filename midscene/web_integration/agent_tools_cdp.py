@@ -11,13 +11,13 @@ import inspect
 import json
 import re
 import urllib.request
-from typing import Any, Dict, List, Optional
+from typing import Any
 from urllib.parse import urlparse
 
 from loguru import logger
 
-from midscene.core.agent.agent_options import AgentOptions, coerce_agent_options
 from midscene.core.agent.agent import Agent
+from midscene.core.agent.agent_options import AgentOptions, coerce_agent_options
 from midscene.shared.agent_tools.agent_behavior_init_args import (
     extract_agent_behavior_init_args,
     get_agent_init_args_signature,
@@ -54,7 +54,7 @@ async def _maybe_await(value: Any) -> Any:
     return await value if inspect.isawaitable(value) else value
 
 
-def _http_get_json(url: str) -> Dict[str, Any]:
+def _http_get_json(url: str) -> dict[str, Any]:
     with urllib.request.urlopen(url, timeout=5) as response:
         return json.loads(response.read().decode("utf-8"))
 
@@ -86,9 +86,7 @@ async def _get_proxy_endpoint(chrome_endpoint: str) -> str:
 
     endpoint = info.get("webSocketDebuggerUrl")
     if not endpoint:
-        raise RuntimeError(
-            "webSocketDebuggerUrl not found in /json/version response"
-        )
+        raise RuntimeError("webSocketDebuggerUrl not found in /json/version response")
     return endpoint
 
 
@@ -98,24 +96,20 @@ class _PlaywrightCdpBrowser:
     def __init__(self, browser: Any, playwright: Any = None) -> None:
         self.browser = browser
         self._playwright = playwright
-        self._target_ids: Dict[int, str] = {}
+        self._target_ids: dict[int, str] = {}
 
     def underlying_browser(self) -> Any:
         return self.browser
 
-    async def pages(self) -> List[Any]:
-        return [
-            page
-            for context in self.browser.contexts
-            for page in context.pages
-        ]
+    async def pages(self) -> list[Any]:
+        return [page for context in self.browser.contexts for page in context.pages]
 
     async def new_page(self) -> Any:
         contexts = self.browser.contexts
         context = contexts[0] if contexts else await self.browser.new_context()
         return await context.new_page()
 
-    async def target_id(self, page: Any) -> Optional[str]:
+    async def target_id(self, page: Any) -> str | None:
         direct = get_target_id(page)
         if direct:
             return direct
@@ -152,16 +146,12 @@ async def _connect_browser(endpoint: str) -> _PlaywrightCdpBrowser:
 
 
 async def _page_bring_to_front(page: Any) -> None:
-    bring = getattr(page, "bring_to_front", None) or getattr(
-        page, "bringToFront", None
-    )
+    bring = getattr(page, "bring_to_front", None) or getattr(page, "bringToFront", None)
     if bring is not None:
         await _maybe_await(bring())
 
 
-async def _page_set_extra_http_headers(
-    page: Any, headers: Dict[str, str]
-) -> None:
+async def _page_set_extra_http_headers(page: Any, headers: dict[str, str]) -> None:
     setter = getattr(page, "set_extra_http_headers", None) or getattr(
         page, "setExtraHTTPHeaders", None
     )
@@ -173,12 +163,10 @@ async def _page_goto(page: Any, url: str) -> None:
     goto = getattr(page, "goto", None)
     if goto is None:
         raise RuntimeError("The selected CDP page cannot navigate to a URL")
-    await _maybe_await(
-        goto(url, timeout=30000, wait_until="domcontentloaded")
-    )
+    await _maybe_await(goto(url, timeout=30000, wait_until="domcontentloaded"))
 
 
-async def _page_screenshot(page: Any) -> Optional[str]:
+async def _page_screenshot(page: Any) -> str | None:
     screenshot = getattr(page, "screenshot_base64", None)
     if screenshot is None:
         return None
@@ -195,14 +183,14 @@ class CdpBrowserAgent(WebAgentCore):
         interface: Any,
         active_page: Any,
         browser: Any = None,
-        options: Optional[AgentOptions] = None,
+        options: AgentOptions | None = None,
         interface_factory: Any = None,
     ) -> None:
         super().__init__(interface, options)
         self._active_page = active_page
         self._browser = browser
         self._interface_factory = interface_factory
-        self.set_active_page_calls: List[Any] = []
+        self.set_active_page_calls: list[Any] = []
 
     @property
     def page(self) -> Any:
@@ -212,7 +200,7 @@ class CdpBrowserAgent(WebAgentCore):
     def active_page(self) -> Any:
         return self._active_page
 
-    async def pages(self) -> List[Any]:
+    async def pages(self) -> list[Any]:
         if self._browser is None:
             pages = [self._active_page]
         else:
@@ -242,7 +230,7 @@ class WebCdpMidsceneTools(BaseMidsceneTools):
             adapt=adapt_web_cdp_agent_init_args,
         )
         self.active_browser: Any = None
-        self.last_init_args_signature: Optional[str] = None
+        self.last_init_args_signature: str | None = None
 
     def get_cli_report_session_name(self) -> str:
         return "midscene-web"
@@ -263,7 +251,7 @@ class WebCdpMidsceneTools(BaseMidsceneTools):
 
         return PlaywrightWebPage(page, context, underlying_browser)
 
-    async def _target_id_for(self, page: Any) -> Optional[str]:
+    async def _target_id_for(self, page: Any) -> str | None:
         resolver = (
             getattr(self.active_browser, "target_id", None)
             if self.active_browser is not None
@@ -305,9 +293,7 @@ class WebCdpMidsceneTools(BaseMidsceneTools):
             await asyncio.sleep(CDP_TARGET_DISCOVERY_DELAY_MS / 1000)
             pages = list(await _maybe_await(self.active_browser.pages()))
 
-        web_pages = [
-            page for page in pages if re.match(r"^https?://", page_url(page))
-        ]
+        web_pages = [page for page in pages if re.match(r"^https?://", page_url(page))]
 
         if should_navigate:
             if web_pages:
@@ -373,10 +359,10 @@ class WebCdpMidsceneTools(BaseMidsceneTools):
                     self.active_browser = None
                     await _maybe_await(browser.disconnect())
 
-    async def _list_tabs(self) -> List[Dict[str, Any]]:
+    async def _list_tabs(self) -> list[dict[str, Any]]:
         agent = self.agent if self.agent is not None else await self.ensure_agent()
         active_page = getattr(agent, "active_page", None)
-        tabs: List[Dict[str, Any]] = []
+        tabs: list[dict[str, Any]] = []
         for page in await agent.pages():
             tabs.append(
                 {
@@ -414,8 +400,8 @@ class WebCdpMidsceneTools(BaseMidsceneTools):
                 ) from error
             raise
 
-    def prepare_platform_tools(self) -> List[ToolDefinition]:
-        async def connect(args: Dict[str, Any]) -> ToolResult:
+    def prepare_platform_tools(self) -> list[ToolDefinition]:
+        async def connect(args: dict[str, Any]) -> ToolResult:
             init_args = self.extract_agent_init_param(args) or {}
             url = init_args.get("url")
 
@@ -423,21 +409,17 @@ class WebCdpMidsceneTools(BaseMidsceneTools):
                 try:
                     await self.agent.destroy()
                 except Exception as error:  # noqa: BLE001
-                    debug.debug(
-                        "Failed to destroy agent during connect: %s", error
-                    )
+                    debug.debug("Failed to destroy agent during connect: %s", error)
                 self.agent = None
                 self.last_init_args_signature = None
 
-            report_session = self.create_new_cli_report_session(
-                url or "current-page"
-            )
+            report_session = self.create_new_cli_report_session(url or "current-page")
             self.commit_cli_report_session(report_session)
             agent = await self.ensure_agent(init_args)
 
             page = getattr(agent, "active_page", None)
             screenshot = await _page_screenshot(page) if page else None
-            content: List[Dict[str, Any]] = [
+            content: list[dict[str, Any]] = [
                 {
                     "type": "text",
                     "text": f"Connected via CDP to: {url or 'current page'}",
@@ -447,14 +429,12 @@ class WebCdpMidsceneTools(BaseMidsceneTools):
                 content.extend(self.build_screenshot_content(screenshot))
             return ToolResult(content)
 
-        async def disconnect(_args: Dict[str, Any]) -> ToolResult:
+        async def disconnect(_args: dict[str, Any]) -> ToolResult:
             if self.agent is not None:
                 try:
                     await self.agent.destroy()
                 except Exception as error:  # noqa: BLE001
-                    debug.debug(
-                        "Failed to destroy agent during disconnect: %s", error
-                    )
+                    debug.debug("Failed to destroy agent during disconnect: %s", error)
                 self.agent = None
                 self.last_init_args_signature = None
             if self.active_browser is not None:
@@ -467,9 +447,7 @@ class WebCdpMidsceneTools(BaseMidsceneTools):
             )
 
         return [
-            *create_tab_tools(
-                {"list": self._list_tabs, "select": self._select_tab}
-            ),
+            *create_tab_tools({"list": self._list_tabs, "select": self._select_tab}),
             ToolDefinition(
                 name="web_connect",
                 description=(

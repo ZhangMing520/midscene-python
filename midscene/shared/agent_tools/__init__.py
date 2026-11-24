@@ -10,9 +10,10 @@ This package contains two surfaces:
 """
 
 import json
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from collections.abc import Awaitable, Callable
+from typing import Any, Optional
 
-ToolHandler = Callable[[Dict[str, Any]], Awaitable[Any]]
+ToolHandler = Callable[[dict[str, Any]], Awaitable[Any]]
 
 
 def _text(value: Any) -> str:
@@ -38,14 +39,14 @@ def _dataclass_payload(value: Any) -> Any:
 class AgentTools:
     """Lazily creates one browser Agent and exposes it as MCP tools."""
 
-    def __init__(self, page_factory: Optional[Callable[..., Awaitable[Any]]] = None):
+    def __init__(self, page_factory: Callable[..., Awaitable[Any]] | None = None):
         self._page_factory = page_factory or _default_page_factory
         self._agent: Any = None
         self._page: Any = None
 
     # -- lifecycle ---------------------------------------------------------
 
-    async def ensure_agent(self, arguments: Dict[str, Any]) -> Any:
+    async def ensure_agent(self, arguments: dict[str, Any]) -> Any:
         if self._agent is not None:
             return self._agent
         from midscene.core.agent.agent import Agent
@@ -82,7 +83,7 @@ class AgentTools:
 
     # -- tool definitions --------------------------------------------------
 
-    def tool_definitions(self) -> List[Dict[str, Any]]:
+    def tool_definitions(self) -> list[dict[str, Any]]:
         return [
             self._tool(
                 "midscene_init",
@@ -133,7 +134,10 @@ class AgentTools:
                 {
                     "type": "object",
                     "properties": {
-                        "prompt": {"type": "string", "description": "Statement to verify"},
+                        "prompt": {
+                            "type": "string",
+                            "description": "Statement to verify",
+                        },
                     },
                     "required": ["prompt"],
                 },
@@ -145,7 +149,10 @@ class AgentTools:
                 {
                     "type": "object",
                     "properties": {
-                        "prompt": {"type": "string", "description": "Element description"},
+                        "prompt": {
+                            "type": "string",
+                            "description": "Element description",
+                        },
                     },
                     "required": ["prompt"],
                 },
@@ -163,7 +170,10 @@ class AgentTools:
                 {
                     "type": "object",
                     "properties": {
-                        "id": {"type": "string", "description": "Tab ID returned by web_tabs"},
+                        "id": {
+                            "type": "string",
+                            "description": "Tab ID returned by web_tabs",
+                        },
                     },
                     "required": ["id"],
                 },
@@ -178,7 +188,7 @@ class AgentTools:
         ]
 
     @staticmethod
-    def _tool(name, description, input_schema, handler) -> Dict[str, Any]:
+    def _tool(name, description, input_schema, handler) -> dict[str, Any]:
         return {
             "name": name,
             "description": description,
@@ -188,42 +198,42 @@ class AgentTools:
 
     # -- handlers ----------------------------------------------------------
 
-    async def _handle_init(self, arguments: Dict[str, Any]) -> Any:
+    async def _handle_init(self, arguments: dict[str, Any]) -> Any:
         agent = await self.ensure_agent(arguments)
         tabs = await self._list_tabs()
         return {"status": "ready", "tabs": tabs, "agent": type(agent).__name__}
 
-    async def _handle_act(self, arguments: Dict[str, Any]) -> Any:
+    async def _handle_act(self, arguments: dict[str, Any]) -> Any:
         agent = await self.ensure_agent(arguments)
         return await agent.ai_act(arguments["prompt"]) or "done"
 
-    async def _handle_query(self, arguments: Dict[str, Any]) -> Any:
+    async def _handle_query(self, arguments: dict[str, Any]) -> Any:
         agent = await self.ensure_agent(arguments)
         return await agent.ai_query(arguments["prompt"])
 
-    async def _handle_assert(self, arguments: Dict[str, Any]) -> Any:
+    async def _handle_assert(self, arguments: dict[str, Any]) -> Any:
         agent = await self.ensure_agent(arguments)
         result = await agent.ai_assert(arguments["prompt"])
         return _dataclass_payload(result)
 
-    async def _handle_locate(self, arguments: Dict[str, Any]) -> Any:
+    async def _handle_locate(self, arguments: dict[str, Any]) -> Any:
         agent = await self.ensure_agent(arguments)
         result = await agent.ai_locate(arguments["prompt"])
         return _dataclass_payload(result)
 
-    async def _handle_tabs(self, arguments: Dict[str, Any]) -> Any:
+    async def _handle_tabs(self, arguments: dict[str, Any]) -> Any:
         if self._page is None:
             raise RuntimeError("call midscene_init first")
         return await self._list_tabs()
 
-    async def _handle_switch_tab(self, arguments: Dict[str, Any]) -> Any:
+    async def _handle_switch_tab(self, arguments: dict[str, Any]) -> Any:
         if self._page is None:
             raise RuntimeError("call midscene_init first")
         tab_id = str(arguments["id"])
         await self._page.switch_tab(tab_id)
         return {"status": "ok", "id": tab_id}
 
-    async def _handle_close(self, arguments: Dict[str, Any]) -> Any:
+    async def _handle_close(self, arguments: dict[str, Any]) -> Any:
         await self.close()
         return {"status": "closed"}
 
@@ -236,17 +246,14 @@ class AgentTools:
 
 async def _default_page_factory(browser: str = "playwright", headless: bool = True):
     if browser != "playwright":
-        raise ValueError(f"Unsupported browser: {browser} (only playwright is supported)")
+        raise ValueError(
+            f"Unsupported browser: {browser} (only playwright is supported)"
+        )
     from midscene.web_integration.playwright.page import PlaywrightWebPage
 
     return await PlaywrightWebPage.create(headless=headless)
 
 
-from midscene.shared.agent_tools.base_tools import BaseMidsceneTools, InitArgSpec
-from midscene.shared.agent_tools.tool_generator import (
-    generate_common_tools,
-    generate_tools_from_action_space,
-)
 from midscene.shared.agent_tools.agent_behavior_init_args import (
     AGENT_BEHAVIOR_INIT_ARG_SHAPE,
     extract_agent_behavior_init_args,
@@ -258,6 +265,7 @@ from midscene.shared.agent_tools.agent_context import (
     AI_API_NAMES,
     is_agent_ai_context_key,
 )
+from midscene.shared.agent_tools.base_tools import BaseMidsceneTools, InitArgSpec
 from midscene.shared.agent_tools.chrome_path import (
     get_system_chrome_path,
     resolve_chrome_path,
@@ -297,6 +305,10 @@ from midscene.shared.agent_tools.tool_defaults import (
     merge_tool_defaults,
     resolve_tool_defaults,
     strip_behavior_flags,
+)
+from midscene.shared.agent_tools.tool_generator import (
+    generate_common_tools,
+    generate_tools_from_action_space,
 )
 from midscene.shared.agent_tools.types import (
     DEFAULT_APP_LOADING_CHECK_INTERVAL_MS,

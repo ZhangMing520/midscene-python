@@ -22,9 +22,7 @@ class TestUIObservationRecordWriter:
         self, tmp_path
     ):
         output_path = tmp_path / "submission-observation.json"
-        writer = UIObservationRecordWriter(
-            str(tmp_path / "internal-observation.json")
-        )
+        writer = UIObservationRecordWriter(str(tmp_path / "internal-observation.json"))
         first = writer.persist_frame(_data_url("same-frame"), 100)
         second = writer.persist_frame(_data_url("same-frame"), 200)
 
@@ -41,9 +39,7 @@ class TestUIObservationRecordWriter:
         assert first["path"] == second["path"]
         assert Path(record["frames"][0]["path"]).is_absolute()
         assert Path(record["frames"][0]["path"]).exists()
-        assert write_ui_observation_record(record, str(output_path)) == str(
-            output_path
-        )
+        assert write_ui_observation_record(record, str(output_path)) == str(output_path)
 
         serialized = json.loads(output_path.read_text(encoding="utf-8"))
         assert serialized["frames"][0] == {

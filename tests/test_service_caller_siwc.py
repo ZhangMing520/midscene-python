@@ -1,6 +1,6 @@
 """Synced from upstream packages/core/tests/unit-test/service-caller-siwc.test.ts."""
 
-from typing import Any, Dict
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -8,7 +8,7 @@ import pytest
 from tests.core_helpers import FakeResponse
 
 
-def _chat_completion_payload(content: str = "ok") -> Dict[str, Any]:
+def _chat_completion_payload(content: str = "ok") -> dict[str, Any]:
     return {
         "id": "chatcmpl-1",
         "model": "mock-model",
@@ -61,12 +61,10 @@ class TestServiceCallerSiwc:
         manager = SiwcTokenManager()
         proxy = {"httpProxy": "http://proxy:8080", "socksProxy": None}
 
-        with patch.object(
-            credential_storage, "_read_credentials", lambda: record
-        ), patch.object(
-            credential_storage, "_save_credentials", lambda _record: None
-        ), patch.object(
-            refresh, "refresh_siwc_credentials", refresh_mock
+        with (
+            patch.object(credential_storage, "_read_credentials", lambda: record),
+            patch.object(credential_storage, "_save_credentials", lambda _record: None),
+            patch.object(refresh, "refresh_siwc_credentials", refresh_mock),
         ):
             token = await manager.refresh_access_token("old", proxy)
 
@@ -79,7 +77,7 @@ class TestServiceCallerSiwc:
     async def test_exchange_uses_configured_proxy(self):
         from midscene.core import siwc
 
-        captured: Dict[str, Any] = {}
+        captured: dict[str, Any] = {}
 
         class _Client:
             def __init__(self, **kwargs):
@@ -114,8 +112,9 @@ class TestServiceCallerSiwc:
         )
         from midscene.core.ai_model.service_caller.openai.siwc import network
 
-        with patch.object(siwc.httpx, "AsyncClient", _Client), patch.object(
-            network, "_verify_id_token", verify
+        with (
+            patch.object(siwc.httpx, "AsyncClient", _Client),
+            patch.object(network, "_verify_id_token", verify),
         ):
             credentials = await siwc.exchange_siwc_code(
                 attempt,
@@ -129,9 +128,9 @@ class TestServiceCallerSiwc:
 
     @pytest.mark.asyncio
     async def test_siwc_token_expired_refreshes_once(self):
+        from midscene.core.ai_model.models.registry import get_model_runtime
         from midscene.core.ai_model.service_caller import call_ai as caller
         from midscene.core.ai_model.service_caller import model_call
-        from midscene.core.ai_model.models.registry import get_model_runtime
 
         responses = iter(
             [
@@ -141,9 +140,14 @@ class TestServiceCallerSiwc:
         )
         refresh = AsyncMock(return_value="new-token")
 
-        with patch.object(
-            model_call.httpx, "AsyncClient", lambda *a, **k: _StubAsyncClient(responses)
-        ), patch.object(caller.siwc_token_manager, "refresh_access_token", refresh):
+        with (
+            patch.object(
+                model_call.httpx,
+                "AsyncClient",
+                lambda *a, **k: _StubAsyncClient(responses),
+            ),
+            patch.object(caller.siwc_token_manager, "refresh_access_token", refresh),
+        ):
             runtime = get_model_runtime(
                 {
                     "modelName": "mock-model",
@@ -162,4 +166,3 @@ class TestServiceCallerSiwc:
             "old-token",
             {"httpProxy": "http://model-proxy:3128", "socksProxy": None},
         )
-

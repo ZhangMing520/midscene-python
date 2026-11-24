@@ -7,7 +7,7 @@ options understand.
 """
 
 import re
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Any, TypedDict
 
 from midscene.shared.agent_tools.agent_behavior_init_args import (
     AGENT_BEHAVIOR_INIT_ARG_SHAPE,
@@ -23,7 +23,7 @@ class WebAgentInitArgs(TypedDict, total=False):
     """Web-specific agent init args (upstream WebAgentInitArgs)."""
 
     url: str
-    aiContexts: Dict[str, str]
+    aiContexts: dict[str, str]
     aiActContext: str
     aiActionContext: str
     replanningCycleLimit: int
@@ -34,7 +34,7 @@ class WebAgentInitArgs(TypedDict, total=False):
 class WebCdpAgentInitArgs(WebAgentInitArgs, total=False):
     """Web CDP init args, adding normalized HTTP headers."""
 
-    extraHTTPHeaders: Dict[str, str]
+    extraHTTPHeaders: dict[str, str]
 
 
 WEB_AGENT_INIT_ARG_SHAPE: ToolSchema = {
@@ -50,7 +50,7 @@ WEB_CDP_AGENT_INIT_ARG_SHAPE: ToolSchema = {
     **WEB_AGENT_INIT_ARG_SHAPE,
     "extraHttpHeader": schema_field(
         "string | string[]",
-        'Extra HTTP header sent with page requests in CDP mode, in '
+        "Extra HTTP header sent with page requests in CDP mode, in "
         '"Name:Value" format. Repeat --extra-http-header to send multiple '
         "headers.",
         optional=True,
@@ -58,7 +58,7 @@ WEB_CDP_AGENT_INIT_ARG_SHAPE: ToolSchema = {
 }
 
 
-def _parse_header_entry(entry: Any) -> Dict[str, str]:
+def _parse_header_entry(entry: Any) -> dict[str, str]:
     if not isinstance(entry, str):
         raise ValueError(_HTTP_HEADER_ERROR)
     separator_index = entry.find(":")
@@ -70,10 +70,10 @@ def _parse_header_entry(entry: Any) -> Dict[str, str]:
     return {name: entry[separator_index + 1 :].strip()}
 
 
-def _parse_http_headers(value: Any) -> Optional[Dict[str, str]]:
+def _parse_http_headers(value: Any) -> dict[str, str] | None:
     if value is None:
         return None
-    entries: List[Any]
+    entries: list[Any]
     if isinstance(value, str):
         entries = [value]
     elif isinstance(value, list):
@@ -83,20 +83,20 @@ def _parse_http_headers(value: Any) -> Optional[Dict[str, str]]:
     else:
         raise ValueError(_HTTP_HEADER_ERROR)
 
-    headers: Dict[str, str] = {}
+    headers: dict[str, str] = {}
     for entry in entries:
         headers.update(_parse_header_entry(entry))
     return headers
 
 
 def adapt_web_agent_init_args(
-    extracted: Optional[Dict[str, Any]],
-) -> Optional[Dict[str, Any]]:
+    extracted: dict[str, Any] | None,
+) -> dict[str, Any] | None:
     """Keep only the supported web/agent behavior init args."""
     if not extracted:
         return None
 
-    init_args: Dict[str, Any] = {}
+    init_args: dict[str, Any] = {}
     if isinstance(extracted.get("url"), str):
         init_args["url"] = extracted["url"]
     behavior_args = extract_agent_behavior_init_args(extracted)
@@ -107,22 +107,22 @@ def adapt_web_agent_init_args(
 
 
 def get_agent_init_args(
-    extracted: Optional[Dict[str, Any]],
-) -> Optional[Dict[str, Any]]:
+    extracted: dict[str, Any] | None,
+) -> dict[str, Any] | None:
     """Return normalized agent init args (alias of adapt_web_agent_init_args)."""
     return adapt_web_agent_init_args(extracted)
 
 
 def adapt_web_cdp_agent_init_args(
-    extracted: Optional[Dict[str, Any]],
-) -> Optional[Dict[str, Any]]:
+    extracted: dict[str, Any] | None,
+) -> dict[str, Any] | None:
     """Normalize CDP web init args, including ``extraHttpHeader`` entries."""
     if not extracted:
         return None
 
     base_args = adapt_web_agent_init_args(extracted)
     headers = _parse_http_headers(extracted.get("extraHttpHeader"))
-    init_args: Dict[str, Any] = dict(base_args or {})
+    init_args: dict[str, Any] = dict(base_args or {})
     if headers is not None:
         init_args["extraHTTPHeaders"] = headers
 

@@ -3,7 +3,7 @@
 
 import base64
 import io
-from typing import Any, Dict
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
@@ -17,9 +17,7 @@ from midscene.core.ai_model.workflows.recorder_generation import (
     prepare_screenshot_assets_for_markdown_replay,
 )
 
-SCREENSHOT = (
-    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
-)
+SCREENSHOT = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
 
 
 def _mock_events() -> list:
@@ -56,9 +54,7 @@ def _png(width: int, height: int) -> str:
 
 def _prompt_text(prompt) -> str:
     content = prompt[1]["content"]
-    return "\n".join(
-        part["text"] for part in content if part["type"] == "text"
-    )
+    return "\n".join(part["text"] for part in content if part["type"] == "text")
 
 
 def test_normalizes_generated_markdown_code_fences():
@@ -116,12 +112,15 @@ def test_logs_image_compression_failures_before_retaining_the_original_asset():
         "eventType": "navigation",
         "mimeType": "image/png",
     }
-    with patch(
-        "midscene.core.ai_model.workflows.recorder_generation.markdown._image_info_of_base64",
-        side_effect=RuntimeError("bad png"),
-    ), patch(
-        "midscene.core.ai_model.workflows.recorder_generation.markdown.logger"
-    ) as mock_logger:
+    with (
+        patch(
+            "midscene.core.ai_model.workflows.recorder_generation.markdown._image_info_of_base64",
+            side_effect=RuntimeError("bad png"),
+        ),
+        patch(
+            "midscene.core.ai_model.workflows.recorder_generation.markdown.logger"
+        ) as mock_logger,
+    ):
         prepared = prepare_screenshot_assets_for_markdown_replay([asset])
 
     assert prepared == [asset]
@@ -176,9 +175,7 @@ def test_creates_a_compact_ai_act_focused_prompt_with_recorder_data():
     assert '"eventCounts"' not in text
     assert '"clickDescriptions"' not in text
     assert '"inputDescriptions"' not in text
-    assert (
-        "Write all human-readable Markdown instructions in English." in text
-    )
+    assert "Write all human-readable Markdown instructions in English." in text
     assert '"screenshotRef": "screenshot-1"' in text
     assert "./screenshots/event-001-navigation.png" not in text
     assert len(text) < 8000
@@ -246,14 +243,8 @@ def test_preserves_specific_semantic_scroll_regions_in_the_markdown_prompt_data(
 
     assert '"hashId": "scroll-left-nav"' in text
     assert '"elementDescription": "left navigation panel"' in text
-    assert (
-        'Scroll the page/region with description \\"left navigation panel\\"'
-        in text
-    )
-    assert (
-        '"nextActionDescription": "Tap link in the left navigation panel"'
-        in text
-    )
+    assert 'Scroll the page/region with description \\"left navigation panel\\"' in text
+    assert '"nextActionDescription": "Tap link in the left navigation panel"' in text
 
 
 def test_includes_sequence_context_for_neighboring_input_events():
@@ -343,9 +334,7 @@ def test_includes_next_action_context_for_field_focus_clicks():
                     "semantic": {
                         "source": "aiDescribe",
                         "status": "ready",
-                        "elementDescription": (
-                            'the character "code" inside the field'
-                        ),
+                        "elementDescription": ('the character "code" inside the field'),
                     },
                     "pageInfo": {"width": 1280, "height": 720},
                     "hashId": "click-focus",
@@ -388,9 +377,7 @@ def test_omits_oversized_screenshot_payloads_from_markdown_generation_prompts():
                     "timestamp": 1000,
                     "url": "https://example.com",
                     "title": "Example Page",
-                    "screenshotAfter": (
-                        "data:image/png;base64," + "a" * 700_000
-                    ),
+                    "screenshotAfter": ("data:image/png;base64," + "a" * 700_000),
                     "pageInfo": {"width": 1280, "height": 720},
                     "hashId": "nav-oversized",
                 }
@@ -456,7 +443,7 @@ def test_omits_fallback_audit_chains_before_building_markdown_prompts():
 @pytest.mark.asyncio
 async def test_compresses_oversized_screenshots_before_model_generation():
     large = _png(1024, 512)
-    captured: Dict[str, Any] = {}
+    captured: dict[str, Any] = {}
 
     async def fake_call(prompt, runtime):
         captured["prompt"] = prompt
@@ -500,7 +487,7 @@ async def test_compresses_oversized_screenshots_before_model_generation():
 
 @pytest.mark.asyncio
 async def test_generates_raw_markdown_replay_content():
-    captured: Dict[str, Any] = {}
+    captured: dict[str, Any] = {}
     raw = (
         "```markdown\n# Replay workflow\n\n## Steps\n1. Open page\n"
         "2. Tap on the element described as \"content card titled 'daily "

@@ -45,12 +45,10 @@ def _jpeg_data_url(width=2, height=2):
     from PIL import Image
 
     buffer = io.BytesIO()
-    Image.new("RGB", (width, height), (200, 200, 200)).save(
-        buffer, format="JPEG"
+    Image.new("RGB", (width, height), (200, 200, 200)).save(buffer, format="JPEG")
+    return "data:image/jpeg;base64," + base64.b64encode(buffer.getvalue()).decode(
+        "ascii"
     )
-    return "data:image/jpeg;base64," + base64.b64encode(
-        buffer.getvalue()
-    ).decode("ascii")
 
 
 def _representative(width=2, height=2):
@@ -175,9 +173,7 @@ class TestUIObserverImpl:
         assert stopped == [True]
         assert fake.stopped == 1
         assert len(record["frames"]) >= 3
-        assert all(
-            frame["mimeType"] == "image/jpeg" for frame in record["frames"]
-        )
+        assert all(frame["mimeType"] == "image/jpeg" for frame in record["frames"])
         assert _jpeg_magic(record["frames"][0]["path"]) == [0xFF, 0xD8, 0xFF]
         assert _jpeg_magic(record["frames"][-1]["path"]) == [0xFF, 0xD8, 0xFF]
         assert "base64" not in record["frames"][0]
@@ -219,9 +215,7 @@ class TestUIObserverImpl:
         record = await observation.export_record()
         assert len(record["frames"]) == 31
         assert sum(len(batch) for batch in fake.decoded_batches) == 30
-        assert all(
-            frame["mimeType"] == "image/jpeg" for frame in record["frames"]
-        )
+        assert all(frame["mimeType"] == "image/jpeg" for frame in record["frames"])
         await observer.dispose()
 
     def test_smart_thinning_preserves_change_points_and_temporal_endpoints(
@@ -259,9 +253,7 @@ class TestUIObserverImpl:
         fake = _FakeSource()
         deps, _, _ = _make_deps(tmp_path, fake)
         observer = UIObserverImpl(deps, {"intervalMs": 200})
-        persisted = deps["observationRecordWriter"].persist_frame(
-            _png_data_url(), 100
-        )
+        persisted = deps["observationRecordWriter"].persist_frame(_png_data_url(), 100)
         observer._push_frame(
             {
                 "ref": persisted["path"],
@@ -294,9 +286,7 @@ class TestUIObserverImpl:
         fake2.current = {"ref": "f0", "capturedAt": 0}
         deps2, _, stopped2 = _make_deps(tmp_path / "second", fake2)
         Path(tmp_path / "second").mkdir(exist_ok=True)
-        disabled = UIObserverImpl(
-            deps2, {"intervalMs": 100, "watchdogMs": 0}
-        )
+        disabled = UIObserverImpl(deps2, {"intervalMs": 100, "watchdogMs": 0})
         await disabled.start()
         await asyncio.sleep(0.2)
         assert disabled._stopped is False
@@ -332,17 +322,13 @@ class TestUIObserverImpl:
         observation = await observer.stop()
         record = await observation.export_record()
         assert screenshot_calls
-        assert all(
-            frame["mimeType"] == "image/jpeg" for frame in record["frames"]
-        )
+        assert all(frame["mimeType"] == "image/jpeg" for frame in record["frames"])
         assert _jpeg_magic(record["frames"][0]["path"]) == [0xFF, 0xD8, 0xFF]
         assert "base64" not in observer._frames[0]["ref"]
         await observer.dispose()
 
     @pytest.mark.asyncio
-    async def test_falls_back_when_opening_the_frame_source_throws(
-        self, tmp_path
-    ):
+    async def test_falls_back_when_opening_the_frame_source_throws(self, tmp_path):
         screenshot_calls = []
 
         async def failing_source():
@@ -369,9 +355,7 @@ class TestUIObserverImpl:
         await observer.dispose()
 
     @pytest.mark.asyncio
-    async def test_concurrent_stop_calls_wait_for_the_same_finalization(
-        self, tmp_path
-    ):
+    async def test_concurrent_stop_calls_wait_for_the_same_finalization(self, tmp_path):
         fake = _FakeSource()
         fake.current = {"ref": "f0", "capturedAt": 0}
         deps, _, stopped = _make_deps(tmp_path, fake)
@@ -551,9 +535,7 @@ async def test_agent_observer_rejects_live_dom_options():
     await observer.start()
     observation = await observer.stop()
     with pytest.raises(ValueError) as exc:
-        await observation.ai_boolean(
-            "is the old toast visible?", {"domIncluded": True}
-        )
+        await observation.ai_boolean("is the old toast visible?", {"domIncluded": True})
     assert "does not support domIncluded" in str(exc.value)
     await observation.dispose()
 

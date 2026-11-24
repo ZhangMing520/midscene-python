@@ -2,16 +2,16 @@
 
 import asyncio
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from midscene.core.agent.utils import _strip_runtime_locate_result
-from midscene.core.task_runner import TaskExecutionError
 from midscene.core.dump import build_execution_task
 from midscene.core.screenshot_item import ScreenshotItem
+from midscene.core.task_runner import TaskExecutionError
 
 
 def record_and_release_screenshot_sequence(
-    task: Dict[str, Any],
+    task: dict[str, Any],
     ui_context: Any,
 ) -> None:
     """Surface an observed screenshot sequence in the report timeline."""
@@ -26,7 +26,7 @@ def record_and_release_screenshot_sequence(
             retain()
 
     if frames and len(frames) > 1:
-        recorder_items: List[Dict[str, Any]] = []
+        recorder_items: list[dict[str, Any]] = []
         for index, frame in enumerate(frames[:-1]):
             if isinstance(frame, str):
                 screenshot = ScreenshotItem.create(frame, int(time.time() * 1000))
@@ -41,9 +41,7 @@ def record_and_release_screenshot_sequence(
                     "type": "screenshot",
                     "ts": captured_at,
                     "screenshot": screenshot,
-                    "description": (
-                        f"Observed frame {index + 1}/{len(frames)}"
-                    ),
+                    "description": (f"Observed frame {index + 1}/{len(frames)}"),
                     "timing": "observed-frame",
                 }
             )
@@ -69,12 +67,10 @@ class TaskExecutor:
         self,
         interface_instance: Any,
         service: Any = None,
-        opts: Optional[Dict[str, Any]] = None,
+        opts: dict[str, Any] | None = None,
     ) -> None:
         self._agent = (
-            interface_instance
-            if hasattr(interface_instance, "ai_act")
-            else None
+            interface_instance if hasattr(interface_instance, "ai_act") else None
         )
         self.interface = (
             getattr(self._agent, "interface", None)
@@ -83,9 +79,7 @@ class TaskExecutor:
         )
         self.service = service
         self._opts = opts or {}
-        self.task_cache = self._opts.get(
-            "taskCache", self._opts.get("task_cache")
-        )
+        self.task_cache = self._opts.get("taskCache", self._opts.get("task_cache"))
         self.replanning_cycle_limit = self._opts.get(
             "replanningCycleLimit", self._opts.get("replanning_cycle_limit")
         )
@@ -98,11 +92,11 @@ class TaskExecutor:
 
     async def convert_plan_to_executable(
         self,
-        plans: List[Dict[str, Any]],
+        plans: list[dict[str, Any]],
         planning_model: Any,
         locate_model: Any,
-        options: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        options: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         from midscene.core.agent.task_builder import TaskBuilder
 
         builder = TaskBuilder(
@@ -126,8 +120,8 @@ class TaskExecutor:
         self,
         user_instruction: Any,
         yaml_string: str,
-        report_options: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        report_options: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         if self._agent is not None:
             replayed = await self._agent._replay_cached_plan(
                 {"yamlWorkflow": yaml_string}
@@ -145,11 +139,11 @@ class TaskExecutor:
     async def run_plans(
         self,
         title: str,
-        plans: List[Dict[str, Any]],
+        plans: list[dict[str, Any]],
         planning_model: Any,
         locate_model: Any,
-        options: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        options: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         options = options or {}
         built = await self.convert_plan_to_executable(
             plans, planning_model, locate_model, options
@@ -168,18 +162,18 @@ class TaskExecutor:
         user_prompt: Any,
         planning_model: Any,
         locate_model: Any,
-        ai_act_context: Optional[str] = None,
-        cacheable: Optional[bool] = None,
-        replanning_cycle_limit_override: Optional[int] = None,
+        ai_act_context: str | None = None,
+        cacheable: bool | None = None,
+        replanning_cycle_limit_override: int | None = None,
         effort: str = "balance",
-        file_chooser_accept: Optional[List[str]] = None,
-        deep_locate: Optional[bool] = None,
+        file_chooser_accept: list[str] | None = None,
+        deep_locate: bool | None = None,
         abort_signal: Any = None,
-        report_options: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        report_options: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         if self._agent is None:
             raise RuntimeError("TaskExecutor.action requires an Agent instance")
-        opt: Dict[str, Any] = {
+        opt: dict[str, Any] = {
             "context": ai_act_context,
             "cacheable": cacheable,
             "effort": effort,
@@ -197,10 +191,10 @@ class TaskExecutor:
         type: str,
         demand: Any,
         model_runtime: Any,
-        opt: Optional[Dict[str, Any]] = None,
+        opt: dict[str, Any] | None = None,
         multimodal_prompt: Any = None,
-        execution_options: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        execution_options: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         if self._agent is None:
             raise RuntimeError(
                 "TaskExecutor.createTypeQueryExecution requires an Agent instance"
@@ -229,9 +223,9 @@ class TaskExecutor:
     async def wait_for(
         self,
         assertion: Any,
-        opt: Dict[str, Any],
+        opt: dict[str, Any],
         model_runtime: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         if self._agent is None:
             raise RuntimeError("TaskExecutor.waitFor requires an Agent instance")
         output = await self._agent.ai_wait_for(assertion, opt)
@@ -247,11 +241,11 @@ __all__ = [
 ]
 
 
-def action_progress_summary(action: Dict[str, Any]) -> Dict[str, Any]:
+def action_progress_summary(action: dict[str, Any]) -> dict[str, Any]:
     """Structured, presentation-free action descriptor for progress events."""
     name = action.get("type")
     param = action.get("param") or {}
-    summary: Dict[str, Any] = {"name": name}
+    summary: dict[str, Any] = {"name": name}
     locate = param.get("locate") or param.get("from")
     if isinstance(locate, dict):
         if locate.get("prompt"):
@@ -275,12 +269,12 @@ def action_progress_summary(action: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def build_action_report_task(
-    action: Dict[str, Any],
+    action: dict[str, Any],
     started_at: float,
     finished_at: float,
     status: str = "finished",
-    error: Optional[BaseException] = None,
-) -> Dict[str, Any]:
+    error: BaseException | None = None,
+) -> dict[str, Any]:
     """Build one Action Space execution task for the report dump."""
     task = build_execution_task(
         "Action Space",

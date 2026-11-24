@@ -2,7 +2,8 @@
 
 import asyncio
 import json
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
 from rich.console import Console
@@ -29,23 +30,19 @@ Options:
 """
 
 
-def _assert_no_model_verify_options(args: List[str], command_name: str) -> None:
+def _assert_no_model_verify_options(args: list[str], command_name: str) -> None:
     for arg in args:
-        raise ValueError(
-            f"Unknown option for {command_name} model verify: {arg}"
-        )
+        raise ValueError(f"Unknown option for {command_name} model verify: {arg}")
 
 
-def _format_table(headers: List[str], rows: List[List[str]]) -> str:
+def _format_table(headers: list[str], rows: list[list[str]]) -> str:
     widths = [
         max([len(header)] + [len(row[index]) for row in rows])
         for index, header in enumerate(headers)
     ]
     lines = []
     for row in [headers, *rows]:
-        line = "  ".join(
-            cell.ljust(widths[index]) for index, cell in enumerate(row)
-        )
+        line = "  ".join(cell.ljust(widths[index]) for index, cell in enumerate(row))
         lines.append(line.rstrip())
     return "\n".join(lines)
 
@@ -68,14 +65,14 @@ def _shell_single_quote(value: str) -> str:
     return "'" + value.replace("'", "'\\''") + "'"
 
 
-def _build_chat_completions_url(base_url: Optional[str] = None) -> str:
+def _build_chat_completions_url(base_url: str | None = None) -> str:
     normalized = (base_url or DEFAULT_OPENAI_BASE_URL).rstrip("/")
     if normalized.endswith("/chat/completions"):
         return normalized
     return f"{normalized}/chat/completions"
 
 
-def _build_curl_command(model_config: Dict[str, Any]) -> str:
+def _build_curl_command(model_config: dict[str, Any]) -> str:
     payload = {
         "model": model_config.get("modelName"),
         "messages": [{"role": "user", "content": "What is 1+1?"}],
@@ -90,7 +87,7 @@ def _build_curl_command(model_config: Dict[str, Any]) -> str:
     )
 
 
-def _build_curl_dedup_key(model_config: Dict[str, Any]) -> str:
+def _build_curl_dedup_key(model_config: dict[str, Any]) -> str:
     return json.dumps(
         {
             "baseURL": model_config.get("openaiBaseURL") or DEFAULT_OPENAI_BASE_URL,
@@ -101,10 +98,10 @@ def _build_curl_dedup_key(model_config: Dict[str, Any]) -> str:
 
 
 def build_model_verify_curl_commands(
-    configs: List[Dict[str, Any]],
-) -> List[Dict[str, Any]]:
+    configs: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
     """Deduplicate curl commands by base URL, API key, and model name."""
-    command_map: Dict[str, Dict[str, Any]] = {}
+    command_map: dict[str, dict[str, Any]] = {}
     for item in configs:
         model_config = item["modelConfig"]
         key = _build_curl_dedup_key(model_config)
@@ -121,7 +118,7 @@ def build_model_verify_curl_commands(
 
 
 def _format_model_verify_failure_output(
-    message: Optional[str], curl_commands: List[Dict[str, Any]]
+    message: str | None, curl_commands: list[dict[str, Any]]
 ) -> str:
     details = (message or "").strip() or "No failure details were generated."
     curl_section = "\n\n".join(
@@ -153,24 +150,24 @@ def _format_model_verify_failure_output(
     )
 
 
-def _default_deps(io: Dict[str, Callable[[str], None]]) -> Dict[str, Any]:
+def _default_deps(io: dict[str, Callable[[str], None]]) -> dict[str, Any]:
     from midscene.core.ai_model.connectivity import run_connectivity_test
 
     return {
         "loadDotenv": lambda: load_dotenv_config(
             override=True, debug=True, log=io["stdout"]
         ),
-        "getModelConfig": lambda intent: get_global_model_config_manager().get_model_config(
-            intent
+        "getModelConfig": lambda intent: (
+            get_global_model_config_manager().get_model_config(intent)
         ),
         "verifyModel": run_connectivity_test,
     }
 
 
 async def _run_model_verify_command(
-    args: List[str],
-    deps: Dict[str, Any],
-    io: Dict[str, Callable[[str], None]],
+    args: list[str],
+    deps: dict[str, Any],
+    io: dict[str, Callable[[str], None]],
     command_name: str,
 ) -> int:
     try:
@@ -179,9 +176,7 @@ async def _run_model_verify_command(
             return 0
 
         _assert_no_model_verify_options(args, command_name)
-        io["stdout"](
-            "Model verify started. This usually completes within 30 seconds."
-        )
+        io["stdout"]("Model verify started. This usually completes within 30 seconds.")
         deps["loadDotenv"]()
         io["stdout"]("")
 
@@ -198,7 +193,7 @@ async def _run_model_verify_command(
             ]
         )
 
-        base_urls: Dict[str, int] = {}
+        base_urls: dict[str, int] = {}
         model_rows = []
         for intent, config, check in (
             ("planning", planning_model_config, "Text response"),
@@ -215,12 +210,15 @@ async def _run_model_verify_command(
             if endpoint not in base_urls:
                 base_urls[endpoint] = len(base_urls) + 1
             model_rows.append(
-                [intent, config.get("modelName") or "", check, f"[{base_urls[endpoint]}]"]
+                [
+                    intent,
+                    config.get("modelName") or "",
+                    check,
+                    f"[{base_urls[endpoint]}]",
+                ]
             )
         io["stdout"](
-            _format_table(
-                ["Model role", "Model", "Check", "Endpoint"], model_rows
-            )
+            _format_table(["Model role", "Model", "Check", "Endpoint"], model_rows)
         )
         io["stdout"]("")
         for endpoint, index in base_urls.items():
@@ -257,7 +255,7 @@ async def _run_model_verify_command(
                 ],
             )
         )
-        request_endpoints: Dict[str, List[str]] = {}
+        request_endpoints: dict[str, list[str]] = {}
         for check in checks:
             for endpoint in check.get("endpoints") or []:
                 display = _display_endpoint(endpoint)
@@ -301,9 +299,9 @@ async def _run_model_verify_command(
 
 
 async def run_model_command(
-    raw_args: List[str],
-    deps: Optional[Dict[str, Any]] = None,
-    io: Optional[Dict[str, Callable[[str], None]]] = None,
+    raw_args: list[str],
+    deps: dict[str, Any] | None = None,
+    io: dict[str, Callable[[str], None]] | None = None,
     command_name: str = "midscene",
 ) -> int:
     """Run `midscene model ...` (upstream runModelCommand)."""

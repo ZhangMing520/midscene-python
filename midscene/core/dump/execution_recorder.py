@@ -6,7 +6,7 @@ identity for anonymous executions).
 """
 
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from midscene.core.dump.report_action_dump import ExecutionDump, ReportActionDump
 
@@ -14,23 +14,21 @@ from midscene.core.dump.report_action_dump import ExecutionDump, ReportActionDum
 class ExecutionRecorder:
     """Keep the latest state of each execution."""
 
-    def __init__(
-        self, executions: Optional[List[Dict[str, Any]]] = None
-    ) -> None:
-        self._executions: List[Dict[str, Any]] = (
+    def __init__(self, executions: list[dict[str, Any]] | None = None) -> None:
+        self._executions: list[dict[str, Any]] = (
             executions if executions is not None else []
         )
-        self._index_by_key: Dict[str, int] = {}
-        self.report_meta: Optional[Dict[str, Any]] = None
+        self._index_by_key: dict[str, int] = {}
+        self.report_meta: dict[str, Any] | None = None
 
     @property
-    def executions(self) -> List[Dict[str, Any]]:
+    def executions(self) -> list[dict[str, Any]]:
         return self._executions
 
     def record(
         self,
-        execution: Dict[str, Any],
-        meta: Optional[Dict[str, Any]] = None,
+        execution: dict[str, Any],
+        meta: dict[str, Any] | None = None,
     ) -> str:
         """Store an execution, replacing any previous state with the same key."""
         if meta is not None:
@@ -44,22 +42,18 @@ class ExecutionRecorder:
             self._executions[index] = execution
         return key
 
-    def to_dump(
-        self, meta: Optional[Dict[str, Any]] = None
-    ) -> ReportActionDump:
+    def to_dump(self, meta: dict[str, Any] | None = None) -> ReportActionDump:
         """Build a report dump from the recorded executions (upstream toDump)."""
         resolved_meta = meta if meta is not None else self.report_meta
         if resolved_meta is None:
-            raise ValueError(
-                "Cannot create a report without execution metadata"
-            )
+            raise ValueError("Cannot create a report without execution metadata")
         return ReportActionDump({**resolved_meta, "executions": self._executions})
 
     def capture(
         self,
-        execution_ids: Optional[List[str]] = None,
-        meta: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        execution_ids: list[str] | None = None,
+        meta: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Freeze executions + screenshots (upstream capture)."""
         selected = set(execution_ids) if execution_ids is not None else None
         executions = [
@@ -74,12 +68,10 @@ class ExecutionRecorder:
         ]
         resolved_meta = meta if meta is not None else self.report_meta
         if resolved_meta is None:
-            raise ValueError(
-                "Cannot capture a report without execution metadata"
-            )
+            raise ValueError("Cannot capture a report without execution metadata")
 
-        screenshots: List[Any] = []
-        reference_urls: List[str] = []
+        screenshots: list[Any] = []
+        reference_urls: list[str] = []
         for execution in executions:
             dump_execution = (
                 execution
@@ -92,10 +84,7 @@ class ExecutionRecorder:
         frozen = ReportActionDump({**resolved_meta, "executions": executions})
         dump = frozen.from_serialized_string(frozen.serialize())
         return {
-            "capturedAt": time.strftime(
-                "%Y-%m-%dT%H:%M:%S", time.gmtime()
-            )
-            + ".000Z",
+            "capturedAt": time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime()) + ".000Z",
             "dump": dump,
             "screenshots": screenshots,
             "referenceImageUrls": list(dict.fromkeys(reference_urls)),
@@ -107,7 +96,7 @@ class ExecutionRecorder:
         self.report_meta = None
 
     @staticmethod
-    def _execution_key(execution: Dict[str, Any]) -> str:
+    def _execution_key(execution: dict[str, Any]) -> str:
         execution_id = execution.get("id")
         if execution_id:
             return f"id:{execution_id}"

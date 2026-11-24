@@ -5,8 +5,6 @@ through an injectable backend. The default backend raises the upstream
 not-implemented error until a real helper transport is provided.
 """
 
-from typing import List, Optional
-
 from loguru import logger
 
 from midscene.computer.rdp.address import format_rdp_server_address
@@ -36,11 +34,11 @@ class RDPDevice(AbstractInterface):
     def __init__(
         self,
         config: RDPConnectionConfig,
-        backend: Optional[RDPBackendClient] = None,
+        backend: RDPBackendClient | None = None,
     ):
         self.config = config
         self.backend: RDPBackendClient = backend or UnsupportedRDPBackendClient()
-        self._connection_info: Optional[RDPConnectionInfo] = None
+        self._connection_info: RDPConnectionInfo | None = None
         self._destroyed = False
 
     @property
@@ -50,13 +48,9 @@ class RDPDevice(AbstractInterface):
     def describe(self) -> str:
         """Human-readable connection description (upstream describe)."""
         port = int(self.config.get("port") or 3389)
-        server = format_rdp_server_address(
-            str(self.config.get("host", "")), port
-        )
+        server = format_rdp_server_address(str(self.config.get("host", "")), port)
         username = (
-            f" as {self.config['username']}"
-            if self.config.get("username")
-            else ""
+            f" as {self.config['username']}" if self.config.get("username") else ""
         )
         session_id = (self._connection_info or {}).get("sessionId")
         session = f" [session {session_id}]" if session_id else ""
@@ -112,7 +106,7 @@ class RDPDevice(AbstractInterface):
             ),
         )
 
-    async def action_space(self) -> List[str]:
+    async def action_space(self) -> list[str]:
         return [
             "tap",
             "input",
@@ -141,7 +135,7 @@ class RDPDevice(AbstractInterface):
         await self.backend.key_press(key)
 
     async def scroll(
-        self, direction: str, distance: Optional[int] = None, **kwargs
+        self, direction: str, distance: int | None = None, **kwargs
     ) -> None:
         await self.backend.wheel(direction, distance or 500)
 

@@ -6,8 +6,9 @@ result publication.
 """
 
 import inspect
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -44,7 +45,7 @@ async def _maybe_await(value: Any) -> Any:
     return value
 
 
-def _report_executions(agent: Any) -> List[Any]:
+def _report_executions(agent: Any) -> list[Any]:
     builder = getattr(agent, "_report_builder", None)
     if builder is None:
         getter = getattr(agent, "_get_report_builder", None)
@@ -65,7 +66,7 @@ def _has_failed_report_execution_since(agent: Any, execution_count_before: int) 
 
 
 async def _record_yaml_task_error(
-    agent: Any, task: Dict[str, Any], flow_item_index: int, error: BaseException
+    agent: Any, task: dict[str, Any], flow_item_index: int, error: BaseException
 ) -> None:
     recorder = getattr(agent, "record_error_to_report", None)
     if not callable(recorder):
@@ -77,7 +78,7 @@ async def _record_yaml_task_error(
             {
                 "error": error,
                 "content": (
-                    f'Step {flow_item_index} failed while running YAML task '
+                    f"Step {flow_item_index} failed while running YAML task "
                     f'"{task_name}".'
                 ),
             },
@@ -89,14 +90,14 @@ async def _record_yaml_task_error(
 @dataclass
 class LegacyYamlRuntimeOptions:
     agent: Any
-    action_space: List[Any]
+    action_space: list[Any]
     source_path: str
-    set_result: Callable[[Optional[str], Any], Any]
+    set_result: Callable[[str | None, Any], Any]
 
 
 def _create_legacy_yaml_node_resolver(
     options: LegacyYamlRuntimeOptions,
-    resolve_task: Callable[[int], Optional[Dict[str, Any]]],
+    resolve_task: Callable[[int], dict[str, Any] | None],
     record_task_errors: bool,
     capture_report_traces: bool,
 ) -> Callable[[str], Any]:
@@ -104,7 +105,7 @@ def _create_legacy_yaml_node_resolver(
         definition.name: definition
         for definition in LEGACY_AGENT_TEST_RUNNER_NODE_DEFINITIONS
     }
-    nodes: Dict[str, Any] = {}
+    nodes: dict[str, Any] = {}
 
     def resolve(name: str) -> Any:
         existing = nodes.get(name)
@@ -117,7 +118,13 @@ def _create_legacy_yaml_node_resolver(
 
         async def execute(ctx: Any) -> Any:
             return await run_in_yaml_execution_context(
-                lambda: _run_node(ctx, definition, resolve_task, record_task_errors, capture_report_traces)
+                lambda: _run_node(
+                    ctx,
+                    definition,
+                    resolve_task,
+                    record_task_errors,
+                    capture_report_traces,
+                )
             )
 
         node = define_node(
@@ -131,7 +138,7 @@ def _create_legacy_yaml_node_resolver(
     async def _run_node(
         ctx: Any,
         definition: Any,
-        resolve_task_fn: Callable[[int], Optional[Dict[str, Any]]],
+        resolve_task_fn: Callable[[int], dict[str, Any] | None],
         record_errors: bool,
         capture_traces: bool,
     ) -> Any:
@@ -156,7 +163,7 @@ def _create_legacy_yaml_node_resolver(
         )
         if callable(add_dump_listener):
 
-            def listener(_dump: Any, execution: Optional[Dict[str, Any]] = None) -> None:
+            def listener(_dump: Any, execution: dict[str, Any] | None = None) -> None:
                 if not ctx.signal.aborted and execution and execution.get("id"):
                     ctx.report.add_trace(
                         {
@@ -218,18 +225,18 @@ def _create_legacy_yaml_node_resolver(
 
 
 async def _run_legacy_yaml_document(
-    document: Dict[str, Any],
+    document: dict[str, Any],
     options: LegacyYamlRuntimeOptions,
-    resolve_task: Callable[[int], Optional[Dict[str, Any]]],
+    resolve_task: Callable[[int], dict[str, Any] | None],
     record_task_errors: bool,
     capture_report_traces: bool,
-    run_options: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    run_options: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     run_options = dict(run_options or {})
     provided_is_fatal = run_options.get("isFatalError")
     provided_on_step_result = run_options.get("onStepResult")
 
-    def is_fatal_error(run: Dict[str, Any]) -> bool:
+    def is_fatal_error(run: dict[str, Any]) -> bool:
         steps = [
             *(run.get("beforeEach") or []),
             *(run.get("steps") or []),
@@ -242,7 +249,7 @@ async def _run_legacy_yaml_document(
             return True
         return bool(provided_is_fatal(run)) if provided_is_fatal else False
 
-    async def on_step_result(info: Dict[str, Any], result: Dict[str, Any]) -> None:
+    async def on_step_result(info: dict[str, Any], result: dict[str, Any]) -> None:
         meta = result.get("meta") or {}
         output = result.get("output")
         has_data = isinstance(output, NodeResult) or (
@@ -291,9 +298,9 @@ class LegacyYamlRuntime:
 
     async def run_script(
         self,
-        script: Dict[str, Any],
-        run_options: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        script: dict[str, Any],
+        run_options: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         run_options = dict(run_options or {})
         document = run_options.get("document") or collect_legacy_yaml_document(
             script, self.options.source_path, self.options.action_space
@@ -302,9 +309,11 @@ class LegacyYamlRuntime:
         return await _run_legacy_yaml_document(
             document,
             self.options,
-            lambda task_index: tasks[task_index]
-            if isinstance(task_index, int) and 0 <= task_index < len(tasks)
-            else None,
+            lambda task_index: (
+                tasks[task_index]
+                if isinstance(task_index, int) and 0 <= task_index < len(tasks)
+                else None
+            ),
             True,
             True,
             run_options,
@@ -312,10 +321,10 @@ class LegacyYamlRuntime:
 
     async def run_task(
         self,
-        task: Dict[str, Any],
+        task: dict[str, Any],
         task_index: int,
-        run_options: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        run_options: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         document = collect_legacy_yaml_task_document(
             task,
             task_index,
@@ -332,7 +341,7 @@ class LegacyYamlRuntime:
         )
 
 
-def create_legacy_yaml_runtime(options: Dict[str, Any]) -> LegacyYamlRuntime:
+def create_legacy_yaml_runtime(options: dict[str, Any]) -> LegacyYamlRuntime:
     """Build a runtime from `{agent, actionSpace, sourcePath, setResult}`."""
     return LegacyYamlRuntime(
         LegacyYamlRuntimeOptions(
@@ -344,7 +353,7 @@ def create_legacy_yaml_runtime(options: Dict[str, Any]) -> LegacyYamlRuntime:
     )
 
 
-def legacy_yaml_outcome_error(outcome: Dict[str, Any]) -> BaseException:
+def legacy_yaml_outcome_error(outcome: dict[str, Any]) -> BaseException:
     """Return the original step failure behind a failed Case outcome."""
     run = outcome.get("run") or {}
     failed_step = next(

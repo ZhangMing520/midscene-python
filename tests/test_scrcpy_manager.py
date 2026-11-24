@@ -19,7 +19,6 @@ from midscene.android.scrcpy_manager import (
     parse_device_uptime_ms,
 )
 
-
 SPS_PACKET = bytes([0x00, 0x00, 0x00, 0x01, 0x67, 0xAA])
 
 
@@ -58,8 +57,8 @@ def jpeg_frame(width: int = 1, height: int = 1) -> bytes:
 
 
 def video_header(width: int = 1080, height: int = 1920) -> bytes:
-    return b"fake-device".ljust(64, b"\x00") + b"h264" + struct.pack(
-        ">II", width, height
+    return (
+        b"fake-device".ljust(64, b"\x00") + b"h264" + struct.pack(">II", width, height)
     )
 
 
@@ -204,10 +203,13 @@ class TestValidateEnvironment:
         """should succeed when ffmpeg is available."""
 
         manager = create_manager()
-        with mock.patch.object(
-            manager, "check_ffmpeg_available", new=AsyncMock(return_value=True)
-        ), mock.patch.object(
-            manager, "resolve_server_bin_path", new=Mock(return_value="/tmp/s")
+        with (
+            mock.patch.object(
+                manager, "check_ffmpeg_available", new=AsyncMock(return_value=True)
+            ),
+            mock.patch.object(
+                manager, "resolve_server_bin_path", new=Mock(return_value="/tmp/s")
+            ),
         ):
             assert await manager.validate_environment() is None
 
@@ -216,11 +218,15 @@ class TestValidateEnvironment:
         """should throw when ffmpeg is not available."""
 
         manager = create_manager()
-        with mock.patch.object(
-            manager, "check_ffmpeg_available", new=AsyncMock(return_value=False)
-        ), mock.patch.object(
-            manager, "resolve_server_bin_path", new=Mock(return_value="/tmp/s")
-        ), pytest.raises(RuntimeError, match="ffmpeg is not available"):
+        with (
+            mock.patch.object(
+                manager, "check_ffmpeg_available", new=AsyncMock(return_value=False)
+            ),
+            mock.patch.object(
+                manager, "resolve_server_bin_path", new=Mock(return_value="/tmp/s")
+            ),
+            pytest.raises(RuntimeError, match="ffmpeg is not available"),
+        ):
             await manager.validate_environment()
 
     @pytest.mark.asyncio
@@ -228,13 +234,17 @@ class TestValidateEnvironment:
         """should throw when checkFfmpegAvailable throws an error."""
 
         manager = create_manager()
-        with mock.patch.object(
-            manager,
-            "check_ffmpeg_available",
-            new=AsyncMock(side_effect=RuntimeError("unexpected error")),
-        ), mock.patch.object(
-            manager, "resolve_server_bin_path", new=Mock(return_value="/tmp/s")
-        ), pytest.raises(RuntimeError, match="ffmpeg is not available"):
+        with (
+            mock.patch.object(
+                manager,
+                "check_ffmpeg_available",
+                new=AsyncMock(side_effect=RuntimeError("unexpected error")),
+            ),
+            mock.patch.object(
+                manager, "resolve_server_bin_path", new=Mock(return_value="/tmp/s")
+            ),
+            pytest.raises(RuntimeError, match="ffmpeg is not available"),
+        ):
             await manager.validate_environment()
 
     @pytest.mark.asyncio
@@ -243,10 +253,11 @@ class TestValidateEnvironment:
 
         manager = create_manager()
         check = AsyncMock(return_value=True)
-        with mock.patch.object(
-            manager, "check_ffmpeg_available", new=check
-        ), mock.patch.object(
-            manager, "resolve_server_bin_path", new=Mock(return_value="/tmp/s")
+        with (
+            mock.patch.object(manager, "check_ffmpeg_available", new=check),
+            mock.patch.object(
+                manager, "resolve_server_bin_path", new=Mock(return_value="/tmp/s")
+            ),
         ):
             await manager.validate_environment()
             await manager.validate_environment()
@@ -259,12 +270,14 @@ class TestValidateEnvironment:
 
         manager = create_manager()
         ensure_connected = AsyncMock()
-        with mock.patch.object(
-            manager, "check_ffmpeg_available", new=AsyncMock(return_value=True)
-        ), mock.patch.object(
-            manager, "resolve_server_bin_path", new=Mock(return_value="/tmp/s")
-        ), mock.patch.object(
-            manager, "ensure_connected", new=ensure_connected
+        with (
+            mock.patch.object(
+                manager, "check_ffmpeg_available", new=AsyncMock(return_value=True)
+            ),
+            mock.patch.object(
+                manager, "resolve_server_bin_path", new=Mock(return_value="/tmp/s")
+            ),
+            mock.patch.object(manager, "ensure_connected", new=ensure_connected),
         ):
             await manager.validate_environment()
 
@@ -325,7 +338,9 @@ class TestIsConnected:
 
 
 class TestEnsureConnected:
-    def test_preserves_the_original_codec_options_and_only_adds_an_explicit_frame_rate(self):
+    def test_preserves_the_original_codec_options_and_only_adds_an_explicit_frame_rate(
+        self,
+    ):
         """preserves the original codec options and only adds an explicit frame rate."""
 
         options = create_manager().create_scrcpy_options()
@@ -354,9 +369,7 @@ class TestEnsureConnected:
     def test_should_use_a_forward_tunnel_with_a_fresh_scrcpy_instance_id(self):
         """should use a forward tunnel with a fresh scrcpy instance id."""
 
-        manager = create_manager(
-            options={"maxSize": 1024, "videoBitRate": 8_000_000}
-        )
+        manager = create_manager(options={"maxSize": 1024, "videoBitRate": 8_000_000})
         first = manager.create_scrcpy_options()
         second = manager.create_scrcpy_options()
 
@@ -370,7 +383,9 @@ class TestEnsureConnected:
         assert second["scid"] is not None
         assert first["scid"] != second["scid"]
 
-    def test_disables_repeated_frames_so_unchanged_pixels_cannot_acquire_a_fresh_pts(self):
+    def test_disables_repeated_frames_so_unchanged_pixels_cannot_acquire_a_fresh_pts(
+        self,
+    ):
         """disables repeated frames so unchanged pixels cannot acquire a fresh PTS."""
 
         options = create_manager().create_scrcpy_options()
@@ -401,9 +416,7 @@ class TestEnsureConnected:
 
         await manager.ensure_connected()
 
-        push_server.assert_awaited_once_with(
-            "/tmp/scrcpy-server", DEFAULT_SERVER_PATH
-        )
+        push_server.assert_awaited_once_with("/tmp/scrcpy-server", DEFAULT_SERVER_PATH)
         await manager.dispose()
 
     @pytest.mark.asyncio
@@ -496,7 +509,9 @@ class TestEnsureConnected:
 
 class TestConsumeFramesLoop:
     @pytest.mark.asyncio
-    async def test_should_absorb_a_rejected_cancellation_after_a_stream_read_error(self):
+    async def test_should_absorb_a_rejected_cancellation_after_a_stream_read_error(
+        self,
+    ):
         """should absorb a rejected cancellation after a stream read error."""
 
         manager = create_manager(options={"idle_timeout_ms": 0})
@@ -533,7 +548,9 @@ class TestConsumeFramesLoop:
         assert manager.is_connected() is False
 
     @pytest.mark.asyncio
-    async def test_should_not_disconnect_a_replacement_session_when_an_obsolete_reader_ends(self):
+    async def test_should_not_disconnect_a_replacement_session_when_an_obsolete_reader_ends(
+        self,
+    ):
         """should not disconnect a replacement session when an obsolete reader ends."""
 
         manager = create_manager(options={"idle_timeout_ms": 0})
@@ -555,16 +572,12 @@ class TestDeviceClockFrameFreshness:
         """parses Android uptime from every TimeUtils format."""
 
         assert (
-            parse_device_uptime_ms(
-                "  mLastWakeTime=324781136 (228676 ms ago)\n"
-            )
+            parse_device_uptime_ms("  mLastWakeTime=324781136 (228676 ms ago)\n")
             == 325009812
         )
         assert parse_device_uptime_ms("mLastWakeTime=1000 (in 200 ms)") == 800
         assert parse_device_uptime_ms("mLastWakeTime=1000 (now)") == 1000
-        with pytest.raises(
-            ValueError, match="Unable to read Android device uptime"
-        ):
+        with pytest.raises(ValueError, match="Unable to read Android device uptime"):
             parse_device_uptime_ms("no uptime here")
 
     @pytest.mark.asyncio
@@ -573,12 +586,8 @@ class TestDeviceClockFrameFreshness:
 
         adb = ClockAdb()
         manager = create_manager(adb=adb)
-        manager._monotonic_time_us = Mock(
-            side_effect=[10_000_000, 10_020_000]
-        )
-        with mock.patch.object(
-            sm.time, "time", side_effect=[2.0, 2.020]
-        ):
+        manager._monotonic_time_us = Mock(side_effect=[10_000_000, 10_020_000])
+        with mock.patch.object(sm.time, "time", side_effect=[2.0, 2.020]):
             result = await manager._read_device_clock_calibration()
 
         assert adb.shell_calls == [["dumpsys", "power"]]
@@ -599,18 +608,14 @@ class TestDeviceClockFrameFreshness:
         warn = mock.patch.object(sm.logger, "warning")
 
         with warn as warn_mock:
-            barrier = await manager.set_freshness_barrier(
-                "completed input action"
-            )
+            barrier = await manager.set_freshness_barrier("completed input action")
             assert barrier == 1_006_000
 
             manager._process_packet(SPS_PACKET, None)
             manager._process_packet(idr_frame(0x01), 1_005_999)
             assert manager.get_latest_raw_keyframe() is None
             listener.assert_not_called()
-            assert "completed input action" in str(
-                manager._frame_freshness_error
-            )
+            assert "completed input action" in str(manager._frame_freshness_error)
             assert not any(
                 "predates the completed input action" in str(call.args[0])
                 for call in warn_mock.call_args_list
@@ -644,22 +649,18 @@ class TestDeviceClockFrameFreshness:
         ):
             await manager.ensure_frame_clock_calibration()
 
-        manager._monotonic_time_us = Mock(
-            side_effect=[10_100_000, 10_250_000]
-        )
+        manager._monotonic_time_us = Mock(side_effect=[10_100_000, 10_250_000])
         assert (
-            await manager.set_freshness_barrier("completed input action")
-            == 1_106_000
+            await manager.set_freshness_barrier("completed input action") == 1_106_000
         )
-        assert (
-            await manager.set_freshness_barrier("stale planning frame")
-            == 1_256_000
-        )
+        assert await manager.set_freshness_barrier("stale planning frame") == 1_256_000
 
         read_clock.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_projects_a_deferred_action_barrier_from_when_the_action_completed(self):
+    async def test_projects_a_deferred_action_barrier_from_when_the_action_completed(
+        self,
+    ):
         """projects a deferred action barrier from when the action completed."""
 
         manager = create_manager()
@@ -678,7 +679,9 @@ class TestDeviceClockFrameFreshness:
         assert manager.get_latest_raw_keyframe().data[5] == 0x01
 
     @pytest.mark.asyncio
-    async def test_preserves_a_cached_frame_that_already_crosses_a_completed_action_barrier(self):
+    async def test_preserves_a_cached_frame_that_already_crosses_a_completed_action_barrier(
+        self,
+    ):
         """preserves a cached frame that already crosses a completed-action barrier."""
 
         manager = create_manager()
@@ -696,7 +699,9 @@ class TestDeviceClockFrameFreshness:
         assert manager._last_raw_keyframe_pts_us == 1_200_000
 
     @pytest.mark.asyncio
-    async def test_rejects_a_delayed_first_frame_even_while_the_new_stream_startup_window_is_active(self):
+    async def test_rejects_a_delayed_first_frame_even_while_the_new_stream_startup_window_is_active(
+        self,
+    ):
         """rejects a delayed first frame even while the new-stream startup window is active."""
 
         reset_video = AsyncMock()
@@ -705,12 +710,8 @@ class TestDeviceClockFrameFreshness:
         manager._sps_header = b"header"
         manager._last_raw_keyframe = b"delayed-in-transport"
         manager._last_raw_keyframe_pts_us = 1_000_000
-        manager._stream_startup_window = {
-            "deadline_at": sm._now_ms() + 5_000
-        }
-        manager._device_clock_calibration = calibration(
-            device_uptime_us=5_000_000
-        )
+        manager._stream_startup_window = {"deadline_at": sm._now_ms() + 5_000}
+        manager._device_clock_calibration = calibration(device_uptime_us=5_000_000)
         manager._monotonic_time_us = lambda: 10_000_000
         manager.ensure_connected = AsyncMock()
         manager._reset_idle_timer = Mock()
@@ -720,14 +721,13 @@ class TestDeviceClockFrameFreshness:
         disconnect = AsyncMock()
         decode = AsyncMock()
 
-        with mock.patch.object(
-            manager, "_wait_for_next_keyframe", new=wait_for_next
-        ), spy_async(manager, "set_freshness_barrier") as set_barrier, \
-                mock.patch.object(manager, "disconnect", new=disconnect), \
-                mock.patch.object(manager, "_decode_h264_to_jpeg", new=decode):
-            with pytest.raises(
-                ScrcpyFreshFrameUnavailableError
-            ) as error:
+        with (
+            mock.patch.object(manager, "_wait_for_next_keyframe", new=wait_for_next),
+            spy_async(manager, "set_freshness_barrier") as set_barrier,
+            mock.patch.object(manager, "disconnect", new=disconnect),
+            mock.patch.object(manager, "_decode_h264_to_jpeg", new=decode),
+        ):
+            with pytest.raises(ScrcpyFreshFrameUnavailableError) as error:
                 await manager.get_screenshot_jpeg()
 
         assert error.value.failure_kind == "freshness-target"
@@ -739,17 +739,15 @@ class TestDeviceClockFrameFreshness:
         decode.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_uses_the_startup_timeout_while_waiting_for_the_first_data_frame_of_a_new_stream(self):
+    async def test_uses_the_startup_timeout_while_waiting_for_the_first_data_frame_of_a_new_stream(
+        self,
+    ):
         """uses the startup timeout while waiting for the first data frame of a new stream."""
 
         manager = create_manager()
         manager._sps_header = b"header"
-        manager._stream_startup_window = {
-            "deadline_at": sm._now_ms() + 5_000
-        }
-        manager._device_clock_calibration = calibration(
-            device_uptime_us=2_000_000
-        )
+        manager._stream_startup_window = {"deadline_at": sm._now_ms() + 5_000}
+        manager._device_clock_calibration = calibration(device_uptime_us=2_000_000)
         manager._monotonic_time_us = lambda: 10_000_000
         manager.ensure_connected = AsyncMock()
         manager._reset_idle_timer = Mock()
@@ -765,9 +763,10 @@ class TestDeviceClockFrameFreshness:
         )
         decode = AsyncMock(return_value=jpeg_frame())
 
-        with mock.patch.object(
-            manager, "_wait_for_next_keyframe", new=wait_for_next
-        ), mock.patch.object(manager, "_decode_h264_to_jpeg", new=decode):
+        with (
+            mock.patch.object(manager, "_wait_for_next_keyframe", new=wait_for_next),
+            mock.patch.object(manager, "_decode_h264_to_jpeg", new=decode),
+        ):
             assert await manager.get_screenshot_jpeg() == jpeg_frame()
 
         startup_wait_ms = wait_for_next.await_args.args[0]
@@ -789,12 +788,8 @@ class TestDeviceClockFrameFreshness:
             return future
 
         manager._read_device_clock_calibration = read_clock
-        first = asyncio.ensure_future(
-            manager.ensure_frame_clock_calibration()
-        )
-        second = asyncio.ensure_future(
-            manager.ensure_frame_clock_calibration()
-        )
+        first = asyncio.ensure_future(manager.ensure_frame_clock_calibration())
+        second = asyncio.ensure_future(manager.ensure_frame_clock_calibration())
         await asyncio.sleep(0)
         future.set_result(calibration())
 
@@ -900,7 +895,9 @@ class TestDeviceClockFrameFreshness:
         assert estimate.upper_bound_us == 2_500_000
         assert manager._is_frame_age_acceptable(1_000_000) is False
 
-    def test_accepts_a_frame_only_when_estimated_age_plus_uncertainty_is_within_500ms(self):
+    def test_accepts_a_frame_only_when_estimated_age_plus_uncertainty_is_within_500ms(
+        self,
+    ):
         """accepts a frame only when estimated age plus uncertainty is within 500ms."""
 
         manager = create_manager()
@@ -915,25 +912,28 @@ class TestDeviceClockFrameFreshness:
         assert manager._is_frame_age_acceptable(1_000_000) is False
 
     @pytest.mark.asyncio
-    async def test_recalibrates_instead_of_resetting_when_only_clock_uncertainty_makes_a_planning_frame_look_stale(self):
+    async def test_recalibrates_instead_of_resetting_when_only_clock_uncertainty_makes_a_planning_frame_look_stale(
+        self,
+    ):
         """recalibrates instead of resetting when only clock uncertainty makes a planning frame look stale."""
 
         reset_video = AsyncMock()
         manager = create_manager()
         prepare_cached_planning_frame(manager, reset_video=reset_video)
         read_clock = AsyncMock(
-            return_value=calibration(
-                device_uptime_us=2_000_000, round_trip_us=20_000
-            )
+            return_value=calibration(device_uptime_us=2_000_000, round_trip_us=20_000)
         )
         disconnect = AsyncMock()
         decode = AsyncMock(return_value=jpeg_frame())
 
-        with mock.patch.object(
-            manager, "_read_device_clock_calibration", new=read_clock
-        ), spy_async(manager, "set_freshness_barrier") as barrier, \
-                mock.patch.object(manager, "disconnect", new=disconnect), \
-                mock.patch.object(manager, "_decode_h264_to_jpeg", new=decode):
+        with (
+            mock.patch.object(
+                manager, "_read_device_clock_calibration", new=read_clock
+            ),
+            spy_async(manager, "set_freshness_barrier") as barrier,
+            mock.patch.object(manager, "disconnect", new=disconnect),
+            mock.patch.object(manager, "_decode_h264_to_jpeg", new=decode),
+        ):
             assert await manager.get_screenshot_jpeg() == jpeg_frame()
 
         assert read_clock.await_count == 1
@@ -943,7 +943,9 @@ class TestDeviceClockFrameFreshness:
         disconnect.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_retries_a_persistently_uncertain_clock_only_once_per_calibration_lifetime(self):
+    async def test_retries_a_persistently_uncertain_clock_only_once_per_calibration_lifetime(
+        self,
+    ):
         """retries a persistently uncertain clock only once per calibration lifetime."""
 
         reset_video = AsyncMock()
@@ -957,11 +959,14 @@ class TestDeviceClockFrameFreshness:
         disconnect = AsyncMock()
         decode = AsyncMock(return_value=jpeg_frame())
 
-        with mock.patch.object(
-            manager, "_read_device_clock_calibration", new=read_clock
-        ), spy_async(manager, "set_freshness_barrier") as barrier, \
-                mock.patch.object(manager, "disconnect", new=disconnect), \
-                mock.patch.object(manager, "_decode_h264_to_jpeg", new=decode):
+        with (
+            mock.patch.object(
+                manager, "_read_device_clock_calibration", new=read_clock
+            ),
+            spy_async(manager, "set_freshness_barrier") as barrier,
+            mock.patch.object(manager, "disconnect", new=disconnect),
+            mock.patch.object(manager, "_decode_h264_to_jpeg", new=decode),
+        ):
             assert await manager.get_screenshot_jpeg() == jpeg_frame()
             assert await manager.get_screenshot_jpeg() == jpeg_frame()
 
@@ -972,23 +977,26 @@ class TestDeviceClockFrameFreshness:
         disconnect.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_uses_estimated_age_when_the_best_effort_recalibration_fails_without_changing_epochs(self):
+    async def test_uses_estimated_age_when_the_best_effort_recalibration_fails_without_changing_epochs(
+        self,
+    ):
         """uses estimated age when the best-effort recalibration fails without changing epochs."""
 
         reset_video = AsyncMock()
         manager = create_manager()
         prepare_cached_planning_frame(manager, reset_video=reset_video)
-        read_clock = AsyncMock(
-            side_effect=RuntimeError("ADB clock sample failed")
-        )
+        read_clock = AsyncMock(side_effect=RuntimeError("ADB clock sample failed"))
         disconnect = AsyncMock()
         decode = AsyncMock(return_value=jpeg_frame())
 
-        with mock.patch.object(
-            manager, "_read_device_clock_calibration", new=read_clock
-        ), spy_async(manager, "set_freshness_barrier") as barrier, \
-                mock.patch.object(manager, "disconnect", new=disconnect), \
-                mock.patch.object(manager, "_decode_h264_to_jpeg", new=decode):
+        with (
+            mock.patch.object(
+                manager, "_read_device_clock_calibration", new=read_clock
+            ),
+            spy_async(manager, "set_freshness_barrier") as barrier,
+            mock.patch.object(manager, "disconnect", new=disconnect),
+            mock.patch.object(manager, "_decode_h264_to_jpeg", new=decode),
+        ):
             assert await manager.get_screenshot_jpeg() == jpeg_frame()
 
         read_clock.assert_awaited_once()
@@ -997,7 +1005,9 @@ class TestDeviceClockFrameFreshness:
         disconnect.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_still_rejects_a_genuinely_stale_planning_frame_when_clock_uncertainty_is_high(self):
+    async def test_still_rejects_a_genuinely_stale_planning_frame_when_clock_uncertainty_is_high(
+        self,
+    ):
         """still rejects a genuinely stale planning frame when clock uncertainty is high."""
 
         manager = create_manager()
@@ -1009,13 +1019,12 @@ class TestDeviceClockFrameFreshness:
         wait_for_next = AsyncMock(side_effect=RuntimeError("no fresh frame"))
         disconnect = AsyncMock()
 
-        with spy_async(manager, "set_freshness_barrier") as barrier, \
-                mock.patch.object(
-                    manager, "_wait_for_next_keyframe", new=wait_for_next
-                ), mock.patch.object(manager, "disconnect", new=disconnect):
-            with pytest.raises(
-                ScrcpyFreshFrameUnavailableError
-            ) as error:
+        with (
+            spy_async(manager, "set_freshness_barrier") as barrier,
+            mock.patch.object(manager, "_wait_for_next_keyframe", new=wait_for_next),
+            mock.patch.object(manager, "disconnect", new=disconnect),
+        ):
+            with pytest.raises(ScrcpyFreshFrameUnavailableError) as error:
                 await manager.get_screenshot_jpeg()
 
         assert error.value.failure_kind == "freshness-target"
@@ -1024,13 +1033,13 @@ class TestDeviceClockFrameFreshness:
         disconnect.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_includes_the_recalibration_wait_when_an_uncertainty_only_planning_frame_is_rechecked(self):
+    async def test_includes_the_recalibration_wait_when_an_uncertainty_only_planning_frame_is_rechecked(
+        self,
+    ):
         """includes the recalibration wait when an uncertainty-only planning frame is rechecked."""
 
         manager = create_manager()
-        prepare_cached_planning_frame(
-            manager, pts_us=2_000_000, round_trip_us=599_999
-        )
+        prepare_cached_planning_frame(manager, pts_us=2_000_000, round_trip_us=599_999)
         manager._device_clock_calibration.device_uptime_us = 2_300_000
 
         host_monotonic_us = [10_000_000]
@@ -1052,10 +1061,7 @@ class TestDeviceClockFrameFreshness:
         with mock.patch.object(
             manager, "_estimate_frame_age", wraps=original_estimate
         ) as estimate:
-            assert (
-                await manager._is_planning_candidate_fresh_enough(candidate)
-                is False
-            )
+            assert await manager._is_planning_candidate_fresh_enough(candidate) is False
 
         hosts = [call.args[1] for call in estimate.call_args_list]
         assert hosts == [10_000_000, 12_200_000]
@@ -1069,13 +1075,13 @@ class TestDeviceClockFrameFreshness:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("outcome", ["improved", "failed"])
-    async def test_rejects_a_frame_that_expires_while_clock_recalibration_is(self, outcome):
+    async def test_rejects_a_frame_that_expires_while_clock_recalibration_is(
+        self, outcome
+    ):
         """rejects a frame that expires while clock recalibration is %s."""
 
         manager = create_manager()
-        prepare_cached_planning_frame(
-            manager, pts_us=1_700_000, round_trip_us=600_000
-        )
+        prepare_cached_planning_frame(manager, pts_us=1_700_000, round_trip_us=600_000)
 
         async def read_clock():
             await asyncio.sleep(0)
@@ -1101,13 +1107,13 @@ class TestDeviceClockFrameFreshness:
         assert manager._device_clock_calibration.round_trip_us == expected
 
     @pytest.mark.asyncio
-    async def test_throws_the_uncalibrated_clock_error_when_recalibration_clears_the_anchor(self):
+    async def test_throws_the_uncalibrated_clock_error_when_recalibration_clears_the_anchor(
+        self,
+    ):
         """throws the uncalibrated-clock error when recalibration clears the anchor."""
 
         manager = create_manager()
-        prepare_cached_planning_frame(
-            manager, pts_us=2_000_000, round_trip_us=599_999
-        )
+        prepare_cached_planning_frame(manager, pts_us=2_000_000, round_trip_us=599_999)
         manager._device_clock_calibration.device_uptime_us = 2_300_000
 
         host_monotonic_us = [10_000_000]
@@ -1124,8 +1130,7 @@ class TestDeviceClockFrameFreshness:
         with pytest.raises(
             RuntimeError,
             match=(
-                "Scrcpy frame clock is not calibrated; cannot prove planning "
-                "freshness"
+                "Scrcpy frame clock is not calibrated; cannot prove planning freshness"
             ),
         ):
             await manager._is_planning_candidate_fresh_enough(candidate)
@@ -1133,13 +1138,13 @@ class TestDeviceClockFrameFreshness:
         assert candidate.stream_epoch is manager._stream_epoch
 
     @pytest.mark.asyncio
-    async def test_rejects_an_uncertainty_only_candidate_when_its_stream_epoch_changes_during_recalibration(self):
+    async def test_rejects_an_uncertainty_only_candidate_when_its_stream_epoch_changes_during_recalibration(
+        self,
+    ):
         """rejects an uncertainty-only candidate when its stream epoch changes during recalibration."""
 
         manager = create_manager()
-        prepare_cached_planning_frame(
-            manager, frame_data=b"obsolete-frame"
-        )
+        prepare_cached_planning_frame(manager, frame_data=b"obsolete-frame")
 
         async def read_clock():
             manager._advance_stream_epoch()
@@ -1150,11 +1155,11 @@ class TestDeviceClockFrameFreshness:
         disconnect = AsyncMock()
         decode = AsyncMock()
 
-        with mock.patch.object(manager, "disconnect", new=disconnect), \
-                mock.patch.object(manager, "_decode_h264_to_jpeg", new=decode):
-            with pytest.raises(
-                ScrcpyFreshFrameUnavailableError
-            ) as error:
+        with (
+            mock.patch.object(manager, "disconnect", new=disconnect),
+            mock.patch.object(manager, "_decode_h264_to_jpeg", new=decode),
+        ):
+            with pytest.raises(ScrcpyFreshFrameUnavailableError) as error:
                 await manager.get_screenshot_jpeg()
 
         assert "stream epoch changed while recalibrating" in str(error.value)
@@ -1166,9 +1171,7 @@ class TestDeviceClockFrameFreshness:
         """recalibrates the clock anchor when frame PTS moves backwards."""
 
         manager = create_manager()
-        manager._device_clock_calibration = calibration(
-            device_uptime_us=1_100_000
-        )
+        manager._device_clock_calibration = calibration(device_uptime_us=1_100_000)
         manager._monotonic_time_us = lambda: 10_000_000
 
         manager._process_packet(SPS_PACKET, None)
@@ -1210,9 +1213,7 @@ class TestDeviceClockFrameFreshness:
         manager = create_manager(options={"idle_timeout_ms": 0})
         listener = Mock()
         manager.subscribe_keyframes(listener)
-        manager._device_clock_calibration = calibration(
-            device_uptime_us=2_000_000
-        )
+        manager._device_clock_calibration = calibration(device_uptime_us=2_000_000)
         manager._monotonic_time_us = lambda: 10_000_000
 
         manager._process_packet(SPS_PACKET, None)
@@ -1239,10 +1240,11 @@ class TestDeviceClockFrameFreshness:
         wait_for_next = AsyncMock()
         decode = AsyncMock(return_value=jpeg_frame())
 
-        with spy_async(manager, "set_freshness_barrier") as barrier, \
-                mock.patch.object(
-                    manager, "_wait_for_next_keyframe", new=wait_for_next
-                ), mock.patch.object(manager, "_decode_h264_to_jpeg", new=decode):
+        with (
+            spy_async(manager, "set_freshness_barrier") as barrier,
+            mock.patch.object(manager, "_wait_for_next_keyframe", new=wait_for_next),
+            mock.patch.object(manager, "_decode_h264_to_jpeg", new=decode),
+        ):
             assert await manager.get_screenshot_jpeg() == jpeg_frame()
 
         barrier.assert_not_awaited()
@@ -1250,7 +1252,9 @@ class TestDeviceClockFrameFreshness:
         decode.assert_awaited_once_with(b"header" + b"post-action")
 
     @pytest.mark.asyncio
-    async def test_adds_a_planning_barrier_for_a_post_action_frame_that_is_already_over_age(self):
+    async def test_adds_a_planning_barrier_for_a_post_action_frame_that_is_already_over_age(
+        self,
+    ):
         """adds a planning barrier for a post-action frame that is already over-age."""
 
         manager = create_manager()
@@ -1258,12 +1262,8 @@ class TestDeviceClockFrameFreshness:
         manager._last_raw_keyframe = b"post-action-backlog"
         manager._last_raw_keyframe_pts_us = 1_100_000
         manager._frame_freshness_barrier_pts_us = 1_000_000
-        manager._stream_startup_window = {
-            "deadline_at": sm._now_ms() + 5_000
-        }
-        manager._device_clock_calibration = calibration(
-            device_uptime_us=2_000_000
-        )
+        manager._stream_startup_window = {"deadline_at": sm._now_ms() + 5_000}
+        manager._device_clock_calibration = calibration(device_uptime_us=2_000_000)
         manager._monotonic_time_us = lambda: 10_000_000
         manager.ensure_connected = AsyncMock()
         manager._reset_idle_timer = Mock()
@@ -1279,10 +1279,11 @@ class TestDeviceClockFrameFreshness:
         )
         decode = AsyncMock(return_value=jpeg_frame())
 
-        with spy_async(manager, "set_freshness_barrier") as barrier, \
-                mock.patch.object(
-                    manager, "_wait_for_next_keyframe", new=wait_for_next
-                ), mock.patch.object(manager, "_decode_h264_to_jpeg", new=decode):
+        with (
+            spy_async(manager, "set_freshness_barrier") as barrier,
+            mock.patch.object(manager, "_wait_for_next_keyframe", new=wait_for_next),
+            mock.patch.object(manager, "_decode_h264_to_jpeg", new=decode),
+        ):
             assert await manager.get_screenshot_jpeg() == jpeg_frame()
 
         barrier.assert_awaited_once_with("stale planning frame")
@@ -1290,7 +1291,9 @@ class TestDeviceClockFrameFreshness:
         decode.assert_awaited_once_with(b"header" + b"current")
 
     @pytest.mark.asyncio
-    async def test_adds_a_planning_barrier_after_the_new_stream_startup_window_expires(self):
+    async def test_adds_a_planning_barrier_after_the_new_stream_startup_window_expires(
+        self,
+    ):
         """adds a planning barrier after the new-stream startup window expires."""
 
         manager = create_manager()
@@ -1298,9 +1301,7 @@ class TestDeviceClockFrameFreshness:
         manager._last_raw_keyframe = b"first-planning-backlog"
         manager._last_raw_keyframe_pts_us = 1_000_000
         manager._stream_startup_window = {"deadline_at": sm._now_ms() - 1}
-        manager._device_clock_calibration = calibration(
-            device_uptime_us=2_000_000
-        )
+        manager._device_clock_calibration = calibration(device_uptime_us=2_000_000)
         manager._monotonic_time_us = lambda: 10_000_000
         manager.ensure_connected = AsyncMock()
         manager._reset_idle_timer = Mock()
@@ -1316,43 +1317,41 @@ class TestDeviceClockFrameFreshness:
         )
         decode = AsyncMock(return_value=jpeg_frame())
 
-        with spy_async(manager, "set_freshness_barrier") as barrier, \
-                mock.patch.object(
-                    manager, "_wait_for_next_keyframe", new=wait_for_next
-                ), mock.patch.object(manager, "_decode_h264_to_jpeg", new=decode):
+        with (
+            spy_async(manager, "set_freshness_barrier") as barrier,
+            mock.patch.object(manager, "_wait_for_next_keyframe", new=wait_for_next),
+            mock.patch.object(manager, "_decode_h264_to_jpeg", new=decode),
+        ):
             assert await manager.get_screenshot_jpeg() == jpeg_frame()
 
         barrier.assert_awaited_once_with("stale planning frame")
 
     @pytest.mark.asyncio
-    async def test_returns_a_quiet_diagnostic_when_a_static_screen_cannot_cross_the_planning_barrier(self):
+    async def test_returns_a_quiet_diagnostic_when_a_static_screen_cannot_cross_the_planning_barrier(
+        self,
+    ):
         """returns a quiet diagnostic when a static screen cannot cross the Planning barrier."""
 
         manager = create_manager()
         manager._sps_header = b"old-header"
         manager._last_raw_keyframe = b"stale-static-frame"
         manager._last_raw_keyframe_pts_us = 1_000_000
-        manager._device_clock_calibration = calibration(
-            device_uptime_us=2_000_000
-        )
+        manager._device_clock_calibration = calibration(device_uptime_us=2_000_000)
         manager._monotonic_time_us = lambda: 10_000_000
         ensure_connected = AsyncMock()
         manager.ensure_connected = ensure_connected
         disconnect = AsyncMock()
-        wait_for_next = AsyncMock(
-            side_effect=RuntimeError("no post-action frame")
-        )
+        wait_for_next = AsyncMock(side_effect=RuntimeError("no post-action frame"))
         decode = AsyncMock()
 
-        with mock.patch.object(sm.logger, "warning") as warn, \
-                spy_async(manager, "set_freshness_barrier") as barrier, \
-                mock.patch.object(
-                    manager, "_wait_for_next_keyframe", new=wait_for_next
-                ), mock.patch.object(manager, "disconnect", new=disconnect), \
-                mock.patch.object(manager, "_decode_h264_to_jpeg", new=decode):
-            with pytest.raises(
-                ScrcpyFreshFrameUnavailableError
-            ) as error:
+        with (
+            mock.patch.object(sm.logger, "warning") as warn,
+            spy_async(manager, "set_freshness_barrier") as barrier,
+            mock.patch.object(manager, "_wait_for_next_keyframe", new=wait_for_next),
+            mock.patch.object(manager, "disconnect", new=disconnect),
+            mock.patch.object(manager, "_decode_h264_to_jpeg", new=decode),
+        ):
+            with pytest.raises(ScrcpyFreshFrameUnavailableError) as error:
                 await manager.get_screenshot_jpeg()
 
         assert error.value.failure_kind == "freshness-target"
@@ -1365,16 +1364,16 @@ class TestDeviceClockFrameFreshness:
         warn.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_updates_capture_state_when_a_current_deferred_keyframe_is_decoded(self):
+    async def test_updates_capture_state_when_a_current_deferred_keyframe_is_decoded(
+        self,
+    ):
         """updates capture state when a current deferred keyframe is decoded."""
 
         manager = create_manager()
         current_stream_epoch = object()
         manager._stream_epoch = current_stream_epoch
         manager._video_resolution = {"width": 1080, "height": 1920}
-        manager._stream_startup_window = {
-            "deadline_at": sm._now_ms() + 5_000
-        }
+        manager._stream_startup_window = {"deadline_at": sm._now_ms() + 5_000}
         decode = AsyncMock(return_value=jpeg_frame(1200, 2608))
 
         with mock.patch.object(manager, "_decode_h264_to_jpeg", new=decode):
@@ -1393,7 +1392,9 @@ class TestDeviceClockFrameFreshness:
         assert manager._stream_startup_window is None
 
     @pytest.mark.asyncio
-    async def test_decodes_an_untagged_keyframe_without_mutating_current_stream_state(self):
+    async def test_decodes_an_untagged_keyframe_without_mutating_current_stream_state(
+        self,
+    ):
         """decodes an untagged keyframe without mutating current stream state."""
 
         manager = create_manager()
@@ -1417,7 +1418,9 @@ class TestDeviceClockFrameFreshness:
         assert manager._stream_startup_window is startup_window
 
     @pytest.mark.asyncio
-    async def test_does_not_let_a_deferred_keyframe_from_a_replaced_manager_overwrite_current_state(self):
+    async def test_does_not_let_a_deferred_keyframe_from_a_replaced_manager_overwrite_current_state(
+        self,
+    ):
         """does not let a deferred keyframe from a replaced manager overwrite current state."""
 
         old_manager = create_manager()
@@ -1447,7 +1450,9 @@ class TestDeviceClockFrameFreshness:
         assert manager._stream_startup_window is startup_window
 
     @pytest.mark.asyncio
-    async def test_rejects_frames_without_pts_instead_of_treating_arrival_time_as_freshness(self):
+    async def test_rejects_frames_without_pts_instead_of_treating_arrival_time_as_freshness(
+        self,
+    ):
         """rejects frames without PTS instead of treating arrival time as freshness."""
 
         manager = create_manager()
@@ -1480,9 +1485,7 @@ class TestDisconnect:
         manager._frame_freshness_error = RuntimeError("stale")
         manager._has_established_video_frame = True
         manager._video_reset_state = {"frame_accepted": True}
-        manager._stream_startup_window = {
-            "deadline_at": sm._now_ms() + 5_000
-        }
+        manager._stream_startup_window = {"deadline_at": sm._now_ms() + 5_000}
 
         await manager.disconnect()
 
@@ -1505,9 +1508,7 @@ class TestDisconnect:
         """should clear idle timer."""
 
         manager = create_manager()
-        manager._idle_handle = asyncio.get_running_loop().call_later(
-            10, lambda: None
-        )
+        manager._idle_handle = asyncio.get_running_loop().call_later(10, lambda: None)
 
         await manager.disconnect()
 
@@ -1539,9 +1540,7 @@ class TestDisconnect:
         await manager.dispose()
         await manager.dispose()
         close.assert_awaited_once()
-        with pytest.raises(
-            RuntimeError, match="Scrcpy manager has been disposed"
-        ):
+        with pytest.raises(RuntimeError, match="Scrcpy manager has been disposed"):
             await manager.ensure_connected()
 
     @pytest.mark.asyncio
@@ -1572,7 +1571,9 @@ class TestDisconnect:
         assert len(close_calls) == 1
 
     @pytest.mark.asyncio
-    async def test_waits_for_an_in_flight_connection_before_disposing_its_adb_transport(self):
+    async def test_waits_for_an_in_flight_connection_before_disposing_its_adb_transport(
+        self,
+    ):
         """waits for an in-flight connection before disposing its ADB transport."""
 
         close = AsyncMock()
@@ -1664,7 +1665,7 @@ class TestDisconnect:
             try:
                 await asyncio.sleep(3600)
             except asyncio.CancelledError:
-                raise RuntimeError("stream already errored")
+                raise RuntimeError("stream already errored") from None
 
         manager._reader = object()
         manager._consumer_task = asyncio.ensure_future(consumer())
@@ -1674,7 +1675,9 @@ class TestDisconnect:
         assert manager._reader is None
 
     @pytest.mark.asyncio
-    async def test_should_null_references_before_awaiting_close_to_prevent_race_conditions(self):
+    async def test_should_null_references_before_awaiting_close_to_prevent_race_conditions(
+        self,
+    ):
         """should null references before awaiting close to prevent race conditions."""
 
         manager = create_manager()

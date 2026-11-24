@@ -10,11 +10,7 @@ from midscene.core.report_markdown import (
 )
 from midscene.core.screenshot_item import ScreenshotItem
 
-_SNAPSHOT = (
-    Path(__file__).parent
-    / "__snapshots__"
-    / "report-markdown.output.md"
-)
+_SNAPSHOT = Path(__file__).parent / "__snapshots__" / "report-markdown.output.md"
 
 
 def create_task(overrides=None):
@@ -37,9 +33,7 @@ def create_task(overrides=None):
 
 def test_handles_single_execution_markdown_with_screenshot_file_links():
     """handles single execution markdown with screenshot file links"""
-    screenshot = ScreenshotItem.create(
-        "data:image/png;base64,Zm9v", 1710000000000
-    )
+    screenshot = ScreenshotItem.create("data:image/png;base64,Zm9v", 1710000000000)
     execution = {
         "logTime": 1710000000000,
         "name": "single execution",
@@ -91,10 +85,7 @@ def test_handles_single_execution_markdown_with_screenshot_file_links():
     )
     assert len(result["attachments"]) == 2
     assert ".png" in result["attachments"][0]["suggestedFileName"]
-    assert (
-        f"./screenshots/{result['attachments'][0]['suggestedFileName']}"
-        in markdown
-    )
+    assert f"./screenshots/{result['attachments'][0]['suggestedFileName']}" in markdown
 
 
 def test_merges_all_executions_into_one_markdown_and_keeps_file_snapshot():
@@ -134,8 +125,7 @@ def test_merges_all_executions_into_one_markdown_and_keeps_file_snapshot():
                                         "mimeType": "image/png",
                                         "storage": "file",
                                         "path": (
-                                            "./screenshots/"
-                                            "shot-recorder-exec-1.png"
+                                            "./screenshots/shot-recorder-exec-1.png"
                                         ),
                                     },
                                 }
@@ -189,9 +179,7 @@ def test_merges_all_executions_into_one_markdown_and_keeps_file_snapshot():
 
 def test_uses_timing_fallback_fields_and_custom_screenshot_directory():
     """uses timing fallback fields and custom screenshot directory"""
-    screenshot = ScreenshotItem.create(
-        "data:image/png;base64,Zm9v", 1710000000000
-    )
+    screenshot = ScreenshotItem.create("data:image/png;base64,Zm9v", 1710000000000)
     execution = {
         "logTime": 1710000000000,
         "name": "fallback execution",
@@ -212,9 +200,7 @@ def test_uses_timing_fallback_fields_and_custom_screenshot_directory():
         ],
     }
 
-    result = execution_to_markdown(
-        execution, {"screenshotBaseDir": "./shots"}
-    )
+    result = execution_to_markdown(execution, {"screenshotBaseDir": "./shots"})
 
     assert "./shots/" in result["markdown"]
     assert "Cost(ms): 8" in result["markdown"]
@@ -254,16 +240,10 @@ def test_preserves_restored_screenshot_source_refs_for_file_backed_export():
     assert len(result["attachments"]) == 1
     attachment = result["attachments"][0]
     assert attachment["id"] == "original-shot"
-    assert (
-        attachment["suggestedFileName"]
-        == "execution-1-task-1-original-shot.png"
-    )
+    assert attachment["suggestedFileName"] == "execution-1-task-1-original-shot.png"
     assert attachment["base64Data"] == "./screenshots/original-shot.png"
     assert attachment["sourceRef"]["path"] == "./screenshots/original-shot.png"
-    assert (
-        "./screenshots/execution-1-task-1-original-shot.png"
-        in result["markdown"]
-    )
+    assert "./screenshots/execution-1-task-1-original-shot.png" in result["markdown"]
 
 
 def test_includes_model_metadata_token_usage_and_task_context_for_agent_analysis():
@@ -365,9 +345,7 @@ def test_explains_the_elapsed_time_fallback_in_markdown():
         ],
     }
 
-    markdown = report_to_markdown(
-        report, {"wallTimeFallbackMs": 2500}
-    )["markdown"]
+    markdown = report_to_markdown(report, {"wallTimeFallbackMs": 2500})["markdown"]
 
     assert "| Elapsed Time | 2500 |" in markdown
     assert (
@@ -431,9 +409,7 @@ def test_handles_recorder_screenshots_stored_as_base64_strings():
                             "type": "screenshot",
                             "ts": 1710000000050,
                             "timing": "after action",
-                            "screenshot": (
-                                "data:image/png;base64,cmVjb3JkZXI="
-                            ),
+                            "screenshot": ("data:image/png;base64,cmVjb3JkZXI="),
                         }
                     ],
                 }
@@ -447,9 +423,7 @@ def test_handles_recorder_screenshots_stored_as_base64_strings():
     assert "timing=ui-context" in result["markdown"]
     assert "timing=after action" in result["markdown"]
     assert len(result["attachments"]) == 2
-    assert result["attachments"][0]["base64Data"] == (
-        "data:image/png;base64,bWFpbg=="
-    )
+    assert result["attachments"][0]["base64Data"] == ("data:image/png;base64,bWFpbg==")
     assert result["attachments"][1]["base64Data"] == (
         "data:image/png;base64,cmVjb3JkZXI="
     )
@@ -464,16 +438,14 @@ def test_throws_with_invalid_input():
     """throws with invalid input"""
     with pytest.raises(ValueError) as execution_error:
         execution_to_markdown({})
-    assert (
-        "executionToMarkdown: execution.tasks must be an array"
-        in str(execution_error.value)
+    assert "executionToMarkdown: execution.tasks must be an array" in str(
+        execution_error.value
     )
 
     with pytest.raises(ValueError) as report_error:
         report_to_markdown({"groupName": "bad"})
-    assert (
-        "reportToMarkdown: report.executions must be an array"
-        in str(report_error.value)
+    assert "reportToMarkdown: report.executions must be an array" in str(
+        report_error.value
     )
 
 

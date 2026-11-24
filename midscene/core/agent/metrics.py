@@ -1,6 +1,6 @@
 """Token usage metrics (upstream agent/metrics.ts)."""
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 def _usage_field(usage: Any, name: str, default: Any = None) -> Any:
@@ -9,7 +9,7 @@ def _usage_field(usage: Any, name: str, default: Any = None) -> Any:
     return getattr(usage, name, default)
 
 
-def _empty_bucket() -> Dict[str, int]:
+def _empty_bucket() -> dict[str, int]:
     return {
         "promptTokens": 0,
         "completionTokens": 0,
@@ -19,7 +19,7 @@ def _empty_bucket() -> Dict[str, int]:
 
 
 def _add_to_bucket(
-    buckets: Dict[str, Dict[str, int]],
+    buckets: dict[str, dict[str, int]],
     key: str,
     prompt: int,
     completion: int,
@@ -42,8 +42,8 @@ class MetricsCollector:
         self.total_cached_input = 0
         self.total_time_cost_ms = 0
         self.calls = 0
-        self.by_intent: Dict[str, Dict[str, int]] = {}
-        self.by_model: Dict[str, Dict[str, int]] = {}
+        self.by_intent: dict[str, dict[str, int]] = {}
+        self.by_model: dict[str, dict[str, int]] = {}
 
     def add(self, usage: Any) -> None:
         """Accumulate one usage record; every call counts as one call."""
@@ -54,9 +54,7 @@ class MetricsCollector:
         self.total_prompt_tokens += prompt
         self.total_completion_tokens += completion
         self.total_tokens += total
-        self.total_cached_input += int(
-            _usage_field(usage, "cached_input", 0) or 0
-        )
+        self.total_cached_input += int(_usage_field(usage, "cached_input", 0) or 0)
         self.total_time_cost_ms += int(_usage_field(usage, "time_cost", 0) or 0)
         self.calls += 1
 
@@ -75,7 +73,7 @@ class MetricsCollector:
             total,
         )
 
-    def snapshot(self) -> Dict[str, Any]:
+    def snapshot(self) -> dict[str, Any]:
         """Return an independent snapshot of the accumulated metrics."""
         return {
             "totalPromptTokens": self.total_prompt_tokens,
@@ -84,12 +82,8 @@ class MetricsCollector:
             "totalCachedInput": self.total_cached_input,
             "totalTimeCostMs": self.total_time_cost_ms,
             "calls": self.calls,
-            "byIntent": {
-                key: dict(bucket) for key, bucket in self.by_intent.items()
-            },
-            "byModel": {
-                key: dict(bucket) for key, bucket in self.by_model.items()
-            },
+            "byIntent": {key: dict(bucket) for key, bucket in self.by_intent.items()},
+            "byModel": {key: dict(bucket) for key, bucket in self.by_model.items()},
         }
 
     def reset(self) -> None:
@@ -98,9 +92,9 @@ class MetricsCollector:
 
 
 def record_usage_metrics(
-    metrics: Dict[str, Dict[str, int]],
+    metrics: dict[str, dict[str, int]],
     intent: str,
-    usage: Optional[Dict[str, Any]],
+    usage: dict[str, Any] | None,
 ) -> None:
     """Accumulate one usage record into the per-intent buckets."""
     if not usage:

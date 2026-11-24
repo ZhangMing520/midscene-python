@@ -4,7 +4,7 @@ This module mirrors the JSON shape of the upstream test-runner report. The
 report aggregation helpers will be ported on top of these types.
 """
 
-from typing import Any, Dict, List, TypedDict
+from typing import Any, TypedDict
 
 TEST_RUN_REPORT_SCRIPT_TYPE = "midscene_test_run_dump"
 TEST_RUN_REPORT_SCHEMA_VERSION = 1
@@ -16,8 +16,8 @@ TestRunReportStepPhase = str  # beforeAll | beforeEach | steps | afterEach | aft
 
 class TestRunReportValue(TypedDict, total=False):
     value: Any
-    truncatedPaths: List[str]
-    redactedPaths: List[str]
+    truncatedPaths: list[str]
+    redactedPaths: list[str]
 
 
 class TestRunReportError(TypedDict, total=False):
@@ -28,7 +28,7 @@ class TestRunReportError(TypedDict, total=False):
     code: str
     details: TestRunReportValue
     cause: "TestRunReportError"
-    errors: List["TestRunReportError"]
+    errors: list["TestRunReportError"]
     truncated: bool
 
 
@@ -43,7 +43,7 @@ class TestRunReportCleanup(TypedDict, total=False):
     status: str  # not-required | completed | pending | failed
     capturedAt: str
     operationId: str
-    blockingOperations: List[TestRunReportOperationReference]
+    blockingOperations: list[TestRunReportOperationReference]
     error: TestRunReportError
 
 
@@ -72,7 +72,7 @@ class TestRunReportDiagnostic(TypedDict, total=False):
     message: str
     scopeId: str
     executionId: str
-    sourcePaths: List[str]
+    sourcePaths: list[str]
     stepId: str
     error: TestRunReportError
 
@@ -88,14 +88,14 @@ class ReportModelUsageSummary(TypedDict, total=False):
 
 
 class TestRunReportMetrics(TypedDict, total=False):
-    models: List[ReportModelUsageSummary]
+    models: list[ReportModelUsageSummary]
     modelCallCount: int
     modelTimeMs: int
     promptTokens: int
     cachedInputTokens: int
     completionTokens: int
     totalTokens: int
-    collection: Dict[str, Any]
+    collection: dict[str, Any]
 
 
 class TestRunReportSnapshotCollection(TypedDict, total=False):
@@ -112,7 +112,9 @@ class TestRunReportAgentDetail(TypedDict, total=False):
 class TestRunReportOperationEvent(TypedDict, total=False):
     operationId: str
     operationKind: str  # node | resource | acquisition | cleanup | readiness
-    kind: str  # started | cancel-requested | settled | runner-returned | cleanup-deferred
+    kind: (
+        str  # started | cancel-requested | settled | runner-returned | cleanup-deferred
+    )
     at: str
     stepId: str
     scopeId: str
@@ -120,7 +122,7 @@ class TestRunReportOperationEvent(TypedDict, total=False):
     status: str  # success | failed | not-run
     pending: bool
     error: TestRunReportError
-    blockingOperations: List[TestRunReportOperationReference]
+    blockingOperations: list[TestRunReportOperationReference]
 
 
 class TestRunReportPlannedStep(TypedDict, total=False):
@@ -140,21 +142,21 @@ class TestRunReportCasePlan(TypedDict, total=False):
     name: str
     caseIndex: int
     selected: bool
-    tags: List[str]
+    tags: list[str]
     onFailure: str
-    beforeEach: List[TestRunReportPlannedStep]
-    steps: List[TestRunReportPlannedStep]
-    afterEach: List[TestRunReportPlannedStep]
+    beforeEach: list[TestRunReportPlannedStep]
+    steps: list[TestRunReportPlannedStep]
+    afterEach: list[TestRunReportPlannedStep]
 
 
 class TestRunReportDocumentPlan(TypedDict, total=False):
     documentId: str
     sourcePath: str
     sourceYaml: TestRunReportValue
-    retry: Dict[str, Any]
-    beforeAll: List[TestRunReportPlannedStep]
-    cases: List[TestRunReportCasePlan]
-    afterAll: List[TestRunReportPlannedStep]
+    retry: dict[str, Any]
+    beforeAll: list[TestRunReportPlannedStep]
+    cases: list[TestRunReportCasePlan]
+    afterAll: list[TestRunReportPlannedStep]
 
 
 class TestRunReportStep(TypedDict, total=False):
@@ -167,13 +169,13 @@ class TestRunReportStep(TypedDict, total=False):
     continuedAfterError: bool
     waitForPreviousOperationMs: float
     input: TestRunReportValue
-    output: Dict[str, Any]
+    output: dict[str, Any]
     error: TestRunReportError
-    agentDetails: List[TestRunReportAgentDetail]
+    agentDetails: list[TestRunReportAgentDetail]
     agentDetailDiagnostic: str
     metrics: TestRunReportMetrics
-    evidenceCollection: Dict[str, Any]
-    operations: Dict[str, Any]
+    evidenceCollection: dict[str, Any]
+    operations: dict[str, Any]
     status: str
     notRunReason: str
     blockedBy: str
@@ -187,19 +189,19 @@ class TestRunReportAttempt(TypedDict, total=False):
     attemptIndex: int
     status: str
     executionStatus: str
-    phases: Dict[str, TestRunReportPhaseResult]
+    phases: dict[str, TestRunReportPhaseResult]
     cleanup: TestRunReportCleanup
-    pendingOperations: List[TestRunReportOperationReference]
+    pendingOperations: list[TestRunReportOperationReference]
     retryDecision: TestRunReportRetryDecision
     startedAt: str
     endedAt: str
     durationMs: float
-    beforeEach: List[TestRunReportStep]
-    steps: List[TestRunReportStep]
-    afterEach: List[TestRunReportStep]
-    teardownErrors: List[TestRunReportError]
-    hostErrors: List[TestRunReportHostError]
-    scopeReportIds: List[str]
+    beforeEach: list[TestRunReportStep]
+    steps: list[TestRunReportStep]
+    afterEach: list[TestRunReportStep]
+    teardownErrors: list[TestRunReportError]
+    hostErrors: list[TestRunReportHostError]
+    scopeReportIds: list[str]
 
 
 class TestRunReportCase(TypedDict, total=False):
@@ -209,7 +211,7 @@ class TestRunReportCase(TypedDict, total=False):
     caseIndex: int
     status: str
     notRunReason: str
-    attempts: List[TestRunReportAttempt]
+    attempts: list[TestRunReportAttempt]
 
 
 class TestRunReportDocument(TypedDict, total=False):
@@ -221,20 +223,20 @@ class TestRunReportDocument(TypedDict, total=False):
     sourcePath: str
     status: str
     executionStatus: str
-    phases: Dict[str, TestRunReportPhaseResult]
+    phases: dict[str, TestRunReportPhaseResult]
     cleanup: TestRunReportCleanup
-    pendingOperations: List[TestRunReportOperationReference]
+    pendingOperations: list[TestRunReportOperationReference]
     retryDecision: TestRunReportRetryDecision
     startedAt: str
     endedAt: str
     durationMs: float
-    beforeAll: List[TestRunReportStep]
-    cases: List[TestRunReportCase]
-    afterAll: List[TestRunReportStep]
-    teardownErrors: List[TestRunReportError]
-    hostErrors: List[TestRunReportHostError]
-    scopeReportIds: List[str]
-    attempts: List[Dict[str, Any]]
+    beforeAll: list[TestRunReportStep]
+    cases: list[TestRunReportCase]
+    afterAll: list[TestRunReportStep]
+    teardownErrors: list[TestRunReportError]
+    hostErrors: list[TestRunReportHostError]
+    scopeReportIds: list[str]
+    attempts: list[dict[str, Any]]
 
 
 class TestRunReportCollectionError(TypedDict, total=False):
@@ -248,21 +250,21 @@ class TestRunReportProjectLifecycle(TypedDict, total=False):
     endedAt: str
     durationMs: float
     setupError: TestRunReportError
-    teardownErrors: List[TestRunReportError]
+    teardownErrors: list[TestRunReportError]
     cleanup: TestRunReportCleanup
-    pendingOperations: List[TestRunReportOperationReference]
+    pendingOperations: list[TestRunReportOperationReference]
 
 
 class TestRunReportProject(TypedDict, total=False):
-    plans: List[TestRunReportDocumentPlan]
+    plans: list[TestRunReportDocumentPlan]
     projectId: str
     name: str
     platform: str
     status: str
     retry: int
     lifecycle: TestRunReportProjectLifecycle
-    documents: List[TestRunReportDocument]
-    collectionErrors: List[TestRunReportCollectionError]
+    documents: list[TestRunReportDocument]
+    collectionErrors: list[TestRunReportCollectionError]
 
 
 class TestRunReportSummary(TypedDict, total=False):
@@ -286,10 +288,10 @@ class TestRunReportDump(TypedDict, total=False):
     durationMs: float
     summary: TestRunReportSummary
     metrics: TestRunReportMetrics
-    executionMetrics: Dict[str, TestRunReportMetrics]
-    projects: List[TestRunReportProject]
-    diagnostics: List[TestRunReportDiagnostic]
-    operationLogs: List[Dict[str, str]]
+    executionMetrics: dict[str, TestRunReportMetrics]
+    projects: list[TestRunReportProject]
+    diagnostics: list[TestRunReportDiagnostic]
+    operationLogs: list[dict[str, str]]
 
 
 class TestRunReportSource(TypedDict, total=False):
@@ -303,23 +305,23 @@ class IndexedTestRunReportSource(TypedDict, total=False):
     reportId: str
     scopeId: str
     sourcePath: str
-    executionIds: List[str]
+    executionIds: list[str]
     collection: TestRunReportSnapshotCollection
 
 
 class TestRunReportSourceIndex(TypedDict, total=False):
-    sources: List[IndexedTestRunReportSource]
+    sources: list[IndexedTestRunReportSource]
     metrics: TestRunReportMetrics
-    executionMetrics: Dict[str, TestRunReportMetrics]
+    executionMetrics: dict[str, TestRunReportMetrics]
     capturedMetrics: TestRunReportMetrics
-    diagnostics: List[TestRunReportDiagnostic]
+    diagnostics: list[TestRunReportDiagnostic]
 
 
 class AssembleTestRunReportOptions(TypedDict, total=False):
     outputDir: str
     outputFormat: str
     reportFileName: str
-    sources: List[TestRunReportSource]
+    sources: list[TestRunReportSource]
     overwrite: bool
 
 

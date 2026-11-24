@@ -148,9 +148,7 @@ def test_closed_bbox_rejects_image_edges_and_aliases_resolve_to_the_same_bounds(
         )
 
     # Legacy aliases resolve to the same canonical bounds.
-    assert GPT_LOCATE_FORMAT["coordinates"]["boundsType"] == (
-        "left-closed-right-open"
-    )
+    assert GPT_LOCATE_FORMAT["coordinates"]["boundsType"] == ("left-closed-right-open")
 
 
 def test_resolves_bounds_type_aliases():

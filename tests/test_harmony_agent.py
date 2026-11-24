@@ -17,9 +17,7 @@ MODEL_CONFIG = {
 
 def test_declares_common_and_harmony_test_runner_nodes():
     """declares common and Harmony Test Runner Nodes"""
-    names = [
-        node.name for node in HarmonyAgent.get_test_runner_node_definitions()
-    ]
+    names = [node.name for node in HarmonyAgent.get_test_runner_node_definitions()]
     assert len(names) > 0
     assert len(set(names)) == len(names)
 
@@ -100,9 +98,7 @@ async def test_should_use_the_first_device_if_no_device_id_is_provided(monkeypat
     """should use the first device if no deviceId is provided"""
     mock_devices = [{"deviceId": "device-1"}, {"deviceId": "device-2"}]
     get_devices = AsyncMock(return_value=mock_devices)
-    monkeypatch.setattr(
-        "midscene.harmony.agent.get_connected_devices", get_devices
-    )
+    monkeypatch.setattr("midscene.harmony.agent.get_connected_devices", get_devices)
     monkeypatch.setattr("midscene.harmony.agent.HarmonyDevice", FakeDevice)
 
     agent = await agent_from_hdc_device()

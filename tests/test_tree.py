@@ -5,7 +5,7 @@ checked-in upstream snapshot values (``__snapshots__/tree.test.ts.snap``).
 """
 
 import textwrap
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from midscene.core.tree import description_of_tree
 from midscene.core.types import NodeType, Rect, UINode, UITree
@@ -37,7 +37,7 @@ def _node(
     width: float = 100,
     height: float = 100,
     is_visible: bool = True,
-    attributes: Optional[Dict[str, Any]] = None,
+    attributes: dict[str, Any] | None = None,
 ) -> UINode:
     return UINode(
         id=node_id,
@@ -50,7 +50,7 @@ def _node(
     )
 
 
-def _tree(node: UINode, children: Optional[List[UITree]] = None) -> UITree:
+def _tree(node: UINode, children: list[UITree] | None = None) -> UITree:
     return UITree(node=node, children=children or [])
 
 

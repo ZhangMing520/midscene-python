@@ -7,7 +7,7 @@ keyboard handling here lets ``device.py`` stay focused on capture/context.
 import asyncio
 import math
 import subprocess
-from typing import Callable, Dict, List, Optional, Set, Tuple
+from collections.abc import Callable
 
 from loguru import logger
 
@@ -64,9 +64,7 @@ _APPLE_SCRIPT_MODIFIER_KEYS = {
 }
 
 
-def _build_apple_script_key_press(
-    key: str, modifiers: Optional[List[str]] = None
-) -> str:
+def _build_apple_script_key_press(key: str, modifiers: list[str] | None = None) -> str:
     """Build the System Events script for one key press."""
     key_code = _APPLE_SCRIPT_KEY_CODES.get(key.lower())
     if key_code is not None:
@@ -84,9 +82,7 @@ def _build_apple_script_key_press(
     if modifier_keys:
         clause = ", ".join(f"{modifier} down" for modifier in modifier_keys)
         modifier_clause = f" using {{{clause}}}"
-    return (
-        f'tell application "System Events" to {command}{modifier_clause}'
-    )
+    return f'tell application "System Events" to {command}{modifier_clause}'
 
 
 def _run_apple_script(script: str) -> None:
@@ -98,7 +94,7 @@ def _run_apple_script(script: str) -> None:
     )
 
 
-def _point_xy(point) -> Tuple[int, int]:
+def _point_xy(point) -> tuple[int, int]:
     if hasattr(point, "x") and hasattr(point, "y"):
         return int(point.x), int(point.y)
     return int(point[0]), int(point[1])
@@ -196,7 +192,7 @@ class ComputerInputDriver:
         self._is_mac = is_mac
         self.keyboard_modifier_delay = keyboard_modifier_delay
         self._destroyed = False
-        self._pending_input_delays: Set[asyncio.Future] = set()
+        self._pending_input_delays: set[asyncio.Future] = set()
 
     async def _pg(self):
         return await load_pyautogui()
@@ -216,7 +212,7 @@ class ComputerInputDriver:
         screen = await asyncio.to_thread(pyautogui.size)
         return Size(width=int(screen.width), height=int(screen.height))
 
-    async def get_mouse_pos(self) -> Dict[str, int]:
+    async def get_mouse_pos(self) -> dict[str, int]:
         self._assert_active("getMousePos")
         pyautogui = await self._pg()
         position = await asyncio.to_thread(pyautogui.position)
@@ -230,7 +226,7 @@ class ComputerInputDriver:
 
     async def assert_mouse_position(
         self, target_x: float, target_y: float, context: str
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Fail when the pointer drifted more than the tolerated distance."""
         self._assert_active("assertMousePosition")
         current = await self.get_mouse_pos()
@@ -255,11 +251,11 @@ class ComputerInputDriver:
         return False
 
     async def mouse_click(
-        self, button: Optional[str] = None, double: bool = False
+        self, button: str | None = None, double: bool = False
     ) -> None:
         self._assert_active("mouseClick")
         pyautogui = await self._pg()
-        kwargs: Dict[str, object] = {"clicks": 2 if double else 1}
+        kwargs: dict[str, object] = {"clicks": 2 if double else 1}
         if button is not None:
             kwargs["button"] = button
         await asyncio.to_thread(pyautogui.click, **kwargs)
@@ -292,15 +288,10 @@ class ComputerInputDriver:
             if index < count - 1:
                 await self.delay(delay_ms)
 
-    async def key_tap(
-        self, key: str, modifiers: Optional[List[str]] = None
-    ) -> None:
+    async def key_tap(self, key: str, modifiers: list[str] | None = None) -> None:
         self._assert_active("keyTap")
         pyautogui = await self._pg()
-        keys = [
-            normalize_key(modifier, self._is_mac)
-            for modifier in (modifiers or [])
-        ]
+        keys = [normalize_key(modifier, self._is_mac) for modifier in (modifiers or [])]
         keys.append(normalize_key(key, self._is_mac))
         self._validate_keys(pyautogui, keys)
         # libnut's keyTap is always a compact tap; pacing belongs to
@@ -311,7 +302,7 @@ class ComputerInputDriver:
         self,
         key: str,
         state: str,
-        modifiers: Optional[List[str]] = None,
+        modifiers: list[str] | None = None,
     ) -> None:
         self._assert_active("keyToggle")
         if state not in ("up", "down"):
@@ -319,16 +310,13 @@ class ComputerInputDriver:
         pyautogui = await self._pg()
         key_name = normalize_key(key, self._is_mac)
         modifier_names = [
-            normalize_key(modifier, self._is_mac)
-            for modifier in (modifiers or [])
+            normalize_key(modifier, self._is_mac) for modifier in (modifiers or [])
         ]
         self._validate_keys(pyautogui, modifier_names + [key_name])
         for modifier in modifier_names:
             await asyncio.to_thread(pyautogui.keyDown, modifier)
         try:
-            toggle = (
-                pyautogui.keyDown if state == "down" else pyautogui.keyUp
-            )
+            toggle = pyautogui.keyDown if state == "down" else pyautogui.keyUp
             await asyncio.to_thread(toggle, key_name)
         finally:
             for modifier in reversed(modifier_names):
@@ -340,7 +328,7 @@ class ComputerInputDriver:
                     )
 
     async def key_tap_with_modifier_delay(
-        self, key: str, modifiers: List[str], delay_ms: float
+        self, key: str, modifiers: list[str], delay_ms: float
     ) -> None:
         """Expand a modified key tap into observable modifier transitions."""
         self._assert_active("keyTapWithModifierDelay")
@@ -355,11 +343,10 @@ class ComputerInputDriver:
         pyautogui = await self._pg()
         key_name = normalize_key(key, self._is_mac)
         modifier_names = [
-            normalize_key(modifier, self._is_mac)
-            for modifier in unique_modifiers
+            normalize_key(modifier, self._is_mac) for modifier in unique_modifiers
         ]
-        pressed: List[str] = []
-        failure: Optional[Exception] = None
+        pressed: list[str] = []
+        failure: Exception | None = None
         try:
             for modifier in modifier_names:
                 await asyncio.to_thread(pyautogui.keyDown, modifier)
@@ -378,9 +365,7 @@ class ComputerInputDriver:
                     failure = RuntimeError(
                         f'Failed to release modifier key "{modifier}"'
                     )
-                logger.debug(
-                    f'Failed to release modifier key "{modifier}": {error}'
-                )
+                logger.debug(f'Failed to release modifier key "{modifier}": {error}')
             if failure is None:
                 try:
                     await self.delay(delay_ms)
@@ -396,7 +381,7 @@ class ComputerInputDriver:
         await asyncio.to_thread(pyautogui.write, text)
 
     async def send_key_via_apple_script(
-        self, key: str, modifiers: Optional[List[str]] = None
+        self, key: str, modifiers: list[str] | None = None
     ) -> None:
         self._assert_active("sendKeyViaAppleScript")
         modifiers = list(modifiers or [])
@@ -409,9 +394,7 @@ class ComputerInputDriver:
         logger.debug(f"sendKeyViaAppleScript: {script}")
         await asyncio.to_thread(_run_apple_script, script)
 
-    async def send_key(
-        self, key: str, modifiers: Optional[List[str]] = None
-    ) -> None:
+    async def send_key(self, key: str, modifiers: list[str] | None = None) -> None:
         modifiers = list(modifiers or [])
         if self._is_mac():
             await self.send_key_via_apple_script(key, modifiers)
@@ -427,9 +410,7 @@ class ComputerInputDriver:
         self._assert_active("runPhasedScroll")
         from midscene.computer.device import run_phased_scroll
 
-        return await asyncio.to_thread(
-            run_phased_scroll, direction, pixels, steps
-        )
+        return await asyncio.to_thread(run_phased_scroll, direction, pixels, steps)
 
     async def delay(self, ms: float) -> None:
         """Sleep, rejecting the wait when the driver is destroyed."""
@@ -463,16 +444,12 @@ class ComputerInputDriver:
         for index in range(1, int(steps) + 1):
             step_x = int(
                 math.floor(
-                    current["x"]
-                    + (target_x - current["x"]) * index / steps
-                    + 0.5
+                    current["x"] + (target_x - current["x"]) * index / steps + 0.5
                 )
             )
             step_y = int(
                 math.floor(
-                    current["y"]
-                    + (target_y - current["y"]) * index / steps
-                    + 0.5
+                    current["y"] + (target_y - current["y"]) * index / steps + 0.5
                 )
             )
             await self.move_mouse(step_x, step_y)
@@ -498,7 +475,7 @@ class ComputerInputDriver:
         )
 
     @staticmethod
-    def _validate_keys(pyautogui, keys: List[str]) -> None:
+    def _validate_keys(pyautogui, keys: list[str]) -> None:
         for name in keys:
             if name not in pyautogui.KEY_NAMES:
                 raise ValueError(f"Unknown key name: {name!r}")
@@ -578,18 +555,14 @@ class ComputerInputDriver:
         selectAllAndDelete)."""
         # Lowercase on purpose: single chars keep their case, and 'A' would add
         # shift and turn the select-all accelerator into something else.
-        await self.keyboard_press(
-            "Command+a" if self._is_mac() else "Control+a"
-        )
+        await self.keyboard_press("Command+a" if self._is_mac() else "Control+a")
         await asyncio.sleep(0.05)
         await self.keyboard_press("Backspace")
 
     async def keyboard_press(self, key: str) -> None:
         pyautogui = await self._pg()
         keys = [
-            normalize_key(part, self._is_mac)
-            for part in key.split("+")
-            if part.strip()
+            normalize_key(part, self._is_mac) for part in key.split("+") if part.strip()
         ]
         if not keys:
             raise ValueError(f"Invalid key name: {key!r}")
@@ -611,8 +584,8 @@ class ComputerInputDriver:
     async def _press_combo(
         self,
         pyautogui,
-        keys: List[str],
-        delay_ms: Optional[int] = None,
+        keys: list[str],
+        delay_ms: int | None = None,
     ) -> None:
         """Tap the last key with the leading keys held as modifiers.
 
@@ -623,9 +596,7 @@ class ComputerInputDriver:
             await asyncio.to_thread(pyautogui.press, keys[0])
             return
 
-        effective_delay = (
-            self.keyboard_modifier_delay if delay_ms is None else delay_ms
-        )
+        effective_delay = self.keyboard_modifier_delay if delay_ms is None else delay_ms
         delay = effective_delay / 1000
         if delay <= 0:
             await asyncio.to_thread(pyautogui.hotkey, *keys)
@@ -641,7 +612,7 @@ class ComputerInputDriver:
             await asyncio.to_thread(pyautogui.keyUp, modifier)
 
     async def scroll(
-        self, direction: str, distance: Optional[int] = None, **kwargs
+        self, direction: str, distance: int | None = None, **kwargs
     ) -> None:
         pyautogui = await self._pg()
         screen = await asyncio.to_thread(pyautogui.size)
@@ -672,9 +643,7 @@ class ComputerInputDriver:
             raise ValueError(f"Invalid scroll direction: {direction}")
 
         if not distance:
-            axis = (
-                screen.width if direction in ("left", "right") else screen.height
-            )
+            axis = screen.width if direction in ("left", "right") else screen.height
             distance = max(1, round(axis * _DEFAULT_SCROLL_VIEWPORT_RATIO))
 
         horizontal = direction in ("left", "right")
@@ -693,7 +662,7 @@ class ComputerInputDriver:
         wheel: str,
         sign: int,
         distance_px: int,
-        target: Tuple[int, int],
+        target: tuple[int, int],
     ) -> None:
         """Send one wheel notch per call: Chromium coalesces bulk deltas."""
         emit = getattr(pyautogui, wheel)
@@ -701,23 +670,17 @@ class ComputerInputDriver:
             await asyncio.to_thread(emit, sign, *target)
             await asyncio.sleep(_DETENT_DELAY)
 
-    async def swipe(
-        self, direction: str, distance: Optional[int] = None
-    ) -> None:
+    async def swipe(self, direction: str, distance: int | None = None) -> None:
         """Swipe follows the finger-movement convention (upstream pointer):
         'up' drags the pointer towards the top of the screen."""
         pyautogui = await self._pg()
         screen = await asyncio.to_thread(pyautogui.size)
         if direction not in ("up", "down", "left", "right"):
             raise ValueError(f"Invalid swipe direction: {direction}")
-        distance = int(
-            min(distance or screen.width // 4, screen.width, screen.height)
-        )
+        distance = int(min(distance or screen.width // 4, screen.width, screen.height))
         half = distance // 2
         cx = min(max(screen.width // 2, half), max(half, screen.width - half))
-        cy = min(
-            max(screen.height // 2, half), max(half, screen.height - half)
-        )
+        cy = min(max(screen.height // 2, half), max(half, screen.height - half))
         offsets = {
             "up": (0, -distance),
             "down": (0, distance),
@@ -731,9 +694,9 @@ class ComputerInputDriver:
 
     async def swipe_points(
         self,
-        start: List[float],
-        end: List[float],
-        duration: Optional[int] = None,
+        start: list[float],
+        end: list[float],
+        duration: int | None = None,
     ) -> None:
         """Endpoint pointer swipe between two logical points (upstream swipe)."""
         await self.drag_and_drop((start[0], start[1]), (end[0], end[1]))
@@ -753,9 +716,7 @@ class ComputerInputDriver:
             await asyncio.sleep(0.016)
         await asyncio.to_thread(pyautogui.mouseUp)
 
-    async def long_press(
-        self, x: float, y: float, duration: int = 1000
-    ) -> None:
+    async def long_press(self, x: float, y: float, duration: int = 1000) -> None:
         pyautogui = await self._pg()
         await asyncio.to_thread(pyautogui.moveTo, int(x), int(y))
         await asyncio.to_thread(pyautogui.mouseDown)

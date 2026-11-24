@@ -1,22 +1,22 @@
 """Legacy YAML execution records (upstream yaml/legacy-yaml-execution-record.ts)."""
 
 import datetime
-from typing import Any, Dict, List
+from typing import Any
 
 from midscene.core.test_runner.execution_record import WorkflowExecutionRecord
 
 
 def _to_iso(value: datetime.datetime) -> str:
     if value.tzinfo is None:
-        value = value.replace(tzinfo=datetime.timezone.utc)
+        value = value.replace(tzinfo=datetime.UTC)
     return (
-        value.astimezone(datetime.timezone.utc)
+        value.astimezone(datetime.UTC)
         .isoformat(timespec="milliseconds")
         .replace("+00:00", "Z")
     )
 
 
-def yaml_platform(script: Dict[str, Any]) -> str:
+def yaml_platform(script: dict[str, Any]) -> str:
     for key in ("android", "ios", "harmony", "computer", "interface"):
         # Match JS truthiness: an empty target block is still a target.
         if script.get(key) is not None:
@@ -25,11 +25,11 @@ def yaml_platform(script: Dict[str, Any]) -> str:
 
 
 def create_legacy_yaml_execution_record(
-    options: Dict[str, Any],
+    options: dict[str, Any],
 ) -> WorkflowExecutionRecord:
     """Convert compatibility-host state into the shared immutable run record."""
     execution = options.get("execution")
-    cleanup_errors: List[Any] = list(options.get("cleanupErrors") or [])
+    cleanup_errors: list[Any] = list(options.get("cleanupErrors") or [])
     failed = (
         options.get("setupError") is not None
         or options.get("executionError") is not None
@@ -53,9 +53,7 @@ def create_legacy_yaml_execution_record(
         "status": "failed" if failed else "success",
         "startedAt": _to_iso(started_at),
         "endedAt": _to_iso(ended_at),
-        "durationMs": max(
-            0.0, (ended_at - started_at).total_seconds() * 1000
-        ),
+        "durationMs": max(0.0, (ended_at - started_at).total_seconds() * 1000),
         "cleanupErrors": cleanup_errors,
         "outputs": dict(options.get("outputs") or {}),
         "reportPaths": [options["reportFile"]] if options.get("reportFile") else [],

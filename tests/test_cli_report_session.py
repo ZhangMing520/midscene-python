@@ -115,9 +115,7 @@ class TestCliReportSession:
         action_tools = FakeCliTools()
         await action_tools.init_tools()
         act_tool = next(
-            tool
-            for tool in action_tools.get_tool_definitions()
-            if tool.name == "act"
+            tool for tool in action_tools.get_tool_definitions() if tool.name == "act"
         )
 
         await act_tool.handler({"prompt": "click the button"})
@@ -205,12 +203,6 @@ class TestCliReportSession:
             await connect_tool.handler({})
 
         session = json.loads(_session_path().read_text(encoding="utf-8"))
-        assert re.match(
-            r"^midscene-test-test-device-", session["reportFileName"]
-        )
-        assert failing_tools.created_report_file_names == [
-            session["reportFileName"]
-        ]
-        assert failing_tools.created_report_group_ids == [
-            session["reportFileName"]
-        ]
+        assert re.match(r"^midscene-test-test-device-", session["reportFileName"])
+        assert failing_tools.created_report_file_names == [session["reportFileName"]]
+        assert failing_tools.created_report_group_ids == [session["reportFileName"]]

@@ -23,9 +23,7 @@ def init_debug_config() -> None:
         )
         debug_config = "ai:profile"
 
-    should_print_model_response = get_basic_env_value(
-        MIDSCENE_DEBUG_MODEL_RESPONSE
-    )
+    should_print_model_response = get_basic_env_value(MIDSCENE_DEBUG_MODEL_RESPONSE)
     if should_print_model_response:
         _logger.warning(
             "MIDSCENE_DEBUG_MODEL_RESPONSE is deprecated, "

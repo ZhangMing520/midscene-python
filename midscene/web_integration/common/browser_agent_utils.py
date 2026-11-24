@@ -11,14 +11,14 @@ import base64
 import importlib.metadata
 import re
 import weakref
-from typing import Any, Dict, Optional
+from typing import Any
 
 from loguru import logger
 
 from midscene.core.agent.common import BROWSER_NAVIGATION_ERROR_PATTERN
 from midscene.core.types import Size
 
-BROWSER_RUNTIME_CONFIG: Dict[str, Dict[str, str]] = {
+BROWSER_RUNTIME_CONFIG: dict[str, dict[str, str]] = {
     "puppeteer": {
         "display_name": "Puppeteer",
         "package_name": "puppeteer",
@@ -35,23 +35,23 @@ BROWSER_RUNTIME_CONFIG: Dict[str, Dict[str, str]] = {
 
 _CHROME_SELECT_STYLE_ID = "midscene-force-select-rendering"
 _FORCE_SELECT_RENDERING_PAGES: "weakref.WeakSet[Any]" = weakref.WeakSet()
-_CHROME_SELECT_INIT_SCRIPT = """
-(() => {
-  const addStyle = () => {
-    if (document.getElementById('%s')) return;
+_CHROME_SELECT_INIT_SCRIPT = f"""
+(() => {{
+  const addStyle = () => {{
+    if (document.getElementById('{_CHROME_SELECT_STYLE_ID}')) return;
     const style = document.createElement('style');
-    style.id = '%s';
+    style.id = '{_CHROME_SELECT_STYLE_ID}';
     style.textContent =
-      'select, select::picker(select) { appearance: base-select !important; }';
+      'select, select::picker(select) {{ appearance: base-select !important; }}';
     document.head && document.head.appendChild(style);
-  };
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', addStyle, { once: true });
-  } else {
+  }};
+  if (document.readyState === 'loading') {{
+    document.addEventListener('DOMContentLoaded', addStyle, {{ once: true }});
+  }} else {{
     addStyle();
-  }
-})();
-""" % (_CHROME_SELECT_STYLE_ID, _CHROME_SELECT_STYLE_ID)
+  }}
+}})();
+"""
 
 
 def is_retryable_browser_navigation_error(error: BaseException) -> bool:
@@ -70,12 +70,12 @@ def _version_at_least(version: str, minimum: str) -> bool:
     current = _version_tuple(version)
     required = _version_tuple(minimum)
     length = max(len(current), len(required))
-    return current + (0,) * (length - len(current)) >= required + (
-        0,
-    ) * (length - len(required))
+    return current + (0,) * (length - len(current)) >= required + (0,) * (
+        length - len(required)
+    )
 
 
-def _get_package_version(package_name: str) -> Optional[str]:
+def _get_package_version(package_name: str) -> str | None:
     try:
         return importlib.metadata.version(package_name)
     except importlib.metadata.PackageNotFoundError:
@@ -96,9 +96,7 @@ async def apply_force_chrome_select_rendering(
     config = BROWSER_RUNTIME_CONFIG.get(runtime)
     if enabled is True and config is not None:
         version = _get_package_version(config["package_name"])
-        if version and not _version_at_least(
-            version, config["minimum_version"]
-        ):
+        if version and not _version_at_least(version, config["minimum_version"]):
             logger.warning(
                 "[midscene:error] forceChromeSelectRendering requires "
                 f"{config['display_name']} {config['requirement_label']}, but "

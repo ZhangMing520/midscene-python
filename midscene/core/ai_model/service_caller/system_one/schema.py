@@ -1,14 +1,14 @@
 """System One response schema validation (upstream system-one/schema.ts)."""
 
 import json
-from typing import Any, Dict
+from typing import Any
 
 
 class SystemOneError(Exception):
     pass
 
 
-def validate_system_one_response(payload: Any) -> Dict[str, Any]:
+def validate_system_one_response(payload: Any) -> dict[str, Any]:
     """Validate a System One response (answers + usage)."""
     if not isinstance(payload, dict) or not isinstance(payload.get("answers"), dict):
         raise SystemOneError(

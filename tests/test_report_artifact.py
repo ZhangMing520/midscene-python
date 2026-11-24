@@ -247,9 +247,7 @@ def test_rejects_unsupported_schemas_malformed_attributes_and_ambiguous_groups()
         parse_report_artifact_manifest(candidate)
 
     candidate = _manifest()
-    candidate["groups"] = [
-        {**candidate["groups"][0], "attributes": {"title": {}}}
-    ]
+    candidate["groups"] = [{**candidate["groups"][0], "attributes": {"title": {}}}]
     with pytest.raises(ReportArtifactError, match="Invalid"):
         parse_report_artifact_manifest(candidate)
 

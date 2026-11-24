@@ -9,14 +9,22 @@ owns only the Playwright-specific lifecycle and DOM extraction.
 
 import asyncio  # noqa: F401 - callers patch this module's asyncio.sleep
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from playwright.async_api import async_playwright, Page, Browser, BrowserContext
 from loguru import logger
+from playwright.async_api import Browser, BrowserContext, Page, async_playwright
 
 from midscene.core.types import (
-    AbstractInterface, InterfaceType, UIContext, UINode, UITree,
-    Size, Rect, NodeType, FileChooserHandler, FileChooserRegistration
+    AbstractInterface,
+    FileChooserHandler,
+    FileChooserRegistration,
+    InterfaceType,
+    NodeType,
+    Rect,
+    Size,
+    UIContext,
+    UINode,
+    UITree,
 )
 from midscene.web_integration.common.browser_agent_utils import (
     apply_force_chrome_select_rendering,
@@ -40,9 +48,9 @@ class WebPage(BrowserPageActionsMixin, AbstractInterface):
         page: Page,
         context: BrowserContext,
         browser: Browser,
-        playwright: Optional[Any] = None,
-        keyboard_type_delay: Optional[float] = None,
-        input_strategy: Optional[str] = None,
+        playwright: Any | None = None,
+        keyboard_type_delay: float | None = None,
+        input_strategy: str | None = None,
         force_same_tab_navigation: bool = True,
         auto_follow_new_page: bool = False,
         force_chrome_select_rendering: bool = True,
@@ -92,19 +100,19 @@ class WebPage(BrowserPageActionsMixin, AbstractInterface):
         cls,
         headless: bool = False,
         viewport_size: tuple[int, int] = (1920, 1080),
-        user_data_dir: Optional[str] = None,
-        user_agent: Optional[str] = None,
-        device_scale_factor: Optional[float] = None,
+        user_data_dir: str | None = None,
+        user_agent: str | None = None,
+        device_scale_factor: float | None = None,
         accept_insecure_certs: bool = False,
-        cookie_file: Optional[str] = None,
-        extra_http_headers: Optional[Dict[str, str]] = None,
-        keyboard_type_delay: Optional[float] = None,
-        input_strategy: Optional[str] = None,
+        cookie_file: str | None = None,
+        extra_http_headers: dict[str, str] | None = None,
+        keyboard_type_delay: float | None = None,
+        input_strategy: str | None = None,
         force_same_tab_navigation: bool = True,
         auto_follow_new_page: bool = False,
         force_chrome_select_rendering: bool = True,
-        **browser_options
-    ) -> 'WebPage':
+        **browser_options,
+    ) -> "WebPage":
         """Create new Playwright page instance
 
         Args:
@@ -128,17 +136,14 @@ class WebPage(BrowserPageActionsMixin, AbstractInterface):
         """
         playwright = await async_playwright().start()
 
-        launch_options = {
-            "headless": headless,
-            **browser_options
-        }
+        launch_options = {"headless": headless, **browser_options}
 
         if user_data_dir:
             launch_options["user_data_dir"] = user_data_dir
 
         browser = await playwright.chromium.launch(**launch_options)
 
-        context_options: Dict[str, Any] = {
+        context_options: dict[str, Any] = {
             "viewport": {
                 "width": viewport_size[0],
                 "height": viewport_size[1],
@@ -150,8 +155,7 @@ class WebPage(BrowserPageActionsMixin, AbstractInterface):
             context_options["device_scale_factor"] = float(device_scale_factor)
         if extra_http_headers:
             context_options["extra_http_headers"] = {
-                str(key): str(value)
-                for key, value in extra_http_headers.items()
+                str(key): str(value) for key, value in extra_http_headers.items()
             }
         context = await browser.new_context(**context_options)
 
@@ -213,7 +217,7 @@ class WebPage(BrowserPageActionsMixin, AbstractInterface):
         self.page = page
 
     async def _judge_order_sensitive(
-        self, options: Optional[Dict[str, Any]] = None
+        self, options: dict[str, Any] | None = None
     ) -> bool:
         return await judge_order_sensitive(options)
 
@@ -241,21 +245,36 @@ class WebPage(BrowserPageActionsMixin, AbstractInterface):
                 screenshot_base64=screenshot_base64,
                 size=size,
                 content=elements,
-                tree=tree
+                tree=tree,
             )
 
         except Exception as e:
             logger.error(f"Failed to get context: {e}")
             raise
 
-    async def action_space(self) -> List[str]:
+    async def action_space(self) -> list[str]:
         """Get available actions"""
         return [
-            "tap", "click", "double_click", "right_click",
-            "input", "type", "fill", "clear",
-            "scroll", "scroll_up", "scroll_down", "scroll_left", "scroll_right",
-            "hover", "drag", "key_press", "navigate", "reload",
-            "go_back", "go_forward"
+            "tap",
+            "click",
+            "double_click",
+            "right_click",
+            "input",
+            "type",
+            "fill",
+            "clear",
+            "scroll",
+            "scroll_up",
+            "scroll_down",
+            "scroll_left",
+            "scroll_right",
+            "hover",
+            "drag",
+            "key_press",
+            "navigate",
+            "reload",
+            "go_back",
+            "go_forward",
         ]
 
     async def register_file_chooser_listener(
@@ -263,10 +282,10 @@ class WebPage(BrowserPageActionsMixin, AbstractInterface):
     ) -> FileChooserRegistration:
         """Accept files when the page opens a native file chooser dialog
         (upstream PlaywrightWebPage.registerFileChooserListener)."""
-        captured: Dict[str, Optional[BaseException]] = {"error": None}
+        captured: dict[str, BaseException | None] = {"error": None}
 
         async def _on_file_chooser(chooser: Any) -> None:
-            async def accept(files: List[str]) -> None:
+            async def accept(files: list[str]) -> None:
                 await chooser.set_files(list(files))
 
             try:
@@ -313,16 +332,12 @@ class WebPage(BrowserPageActionsMixin, AbstractInterface):
             return await self.page.evaluate(script, argument)
         return await self.page.evaluate(script)
 
-    async def wait_for_element(
-        self,
-        selector: str,
-        timeout: float = 10000
-    ) -> None:
+    async def wait_for_element(self, selector: str, timeout: float = 10000) -> None:
         """Wait for element to be present"""
         try:
             await self.page.wait_for_selector(selector, timeout=timeout)
-        except Exception:
-            raise TimeoutError(f"Element not found: {selector}")
+        except Exception as error:
+            raise TimeoutError(f"Element not found: {selector}") from error
 
     async def evaluate_script(self, script: str, *args) -> Any:
         """Evaluate JavaScript"""
@@ -371,7 +386,7 @@ class WebPage(BrowserPageActionsMixin, AbstractInterface):
             logger.error(f"Failed to get page size: {e}")
             return Size(width=1920, height=1080)
 
-    async def _extract_elements(self) -> List[PlaywrightElement]:
+    async def _extract_elements(self) -> list[PlaywrightElement]:
         """Extract all visible elements from page"""
         try:
             # Use JavaScript to extract element information
@@ -444,28 +459,28 @@ class WebPage(BrowserPageActionsMixin, AbstractInterface):
 
             elements = []
             for data in element_data:
-                rect_data = data['rect']
+                rect_data = data["rect"]
                 rect = Rect(
-                    left=rect_data['left'],
-                    top=rect_data['top'],
-                    width=rect_data['width'],
-                    height=rect_data['height']
+                    left=rect_data["left"],
+                    top=rect_data["top"],
+                    width=rect_data["width"],
+                    height=rect_data["height"],
                 )
 
                 # Determine node type
-                tag_name = data['tagName']
-                node_type = self._get_node_type(tag_name, data['attributes'])
+                tag_name = data["tagName"]
+                node_type = self._get_node_type(tag_name, data["attributes"])
 
                 element = PlaywrightElement(
                     page=self.page,
-                    selector=data['selector'],
-                    id=data['id'],
-                    content=data['content'],
+                    selector=data["selector"],
+                    id=data["id"],
+                    content=data["content"],
                     rect=rect,
-                    center=tuple(data['center']),
+                    center=tuple(data["center"]),
                     node_type=node_type,
-                    attributes=data['attributes'],
-                    is_visible=True
+                    attributes=data["attributes"],
+                    is_visible=True,
                 )
 
                 elements.append(element)
@@ -476,23 +491,31 @@ class WebPage(BrowserPageActionsMixin, AbstractInterface):
             logger.error(f"Failed to extract elements: {e}")
             return []
 
-    def _get_node_type(self, tag_name: str, attributes: Dict[str, Any]) -> NodeType:
+    def _get_node_type(self, tag_name: str, attributes: dict[str, Any]) -> NodeType:
         """Determine node type from tag name and attributes"""
-        if tag_name in ['input', 'textarea']:
-            input_type = attributes.get('type', '').lower()
-            if input_type in ['text', 'password', 'email', 'search', 'url', 'tel']:
+        if tag_name in ["input", "textarea"]:
+            input_type = attributes.get("type", "").lower()
+            if input_type in ["text", "password", "email", "search", "url", "tel"]:
                 return NodeType.INPUT
-            elif input_type in ['button', 'submit', 'reset']:
+            elif input_type in ["button", "submit", "reset"]:
                 return NodeType.BUTTON
-        elif tag_name in ['button']:
+        elif tag_name in ["button"]:
             return NodeType.BUTTON
-        elif tag_name in ['a']:
+        elif tag_name in ["a"]:
             return NodeType.LINK
-        elif tag_name in ['img']:
+        elif tag_name in ["img"]:
             return NodeType.IMAGE
-        elif tag_name in ['div', 'span', 'section', 'article', 'header', 'footer', 'nav']:
+        elif tag_name in [
+            "div",
+            "span",
+            "section",
+            "article",
+            "header",
+            "footer",
+            "nav",
+        ]:
             return NodeType.CONTAINER
-        elif tag_name in ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'label', 'td', 'th']:
+        elif tag_name in ["p", "h1", "h2", "h3", "h4", "h5", "h6", "label", "td", "th"]:
             return NodeType.TEXT
         else:
             return NodeType.OTHER
@@ -510,7 +533,7 @@ class WebPage(BrowserPageActionsMixin, AbstractInterface):
                 node_type=NodeType.CONTAINER,
                 attributes={},
                 is_visible=True,
-                children=[]
+                children=[],
             )
 
             return UITree(node=root_node, children=[])
@@ -526,7 +549,7 @@ class WebPage(BrowserPageActionsMixin, AbstractInterface):
                 node_type=NodeType.CONTAINER,
                 attributes={},
                 is_visible=True,
-                children=[]
+                children=[],
             )
             return UITree(node=root_node, children=[])
 

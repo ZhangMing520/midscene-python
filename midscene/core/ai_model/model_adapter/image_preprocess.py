@@ -1,6 +1,6 @@
 """Model image preprocessing (upstream model-adapter/image-preprocess.ts)."""
 
-from typing import Dict, Optional, TypedDict
+from typing import TypedDict
 
 from loguru import logger
 
@@ -13,15 +13,15 @@ class ImagePreprocessPolicy(TypedDict, total=False):
 
 class PreparedModelImage(TypedDict):
     image_base64: str
-    prepared_size: Dict[str, int]
-    content_size: Dict[str, int]
+    prepared_size: dict[str, int]
+    content_size: dict[str, int]
 
 
 def prepare_model_image(
     image_base64: str,
     width: int,
     height: int,
-    policy: Optional[ImagePreprocessPolicy] = None,
+    policy: ImagePreprocessPolicy | None = None,
 ) -> PreparedModelImage:
     """Prepare the image for a model call.
 
@@ -35,9 +35,7 @@ def prepare_model_image(
     pad_block_size = (policy or {}).get("padBlockSize")
     if pad_block_size:
         try:
-            padded = padding_to_match_block_by_base64(
-                image_base64, int(pad_block_size)
-            )
+            padded = padding_to_match_block_by_base64(image_base64, int(pad_block_size))
             prepared_base64 = padded["imageBase64"]
             model_width = padded["width"]
             model_height = padded["height"]

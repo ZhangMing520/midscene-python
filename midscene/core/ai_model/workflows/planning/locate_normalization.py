@@ -1,14 +1,14 @@
 """Planning locate parameter normalization (upstream workflows/planning/locate-normalization.ts)."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 def normalize_planning_locate_parameter(
-    locate: Dict[str, Any],
-    locate_result_codec: Optional[Any],
-    locate_result_context: Optional[Dict[str, Any]],
+    locate: dict[str, Any],
+    locate_result_codec: Any | None,
+    locate_result_context: dict[str, Any] | None,
     include_locate_in_planning: bool,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Normalize a planning locate parameter into {prompt, ...}.
 
     When the planning model returned coordinates (includeLocateInPlanning) they
@@ -20,15 +20,11 @@ def normalize_planning_locate_parameter(
         return {"prompt": prompt}
 
     if locate_result_codec is None:
-        raise ValueError(
-            "planning locate normalization requires a locate result codec"
-        )
+        raise ValueError("planning locate normalization requires a locate result codec")
 
     spec = locate_result_codec.prompt_spec
     raw_keys = [spec["resultKey"], *(spec.get("resultKeyAliases") or [])]
-    raw_value = next(
-        (locate[key] for key in raw_keys if key in locate), None
-    )
+    raw_value = next((locate[key] for key in raw_keys if key in locate), None)
     # Drop raw coordinate fields after converting them.
     normalized = {key: value for key, value in locate.items() if key not in raw_keys}
     normalized["locatedPixelResult"] = locate_result_codec.to_pixel_result(
@@ -47,11 +43,11 @@ def _action_locate_fields(action_definition: Any) -> list:
 
 
 def normalize_planning_action_fields(
-    actions: List[Dict[str, Any]],
-    action_space: List[Any],
+    actions: list[dict[str, Any]],
+    action_space: list[Any],
     include_locate_in_planning: bool,
-    locate_result_codec: Optional[Any],
-    locate_result_context: Optional[Dict[str, Any]],
+    locate_result_codec: Any | None,
+    locate_result_context: dict[str, Any] | None,
 ) -> None:
     """Normalize locate params on planned actions in place.
 

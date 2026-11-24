@@ -1,23 +1,24 @@
 """Insight adapter resolution (upstream model-adapter/insight.ts)."""
 
-from typing import Any, Callable, Dict, Optional, TypedDict, Union
+from collections.abc import Callable
+from typing import Any, TypedDict
 
 from midscene.core.ai_model.model_adapter.default_insight_protocol import (
     create_default_insight_protocol,
 )
 from midscene.core.ai_model.model_adapter.insight_protocol import InsightProtocol
 
-InsightProtocolDefinition = Union[
-    InsightProtocol, Callable[[Dict[str, Any]], InsightProtocol]
-]
+InsightProtocolDefinition = (
+    InsightProtocol | Callable[[dict[str, Any]], InsightProtocol]
+)
 
 
 class InsightAdapter(TypedDict):
-    boolean_fn: Optional[Callable[..., Any]]
+    boolean_fn: Callable[..., Any] | None
     protocol: InsightProtocol
 
 
-_default_insight_protocol: Optional[InsightProtocol] = None
+_default_insight_protocol: InsightProtocol | None = None
 
 
 def get_default_insight_protocol() -> InsightProtocol:
@@ -29,8 +30,8 @@ def get_default_insight_protocol() -> InsightProtocol:
 
 
 def resolve_insight_protocol(
-    definition: Optional[InsightProtocolDefinition] = None,
-    context: Optional[Dict[str, Any]] = None,
+    definition: InsightProtocolDefinition | None = None,
+    context: dict[str, Any] | None = None,
 ) -> InsightProtocol:
     if definition is None:
         return get_default_insight_protocol()
@@ -41,7 +42,7 @@ def resolve_insight_protocol(
 
 def resolve_insight(
     adapter: Any,
-    context: Optional[Dict[str, Any]] = None,
+    context: dict[str, Any] | None = None,
 ) -> InsightAdapter:
     """Resolve the boolean fast path and protocol for an adapter."""
     return {

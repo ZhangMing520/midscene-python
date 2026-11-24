@@ -2,7 +2,7 @@
 
 import asyncio
 import time
-from typing import Any, Dict
+from typing import Any
 
 from loguru import logger
 
@@ -76,9 +76,7 @@ class ActionReadiness:
         import inspect
 
         try:
-            callback_result = self._callback(
-                {"action": action, "signal": signal}
-            )
+            callback_result = self._callback({"action": action, "signal": signal})
             if inspect.isawaitable(callback_result):
                 completion = asyncio.ensure_future(callback_result)
             else:
@@ -129,7 +127,7 @@ class ActionReadiness:
             raise ActionReadinessError("wait", action_name, error) from error
 
 
-async def wait_for_action_ready(options: Any, action: Dict[str, Any]) -> None:
+async def wait_for_action_ready(options: Any, action: dict[str, Any]) -> None:
     """Await the user's waitForActionReady callback after a successful action.
 
     Slow waits only warn; callback failures surface as ActionReadinessError.
@@ -163,4 +161,3 @@ __all__ = [
     "is_action_readiness_error",
     "wait_for_action_ready",
 ]
-

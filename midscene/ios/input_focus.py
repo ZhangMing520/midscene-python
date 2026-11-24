@@ -7,13 +7,12 @@ WebDriverAgent client and any session-relative request surface.
 import asyncio
 import json
 import time
-from typing import Any, Awaitable, Callable, List, Optional
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from midscene.webdriver import WebDriverRequestError, element_id_from
 
-InputRequest = Callable[
-    [str, str, Optional[dict]], Awaitable[dict]
-]
+InputRequest = Callable[[str, str, dict | None], Awaitable[dict]]
 
 TEXT_INPUT_TYPES = (
     "XCUIElementTypeTextField",
@@ -29,7 +28,7 @@ def _is_protocol_error(error: BaseException, code: str) -> bool:
 
 async def active_input(
     request: InputRequest,
-) -> Optional[str]:
+) -> str | None:
     """The id of the focused element, or None when nothing has focus."""
     try:
         response = await request("GET", "/element/active", None)
@@ -49,15 +48,14 @@ async def wait_for_input_focus(
     while not await active_input(request):
         if time.monotonic() >= deadline:
             raise RuntimeError(
-                f"Timed out waiting for iOS input focus after "
-                f"{int(timeout_ms)}ms"
+                f"Timed out waiting for iOS input focus after {int(timeout_ms)}ms"
             )
         await asyncio.sleep(0.05)
 
 
 async def _identified_inputs(
     request: InputRequest, name: str, element_type: str
-) -> List[str]:
+) -> list[str]:
     """Elements whose name is a real identifier and whose type matches.
 
     WDA falls back to label when the accessibility identifier is empty;
@@ -109,22 +107,16 @@ async def clear_input_with_focus(request: InputRequest) -> bool:
     element_type: Any = None
     try:
         raw_name = (
-            await request(
-                "GET", f"/element/{original_id}/attribute/name", None
-            )
+            await request("GET", f"/element/{original_id}/attribute/name", None)
         ).get("value")
         name = raw_name if isinstance(raw_name, str) else ""
         element_type = (
-            await request(
-                "GET", f"/element/{original_id}/attribute/type", None
-            )
+            await request("GET", f"/element/{original_id}/attribute/type", None)
         ).get("value")
     except WebDriverRequestError:
         name = ""
         element_type = None
-    is_text_input = (
-        isinstance(element_type, str) and element_type in TEXT_INPUT_TYPES
-    )
+    is_text_input = isinstance(element_type, str) and element_type in TEXT_INPUT_TYPES
     can_reacquire = False
     if name and is_text_input:
         try:
@@ -140,7 +132,7 @@ async def clear_input_with_focus(request: InputRequest) -> bool:
     # guessing whether the accessibility value is text or placeholder text.
     retries_left = 1
     while True:
-        clear_error: Optional[BaseException] = None
+        clear_error: BaseException | None = None
         try:
             await request("POST", f"/element/{target_id}/clear", None)
         except WebDriverRequestError as error:
@@ -157,14 +149,11 @@ async def clear_input_with_focus(request: InputRequest) -> bool:
                     or not can_reacquire
                 ):
                     raise
-                matches = await _identified_inputs(
-                    request, name, element_type
-                )
+                matches = await _identified_inputs(request, name, element_type)
                 if len(matches) != 1:
                     raise RuntimeError(
-                        "Cannot uniquely identify input after clearing the "
-                        "field"
-                    )
+                        "Cannot uniquely identify input after clearing the field"
+                    ) from error
                 target_id = matches[0]
                 await request("POST", f"/element/{target_id}/click", None)
             if await active_input(request) != target_id:
@@ -175,9 +164,7 @@ async def clear_input_with_focus(request: InputRequest) -> bool:
         if clear_error is None:
             return True
         value = (
-            await request(
-                "GET", f"/element/{target_id}/attribute/value", None
-            )
+            await request("GET", f"/element/{target_id}/attribute/value", None)
         ).get("value")
         if value is None or value == "":
             return True

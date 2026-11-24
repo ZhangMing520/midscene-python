@@ -12,8 +12,8 @@ from midscene.shared.agent_tools.tool_generator import (
     generate_tools_from_action_space,
 )
 from midscene.shared.agent_tools.types import ActionSpaceItem, schema_field
-from midscene.shared.cli import record_command
 from midscene.shared.agent_tools.user_prompt import compose_user_prompt
+from midscene.shared.cli import record_command
 from midscene.shared.cli.record_command import create_record_cli_command
 from midscene.shared.cli.verbose import with_cli_verbose_context
 
@@ -238,9 +238,7 @@ class TestGenerateToolsFromActionSpace:
         assert get_agent_args == [
             {"command": "pm clear com.example.app", "deviceId": "target-device"}
         ]
-        assert calls == [
-            ("RunAdbShell", {"command": "pm clear com.example.app"})
-        ]
+        assert calls == [("RunAdbShell", {"command": "pm clear com.example.app"})]
 
     def test_merges_init_arg_schema_into_action_and_common_tools(self):
         init_schema = {
@@ -416,9 +414,7 @@ class TestGenerateToolsFromActionSpace:
             created.append(waiter)
             return waiter
 
-        monkeypatch.setattr(
-            record_command, "create_cli_interrupt_waiter", fake_create
-        )
+        monkeypatch.setattr(record_command, "create_cli_interrupt_waiter", fake_create)
         record_tool = create_record_cli_command(lambda _args: _await(agent))
 
         result = await with_cli_verbose_context(
@@ -487,7 +483,9 @@ class TestGenerateToolsFromActionSpace:
         assert missing_action.is_error is True
 
     @pytest.mark.asyncio
-    async def test_records_take_screenshot_in_reports_with_the_captured_screenshot(self):
+    async def test_records_take_screenshot_in_reports_with_the_captured_screenshot(
+        self,
+    ):
         calls = []
         screenshot_calls = []
 
@@ -498,9 +496,7 @@ class TestGenerateToolsFromActionSpace:
         async def record_to_report(kind, payload):
             calls.append((kind, payload))
 
-        agent = _Agent(
-            page=_Page(), record_to_report=record_to_report
-        )
+        agent = _Agent(page=_Page(), record_to_report=record_to_report)
         agent.page = _Page()
         agent.page.screenshot_base64 = screenshot_base64
 
@@ -529,7 +525,9 @@ class TestGenerateToolsFromActionSpace:
         with pytest.raises(
             ValueError, match='Action "BadLaunch" declared a non-object param_schema'
         ):
-            generate_tools_from_action_space(action_space, lambda _args: _await(_Agent()))
+            generate_tools_from_action_space(
+                action_space, lambda _args: _await(_Agent())
+            )
 
     def test_accepts_undefined_and_object_param_schema(self):
         action_space = [
@@ -608,14 +606,10 @@ class TestComposeUserPrompt:
 
     def test_throws_when_image_name_array_contains_non_string_items(self):
         with pytest.raises(ValueError, match=r"imageName\[0\]"):
-            compose_user_prompt(
-                "p", image=["https://x/a.png"], image_name=[123]
-            )
+            compose_user_prompt("p", image=["https://x/a.png"], image_name=[123])
 
     def test_builds_images_array_from_image_and_image_name_pairs(self):
-        assert compose_user_prompt(
-            "p", image="https://x/a.png", image_name="a"
-        ) == {
+        assert compose_user_prompt("p", image="https://x/a.png", image_name="a") == {
             "prompt": "p",
             "images": [{"name": "a", "url": "https://x/a.png"}],
         }
@@ -637,9 +631,7 @@ class TestGenerateCommonToolsAssertImagePrompts:
         async def ai_assert(prompt, message=None):
             calls.append((prompt, message))
 
-        tools = generate_common_tools(
-            lambda _args: _await(_Agent(ai_assert=ai_assert))
-        )
+        tools = generate_common_tools(lambda _args: _await(_Agent(ai_assert=ai_assert)))
         assert_tool = next(tool for tool in tools if tool.name == "assert")
         await assert_tool.handler({"prompt": "login button visible"})
 
@@ -652,9 +644,7 @@ class TestGenerateCommonToolsAssertImagePrompts:
         async def ai_assert(prompt, message=None):
             calls.append((prompt, message))
 
-        tools = generate_common_tools(
-            lambda _args: _await(_Agent(ai_assert=ai_assert))
-        )
+        tools = generate_common_tools(lambda _args: _await(_Agent(ai_assert=ai_assert)))
         assert_tool = next(tool for tool in tools if tool.name == "assert")
         await assert_tool.handler(
             {
@@ -663,9 +653,7 @@ class TestGenerateCommonToolsAssertImagePrompts:
             }
         )
 
-        assert calls == [
-            ("login button visible", "the login button should be visible")
-        ]
+        assert calls == [("login button visible", "the login button should be visible")]
 
     @pytest.mark.asyncio
     async def test_loads_an_observation_record_and_forwards_it_to_ai_assert(
@@ -760,9 +748,7 @@ class TestGenerateCommonToolsAssertImagePrompts:
         async def ai_assert(prompt, message=None):
             calls.append((prompt, message))
 
-        tools = generate_common_tools(
-            lambda _args: _await(_Agent(ai_assert=ai_assert))
-        )
+        tools = generate_common_tools(lambda _args: _await(_Agent(ai_assert=ai_assert)))
         assert_tool = next(tool for tool in tools if tool.name == "assert")
 
         result = await assert_tool.handler(
@@ -771,9 +757,10 @@ class TestGenerateCommonToolsAssertImagePrompts:
 
         assert calls == []
         assert result.is_error is True
-        assert "Invalid UI observation record at frames.0.path" in result.content[0][
-            "text"
-        ]
+        assert (
+            "Invalid UI observation record at frames.0.path"
+            in result.content[0]["text"]
+        )
 
     @pytest.mark.asyncio
     async def test_forwards_images_to_ai_assert_as_a_user_prompt_style_object(self):
@@ -782,9 +769,7 @@ class TestGenerateCommonToolsAssertImagePrompts:
         async def ai_assert(prompt, message=None):
             calls.append((prompt, message))
 
-        tools = generate_common_tools(
-            lambda _args: _await(_Agent(ai_assert=ai_assert))
-        )
+        tools = generate_common_tools(lambda _args: _await(_Agent(ai_assert=ai_assert)))
         assert_tool = next(tool for tool in tools if tool.name == "assert")
         await assert_tool.handler(
             {
@@ -813,9 +798,7 @@ class TestGenerateCommonToolsAssertImagePrompts:
         async def ai_assert(prompt, message=None):
             calls.append((prompt, message))
 
-        tools = generate_common_tools(
-            lambda _args: _await(_Agent(ai_assert=ai_assert))
-        )
+        tools = generate_common_tools(lambda _args: _await(_Agent(ai_assert=ai_assert)))
         assert_tool = next(tool for tool in tools if tool.name == "assert")
         await assert_tool.handler(
             {
@@ -829,9 +812,7 @@ class TestGenerateCommonToolsAssertImagePrompts:
             (
                 {
                     "prompt": "the visible badge matches the supplied image",
-                    "images": [
-                        {"name": "badge", "url": "./fixtures/badge.png"}
-                    ],
+                    "images": [{"name": "badge", "url": "./fixtures/badge.png"}],
                 },
                 None,
             )
@@ -870,9 +851,7 @@ class TestGenerateCommonToolsActImagePrompts:
         async def ai_action(prompt, options):
             calls.append((prompt, options))
 
-        tools = generate_common_tools(
-            lambda _args: _await(_Agent(ai_action=ai_action))
-        )
+        tools = generate_common_tools(lambda _args: _await(_Agent(ai_action=ai_action)))
         act_tool = next(tool for tool in tools if tool.name == "act")
         await act_tool.handler({"prompt": "click the login button"})
 
@@ -885,9 +864,7 @@ class TestGenerateCommonToolsActImagePrompts:
         async def ai_action(prompt, options):
             calls.append((prompt, options))
 
-        tools = generate_common_tools(
-            lambda _args: _await(_Agent(ai_action=ai_action))
-        )
+        tools = generate_common_tools(lambda _args: _await(_Agent(ai_action=ai_action)))
         act_tool = next(tool for tool in tools if tool.name == "act")
         await act_tool.handler(
             {
@@ -916,9 +893,7 @@ class TestGenerateCommonToolsActImagePrompts:
         async def ai_action(prompt, options):
             calls.append((prompt, options))
 
-        tools = generate_common_tools(
-            lambda _args: _await(_Agent(ai_action=ai_action))
-        )
+        tools = generate_common_tools(lambda _args: _await(_Agent(ai_action=ai_action)))
         act_tool = next(tool for tool in tools if tool.name == "act")
         await act_tool.handler(
             {
@@ -1073,12 +1048,12 @@ class TestToolDefaults:
         act_tool = next(tool for tool in tools if tool.name == "act")
         await act_tool.handler({"prompt": "open settings"})
 
-        assert calls == [
-            ("open settings", {"deepThink": False, "deepLocate": True})
-        ]
+        assert calls == [("open settings", {"deepThink": False, "deepLocate": True})]
 
     @pytest.mark.asyncio
-    async def test_lets_an_explicit_act_deep_locate_arg_override_the_server_default(self):
+    async def test_lets_an_explicit_act_deep_locate_arg_override_the_server_default(
+        self,
+    ):
         calls = []
 
         async def ai_action(prompt, options):
@@ -1092,9 +1067,7 @@ class TestToolDefaults:
         act_tool = next(tool for tool in tools if tool.name == "act")
         await act_tool.handler({"prompt": "open settings", "deepLocate": False})
 
-        assert calls == [
-            ("open settings", {"deepThink": False, "deepLocate": False})
-        ]
+        assert calls == [("open settings", {"deepThink": False, "deepLocate": False})]
 
     @pytest.mark.asyncio
     async def test_plans_the_act_tool_with_deep_think_when_enabled(self):
@@ -1114,7 +1087,9 @@ class TestToolDefaults:
         assert calls == [("open settings", {"deepThink": True})]
 
     @pytest.mark.asyncio
-    async def test_lets_an_explicit_act_deep_think_arg_override_the_server_default(self):
+    async def test_lets_an_explicit_act_deep_think_arg_override_the_server_default(
+        self,
+    ):
         calls = []
 
         async def ai_action(prompt, options):
@@ -1148,9 +1123,7 @@ class TestToolDefaults:
         act_tool = next(tool for tool in tools if tool.name == "act")
         await act_tool.handler({"prompt": "open settings"})
 
-        assert calls == [
-            ("open settings", {"deepThink": True, "deepLocate": True})
-        ]
+        assert calls == [("open settings", {"deepThink": True, "deepLocate": True})]
 
     @pytest.mark.skip(
         reason="The Python verbose aiAct renderer consumes a different progress "

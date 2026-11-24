@@ -1,7 +1,8 @@
 """Test-run report metrics (upstream reporting/metrics.ts)."""
 
 import math
-from typing import Any, Dict, Iterable, List
+from collections.abc import Iterable
+from typing import Any
 
 from midscene.core.report_stats import collect_report_summary
 from midscene.core.test_run_report import TestRunReportMetrics
@@ -82,7 +83,7 @@ def collect_test_run_report_metrics(report: Any) -> TestRunReportMetrics:
     """A captured execution can still lack provider usage or contain a live request."""
     summary = collect_report_summary(report)
     executions = _read(report, "executions") or []
-    tasks: List[Any] = []
+    tasks: list[Any] = []
     for execution in executions:
         tasks.extend(_read(execution, "tasks") or [])
 
@@ -92,7 +93,7 @@ def collect_test_run_report_metrics(report: Any) -> TestRunReportMetrics:
     def task_search_usage(task: Any) -> Any:
         return _read(task, "searchAreaUsage", "search_area_usage")
 
-    usages: List[Any] = []
+    usages: list[Any] = []
     live = False
     unrecorded = False
     for task in tasks:
@@ -107,7 +108,9 @@ def collect_test_run_report_metrics(report: Any) -> TestRunReportMetrics:
         if started and not _has_usage(task_usage(task)):
             unrecorded = True
 
-    known_times = sum(1 for usage in usages if _number(_read(usage, "time_cost", "timeCost")))
+    known_times = sum(
+        1 for usage in usages if _number(_read(usage, "time_cost", "timeCost"))
+    )
     known_tokens = sum(
         1
         for usage in usages
@@ -118,7 +121,7 @@ def collect_test_run_report_metrics(report: Any) -> TestRunReportMetrics:
         )
     )
 
-    reasons: List[str] = []
+    reasons: list[str] = []
     if live:
         reasons.append("A model request was still running when usage was captured.")
     if unrecorded:
@@ -127,7 +130,9 @@ def collect_test_run_report_metrics(report: Any) -> TestRunReportMetrics:
         reasons.append("Some model usage records do not include request duration.")
     if known_tokens < len(usages):
         reasons.append("Some model usage records do not include token counts.")
-    if any(not _number(_read(usage, "prompt_tokens", "promptTokens")) for usage in usages):
+    if any(
+        not _number(_read(usage, "prompt_tokens", "promptTokens")) for usage in usages
+    ):
         reasons.append("Some model usage records do not include input token counts.")
     if any(
         not _number(_read(usage, "completion_tokens", "completionTokens"))
@@ -209,7 +214,7 @@ def sum_test_run_report_metrics(
         "completionTokens": 0,
         "totalTokens": 0,
     }
-    models: Dict[str, Dict[str, Any]] = {}
+    models: dict[str, dict[str, Any]] = {}
     for value in value_list:
         for key in _NUMERIC_KEYS:
             total[key] = total.get(key, 0) + value.get(key, 0)
@@ -224,7 +229,7 @@ def sum_test_run_report_metrics(
     if models:
         total["models"] = list(models.values())
 
-    fields: Dict[str, str] = {}
+    fields: dict[str, str] = {}
     for field in (
         "modelCallCount",
         "modelTimeMs",
@@ -254,7 +259,7 @@ def sum_test_run_report_metrics(
     else:
         status = "partial"
 
-    reasons: List[str] = []
+    reasons: list[str] = []
     for value in value_list:
         for reason in (value.get("collection") or {}).get("reasons") or []:
             if reason not in reasons:

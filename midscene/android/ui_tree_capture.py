@@ -7,7 +7,7 @@ validating the XML envelope.
 
 import asyncio
 import re
-from typing import Awaitable, Callable, List
+from collections.abc import Awaitable, Callable
 
 from loguru import logger
 
@@ -27,9 +27,7 @@ def _validate_hierarchy_xml(xml: object) -> str:
         or not _HIERARCHY_OPEN.search(xml)
         or "</hierarchy>" not in xml
     ):
-        raise RuntimeError(
-            "uiautomator did not produce valid hierarchy XML"
-        )
+        raise RuntimeError("uiautomator did not produce valid hierarchy XML")
     return xml
 
 
@@ -37,7 +35,7 @@ async def capture_android_ui_tree(
     run_adb_command: RunAdbCommand, device_id: str
 ) -> str:
     """Dump the accessibility hierarchy, retrying transient failures."""
-    failures: List[str] = []
+    failures: list[str] = []
     shell_prefix = ["-s", device_id, "shell"]
 
     for attempt in range(1, ACCESSIBILITY_DUMP_ATTEMPTS + 1):
@@ -70,17 +68,13 @@ async def capture_android_ui_tree(
             return xml
         except Exception as error:  # noqa: BLE001 - retried below
             failures.append(
-                f"uiautomator attempt {attempt}/"
-                f"{ACCESSIBILITY_DUMP_ATTEMPTS}: {error}"
+                f"uiautomator attempt {attempt}/{ACCESSIBILITY_DUMP_ATTEMPTS}: {error}"
             )
             logger.debug(
-                f"android ui tree capture failed: attempt={attempt} "
-                f"error={error}"
+                f"android ui tree capture failed: attempt={attempt} error={error}"
             )
             if attempt < ACCESSIBILITY_DUMP_ATTEMPTS:
-                await asyncio.sleep(
-                    ACCESSIBILITY_DUMP_RETRY_DELAY_MS / 1000.0
-                )
+                await asyncio.sleep(ACCESSIBILITY_DUMP_RETRY_DELAY_MS / 1000.0)
 
     raise RuntimeError(
         "Unable to capture Android UI tree after "

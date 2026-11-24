@@ -1,6 +1,6 @@
 """Temperature overrides and semantic-retry nudge (upstream temperature-with-semantic-retry.ts)."""
 
-from typing import Any, Dict, Optional, TypeVar
+from typing import Any, TypeVar
 
 from midscene.core.ai_model.model_adapter.types import (
     ModelRequestUserConfig,
@@ -11,7 +11,7 @@ _T = TypeVar("_T")
 
 def get_temperature_with_semantic_retry(
     temperature: _T,
-    user_temperature: Optional[float] = None,
+    user_temperature: float | None = None,
     semantic_retry_attempt: int = 0,
 ) -> Any:
     """Return the effective temperature for one model call.
@@ -20,20 +20,16 @@ def get_temperature_with_semantic_retry(
     failure: preserve an explicit user temperature, and avoid adding a
     temperature to adapters whose normal parameters do not include one.
     """
-    if (
-        semantic_retry_attempt > 0
-        and user_temperature is None
-        and temperature == 0
-    ):
+    if semantic_retry_attempt > 0 and user_temperature is None and temperature == 0:
         return 0.2
     return temperature
 
 
 def _apply_temperature(
-    config: Dict[str, Any],
+    config: dict[str, Any],
     user_config: ModelRequestUserConfig,
     allow_override: bool = True,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Apply the user temperature; the 'unset' sentinel removes the default."""
     if not allow_override:
         config.pop("temperature", None)
@@ -47,9 +43,9 @@ def _apply_temperature(
 
 
 def _apply_semantic_retry_temperature(
-    request_body: Dict[str, Any],
-    model_config: Dict[str, Any],
-    options: Dict[str, Any],
+    request_body: dict[str, Any],
+    model_config: dict[str, Any],
+    options: dict[str, Any],
 ) -> None:
     """Nudge the deterministic default temperature after a parse failure."""
     attempt = options.get("semanticRetryAttempt") or 0

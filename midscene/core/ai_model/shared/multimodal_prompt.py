@@ -1,10 +1,12 @@
 """Multimodal prompt/image preparation (upstream ai-model/shared/multimodal-prompt.ts)."""
 
-from typing import Any, Dict, List, Optional
 import asyncio
 import base64
 from pathlib import Path
+from typing import Any
+
 from loguru import logger
+
 
 def user_prompt_to_string(prompt: Any) -> str:
     """TUserPrompt: str or {'prompt': str}."""
@@ -15,7 +17,7 @@ def user_prompt_to_string(prompt: Any) -> str:
     return str(prompt)
 
 
-def user_prompt_to_multimodal_prompt(prompt: Any) -> Optional[Dict[str, Any]]:
+def user_prompt_to_multimodal_prompt(prompt: Any) -> dict[str, Any] | None:
     """TUserPrompt -> TMultimodalPrompt (None when no images are provided)."""
     if not isinstance(prompt, dict) or not prompt.get("images"):
         return None
@@ -41,7 +43,7 @@ _REFERENCE_IMAGE_MIME = {
 }
 
 
-def resolve_reference_image(image: Any, convert_http: bool) -> Optional[str]:
+def resolve_reference_image(image: Any, convert_http: bool) -> str | None:
     """Resolve one markdown reference image to a model-ingestable URL."""
     url = image.get("url") if isinstance(image, dict) else None
     if not url or not isinstance(url, str):
@@ -65,11 +67,13 @@ def resolve_reference_image(image: Any, convert_http: bool) -> Optional[str]:
     if path.exists():
         suffix = path.suffix.lstrip(".").lower() or "png"
         mime = _REFERENCE_IMAGE_MIME.get(suffix, "image/png")
-        return f"data:{mime};base64,{base64.b64encode(path.read_bytes()).decode('ascii')}"
+        return (
+            f"data:{mime};base64,{base64.b64encode(path.read_bytes()).decode('ascii')}"
+        )
     return None
 
 
-def resolve_reference_images(images: Any, convert_http: bool) -> List[str]:
+def resolve_reference_images(images: Any, convert_http: bool) -> list[str]:
     """Resolve a list of markdown reference images to model-ingestable URLs."""
     resolved = []
     for item in images or []:
@@ -79,17 +83,17 @@ def resolve_reference_images(images: Any, convert_http: bool) -> List[str]:
     return resolved
 
 
-async def prepare_reference_images(images: Any, convert_http: bool) -> List[str]:
+async def prepare_reference_images(images: Any, convert_http: bool) -> list[str]:
     """Resolve reference images once per unique URL, at most five in flight
     (upstream prepareReferenceImages)."""
-    urls: List[str] = []
+    urls: list[str] = []
     for item in images or []:
         url = item.get("url") if isinstance(item, dict) else item
         if isinstance(url, str) and url:
             urls.append(url)
     unique_urls = list(dict.fromkeys(urls))
     semaphore = asyncio.Semaphore(5)
-    prepared: Dict[str, Optional[str]] = {}
+    prepared: dict[str, str | None] = {}
 
     async def prepare_one(url: str) -> None:
         async with semaphore:
@@ -102,21 +106,19 @@ async def prepare_reference_images(images: Any, convert_http: bool) -> List[str]
 
 
 async def _prepare_reference_image_entries(
-    multimodal_prompt: Optional[Dict[str, Any]],
-) -> List[Dict[str, str]]:
+    multimodal_prompt: dict[str, Any] | None,
+) -> list[dict[str, str]]:
     """Resolve unique URLs once, preserving image order and names."""
     images = (multimodal_prompt or {}).get("images") or []
-    convert_http = bool(
-        (multimodal_prompt or {}).get("convertHttpImage2Base64")
-    )
-    urls: List[str] = [
+    convert_http = bool((multimodal_prompt or {}).get("convertHttpImage2Base64"))
+    urls: list[str] = [
         item["url"]
         for item in images
         if isinstance(item, dict) and isinstance(item.get("url"), str)
     ]
     unique_urls = list(dict.fromkeys(urls))
     semaphore = asyncio.Semaphore(5)
-    prepared: Dict[str, Optional[str]] = {}
+    prepared: dict[str, str | None] = {}
 
     async def prepare_one(url: str) -> None:
         async with semaphore:
@@ -125,7 +127,7 @@ async def _prepare_reference_image_entries(
             )
 
     await asyncio.gather(*(prepare_one(url) for url in unique_urls))
-    entries: List[Dict[str, str]] = []
+    entries: list[dict[str, str]] = []
     for image in images:
         if not isinstance(image, dict):
             continue
@@ -136,7 +138,7 @@ async def _prepare_reference_image_entries(
     return entries
 
 
-async def prepare_user_prompt(user_prompt: Any) -> Dict[str, Any]:
+async def prepare_user_prompt(user_prompt: Any) -> dict[str, Any]:
     """Resolve a user prompt into text plus prepared reference images."""
     return {
         "text": user_prompt_to_string(user_prompt),
@@ -159,16 +161,20 @@ def get_screenshot_base64(context: Any) -> str:
     return screenshot
 
 
-def get_shot_size(context: Any) -> Dict[str, int]:
+def get_shot_size(context: Any) -> dict[str, int]:
     """Read the screenshot size {width, height} from a UIContext."""
     size = getattr(context, "size", None)
     if size is None and isinstance(context, dict):
         size = context.get("size")
     if size is not None:
-        return {"width": int(size.width), "height": int(size.height)} if hasattr(size, "width") else {
-            "width": int(size["width"]),
-            "height": int(size["height"]),
-        }
+        return (
+            {"width": int(size.width), "height": int(size.height)}
+            if hasattr(size, "width")
+            else {
+                "width": int(size["width"]),
+                "height": int(size["height"]),
+            }
+        )
     if isinstance(context, dict):
         shot_size = context.get("shotSize")
         if shot_size:
@@ -176,7 +182,7 @@ def get_shot_size(context: Any) -> Dict[str, int]:
     raise ValueError("UIContext has no size for the AI workflow")
 
 
-def multimodal_prompt_to_messages(prompt: Any) -> List[Dict[str, Any]]:
+def multimodal_prompt_to_messages(prompt: Any) -> list[dict[str, Any]]:
     """Re-export of ``locate_prompt_order.multimodal_prompt_to_messages``."""
     from midscene.core.ai_model.model_adapter.locate_prompt_order import (
         multimodal_prompt_to_messages as _impl,
@@ -187,7 +193,7 @@ def multimodal_prompt_to_messages(prompt: Any) -> List[Dict[str, Any]]:
 
 def prepared_reference_images_to_messages(
     reference_images: Any,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Re-export of ``prepared_reference_images_to_messages``."""
     from midscene.core.ai_model.model_adapter.locate_prompt_order import (
         prepared_reference_images_to_messages as _impl,

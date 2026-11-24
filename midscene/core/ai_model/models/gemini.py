@@ -1,7 +1,7 @@
 """Gemini adapter (upstream ai-model/models/gemini.ts)."""
 
 import re
-from typing import Any, Dict, Optional
+from typing import Any
 
 from midscene.core.ai_model.model_adapter.temperature_with_semantic_retry import (
     _apply_temperature,
@@ -15,11 +15,11 @@ from midscene.core.ai_model.models.default import (
 
 
 def _build_gemini_params(
-    midscene_defaults: Dict[str, Any],
+    midscene_defaults: dict[str, Any],
     user_config: ModelRequestUserConfig,
     expected_json_object_response: bool = False,
-) -> Dict[str, Any]:
-    config: Dict[str, Any] = dict(midscene_defaults)
+) -> dict[str, Any]:
+    config: dict[str, Any] = dict(midscene_defaults)
     _apply_temperature(config, user_config)
     reasoning_enabled = user_config.get("reasoningEnabled")
     if reasoning_enabled != "default":
@@ -28,9 +28,7 @@ def _build_gemini_params(
             "google": {
                 "thinking_config": {
                     "include_thoughts": True,
-                    "thinking_level": (
-                        user_config.get("reasoningEffort") or "medium"
-                    )
+                    "thinking_level": (user_config.get("reasoningEffort") or "medium")
                     if reasoning_enabled
                     else "low",
                 }
@@ -39,7 +37,7 @@ def _build_gemini_params(
     return config
 
 
-def _extract_inline_thought(content: str) -> Optional[str]:
+def _extract_inline_thought(content: str) -> str | None:
     match = re.match(r"^<thought>([\s\S]*?)</thought>", content, re.IGNORECASE)
     return match.group(1).strip() if match and match.group(1).strip() else None
 
@@ -56,8 +54,8 @@ def _format_reasoning_content(
 
 
 def extract_gemini_content_and_reasoning(
-    message: Optional[Dict[str, Any]],
-) -> Dict[str, str]:
+    message: dict[str, Any] | None,
+) -> dict[str, str]:
     """Extract Gemini content plus inline/provider reasoning.
 
     Live tests with ``include_thoughts`` showed Google's endpoint prepending
@@ -85,7 +83,12 @@ def extract_gemini_content_and_reasoning(
 
 GEMINI_LOCATE_FORMAT = {
     "resultKey": "bbox",
-    "coordinates": {"shape": "bbox", "order": "yx", "normalizedBy": 1000, "rounding": "round"},
+    "coordinates": {
+        "shape": "bbox",
+        "order": "yx",
+        "normalizedBy": 1000,
+        "rounding": "round",
+    },
 }
 
 

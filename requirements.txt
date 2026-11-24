@@ -34,8 +34,6 @@ backrefs==8.1
     # via mkdocs-material
 bidict==0.24.1
     # via python-socketio
-black==26.10.1
-    # via midscene-python (pyproject.toml)
 certifi==2026.10.23
     # via
     #   dashscope
@@ -50,7 +48,6 @@ charset-normalizer==3.5.2
     # via requests
 click==8.5.0
     # via
-    #   black
     #   mkdocs
     #   uvicorn
 colorama==0.4.6
@@ -147,8 +144,6 @@ idna==3.20
     #   yarl
 iniconfig==2.3.1
     # via pytest
-isort==9.0.2
-    # via midscene-python (pyproject.toml)
 jinja2==3.1.6
     # via
     #   mkdocs
@@ -216,10 +211,7 @@ multidict==7.2.1
 mypy==2.4.1
     # via midscene-python (pyproject.toml)
 mypy-extensions==1.1.0
-    # via
-    #   black
-    #   isort
-    #   mypy
+    # via mypy
 nodeenv==1.12.0
     # via pre-commit
 numpy==1.26.4
@@ -241,7 +233,6 @@ opentelemetry-semantic-conventions==0.66b2
     # via opentelemetry-sdk
 packaging==26.3
     # via
-    #   black
     #   mkdocs
     #   pytest
     #   virtualenv
@@ -251,14 +242,12 @@ paho-mqtt==2.1.0
     # via asyncio-mqtt
 pathspec==1.1.1
     # via
-    #   black
     #   mkdocs
     #   mypy
 pillow==10.4.0
     # via midscene-python (pyproject.toml)
 platformdirs==4.14.2
     # via
-    #   black
     #   mkdocs-get-deps
     #   virtualenv
 playwright==1.64.1
@@ -353,8 +342,6 @@ python3-xlib==0.15
     # via
     #   mouseinfo
     #   pyautogui
-pytokens==0.4.1
-    # via black
 pytweening==1.2.0
     # via pyautogui
 pyyaml==6.0.3

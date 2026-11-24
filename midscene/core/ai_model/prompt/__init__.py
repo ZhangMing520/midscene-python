@@ -1,7 +1,11 @@
 """Prompt builders ported from upstream packages/core/src/ai-model/prompt/."""
 
 from midscene.core.ai_model.prompt.describe import element_describer_instruction
-from midscene.core.ai_model.prompt.insight import build_insight_system_prompt, build_type_query_demand_value, extract_data_query_prompt
+from midscene.core.ai_model.prompt.insight import (
+    build_insight_system_prompt,
+    build_type_query_demand_value,
+    extract_data_query_prompt,
+)
 from midscene.core.ai_model.prompt.locate import (
     build_element_locate_system_prompt,
     build_search_area_locate_system_prompt,

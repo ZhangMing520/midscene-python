@@ -1,12 +1,13 @@
 """Locate result value parsing (upstream shared/model-locate-result/parse.ts)."""
 
 import math
-from typing import Any, Dict, List, Sequence, Union
+from collections.abc import Sequence
+from typing import Any
 
 
 def unwrap_coordinate_list_like_input(
     coordinate_list: Any,
-) -> Union[List[Any], str]:
+) -> list[Any] | str:
     if isinstance(coordinate_list, (list, tuple)):
         if coordinate_list and isinstance(coordinate_list[0], (list, tuple)):
             return list(coordinate_list[0])
@@ -14,12 +15,12 @@ def unwrap_coordinate_list_like_input(
     return str(coordinate_list)
 
 
-def parse_coordinate_list(input_value: Any, label: str) -> List[float]:
+def parse_coordinate_list(input_value: Any, label: str) -> list[float]:
     unwrapped = unwrap_coordinate_list_like_input(input_value)
     if isinstance(unwrapped, str):
         values = [v for v in unwrapped.strip().split() if v]
         # split on whitespace; also handle comma-separated inside tokens
-        expanded: List[str] = []
+        expanded: list[str] = []
         for token in values:
             expanded.extend([t for t in token.split(",") if t])
         values = expanded
@@ -31,14 +32,13 @@ def parse_coordinate_list(input_value: Any, label: str) -> List[float]:
 
     import re
 
-    numeric_values: List[float] = []
+    numeric_values: list[float] = []
     for value in values:
         if isinstance(value, (int, float)) and not isinstance(value, bool):
             numeric_values.append(float(value))
             continue
-        if (
-            isinstance(value, str)
-            and re.fullmatch(r"[+-]?(?:\d+\.?\d*|\.\d+)", value.strip())
+        if isinstance(value, str) and re.fullmatch(
+            r"[+-]?(?:\d+\.?\d*|\.\d+)", value.strip()
         ):
             numeric_values.append(float(value))
         else:
@@ -51,8 +51,8 @@ def parse_coordinate_list(input_value: Any, label: str) -> List[float]:
 
 
 def create_locate_result_value(
-    coordinates_meta: Dict[str, Any], coordinates: Sequence[float]
-) -> Dict[str, Any]:
+    coordinates_meta: dict[str, Any], coordinates: Sequence[float]
+) -> dict[str, Any]:
     if coordinates_meta["shape"] == "point":
         return {
             "coordinates": [coordinates[0], coordinates[1]],
@@ -70,8 +70,8 @@ def create_locate_result_value(
 
 
 def parse_numeric_locate_result(
-    resolved_coordinates: Dict[str, Any], input_value: Any
-) -> Dict[str, Any]:
+    resolved_coordinates: dict[str, Any], input_value: Any
+) -> dict[str, Any]:
     if resolved_coordinates["shape"] == "point":
         point = parse_coordinate_list(input_value, "point")
         if len(point) != 2:

@@ -2,7 +2,7 @@
 
 import json
 import uuid
-from typing import Any, Dict, Optional
+from typing import Any
 
 import httpx
 from loguru import logger
@@ -20,8 +20,8 @@ from midscene.core.ai_model.service_caller.types import AIResponseParseError
 
 async def call_system_one(
     model_runtime: ModelRuntime,
-    request: Dict[str, Any],
-) -> Dict[str, Any]:
+    request: dict[str, Any],
+) -> dict[str, Any]:
     """Send a System One request; returns {content, usage, raw_response...}.
 
     The raw System One response JSON is returned as `content` (upstream
@@ -31,7 +31,7 @@ async def call_system_one(
     prepared = prepare_system_one(
         config, request, execution_id=model_runtime.execution_id
     )
-    questions: Dict[str, Any] = prepared["questions"]
+    questions: dict[str, Any] = prepared["questions"]
 
     proxy = prepared.get("proxy")
     try:
@@ -97,7 +97,7 @@ async def call_system_one(
     }
 
 
-def resolve_effective_timeout(timeout: Optional[float]) -> Optional[float]:
+def resolve_effective_timeout(timeout: float | None) -> float | None:
     if timeout is None:
         return 180.0
     if timeout <= 0:

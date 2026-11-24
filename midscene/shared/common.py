@@ -7,9 +7,9 @@ directly here to avoid importing the model configuration layer.
 
 import contextvars
 import os
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator, Optional
 
 DEFAULT_RUN_DIR_NAME = "midscene_run"
 
@@ -17,7 +17,7 @@ ERROR_CODE_NOT_IMPLEMENTED_AS_DESIGNED = "NOT_IMPLEMENTED_AS_DESIGNED"
 
 _MIDSCENE_RUN_DIR = "MIDSCENE_RUN_DIR"
 
-_configured_run_dir: Optional[str] = None
+_configured_run_dir: str | None = None
 
 # Per-task/async-scope override, so concurrent Test runs stay isolated.
 _run_directory_context = contextvars.ContextVar("midscene_run_dir", default=None)
@@ -29,15 +29,13 @@ def _validate_run_dir(value: str) -> str:
     return value
 
 
-def set_midscene_run_dir(run_dir: Optional[str]) -> None:
+def set_midscene_run_dir(run_dir: str | None) -> None:
     """Set the run directory for this process without touching env vars.
 
     Passing None restores the environment-based behavior.
     """
     global _configured_run_dir
-    _configured_run_dir = (
-        None if run_dir is None else _validate_run_dir(run_dir)
-    )
+    _configured_run_dir = None if run_dir is None else _validate_run_dir(run_dir)
 
 
 def get_midscene_run_dir() -> str:

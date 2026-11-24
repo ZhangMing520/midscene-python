@@ -1,6 +1,7 @@
 """Infrastructure failures around a workflow run (upstream execution-failure.ts)."""
 
-from typing import Any, Iterable, List
+from collections.abc import Iterable
+from typing import Any
 
 from midscene.core.test_runner.errors import WorkflowError
 
@@ -25,7 +26,7 @@ class WorkflowExecutionFailure(WorkflowError):
             },
         )
         self.result = result
-        self.errors: List[Any] = error_list
+        self.errors: list[Any] = error_list
 
 
 class WorkflowAggregateError(WorkflowError):
@@ -41,7 +42,7 @@ class WorkflowAggregateError(WorkflowError):
                 "cause": error_list[0] if error_list else None,
             },
         )
-        self.errors: List[Any] = error_list
+        self.errors: list[Any] = error_list
 
 
 class WorkflowPublicationError(WorkflowError):

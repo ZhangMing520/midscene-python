@@ -11,7 +11,8 @@ Two transports are available:
 import asyncio
 import inspect
 import json
-from typing import Any, Callable, Dict, Optional, Tuple
+from collections.abc import Callable
+from typing import Any
 
 from loguru import logger
 
@@ -72,19 +73,18 @@ class UnsupportedRDPBackendClient:
 
 
 class _HelperDiagnostics:
-    def __init__(self, path: str, pid: Optional[int]):
+    def __init__(self, path: str, pid: int | None):
         self.path = path
         self.pid = pid
-        self.exit_code: Optional[int] = None
-        self.exit_signal: Optional[str] = None
+        self.exit_code: int | None = None
+        self.exit_signal: str | None = None
         self.stderr_buffer = ""
 
     def capture_stderr(self, text: str) -> None:
         if not text.strip():
             return
         logger.debug(
-            f"rdp helper stderr path={self.path} pid={self.pid} "
-            f"stderr={text.strip()}"
+            f"rdp helper stderr path={self.path} pid={self.pid} stderr={text.strip()}"
         )
         self.stderr_buffer += text
         if len(self.stderr_buffer) > MAX_STDERR_CHARS:
@@ -96,22 +96,22 @@ class HelperProcessRDPBackendClient:
 
     def __init__(
         self,
-        options: Optional[Dict[str, Any]] = None,
-        spawn_fn: Optional[SpawnFn] = None,
-        helper_path: Optional[str] = None,
+        options: dict[str, Any] | None = None,
+        spawn_fn: SpawnFn | None = None,
+        helper_path: str | None = None,
     ):
         options = options or {}
-        self._spawn_fn: Optional[SpawnFn] = spawn_fn or options.get("spawnFn")
+        self._spawn_fn: SpawnFn | None = spawn_fn or options.get("spawnFn")
         override_path = helper_path or options.get("helperPath")
         self._resolve_helper_path = override_path
         self._child: Any = None
         self._connected = False
-        self._fatal_helper_error: Optional[BaseException] = None
-        self._pending: Dict[str, Tuple[asyncio.Future, Any]] = {}
-        self._diagnostics: Dict[int, _HelperDiagnostics] = {}
+        self._fatal_helper_error: BaseException | None = None
+        self._pending: dict[str, tuple[asyncio.Future, Any]] = {}
+        self._diagnostics: dict[int, _HelperDiagnostics] = {}
         self._reader_tasks: list = []
         self._next_request_id = 0
-        self._spawn_lock: Optional[asyncio.Lock] = None
+        self._spawn_lock: asyncio.Lock | None = None
 
     # -- lifecycle ---------------------------------------------------------
 
@@ -136,7 +136,7 @@ class HelperProcessRDPBackendClient:
         if child is None:
             return
 
-        disconnect_error: Optional[BaseException] = None
+        disconnect_error: BaseException | None = None
         if self._connected and child.returncode is None:
             try:
                 response = await self._send({"type": "disconnect"})
@@ -148,9 +148,7 @@ class HelperProcessRDPBackendClient:
         self._fatal_helper_error = None
         await self._shutdown_helper()
 
-        if disconnect_error is not None and not _is_shutdown_error(
-            disconnect_error
-        ):
+        if disconnect_error is not None and not _is_shutdown_error(disconnect_error):
             raise disconnect_error
 
     async def screenshot_base64(self) -> str:
@@ -243,9 +241,7 @@ class HelperProcessRDPBackendClient:
             self._child = child
             diagnostics = _HelperDiagnostics(helper_path, getattr(child, "pid", None))
             self._diagnostics[id(child)] = diagnostics
-            logger.debug(
-                f"started rdp helper path={helper_path} pid={diagnostics.pid}"
-            )
+            logger.debug(f"started rdp helper path={helper_path} pid={diagnostics.pid}")
             self._reader_tasks = [
                 asyncio.ensure_future(self._read_stdout(child, diagnostics)),
                 asyncio.ensure_future(self._read_stderr(child, diagnostics)),
@@ -323,7 +319,7 @@ class HelperProcessRDPBackendClient:
             self._dispose_readers(except_task=asyncio.current_task())
             self._child = None
 
-    async def _send(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    async def _send(self, payload: dict[str, Any]) -> dict[str, Any]:
         if (
             payload.get("type") != "connect"
             and self._fatal_helper_error is not None
@@ -361,9 +357,9 @@ class HelperProcessRDPBackendClient:
         child,
         request_id: str,
         future: asyncio.Future,
-        payload: Dict[str, Any],
+        payload: dict[str, Any],
         error: BaseException,
-        diagnostics: Optional[_HelperDiagnostics],
+        diagnostics: _HelperDiagnostics | None,
     ) -> None:
         await asyncio.sleep(HELPER_WRITE_ERROR_DIAGNOSTIC_DELAY_S)
         if future.done():
@@ -396,11 +392,10 @@ class HelperProcessRDPBackendClient:
         if not future.done():
             future.set_exception(stream_error)
 
-    def _expect_ok(self, response: Dict[str, Any], action_name: str) -> None:
+    def _expect_ok(self, response: dict[str, Any], action_name: str) -> None:
         if response.get("type") != "ok":
             raise RuntimeError(
-                f"Expected ok response for {action_name}, got "
-                f"{response.get('type')}"
+                f"Expected ok response for {action_name}, got {response.get('type')}"
             )
 
     def _reject_pending_for_child(self, child, error: BaseException) -> None:
@@ -420,8 +415,8 @@ class HelperProcessRDPBackendClient:
     def _create_helper_error(
         self,
         message: str,
-        code: Optional[str] = None,
-        diagnostics: Optional[_HelperDiagnostics] = None,
+        code: str | None = None,
+        diagnostics: _HelperDiagnostics | None = None,
     ) -> RuntimeError:
         parts = []
         if diagnostics is not None:
@@ -430,20 +425,16 @@ class HelperProcessRDPBackendClient:
             if diagnostics.pid is not None:
                 parts.append(f"pid={diagnostics.pid}")
             if diagnostics.exit_code is not None:
-                parts.append(
-                    f"exitCode={diagnostics.exit_code}, signal=null"
-                )
+                parts.append(f"exitCode={diagnostics.exit_code}, signal=null")
         suffix = f"\nHelper diagnostics: {', '.join(parts)}" if parts else ""
         stderr_summary = diagnostics.stderr_buffer.strip() if diagnostics else ""
-        stderr_suffix = (
-            f"\nHelper stderr:\n{stderr_summary}" if stderr_summary else ""
-        )
+        stderr_suffix = f"\nHelper stderr:\n{stderr_summary}" if stderr_summary else ""
         error = RuntimeError(f"{message}{suffix}{stderr_suffix}")
         if code:
             error.code = code  # type: ignore[attr-defined]
         return error
 
-    def _dispose_readers(self, except_task: Optional[asyncio.Task] = None) -> None:
+    def _dispose_readers(self, except_task: asyncio.Task | None = None) -> None:
         current = asyncio.current_task()
         for task in self._reader_tasks:
             if task is except_task or task is current or task.done():
@@ -451,9 +442,7 @@ class HelperProcessRDPBackendClient:
             task.cancel()
         self._reader_tasks = []
 
-    async def _shutdown_helper(
-        self, root_error: Optional[BaseException] = None
-    ) -> None:
+    async def _shutdown_helper(self, root_error: BaseException | None = None) -> None:
         child = self._child
         self._child = None
         self._dispose_readers()
@@ -474,11 +463,9 @@ class HelperProcessRDPBackendClient:
             pass
 
         try:
-            await asyncio.wait_for(
-                child.wait(), timeout=HELPER_SHUTDOWN_TIMEOUT_S
-            )
+            await asyncio.wait_for(child.wait(), timeout=HELPER_SHUTDOWN_TIMEOUT_S)
             return
-        except asyncio.TimeoutError:
+        except TimeoutError:
             pass
 
         try:
@@ -486,11 +473,9 @@ class HelperProcessRDPBackendClient:
         except ProcessLookupError:
             return
         try:
-            await asyncio.wait_for(
-                child.wait(), timeout=HELPER_SHUTDOWN_TIMEOUT_S
-            )
+            await asyncio.wait_for(child.wait(), timeout=HELPER_SHUTDOWN_TIMEOUT_S)
             return
-        except asyncio.TimeoutError:
+        except TimeoutError:
             pass
 
         try:

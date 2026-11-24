@@ -53,11 +53,7 @@ def test_maps_reasoning(base_url, open_router, reasoning_enabled):
         reasoning = {
             "reasoning": {
                 "effort": effort,
-                **(
-                    {"max_tokens": 1024}
-                    if reasoning_enabled is True
-                    else {}
-                ),
+                **({"max_tokens": 1024} if reasoning_enabled is True else {}),
             }
         }
     else:

@@ -1,7 +1,7 @@
 """Synced from upstream
 ``packages/core/tests/unit-test/workflows/recorder-generation/playwright.test.ts``."""
 
-from typing import Any, Dict, List
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
@@ -20,7 +20,7 @@ from midscene.core.ai_model.workflows.recorder_generation import (
 )
 
 
-def _mock_events() -> List[Dict[str, Any]]:
+def _mock_events() -> list[dict[str, Any]]:
     return [
         {
             "type": "navigation",
@@ -210,9 +210,7 @@ def test_process_events_for_llm_should_attach_screenshot_paths_when_provided():
 
 
 def test_prepare_event_summary_should_create_comprehensive_event_summary():
-    summary = prepare_event_summary(
-        _mock_events(), {"testName": "Custom Test Name"}
-    )
+    summary = prepare_event_summary(_mock_events(), {"testName": "Custom Test Name"})
 
     assert summary["testName"] == "Custom Test Name"
     assert summary["startUrl"] == "https://example.com"
@@ -284,7 +282,7 @@ test('Generated test', async ({ aiInput, aiAssert, aiTap, page }) => {
 
 @pytest.mark.asyncio
 async def test_generate_playwright_test_should_generate_playwright_test_successfully():
-    captured: Dict[str, Any] = {}
+    captured: dict[str, Any] = {}
     code = _mock_playwright_code()
 
     async def fake_call(prompt, runtime):
@@ -299,14 +297,16 @@ async def test_generate_playwright_test_should_generate_playwright_test_successf
 
     assert result == code
     assert captured["prompt"][0]["role"] == "system"
-    assert "You are an expert test automation engineer" in captured["prompt"][0]["content"]
+    assert (
+        "You are an expert test automation engineer" in captured["prompt"][0]["content"]
+    )
     assert captured["prompt"][1]["role"] == "user"
     assert isinstance(captured["prompt"][1]["content"], list)
 
 
 @pytest.mark.asyncio
 async def test_generate_playwright_test_should_handle_custom_options():
-    captured: Dict[str, Any] = {}
+    captured: dict[str, Any] = {}
 
     async def fake_call(prompt, runtime):
         captured["prompt"] = prompt
@@ -341,7 +341,7 @@ async def test_generate_playwright_test_should_handle_custom_options():
 
 @pytest.mark.asyncio
 async def test_generate_playwright_test_should_include_screenshots_when_available():
-    captured: Dict[str, Any] = {}
+    captured: dict[str, Any] = {}
 
     async def fake_call(prompt, runtime):
         captured["prompt"] = prompt
@@ -358,9 +358,7 @@ async def test_generate_playwright_test_should_include_screenshots_when_availabl
         )
 
     image_messages = [
-        msg
-        for msg in captured["prompt"][1]["content"]
-        if msg["type"] == "image"
+        msg for msg in captured["prompt"][1]["content"] if msg["type"] == "image"
     ]
     assert len(image_messages) == 2
 
@@ -388,7 +386,7 @@ async def test_generate_playwright_test_should_handle_ai_call_failure():
 
 @pytest.mark.asyncio
 async def test_generate_playwright_test_stream_uses_streaming_when_requested():
-    captured: Dict[str, Any] = {}
+    captured: dict[str, Any] = {}
 
     async def fake_call(prompt, runtime, options):
         captured["prompt"] = prompt

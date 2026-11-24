@@ -40,9 +40,9 @@ tasks:
             )
 
     def test_env_interpolation(self):
-        from midscene.core.yaml import parse_yaml_script
-
         import os
+
+        from midscene.core.yaml import parse_yaml_script
 
         os.environ["MIDSCENE_TEST_URL"] = "https://env-example.com"
         script = parse_yaml_script(
@@ -56,7 +56,6 @@ tasks:
 """
         )
         assert script["web"]["url"] == "https://env-example.com"
-
 
     def test_resolve_yaml_output_config_prefers_target_values(self):
         from midscene.core.yaml.utils import resolve_yaml_output_config

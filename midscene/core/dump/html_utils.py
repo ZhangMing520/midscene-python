@@ -11,8 +11,9 @@ import json
 import os
 import re
 import uuid
+from collections.abc import Callable, Iterator
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterator, List, Optional, Set, Union
+from typing import Any
 from urllib.parse import quote, unquote
 
 from loguru import logger
@@ -28,8 +29,8 @@ TEST_RUN_REPORT_SCRIPT_TYPE = "midscene_test_run_dump"
 
 STREAMING_CHUNK_SIZE = 64 * 1024
 
-_report_initialized: Dict[str, bool] = {}
-_report_group_ids: Dict[str, str] = {}
+_report_initialized: dict[str, bool] = {}
+_report_group_ids: dict[str, str] = {}
 
 
 def _uuid() -> str:
@@ -78,7 +79,7 @@ def insert_script_before_closing_html(file_path: str, script_content: str) -> No
     )
 
 
-def _report_script_tag(dump_data: Union[str, Dict[str, Any]], group_id: str) -> str:
+def _report_script_tag(dump_data: str | dict[str, Any], group_id: str) -> str:
     close_tag = "</script>"
     if isinstance(dump_data, str):
         attributes = f'data-group-id="{group_id}"'
@@ -97,8 +98,8 @@ def _report_script_tag(dump_data: Union[str, Dict[str, Any]], group_id: str) -> 
 
 
 def report_html_content(
-    dump_data: Union[str, Dict[str, Any]],
-    report_path: Optional[str] = None,
+    dump_data: str | dict[str, Any],
+    report_path: str | None = None,
     append_report: bool = False,
     with_tpl: bool = True,
 ) -> str:
@@ -138,9 +139,9 @@ def report_html_content(
 
 def write_dump_report(
     file_name: str,
-    dump_data: Union[str, Dict[str, Any]],
+    dump_data: str | dict[str, Any],
     append_report: bool = False,
-) -> Optional[str]:
+) -> str | None:
     """Write `<midscene_run>/report/<name>.html` (upstream writeDumpReport)."""
     report_path = str(Path(get_midscene_run_dir("report")) / f"{file_name}.html")
     report_html_content(dump_data, report_path, append_report)
@@ -155,7 +156,7 @@ def write_dump_report(
     return report_path
 
 
-def write_log_file(opts: Dict[str, Any]) -> Optional[str]:
+def write_log_file(opts: dict[str, Any]) -> str | None:
     """Write a dump/cache/report/tmp artifact (upstream writeLogFile)."""
     file_name = opts["fileName"]
     file_ext = opts["fileExt"]
@@ -165,9 +166,7 @@ def write_log_file(opts: Dict[str, Any]) -> Optional[str]:
 
     if file_type != "dump":
         path = Path(target_dir) / f"{file_name}.{file_ext}"
-        path.write_text(
-            json.dumps(file_content, ensure_ascii=False), encoding="utf-8"
-        )
+        path.write_text(json.dumps(file_content, ensure_ascii=False), encoding="utf-8")
 
     if opts.get("generateReport"):
         return write_dump_report(file_name, file_content, opts.get("appendReport"))
@@ -235,7 +234,7 @@ def _iter_tag_contents(
     chunk_size: int = STREAMING_CHUNK_SIZE,
 ) -> Iterator[str]:
     """Yield the contents between matching tags while keeping memory bounded."""
-    matches: List[str] = []
+    matches: list[str] = []
     matcher = _StreamingTagMatcher(
         open_tag,
         close_tag,
@@ -284,9 +283,7 @@ async def stream_scan_tags_async(
     on_match: TagMatchCallback,
 ) -> None:
     """Asynchronously stream tags without blocking the event loop."""
-    await asyncio.to_thread(
-        stream_scan_tags, file_path, open_tag, close_tag, on_match
-    )
+    await asyncio.to_thread(stream_scan_tags, file_path, open_tag, close_tag, on_match)
 
 
 _SCRIPT_TYPE_PATTERN = re.compile(
@@ -297,16 +294,17 @@ _IMAGE_ID_ATTRIBUTE_PATTERN = re.compile(
 )
 
 
-def _script_type(attributes: str) -> Optional[str]:
+def _script_type(attributes: str) -> str | None:
     match = _SCRIPT_TYPE_PATTERN.search(attributes)
     return match.group(1) if match else None
 
 
 def stream_dump_scripts_sync(
     file_path: str,
-    visitor: Callable[[Dict[str, str]], bool],
+    visitor: Callable[[dict[str, str]], bool],
 ) -> None:
     """Stream every ``midscene_web_dump`` script; return early when asked."""
+
     def visit(content: str) -> bool:
         tag_end = content.find(">")
         if tag_end == -1:
@@ -321,9 +319,10 @@ def stream_dump_scripts_sync(
 
 async def stream_dump_scripts_async(
     file_path: str,
-    visitor: Callable[[Dict[str, str]], bool],
+    visitor: Callable[[dict[str, str]], bool],
 ) -> None:
     """Consume complete elements so dump-tag strings in the Viewer are never payloads."""
+
     def visit(content: str) -> bool:
         tag_end = content.find(">")
         if tag_end == -1:
@@ -336,9 +335,9 @@ async def stream_dump_scripts_async(
     await stream_scan_tags_async(file_path, "<script", "</script>", visit)
 
 
-def extract_all_dump_scripts_sync(file_path: str) -> List[Dict[str, str]]:
+def extract_all_dump_scripts_sync(file_path: str) -> list[dict[str, str]]:
     """Return every ``midscene_web_dump`` script tag with its open tag."""
-    results: List[Dict[str, str]] = []
+    results: list[dict[str, str]] = []
     stream_dump_scripts_sync(
         file_path,
         lambda dump: results.append(dump) or False,
@@ -383,9 +382,9 @@ def stream_inline_report_images(
 
 def _report_artifact_path_extractor(
     file_path: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Build the visitor/state pair used by the sync and async extractors."""
-    state: Dict[str, Any] = {"path": None}
+    state: dict[str, Any] = {"path": None}
 
     def visit(content: str) -> bool:
         tag_end = content.find(">")
@@ -394,9 +393,7 @@ def _report_artifact_path_extractor(
         if _script_type(content[:tag_end]) != REPORT_ARTIFACT_SCRIPT_TYPE:
             return False
         if state["path"] is not None:
-            raise ValueError(
-                f"Report contains multiple artifact entries: {file_path}"
-            )
+            raise ValueError(f"Report contains multiple artifact entries: {file_path}")
         value = json.loads(anti_escape_script_tag(content[tag_end + 1 :]))
         state["path"] = assert_report_artifact_path(value)
         return False
@@ -404,31 +401,27 @@ def _report_artifact_path_extractor(
     return {"state": state, "visit": visit}
 
 
-def extract_report_artifact_path_sync(file_path: str) -> Optional[str]:
+def extract_report_artifact_path_sync(file_path: str) -> str | None:
     """Extract the manifest path declared by a directory report."""
     extractor = _report_artifact_path_extractor(file_path)
-    stream_scan_tags(
-        file_path, "<script", "</script>", extractor["visit"]
-    )
+    stream_scan_tags(file_path, "<script", "</script>", extractor["visit"])
     return extractor["state"]["path"]
 
 
 async def extract_report_artifact_path_async(
     file_path: str,
-) -> Optional[str]:
+) -> str | None:
     """Asynchronously extract the manifest path declared by a directory report."""
     extractor = _report_artifact_path_extractor(file_path)
-    await stream_scan_tags_async(
-        file_path, "<script", "</script>", extractor["visit"]
-    )
+    await stream_scan_tags_async(file_path, "<script", "</script>", extractor["visit"])
     return extractor["state"]["path"]
 
 
 def extract_test_run_report_dump_sync(
     file_path: str,
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Extract the single Midscene Test report dump from an HTML file."""
-    state: Dict[str, Any] = {"result": None}
+    state: dict[str, Any] = {"result": None}
 
     def visit(content: str) -> bool:
         tag_end = content.find(">")
@@ -457,9 +450,9 @@ def extract_test_run_report_dump_sync(
     return state["result"]
 
 
-def parse_image_scripts(html: str) -> Dict[str, str]:
+def parse_image_scripts(html: str) -> dict[str, str]:
     """Collect inline report images from an HTML string by id."""
-    image_map: Dict[str, str] = {}
+    image_map: dict[str, str] = {}
     pattern = re.compile(
         r'<script type="midscene-image" data-id="([^"]+)">([\s\S]*?)</script>'
     )
@@ -488,13 +481,13 @@ def parse_dump_script(html: str) -> str:
     return unescape_content(html[tag_end_index + 1 : close_index])
 
 
-def parse_dump_script_attributes(html: str) -> Dict[str, str]:
+def parse_dump_script_attributes(html: str) -> dict[str, str]:
     """Decode the attributes of the first ``midscene_web_dump`` script tag."""
     match = re.search(r'<script type="midscene_web_dump"([^>]*)>', html)
     if not match:
         return {}
 
-    attributes: Dict[str, str] = {}
+    attributes: dict[str, str] = {}
     for attribute in re.finditer(r'(\w+)="([^"]*)"', match.group(1)):
         key, value = attribute.group(1), attribute.group(2)
         if key != "type":
@@ -507,7 +500,7 @@ _IMAGE_SCRIPT_ID_PATTERN = re.compile(
 )
 
 
-def _parse_image_script_id(content_after_type: str) -> Optional[str]:
+def _parse_image_script_id(content_after_type: str) -> str | None:
     match = _IMAGE_SCRIPT_ID_PATTERN.match(content_after_type)
     return match.group(1) if match else None
 
@@ -515,7 +508,7 @@ def _parse_image_script_id(content_after_type: str) -> Optional[str]:
 def stream_image_scripts_to_file(
     src_file_path: str,
     dest_file_path: str,
-    written_image_ids: Optional[Set[str]] = None,
+    written_image_ids: set[str] | None = None,
 ) -> None:
     """Stream image script tags from source file directly to output file.
 
@@ -537,9 +530,9 @@ def stream_image_scripts_to_file(
     stream_scan_tags(src_file_path, open_tag, close_tag, visit)
 
 
-async def collect_image_script_ids(file_path: str) -> Set[str]:
+async def collect_image_script_ids(file_path: str) -> set[str]:
     """Collect IDs of real inline image script tags without loading the report."""
-    image_ids: Set[str] = set()
+    image_ids: set[str] = set()
 
     def visit(content: str) -> bool:
         image_id = _parse_image_script_id(content)
@@ -561,7 +554,7 @@ def _encode_attribute(value: Any) -> str:
 
 def generate_dump_script_tag(
     json_string: str,
-    attributes: Optional[Dict[str, Any]] = None,
+    attributes: dict[str, Any] | None = None,
 ) -> str:
     """Build a ``midscene_web_dump`` tag with optional attributes."""
     attr_string = ""
@@ -602,7 +595,7 @@ def generate_report_artifact_script_tag(path: str) -> str:
     )
 
 
-def generate_test_run_report_script_tag(dump: Dict[str, Any]) -> str:
+def generate_test_run_report_script_tag(dump: dict[str, Any]) -> str:
     return (
         '<script type="'
         + TEST_RUN_REPORT_SCRIPT_TYPE
@@ -616,7 +609,7 @@ def get_base_url_fix_script() -> str:
     """Inline script that fixes relative URL resolution for directory reports."""
     return (
         "\n<script>(function(){"
-        'var p=window.location.pathname;'
+        "var p=window.location.pathname;"
         'if(p.endsWith("/")||/\\.\\w+$/.test(p))return;'
         'var b=document.createElement("base");'
         'b.href=p+"/";'
@@ -632,7 +625,7 @@ def _clean_html_comment_value(value: Any) -> str:
     return text.replace("\0", "").replace("--", "- -")
 
 
-def _format_model_brief_for_agent(brief: Dict[str, Any]) -> str:
+def _format_model_brief_for_agent(brief: dict[str, Any]) -> str:
     intent = brief.get("intent") or "default"
     model = brief.get("name") or "unknown"
     description = (
@@ -641,7 +634,7 @@ def _format_model_brief_for_agent(brief: Dict[str, Any]) -> str:
     return f"{intent}: {model}{description}"
 
 
-def _has_usage_model_info(usage: Optional[Dict[str, Any]]) -> bool:
+def _has_usage_model_info(usage: dict[str, Any] | None) -> bool:
     if not usage:
         return False
     return any(
@@ -655,19 +648,17 @@ def _has_usage_model_info(usage: Optional[Dict[str, Any]]) -> bool:
     )
 
 
-def _format_usage_model_for_agent(source: str, usage: Dict[str, Any]) -> str:
+def _format_usage_model_for_agent(source: str, usage: dict[str, Any]) -> str:
     intent = usage.get("intent") or source
     model = usage.get("model_name") or usage.get("response_model_name") or "unknown"
     description = (
-        f" ({usage['model_description']})"
-        if usage.get("model_description")
-        else ""
+        f" ({usage['model_description']})" if usage.get("model_description") else ""
     )
     return f"{intent}: {model}{description}"
 
 
-def _collect_usage_models_for_agent(report: Dict[str, Any]) -> str:
-    models: Dict[str, str] = {}
+def _collect_usage_models_for_agent(report: dict[str, Any]) -> str:
+    models: dict[str, str] = {}
     executions = report.get("executions")
     if not isinstance(executions, list):
         executions = []
@@ -687,7 +678,7 @@ def _collect_usage_models_for_agent(report: Dict[str, Any]) -> str:
     return "; ".join(models.values())
 
 
-def generate_agent_report_comment(report: Dict[str, Any]) -> str:
+def generate_agent_report_comment(report: dict[str, Any]) -> str:
     """Build the agent-readable HTML comment embedded in every report."""
     executions = report.get("executions")
     if not isinstance(executions, list):
@@ -720,9 +711,7 @@ def generate_agent_report_comment(report: Dict[str, Any]) -> str:
     return "\n<!--\n" + "\n".join(lines) + "\n-->\n"
 
 
-def extract_image_by_id_sync(
-    html_path: str, image_id: str
-) -> Optional[str]:
+def extract_image_by_id_sync(html_path: str, image_id: str) -> str | None:
     """Re-export of ``screenshot_store.extract_image_by_id_sync``."""
     from midscene.core.dump.screenshot_store import (
         extract_image_by_id_sync as _extract_image_by_id_sync,

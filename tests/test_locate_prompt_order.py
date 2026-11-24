@@ -285,9 +285,7 @@ class TestLocatePromptOrder:
             },
             adapter,
         )
-        with patch_model_call(
-            "midscene.core.service.index", handler
-        ):
+        with patch_model_call("midscene.core.service.index", handler):
             context = await mock_interface.get_context()
             await ai_locate_section(context, "the row containing Apollo", runtime)
 
@@ -334,7 +332,6 @@ class TestLocatePromptOrder:
             "type": "image",
             "url": png,
         }
-
 
 
 def _make_runtime(**overrides):

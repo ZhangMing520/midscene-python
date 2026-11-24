@@ -37,7 +37,6 @@ _VALID_PNG_BASE64 = (
 )
 
 
-
 class _FakeBridgePage:
     interface_type = InterfaceType.WEB
 
@@ -196,15 +195,17 @@ async def test_lists_and_switches_cdp_tabs_using_the_shared_browser_agent_and_ta
     tools = WebCdpMidsceneTools("ws://127.0.0.1:9222/devtools/1")
     await tools.init_tools()
 
-    with patch(
-        "midscene.web_integration.agent_tools_cdp._connect_browser",
-        AsyncMock(return_value=browser),
-    ), patch(
-        "midscene.web_integration.agent_tools_cdp.read_saved_target_id",
-        return_value=None,
-    ), patch(
-        "midscene.web_integration.agent_tools_cdp.save_target_id"
-    ) as save_target:
+    with (
+        patch(
+            "midscene.web_integration.agent_tools_cdp._connect_browser",
+            AsyncMock(return_value=browser),
+        ),
+        patch(
+            "midscene.web_integration.agent_tools_cdp.read_saved_target_id",
+            return_value=None,
+        ),
+        patch("midscene.web_integration.agent_tools_cdp.save_target_id") as save_target,
+    ):
         result = await _find_tool(tools, "web_tabs").handler({})
         assert json.loads(result.content[0]["text"]) == [
             {
@@ -246,9 +247,7 @@ async def test_cleans_up_a_new_bridge_agent_when_tab_reconnection_fails_at(
     ):
         await _find_tool(tools, "web_tabs").handler({})
         expected = (
-            "did not switch tabs"
-            if failure_point == "mismatch"
-            else "bridge failure"
+            "did not switch tabs" if failure_point == "mismatch" else "bridge failure"
         )
         with pytest.raises(RuntimeError, match=expected):
             await _find_tool(tools, "web_switch-tab").handler({"id": "42"})
@@ -327,23 +326,16 @@ async def test_switches_bridge_tabs_by_reconnecting_to_an_existing_id_without_na
         await tools.destroy()
 
 
-
 @pytest.mark.parametrize(
     "mode",
     [
         "bridge",
-        pytest.param(
-            "puppeteer", marks=pytest.mark.skip(reason=_PUPPETEER_REASON)
-        ),
+        pytest.param("puppeteer", marks=pytest.mark.skip(reason=_PUPPETEER_REASON)),
         "cdp",
     ],
 )
 def test_exposes_common_web_init_args_in_mode(mode):
-    shape = (
-        WEB_CDP_AGENT_INIT_ARG_SHAPE
-        if mode == "cdp"
-        else WEB_AGENT_INIT_ARG_SHAPE
-    )
+    shape = WEB_CDP_AGENT_INIT_ARG_SHAPE if mode == "cdp" else WEB_AGENT_INIT_ARG_SHAPE
     take_screenshot_schema = create_namespaced_init_arg_schema("web", shape)
     connect_schema = create_namespaced_init_arg_schema("web", shape)
 
@@ -478,8 +470,7 @@ async def test_reopens_or_renavigates_when_the_same_web_url_is_passed_twice_in_m
             await _find_tool(tools, "take_screenshot").handler(args)
             assert factory.call_count == 2
             assert (
-                len(first.connect_new_tab_calls)
-                + len(second.connect_new_tab_calls)
+                len(first.connect_new_tab_calls) + len(second.connect_new_tab_calls)
                 == 2
             )
         await tools.destroy()
@@ -489,18 +480,21 @@ async def test_reopens_or_renavigates_when_the_same_web_url_is_passed_twice_in_m
     browser = _FakeCdpBrowser([page])
     tools = WebCdpMidsceneTools("ws://127.0.0.1:9222/devtools/1")
     await tools.init_tools()
-    with patch(
-        "midscene.web_integration.agent_tools_cdp._connect_browser",
-        AsyncMock(return_value=browser),
-    ), patch(
-        "midscene.web_integration.agent_tools_cdp.read_saved_target_id",
-        return_value=None,
-    ), patch("midscene.web_integration.agent_tools_cdp.save_target_id"):
+    with (
+        patch(
+            "midscene.web_integration.agent_tools_cdp._connect_browser",
+            AsyncMock(return_value=browser),
+        ),
+        patch(
+            "midscene.web_integration.agent_tools_cdp.read_saved_target_id",
+            return_value=None,
+        ),
+        patch("midscene.web_integration.agent_tools_cdp.save_target_id"),
+    ):
         await _find_tool(tools, "take_screenshot").handler(args)
         await _find_tool(tools, "take_screenshot").handler(args)
         assert len(page.goto_calls) == 2
     await tools.destroy()
-
 
 
 def test_passes_common_behavior_args_to_cdp_agent_creation():
@@ -520,12 +514,8 @@ def test_passes_common_behavior_args_to_cdp_agent_creation():
 
 
 def test_exposes_extra_http_headers_only_in_cdp_mode():
-    bridge_schema = create_namespaced_init_arg_schema(
-        "web", WEB_AGENT_INIT_ARG_SHAPE
-    )
-    cdp_schema = create_namespaced_init_arg_schema(
-        "web", WEB_CDP_AGENT_INIT_ARG_SHAPE
-    )
+    bridge_schema = create_namespaced_init_arg_schema("web", WEB_AGENT_INIT_ARG_SHAPE)
+    cdp_schema = create_namespaced_init_arg_schema("web", WEB_CDP_AGENT_INIT_ARG_SHAPE)
 
     assert "web.extraHttpHeader" not in bridge_schema
     assert "web.extraHttpHeader" in cdp_schema

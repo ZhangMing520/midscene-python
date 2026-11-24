@@ -9,18 +9,14 @@ the core agent.
 
 import asyncio
 import inspect
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import (
     Any,
-    Awaitable,
-    Callable,
-    Dict,
-    List,
     Optional,
     Protocol,
     TypedDict,
     TypeVar,
-    Union,
 )
 
 from loguru import logger
@@ -42,40 +38,29 @@ NewPageEventT = TypeVar("NewPageEventT")
 class BrowserAgentAdapter(Protocol[PageT, NewPageEventT]):
     """Driver-specific hooks consumed by :class:`BrowserPageManager`."""
 
-    def pages(self) -> Union[List[PageT], Awaitable[List[PageT]]]:
-        ...
+    def pages(self) -> list[PageT] | Awaitable[list[PageT]]: ...
 
-    def new_page(self) -> Awaitable[PageT]:
-        ...
+    def new_page(self) -> Awaitable[PageT]: ...
 
-    def is_page_closed(self, page: PageT) -> bool:
-        ...
+    def is_page_closed(self, page: PageT) -> bool: ...
 
-    def is_page_allowed(self, page: PageT) -> bool:
-        ...
+    def is_page_allowed(self, page: PageT) -> bool: ...
 
-    def bring_to_front(self, page: PageT) -> Union[None, Awaitable[None]]:
-        ...
+    def bring_to_front(self, page: PageT) -> None | Awaitable[None]: ...
 
-    def page_title(self, page: PageT) -> Union[str, Awaitable[str]]:
-        ...
+    def page_title(self, page: PageT) -> str | Awaitable[str]: ...
 
-    def page_url(self, page: PageT) -> str:
-        ...
+    def page_url(self, page: PageT) -> str: ...
 
-    def on_new_page(self, handler: Callable[[NewPageEventT], Any]) -> None:
-        ...
+    def on_new_page(self, handler: Callable[[NewPageEventT], Any]) -> None: ...
 
-    def off_new_page(self, handler: Callable[[NewPageEventT], Any]) -> None:
-        ...
+    def off_new_page(self, handler: Callable[[NewPageEventT], Any]) -> None: ...
 
     def resolve_new_page(
         self, event: NewPageEventT
-    ) -> Union[Optional[PageT], Awaitable[Optional[PageT]]]:
-        ...
+    ) -> PageT | None | Awaitable[PageT | None]: ...
 
-    def is_new_page_event(self, event: NewPageEventT) -> bool:
-        ...
+    def is_new_page_event(self, event: NewPageEventT) -> bool: ...
 
 
 @dataclass
@@ -84,8 +69,8 @@ class BrowserAgentRuntimeOptions:
 
     agent_name: str
     page_scope: str
-    force_same_tab_navigation: Optional[bool] = None
-    auto_follow_new_page: Optional[bool] = None
+    force_same_tab_navigation: bool | None = None
+    auto_follow_new_page: bool | None = None
     new_page_timeout: int = DEFAULT_NEW_PAGE_TIMEOUT
 
 
@@ -117,7 +102,7 @@ class BrowserAgentPageSelector(TypedDict, total=False):
 
 
 def resolve_browser_agent_runtime_options(
-    options: Union[BrowserAgentRuntimeOptions, Dict[str, Any]],
+    options: BrowserAgentRuntimeOptions | dict[str, Any],
 ) -> ResolvedBrowserAgentRuntimeOptions:
     """Validate page/browser scope options (upstream
     resolveBrowserAgentRuntimeOptions)."""
@@ -175,7 +160,7 @@ class BrowserAgent(WebAgentCore):
     def __init__(
         self,
         interface: Any,
-        options: Optional[AgentOptions] = None,
+        options: AgentOptions | None = None,
         page_manager: Optional["BrowserPageManager[Any, Any]"] = None,
     ):
         super().__init__(interface, options)
@@ -201,21 +186,21 @@ def _schedule(value: Any) -> None:
             pass
 
 
-def _normalize_optional_text(value: Optional[str]) -> Optional[str]:
+def _normalize_optional_text(value: str | None) -> str | None:
     trimmed = (value or "").strip()
     return trimmed.lower() if trimmed else None
 
 
 def _page_summary_matches(
-    summary: Dict[str, Any], title: Optional[str], url: Optional[str]
+    summary: dict[str, Any], title: str | None, url: str | None
 ) -> bool:
     return (not title or title in str(summary["title"]).lower()) and (
         not url or url in str(summary["url"]).lower()
     )
 
 
-def _describe_selector(selector: Dict[str, Any]) -> str:
-    parts: List[str] = []
+def _describe_selector(selector: dict[str, Any]) -> str:
+    parts: list[str] = []
     if selector.get("index") is not None:
         parts.append(f"index {selector['index']}")
     title = (selector.get("title") or "").strip()
@@ -238,7 +223,7 @@ class BrowserPageManager:
         set_active_page: Callable[[Any], None],
         auto_follow_new_page: bool = False,
         new_page_timeout: int = DEFAULT_NEW_PAGE_TIMEOUT,
-        debug: Optional[Callable[[str], Any]] = None,
+        debug: Callable[[str], Any] | None = None,
     ):
         self.agent_name = agent_name
         self.adapter = adapter
@@ -258,22 +243,19 @@ class BrowserPageManager:
     def pages(self) -> Any:
         return self.adapter.pages()
 
-    async def page_summaries(self) -> List[Dict[str, Any]]:
+    async def page_summaries(self) -> list[dict[str, Any]]:
         pages = await self.open_pages()
         active_page = self.active_page
-        summaries: List[Dict[str, Any]] = []
+        summaries: list[dict[str, Any]] = []
         for page, active in zip(
-            pages, [page is active_page for page in pages]
+            pages, [page is active_page for page in pages], strict=False
         ):
             summary = await self._try_page_summary(page, 0, active)
             if summary is not None:
                 summaries.append(summary)
-        return [
-            {**summary, "index": index}
-            for index, summary in enumerate(summaries)
-        ]
+        return [{**summary, "index": index} for index, summary in enumerate(summaries)]
 
-    async def page_summary_by_index(self, index: int) -> Dict[str, Any]:
+    async def page_summary_by_index(self, index: int) -> dict[str, Any]:
         pages = await self.open_pages()
         page = pages[index] if 0 <= index < len(pages) else None
         if page is None or self.adapter.is_page_closed(page):
@@ -283,9 +265,7 @@ class BrowserPageManager:
                 f"{', '.join(str(i) for i in range(len(pages)))}"
             )
 
-        summary = await self._try_page_summary(
-            page, index, page is self.active_page
-        )
+        summary = await self._try_page_summary(page, index, page is self.active_page)
         if summary is None:
             raise RuntimeError(
                 f"[midscene] {self.agent_name} page at index {index} closed "
@@ -318,8 +298,8 @@ class BrowserPageManager:
             self.debug(f"failed to bring page to front: {error}")
 
     async def set_active_page_by_selector(
-        self, selector: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, selector: dict[str, Any]
+    ) -> dict[str, Any]:
         selector_index = selector.get("index")
         title = _normalize_optional_text(selector.get("title"))
         url = _normalize_optional_text(selector.get("url"))
@@ -333,11 +313,7 @@ class BrowserPageManager:
         pages = await self.open_pages()
 
         if selector_index is not None:
-            page = (
-                pages[selector_index]
-                if 0 <= selector_index < len(pages)
-                else None
-            )
+            page = pages[selector_index] if 0 <= selector_index < len(pages) else None
             if page is None or self.adapter.is_page_closed(page):
                 raise ValueError(
                     f"[midscene] Cannot find {self.agent_name} page with index "
@@ -365,7 +341,7 @@ class BrowserPageManager:
             await self.set_active_page(page)
             return summary
 
-        matched: List[Dict[str, Any]] = []
+        matched: list[dict[str, Any]] = []
         for index, page in enumerate(pages):
             if self.adapter.is_page_closed(page):
                 continue
@@ -392,8 +368,8 @@ class BrowserPageManager:
 
     async def wait_for_new_page(
         self,
-        action: Optional[Callable[[], Any]] = None,
-        opts: Optional[Dict[str, Any]] = None,
+        action: Callable[[], Any] | None = None,
+        opts: dict[str, Any] | None = None,
     ) -> Any:
         waiter = self._create_new_page_waiter((opts or {}).get("timeout"))
         try:
@@ -407,13 +383,13 @@ class BrowserPageManager:
     def destroy(self) -> None:
         _schedule(self.adapter.off_new_page(self._new_page_handler))
 
-    async def open_pages(self) -> List[Any]:
+    async def open_pages(self) -> list[Any]:
         pages = await _maybe_await(self.adapter.pages())
         return [page for page in pages if not self.adapter.is_page_closed(page)]
 
     async def _try_page_summary(
         self, page: Any, index: int, active: bool
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         try:
             summary = {
                 "index": index,
@@ -446,14 +422,12 @@ class BrowserPageManager:
             return True
         return bool(is_new_page_event(event))
 
-    def _create_new_page_waiter(
-        self, timeout: Optional[int] = None
-    ) -> Dict[str, Any]:
+    def _create_new_page_waiter(self, timeout: int | None = None) -> dict[str, Any]:
         timeout = self.new_page_timeout if timeout is None else timeout
         loop = asyncio.get_running_loop()
         future: asyncio.Future = loop.create_future()
         settled = False
-        timer: Optional[asyncio.TimerHandle] = None
+        timer: asyncio.TimerHandle | None = None
 
         def dispose() -> None:
             self.adapter.off_new_page(handler)

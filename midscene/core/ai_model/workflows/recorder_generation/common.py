@@ -7,7 +7,7 @@ share one event-processing pipeline.
 import json
 import math
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 DEFAULT_MIDSCENE_RECORDER_MARKDOWN_MAX_SCREENSHOTS = 20
 
@@ -25,23 +25,23 @@ _BASE64_ONLY_PATTERN = re.compile(r"^[a-zA-Z0-9+/=\s]+$")
 # ---------------------------------------------------------------------------
 
 
-def validate_events(events: List[Dict[str, Any]]) -> None:
+def validate_events(events: list[dict[str, Any]]) -> None:
     """Upstream validateEvents only rejects an empty recording."""
     if not events:
         raise ValueError("No events provided for test generation")
 
 
 def get_midscene_recorder_semantic(
-    event: Dict[str, Any],
-) -> Optional[Dict[str, Any]]:
+    event: dict[str, Any],
+) -> dict[str, Any] | None:
     return event.get("semantic")
 
 
-def _is_pending_description(value: Optional[str]) -> bool:
+def _is_pending_description(value: str | None) -> bool:
     return isinstance(value, str) and value.strip() == _AI_ANALYZING_PLACEHOLDER
 
 
-def _clean_recorder_semantic_field(value: Optional[str]) -> Optional[str]:
+def _clean_recorder_semantic_field(value: str | None) -> str | None:
     return None if _is_pending_description(value) else value
 
 
@@ -51,7 +51,7 @@ def _truncate_recorder_generation_text(value: str, max_length: int) -> str:
     return f"{value[:max_length]}... [truncated {len(value) - max_length} chars]"
 
 
-def _compact_semantic_text(value: Optional[str]) -> Optional[str]:
+def _compact_semantic_text(value: str | None) -> str | None:
     cleaned = _clean_recorder_semantic_field(value)
     return (
         _truncate_recorder_generation_text(
@@ -62,7 +62,7 @@ def _compact_semantic_text(value: Optional[str]) -> Optional[str]:
     )
 
 
-def _compact_semantic_error(value: Optional[str]) -> Optional[str]:
+def _compact_semantic_error(value: str | None) -> str | None:
     return (
         _truncate_recorder_generation_text(
             value, MAX_RECORDER_GENERATION_SEMANTIC_ERROR_LENGTH
@@ -73,22 +73,20 @@ def _compact_semantic_error(value: Optional[str]) -> Optional[str]:
 
 
 def compact_recorder_semantic_for_generation(
-    semantic: Optional[Dict[str, Any]],
-) -> Optional[Dict[str, Any]]:
+    semantic: dict[str, Any] | None,
+) -> dict[str, Any] | None:
     """Compact semantic text and drop fallback audit chains (upstream)."""
     if not semantic:
         return None
 
-    compacted: Dict[str, Any] = {
+    compacted: dict[str, Any] = {
         "source": semantic.get("source"),
         "status": semantic.get("status"),
         "confidence": semantic.get("confidence"),
         "elementDescription": _compact_semantic_text(
             semantic.get("elementDescription")
         ),
-        "replayInstruction": _compact_semantic_text(
-            semantic.get("replayInstruction")
-        ),
+        "replayInstruction": _compact_semantic_text(semantic.get("replayInstruction")),
         "actionSummary": _compact_semantic_text(semantic.get("actionSummary")),
         "error": _compact_semantic_error(semantic.get("error")),
     }
@@ -110,7 +108,7 @@ def compact_recorder_semantic_for_generation(
 # ---------------------------------------------------------------------------
 
 
-def _pointer_action_verb(action_type: Optional[str]) -> str:
+def _pointer_action_verb(action_type: str | None) -> str:
     return {
         "Tap": "Tap",
         "DoubleClick": "Double click",
@@ -119,11 +117,11 @@ def _pointer_action_verb(action_type: Optional[str]) -> str:
     }.get(action_type or "", "Click")
 
 
-def _drag_action_verb(action_type: Optional[str]) -> str:
+def _drag_action_verb(action_type: str | None) -> str:
     return "Swipe" if action_type == "Swipe" else "Drag"
 
 
-def get_midscene_recorder_event_description(event: Dict[str, Any]) -> str:
+def get_midscene_recorder_event_description(event: dict[str, Any]) -> str:
     semantic = get_midscene_recorder_semantic(event) or {}
 
     for field in ("actionSummary", "elementDescription", "replayInstruction"):
@@ -147,10 +145,10 @@ def get_midscene_recorder_event_description(event: Dict[str, Any]) -> str:
     return event.get("actionType") or event.get("type") or ""
 
 
-def stringify_target_block(target: Dict[str, Any]) -> str:
+def stringify_target_block(target: dict[str, Any]) -> str:
     """Serialize the target block exactly like upstream (JSON scalar quoting)."""
     lines = [f"{target.get('platformId')}:"]
-    values = (target.get("values") or {})
+    values = target.get("values") or {}
     if not values:
         lines.append("  {}")
         return "\n".join(lines)
@@ -164,7 +162,7 @@ def stringify_target_block(target: Dict[str, Any]) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _normalize_markdown_asset_base_dir(base_dir: Optional[str]) -> str:
+def _normalize_markdown_asset_base_dir(base_dir: str | None) -> str:
     value = (base_dir or "./screenshots").rstrip("/")
     if value.startswith("./") or value.startswith("../"):
         return value
@@ -175,14 +173,16 @@ def _pad_event_index(index: int) -> str:
     return str(index + 1).zfill(3)
 
 
-def _parse_screenshot_data_url(value: str) -> Optional[Dict[str, str]]:
+def _parse_screenshot_data_url(value: str) -> dict[str, str] | None:
     data_url_match = _DATA_URL_PATTERN.match(value)
     if data_url_match:
         mime_type = data_url_match.group(1)
         if "jpeg" in mime_type:
             extension = "jpg"
         else:
-            extension = re.sub(r"[^a-zA-Z0-9]", "", mime_type.split("/")[1] or "") or "png"
+            extension = (
+                re.sub(r"[^a-zA-Z0-9]", "", mime_type.split("/")[1] or "") or "png"
+            )
         return {
             "dataUrl": value,
             "base64Data": data_url_match.group(2),
@@ -202,7 +202,7 @@ def _parse_screenshot_data_url(value: str) -> Optional[Dict[str, str]]:
     return None
 
 
-def _get_recorder_event_screenshot(event: Dict[str, Any]) -> Optional[str]:
+def _get_recorder_event_screenshot(event: dict[str, Any]) -> str | None:
     return (
         event.get("screenshotWithBox")
         or event.get("screenshotAfter")
@@ -210,7 +210,7 @@ def _get_recorder_event_screenshot(event: Dict[str, Any]) -> Optional[str]:
     )
 
 
-def _has_coordinate_fallback(event: Dict[str, Any]) -> bool:
+def _has_coordinate_fallback(event: dict[str, Any]) -> bool:
     semantic = get_midscene_recorder_semantic(event) or {}
     element_rect = event.get("elementRect") or {}
     return (
@@ -221,7 +221,7 @@ def _has_coordinate_fallback(event: Dict[str, Any]) -> bool:
 
 
 def _should_include_markdown_screenshot(
-    event: Dict[str, Any], event_index: int, last_event_index: int
+    event: dict[str, Any], event_index: int, last_event_index: int
 ) -> bool:
     semantic = get_midscene_recorder_semantic(event) or {}
     return (
@@ -235,9 +235,9 @@ def _should_include_markdown_screenshot(
 
 
 def _get_recorder_screenshot_candidates(
-    events: List[Dict[str, Any]],
-) -> List[Dict[str, Any]]:
-    candidates: List[Dict[str, Any]] = []
+    events: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    candidates: list[dict[str, Any]] = []
     seen_screenshots = set()
     last_event_index = len(events) - 1
 
@@ -257,7 +257,7 @@ def _get_recorder_screenshot_candidates(
 
 
 def _candidate_priority(
-    candidate: Dict[str, Any], first_event_index: int, last_event_index: int
+    candidate: dict[str, Any], first_event_index: int, last_event_index: int
 ) -> int:
     event = candidate["event"]
     priority = 0
@@ -284,8 +284,8 @@ def _candidate_priority(
 
 
 def _select_evenly_distributed(
-    candidates: List[Dict[str, Any]], count: int
-) -> List[Dict[str, Any]]:
+    candidates: list[dict[str, Any]], count: int
+) -> list[dict[str, Any]]:
     if count <= 0:
         return []
     if len(candidates) <= count:
@@ -293,42 +293,34 @@ def _select_evenly_distributed(
     if count == 1:
         return [candidates[(len(candidates) - 1) // 2]]
     return [
-        candidates[
-            int(
-                math.floor(
-                    (index * (len(candidates) - 1)) / (count - 1) + 0.5
-                )
-            )
-        ]
+        candidates[int(math.floor((index * (len(candidates) - 1)) / (count - 1) + 0.5))]
         for index in range(count)
     ]
 
 
 def _select_recorder_screenshot_candidates(
-    candidates: List[Dict[str, Any]], max_screenshots: int
-) -> List[Dict[str, Any]]:
+    candidates: list[dict[str, Any]], max_screenshots: int
+) -> list[dict[str, Any]]:
     if max_screenshots <= 0 or not candidates:
         return []
     if len(candidates) <= max_screenshots:
         return candidates
 
-    selected: Dict[int, Dict[str, Any]] = {}
+    selected: dict[int, dict[str, Any]] = {}
     first_event_index = candidates[0]["eventIndex"]
     last_event_index = candidates[-1]["eventIndex"]
 
-    def add_candidate(candidate: Optional[Dict[str, Any]]) -> None:
+    def add_candidate(candidate: dict[str, Any] | None) -> None:
         if candidate is None or len(selected) >= max_screenshots:
             return
         selected.setdefault(candidate["eventIndex"], candidate)
 
-    def add_evenly(pool: List[Dict[str, Any]]) -> None:
+    def add_evenly(pool: list[dict[str, Any]]) -> None:
         remaining = max_screenshots - len(selected)
         if remaining <= 0:
             return
         unselected = [
-            candidate
-            for candidate in pool
-            if candidate["eventIndex"] not in selected
+            candidate for candidate in pool if candidate["eventIndex"] not in selected
         ]
         for candidate in _select_evenly_distributed(unselected, remaining):
             add_candidate(candidate)
@@ -340,16 +332,14 @@ def _select_recorder_screenshot_candidates(
         [
             candidate
             for candidate in candidates
-            if _candidate_priority(candidate, first_event_index, last_event_index)
-            >= 60
+            if _candidate_priority(candidate, first_event_index, last_event_index) >= 60
         ]
     )
     add_evenly(
         [
             candidate
             for candidate in candidates
-            if _candidate_priority(candidate, first_event_index, last_event_index)
-            >= 40
+            if _candidate_priority(candidate, first_event_index, last_event_index) >= 40
         ]
     )
     add_evenly(candidates)
@@ -358,9 +348,9 @@ def _select_recorder_screenshot_candidates(
 
 
 def create_midscene_recorder_markdown_screenshot_assets(
-    events: List[Dict[str, Any]],
-    options: Optional[Dict[str, Any]] = None,
-) -> List[Dict[str, Any]]:
+    events: list[dict[str, Any]],
+    options: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
     options = options or {}
     base_dir = _normalize_markdown_asset_base_dir(options.get("baseDir"))
     max_screenshots = options.get(
@@ -401,8 +391,8 @@ def create_midscene_recorder_markdown_screenshot_assets(
 
 
 def get_screenshots_for_llm(
-    events: List[Dict[str, Any]], max_screenshots: int = 1
-) -> List[str]:
+    events: list[dict[str, Any]], max_screenshots: int = 1
+) -> list[str]:
     return [
         asset["dataUrl"]
         for asset in create_midscene_recorder_markdown_screenshot_assets(
@@ -416,22 +406,22 @@ def get_screenshots_for_llm(
 # ---------------------------------------------------------------------------
 
 
-def filter_events_by_type(events: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+def filter_events_by_type(
+    events: list[dict[str, Any]],
+) -> dict[str, list[dict[str, Any]]]:
     return {
         "navigationEvents": [
             event for event in events if event.get("type") == "navigation"
         ],
         "clickEvents": [event for event in events if event.get("type") == "click"],
         "inputEvents": [event for event in events if event.get("type") == "input"],
-        "scrollEvents": [
-            event for event in events if event.get("type") == "scroll"
-        ],
+        "scrollEvents": [event for event in events if event.get("type") == "scroll"],
     }
 
 
 def create_event_counts(
-    filtered_events: Dict[str, List[Dict[str, Any]]], total_events: int
-) -> Dict[str, int]:
+    filtered_events: dict[str, list[dict[str, Any]]], total_events: int
+) -> dict[str, int]:
     return {
         "navigation": len(filtered_events["navigationEvents"]),
         "click": len(filtered_events["clickEvents"]),
@@ -442,28 +432,26 @@ def create_event_counts(
 
 
 def extract_input_descriptions(
-    input_events: List[Dict[str, Any]],
-) -> List[Dict[str, str]]:
+    input_events: list[dict[str, Any]],
+) -> list[dict[str, str]]:
     descriptions = []
     for event in input_events:
         semantic = get_midscene_recorder_semantic(event) or {}
-        description = _clean_recorder_semantic_field(
-            semantic.get("elementDescription")
-        ) or ""
+        description = (
+            _clean_recorder_semantic_field(semantic.get("elementDescription")) or ""
+        )
         value = event.get("value") or ""
         descriptions.append({"description": description, "value": value})
-    return [
-        item for item in descriptions if item["description"] and item["value"]
-    ]
+    return [item for item in descriptions if item["description"] and item["value"]]
 
 
 def process_events_for_llm(
-    events: List[Dict[str, Any]],
-    screenshot_path_by_event_hash: Optional[Dict[str, str]] = None,
-) -> List[Dict[str, Any]]:
+    events: list[dict[str, Any]],
+    screenshot_path_by_event_hash: dict[str, str] | None = None,
+) -> list[dict[str, Any]]:
     screenshot_path_by_event_hash = screenshot_path_by_event_hash or {}
     input_index = 0
-    processed: List[Dict[str, Any]] = []
+    processed: list[dict[str, Any]] = []
 
     for index, event in enumerate(events):
         previous_event = events[index - 1] if index > 0 else None
@@ -504,7 +492,7 @@ def process_events_for_llm(
                 if value
             ] or None
 
-        item: Dict[str, Any] = {
+        item: dict[str, Any] = {
             "hashId": event.get("hashId"),
             "type": event.get("type"),
             "timestamp": event.get("timestamp"),
@@ -529,9 +517,7 @@ def process_events_for_llm(
             ),
             "pageInfo": event.get("pageInfo"),
             "elementRect": event.get("elementRect"),
-            "screenshotPath": screenshot_path_by_event_hash.get(
-                event.get("hashId")
-            ),
+            "screenshotPath": screenshot_path_by_event_hash.get(event.get("hashId")),
         }
 
         if is_input:
@@ -560,17 +546,15 @@ def process_events_for_llm(
 
 
 def prepare_event_summary(
-    events: List[Dict[str, Any]],
-    options: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    events: list[dict[str, Any]],
+    options: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     options = options or {}
     filtered_events = filter_events_by_type(events)
     event_counts = create_event_counts(filtered_events, len(events))
 
     navigation_events = filtered_events["navigationEvents"]
-    start_url = (
-        (navigation_events[0].get("url") or "") if navigation_events else ""
-    )
+    start_url = (navigation_events[0].get("url") or "") if navigation_events else ""
 
     click_descriptions = [
         semantic.get("elementDescription")
@@ -581,17 +565,12 @@ def prepare_event_summary(
         if semantic.get("elementDescription")
     ][:10]
 
-    input_descriptions = extract_input_descriptions(
-        filtered_events["inputEvents"]
-    )[:10]
+    input_descriptions = extract_input_descriptions(filtered_events["inputEvents"])[:10]
 
-    urls = [
-        event.get("url") for event in navigation_events if event.get("url")
-    ][:5]
+    urls = [event.get("url") for event in navigation_events if event.get("url")][:5]
 
     return {
-        "testName": options.get("testName")
-        or "Automated test from recorded events",
+        "testName": options.get("testName") or "Automated test from recorded events",
         "startUrl": start_url,
         "eventCounts": event_counts,
         "urls": urls,
@@ -604,8 +583,8 @@ def prepare_event_summary(
 
 
 def prepare_recorder_generation_context(
-    input_payload: Dict[str, Any],
-) -> Dict[str, Any]:
+    input_payload: dict[str, Any],
+) -> dict[str, Any]:
     events = input_payload.get("events") or []
     validate_events(events)
 
@@ -616,8 +595,7 @@ def prepare_recorder_generation_context(
         events, {"baseDir": "./screenshots", "maxScreenshots": max_screenshots}
     )
     screenshot_path_by_event_hash = {
-        asset["eventHashId"]: asset["relativePath"]
-        for asset in screenshot_assets
+        asset["eventHashId"]: asset["relativePath"] for asset in screenshot_assets
     }
 
     return {
@@ -634,11 +612,11 @@ def prepare_recorder_generation_context(
 
 def create_message_content(
     prompt_text: str,
-    screenshots: Optional[List[str]] = None,
+    screenshots: list[str] | None = None,
     include_screenshots: bool = True,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     screenshots = screenshots or []
-    message_content: List[Dict[str, Any]] = [{"type": "text", "text": prompt_text}]
+    message_content: list[dict[str, Any]] = [{"type": "text", "text": prompt_text}]
 
     if include_screenshots and screenshots:
         message_content.insert(
@@ -662,7 +640,7 @@ def create_message_content(
 # ---------------------------------------------------------------------------
 
 
-def get_global_default_config() -> Dict[str, Any]:
+def get_global_default_config() -> dict[str, Any]:
     from midscene.shared.env import get_global_model_config_manager
 
     return get_global_model_config_manager().get_model_config("default")
@@ -680,8 +658,8 @@ def resolve_model_runtime(model_config: Any) -> Any:
 
 
 def recorder_stream_options(
-    options: Dict[str, Any],
-) -> Optional[Dict[str, Any]]:
+    options: dict[str, Any],
+) -> dict[str, Any] | None:
     """Upstream streams only when both `stream` and `onChunk` are provided."""
     if options.get("stream") and options.get("onChunk"):
         return {"stream": True, "onChunk": options["onChunk"]}

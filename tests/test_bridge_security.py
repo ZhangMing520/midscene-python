@@ -51,4 +51,3 @@ class TestBridgeSecurity:
                     )
         finally:
             await server.close()
-

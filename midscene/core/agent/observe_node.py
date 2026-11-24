@@ -2,12 +2,12 @@
 
 import asyncio
 import time
-from typing import Any, Dict, Optional
+from typing import Any
 
 from midscene.core.test_runner.errors import NodeExecutionError
 
 
-def start_observing(agent, opt: Optional[Dict[str, Any]] = None):
+def start_observing(agent, opt: dict[str, Any] | None = None):
     """Record a time window of UI frames (upstream startObserving).
 
     Options: `intervalMs` (default 1000, min 200), `maxFrames` (default 30,
@@ -50,7 +50,7 @@ def _prompt_text(prompt: Any) -> str:
     return ""
 
 
-async def execute_observe(agent: Any, value: Dict[str, Any], signal: Any) -> Any:
+async def execute_observe(agent: Any, value: dict[str, Any], signal: Any) -> Any:
     """Run one action and assert over its recorded screenshot sequence.
 
     Shared Agent Node lifecycle; recording and insight remain SDK-owned.
@@ -69,9 +69,9 @@ async def execute_observe(agent: Any, value: Dict[str, Any], signal: Any) -> Any
     assertion = value.get("assert")
     settle_ms = value.get("settleMs") or 0
     observer = None
-    stop_task: Optional[asyncio.Task] = None
+    stop_task: asyncio.Task | None = None
     has_initial_frame = False
-    data: Optional[Dict[str, Any]] = None
+    data: dict[str, Any] | None = None
     errors = []
 
     def collect(error: BaseException) -> None:
@@ -160,13 +160,17 @@ async def execute_observe(agent: Any, value: Dict[str, Any], signal: Any) -> Any
         collect(getattr(signal, "reason", None) or RuntimeError("aborted"))
     text = _prompt_text(assertion)
     if errors:
-        cause: Any = errors[0] if len(errors) == 1 else Exception("Observation or cleanup failed.")
+        cause: Any = (
+            errors[0]
+            if len(errors) == 1
+            else Exception("Observation or cleanup failed.")
+        )
         if len(errors) > 1:
             cause = Exception(
                 "Observation or cleanup failed: "
                 + "; ".join(str(item) for item in errors)
             )
-        output: Dict[str, Any] = {"summary": f"Observation failed: {text}"}
+        output: dict[str, Any] = {"summary": f"Observation failed: {text}"}
         if data:
             output["data"] = data
         raise NodeExecutionError("observe", cause, output)

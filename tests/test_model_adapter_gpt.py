@@ -17,8 +17,11 @@ class TestGptAdapter:
         assert "text" not in params
 
     def test_unset_temperature_removed_from_request(self):
-        from midscene.core.ai_model.service_caller.openai import chat_completion, responses
         from midscene.core.ai_model.models.registry import get_model_runtime
+        from midscene.core.ai_model.service_caller.openai import (
+            chat_completion,
+            responses,
+        )
 
         runtime = get_model_runtime(
             {
@@ -37,4 +40,3 @@ class TestGptAdapter:
             [{"role": "user", "content": "hi"}], runtime, {}
         )
         assert "temperature" not in responses["request_body"]
-

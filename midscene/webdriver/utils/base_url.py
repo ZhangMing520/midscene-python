@@ -36,9 +36,7 @@ def normalize_web_driver_base_url(base_url: str) -> str:
         # urlsplit keeps an empty path for "http://host"; urljoin-style output
         # must still include the scheme and host.
         return f"{normalized.scheme}://{normalized.netloc}"
-    return (
-        f"{normalized.scheme}://{normalized.netloc}{normalized.path}"
-    )
+    return f"{normalized.scheme}://{normalized.netloc}{normalized.path}"
 
 
 def normalize_webdriver_base_url(base_url: str) -> str:

@@ -4,9 +4,7 @@ This is intentionally not a universal keyboard-layout map. Other layouts can
 place these characters on different keys or modifier levels.
 """
 
-from typing import Dict, Optional
-
-US_SHIFTED_CHARACTER_KEYS: Dict[str, str] = {
+US_SHIFTED_CHARACTER_KEYS: dict[str, str] = {
     "~": "`",
     "!": "1",
     "@": "2",
@@ -32,8 +30,8 @@ US_SHIFTED_CHARACTER_KEYS: Dict[str, str] = {
 
 
 def resolve_shifted_key(
-    character: str, keyboard_layout: Optional[str] = None
-) -> Optional[str]:
+    character: str, keyboard_layout: str | None = None
+) -> str | None:
     """Resolve an uppercase letter or en-US shifted char to its base key."""
     if len(character) == 1 and "A" <= character <= "Z":
         return character.lower()

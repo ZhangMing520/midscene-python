@@ -6,7 +6,8 @@ Runs four checks in parallel: planning text, insight vision, aiLocate
 """
 
 import time
-from typing import Any, Callable, Dict, List
+from collections.abc import Callable
+from typing import Any
 
 from loguru import logger
 
@@ -21,7 +22,7 @@ from midscene.core.ai_model.service_caller.system_one import call_system_one
 TEXT_EXPECTED_TOKEN = "CONNECTIVITY_OK"
 
 
-async def _text_check(model_runtime: ModelRuntime) -> Dict[str, Any]:
+async def _text_check(model_runtime: ModelRuntime) -> dict[str, Any]:
     response = await call_generative_ai(
         [
             {
@@ -32,10 +33,13 @@ async def _text_check(model_runtime: ModelRuntime) -> Dict[str, Any]:
         ],
         model_runtime,
     )
-    return {"passed": TEXT_EXPECTED_TOKEN in response["content"], "content": response["content"]}
+    return {
+        "passed": TEXT_EXPECTED_TOKEN in response["content"],
+        "content": response["content"],
+    }
 
 
-async def _jev_text_check(model_runtime: ModelRuntime) -> Dict[str, Any]:
+async def _jev_text_check(model_runtime: ModelRuntime) -> dict[str, Any]:
     response = await call_system_one(
         model_runtime,
         {
@@ -49,10 +53,13 @@ async def _jev_text_check(model_runtime: ModelRuntime) -> Dict[str, Any]:
         },
     )
     answer = response["answers"]["result"]
-    return {"passed": answer["type"] == "noul" and answer["noul"] >= 0.5, "content": response["content"]}
+    return {
+        "passed": answer["type"] == "noul" and answer["noul"] >= 0.5,
+        "content": response["content"],
+    }
 
 
-async def _vision_check(model_runtime: ModelRuntime) -> Dict[str, Any]:
+async def _vision_check(model_runtime: ModelRuntime) -> dict[str, Any]:
     fixture_image = connectivity_fixture_image()
     if model_runtime.config.get("modelFamily") == "jev":
         response = await call_system_one(
@@ -88,7 +95,7 @@ async def _vision_check(model_runtime: ModelRuntime) -> Dict[str, Any]:
     return {"passed": True, "content": response["content"]}
 
 
-async def _ai_locate_check(model_runtime: ModelRuntime) -> Dict[str, Any]:
+async def _ai_locate_check(model_runtime: ModelRuntime) -> dict[str, Any]:
     fixture_image = connectivity_fixture_image()
     from midscene.core.service import locate_service
 
@@ -118,16 +125,20 @@ async def _ai_locate_check(model_runtime: ModelRuntime) -> Dict[str, Any]:
 async def _run_check(
     name: str,
     intent: str,
-    model_config: Dict[str, Any],
+    model_config: dict[str, Any],
     check_fn: Callable,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     config = {**model_config, "retryCount": 0, "intent": intent, "slot": intent}
     runtime = get_model_runtime(config)
     start = time.time()
     try:
         result = await check_fn(runtime)
         duration = int((time.time() - start) * 1000)
-        message = "" if result["passed"] else f"Unexpected response: {result.get('content', '')[:200]}"
+        message = (
+            ""
+            if result["passed"]
+            else f"Unexpected response: {result.get('content', '')[:200]}"
+        )
         return {
             "name": name,
             "intent": intent,
@@ -150,7 +161,7 @@ async def _run_check(
         }
 
 
-async def run_connectivity_test(config: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+async def run_connectivity_test(config: dict[str, dict[str, Any]]) -> dict[str, Any]:
     """Run the four connectivity checks.
 
     config keys: defaultModelConfig (required), locateModelConfig?,
@@ -189,9 +200,9 @@ async def run_connectivity_test(config: Dict[str, Dict[str, Any]]) -> Dict[str, 
         ),
     )
 
-    check_list: List[Dict[str, Any]] = list(checks)
+    check_list: list[dict[str, Any]] = list(checks)
     passed = all(check["passed"] for check in check_list)
-    result: Dict[str, Any] = {
+    result: dict[str, Any] = {
         "checks": check_list,
         "requestCount": len(check_list),
         "passed": passed,

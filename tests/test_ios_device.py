@@ -7,12 +7,15 @@ Only the cases covered by the former aggregate ``tests/test_ios.py`` are kept.
 """
 
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
 
-from midscene.core.device import build_action_space_for, find_action_in_action_space_or_throw
+from midscene.core.device import (
+    build_action_space_for,
+    find_action_in_action_space_or_throw,
+)
 from midscene.ios.device import IOSDevice
 from midscene.ios.wda import WebDriverAgentBackend
 
@@ -22,10 +25,10 @@ SCREEN = (375, 812)
 class FakeWDARequests:
     """Session-relative WDA transport used by the device tests."""
 
-    def __init__(self, responses: Optional[Dict[str, Any]] = None):
+    def __init__(self, responses: dict[str, Any] | None = None):
         self.responses = responses or {}
-        self.requests: List[tuple] = []
-        self._hits: Dict[str, int] = {}
+        self.requests: list[tuple] = []
+        self._hits: dict[str, int] = {}
 
     async def __call__(self, method, path, body=None):
         self.requests.append((method, path, body))
@@ -42,13 +45,11 @@ class FakeWDARequests:
                 return response
         raise RuntimeError(f"Unhandled WDA request: {method} {path}")
 
-    def calls_for(self, fragment: str) -> List[tuple]:
+    def calls_for(self, fragment: str) -> list[tuple]:
         return [call for call in self.requests if fragment in call[1]]
 
 
-def _backend(
-    responses: Optional[Dict[str, Any]] = None, size=SCREEN
-) -> tuple:
+def _backend(responses: dict[str, Any] | None = None, size=SCREEN) -> tuple:
     backend = WebDriverAgentBackend(base_url="http://localhost:8100")
     transport = FakeWDARequests(
         {
@@ -73,7 +74,7 @@ def _device(responses=None, size=SCREEN):
     return device, transport
 
 
-def _pointer_moves(transport: FakeWDARequests) -> List[dict]:
+def _pointer_moves(transport: FakeWDARequests) -> list[dict]:
     call = transport.calls_for("/actions")[0]
     actions = call[2]["actions"][0]["actions"]
     return [action for action in actions if action["type"] == "pointerMove"]
@@ -221,9 +222,7 @@ async def test_scroll_until_leaves_room_for_a_full_gesture_on_a_viewport(
     device, transport = _device(size=(width, 900))
     screenshots = iter([f"frame-{index}" for index in range(40)])
     device.screenshot_base64 = _async_value(screenshots)
-    monkeypatch.setattr(
-        "midscene.ios.device.asyncio.sleep", _async_noop()
-    )
+    monkeypatch.setattr("midscene.ios.device.asyncio.sleep", _async_noop())
 
     # `scroll` dispatches on scrollType; call the boundary loop directly so the
     # gesture geometry is observable.
@@ -333,9 +332,7 @@ async def test_does_not_send_text_when_focus_fails(monkeypatch):
     """
 
     monkeypatch.setattr("midscene.ios.device.INPUT_FOCUS_TIMEOUT_MS", 0)
-    device, transport = _device(
-        {"GET /session/X/element/active": {"value": None}}
-    )
+    device, transport = _device({"GET /session/X/element/active": {"value": None}})
 
     with pytest.raises(RuntimeError, match="waiting for iOS input focus"):
         await device.clear_input()

@@ -1,6 +1,6 @@
 """Switch SIWC-auth runtimes onto api.openai.com (upstream prepare-call.ts)."""
 
-from typing import Any, Optional, Tuple
+from typing import Any
 
 from midscene.core.ai_model.service_caller.openai.siwc.token_manager import (
     siwc_token_manager,
@@ -8,8 +8,8 @@ from midscene.core.ai_model.service_caller.openai.siwc.token_manager import (
 
 
 async def prepare_siwc_call(
-    model_runtime, options: Optional[dict] = None
-) -> Tuple[Any, Optional[dict]]:
+    model_runtime, options: dict | None = None
+) -> tuple[Any, dict | None]:
     """Build effective request settings without mutating the user's configuration."""
     if model_runtime.config.get("authMode") != "siwc":
         return model_runtime, options

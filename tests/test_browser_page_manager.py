@@ -2,8 +2,9 @@
 
 import asyncio
 import inspect
+from collections.abc import Callable
 from dataclasses import asdict
-from typing import Any, Callable, List, Optional
+from typing import Any
 
 import pytest
 
@@ -22,8 +23,8 @@ class _Page:
     def __init__(
         self,
         id: str,
-        title: Optional[str] = None,
-        url: Optional[str] = None,
+        title: str | None = None,
+        url: str | None = None,
     ):
         self.id = id
         self.title = id if title is None else title
@@ -38,7 +39,7 @@ class _Page:
 class _Adapter:
     def __init__(
         self,
-        pages: List[_Page],
+        pages: list[_Page],
         new_page: _Page,
         handlers: set,
         page_title: Callable[[_Page], Any],
@@ -50,7 +51,7 @@ class _Adapter:
         self._page_title = page_title
         self._page_url = page_url
 
-    def pages(self) -> List[_Page]:
+    def pages(self) -> list[_Page]:
         return self._pages
 
     async def new_page(self) -> _Page:
@@ -78,7 +79,7 @@ class _Adapter:
     def is_new_page_event(self, event: Any) -> bool:
         return event["kind"] == "page"
 
-    def resolve_new_page(self, event: Any) -> Optional[_Page]:
+    def resolve_new_page(self, event: Any) -> _Page | None:
         return event.get("page")
 
 
@@ -110,14 +111,14 @@ class _ManagerContext:
 
 def create_page(
     id: str,
-    options: Optional[dict] = None,
+    options: dict | None = None,
 ) -> _Page:
     options = options or {}
     return _Page(id, options.get("title"), options.get("url"))
 
 
 def create_manager(
-    options: Optional[dict] = None,
+    options: dict | None = None,
 ) -> _ManagerContext:
     options = options or {}
     pages = options.get("pages")
@@ -128,7 +129,7 @@ def create_manager(
         pages = [active_page]
 
     handlers: set = set()
-    debug_calls: List[str] = []
+    debug_calls: list[str] = []
     new_page = options.get("new_page") or create_page("created")
     page_title = options.get("page_title") or (lambda page: page.title)
     page_url = options.get("page_url") or (lambda page: page.url)
@@ -152,9 +153,7 @@ def create_manager(
         debug=debug_calls.append,
     )
 
-    return _ManagerContext(
-        manager, handlers, debug_calls, new_page, get_active_page
-    )
+    return _ManagerContext(manager, handlers, debug_calls, new_page, get_active_page)
 
 
 @pytest.mark.asyncio
@@ -175,9 +174,7 @@ async def test_lists_browser_pages_with_the_active_page_marker():
     initial = create_page(
         "initial", {"title": "Home", "url": "https://example.com/home"}
     )
-    docs = create_page(
-        "docs", {"title": "Docs", "url": "https://example.com/docs"}
-    )
+    docs = create_page("docs", {"title": "Docs", "url": "https://example.com/docs"})
     ctx = create_manager({"pages": [initial, docs], "active_page": docs})
 
     summaries = await ctx.manager.page_summaries()
@@ -251,9 +248,7 @@ async def test_skips_a_page_that_closes_while_its_title_is_being_read():
             "page_title": selector_page_title,
         }
     )
-    summary = await selector_ctx.manager.set_active_page_by_selector(
-        {"title": "docs"}
-    )
+    summary = await selector_ctx.manager.set_active_page_by_selector({"title": "docs"})
     assert summary["title"] == "Docs"
     assert summary["active"] is True
 
@@ -283,9 +278,7 @@ async def test_sets_the_active_page_by_selector():
     initial = create_page(
         "initial", {"title": "Home", "url": "https://example.com/home"}
     )
-    docs = create_page(
-        "docs", {"title": "Docs", "url": "https://example.com/docs"}
-    )
+    docs = create_page("docs", {"title": "Docs", "url": "https://example.com/docs"})
     ctx = create_manager({"pages": [initial, docs]})
 
     summary = await ctx.manager.set_active_page_by_selector({"title": "docs"})
@@ -306,9 +299,7 @@ async def test_validates_title_and_url_when_they_accompany_an_index_selector():
     initial = create_page(
         "initial", {"title": "Home", "url": "https://example.com/home"}
     )
-    docs = create_page(
-        "docs", {"title": "Docs", "url": "https://example.com/docs"}
-    )
+    docs = create_page("docs", {"title": "Docs", "url": "https://example.com/docs"})
     ctx = create_manager({"pages": [initial, docs]})
 
     summary = await ctx.manager.set_active_page_by_selector(
@@ -318,9 +309,7 @@ async def test_validates_title_and_url_when_they_accompany_an_index_selector():
     assert summary["title"] == "Docs"
 
     with pytest.raises(ValueError) as error:
-        await ctx.manager.set_active_page_by_selector(
-            {"index": 0, "title": "Docs"}
-        )
+        await ctx.manager.set_active_page_by_selector({"index": 0, "title": "Docs"})
     assert str(error.value) == (
         "[midscene] TestBrowserAgent page at index 0 does not match title "
         '"Docs". Run ListBrowserPages again before selecting a page.'
@@ -332,9 +321,7 @@ async def test_validates_title_and_url_when_they_accompany_an_index_selector():
 @pytest.mark.asyncio
 async def test_rejects_ambiguous_title_or_url_selectors():
     """rejects ambiguous title or url selectors."""
-    first = create_page(
-        "first", {"title": "Docs", "url": "https://example.com/docs"}
-    )
+    first = create_page("first", {"title": "Docs", "url": "https://example.com/docs"})
     second = create_page(
         "second", {"title": "API Docs", "url": "https://example.com/api"}
     )
@@ -343,7 +330,7 @@ async def test_rejects_ambiguous_title_or_url_selectors():
     with pytest.raises(ValueError) as error:
         await ctx.manager.set_active_page_by_selector({"title": "docs"})
     assert str(error.value) == (
-        "[midscene] Multiple TestBrowserAgent pages matched title \"docs\". "
+        '[midscene] Multiple TestBrowserAgent pages matched title "docs". '
         "Use ListBrowserPages and pass an index to SetActivePage."
     )
 
@@ -354,9 +341,7 @@ async def test_creates_browser_page_actions_for_ai_page_selection():
     initial = create_page(
         "initial", {"title": "Home", "url": "https://example.com/home"}
     )
-    docs = create_page(
-        "docs", {"title": "Docs", "url": "https://example.com/docs"}
-    )
+    docs = create_page("docs", {"title": "Docs", "url": "https://example.com/docs"})
     ctx = create_manager({"pages": [initial, docs]})
     feedback = {}
 
@@ -402,10 +387,7 @@ async def test_keeps_distinguishing_page_details_when_pages_share_long_prefixes(
             f"page-{index}",
             {
                 "title": f"{'shared title ' * 20}unique-title-{index}",
-                "url": (
-                    f"https://example.com/{'shared-path/' * 50}"
-                    f"unique-url-{index}"
-                ),
+                "url": (f"https://example.com/{'shared-path/' * 50}unique-url-{index}"),
             },
         )
         for index in range(8)
@@ -433,9 +415,7 @@ async def test_returns_full_page_info_without_switching_pages_and_forwards_usefu
     initial = create_page("initial")
     full_title = f"{'title ' * 30}unique-title-tail"
     full_url = f"https://example.com/{'long-path/' * 60}unique-url-tail"
-    details = create_page(
-        "details", {"title": full_title, "url": full_url}
-    )
+    details = create_page("details", {"title": full_title, "url": full_url})
     ctx = create_manager({"pages": [initial, details]})
     feedback = {}
     actions = create_browser_agent_page_actions(
@@ -504,11 +484,12 @@ def test_keeps_custom_actions_ahead_of_browser_page_actions():
         lambda: create_manager().manager
     )
 
-    actions = append_browser_agent_page_actions(
-        [custom_action], browser_actions
-    )
+    actions = append_browser_agent_page_actions([custom_action], browser_actions)
 
-    assert [action["name"] if isinstance(action, dict) else action.name for action in actions] == [
+    assert [
+        action["name"] if isinstance(action, dict) else action.name
+        for action in actions
+    ] == [
         "SetActivePage",
         "ListBrowserPages",
         "GetBrowserPageInfo",

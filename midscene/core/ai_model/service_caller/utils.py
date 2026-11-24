@@ -1,10 +1,11 @@
 """Shared caller helpers (upstream service-caller/utils.ts)."""
 
-from typing import Any, Dict, List, Optional
 import inspect
 import json
 import math
 import uuid
+from typing import Any
+
 from midscene.core.ai_model.models.registry import is_locate_intent
 from midscene.core.ai_model.service_caller.types import AIResponseParseError
 
@@ -34,7 +35,7 @@ def to_error(error: Any) -> BaseException:
 
 def append_ai_request_failure_summary(
     error: BaseException,
-    attempt_errors: List[Dict[str, Any]],
+    attempt_errors: list[dict[str, Any]],
     max_attempts: int,
 ) -> BaseException:
     """Prefix the final error with the attempt count and prior failures."""
@@ -64,12 +65,12 @@ def append_ai_request_failure_summary(
 
 
 async def emit_stream_chunk(
-    on_chunk: Optional[Any],
+    on_chunk: Any | None,
     content: str,
     reasoning_content: str,
     accumulated: str,
     is_complete: bool = False,
-    usage: Optional[Dict[str, Any]] = None,
+    usage: dict[str, Any] | None = None,
 ) -> None:
     """Deliver a CodeGenerationChunk to the caller (upstream onChunk)."""
     if on_chunk is None:
@@ -87,7 +88,7 @@ async def emit_stream_chunk(
         await result
 
 
-def has_usable_text(content: Optional[str]) -> bool:
+def has_usable_text(content: str | None) -> bool:
     return bool(content) and content.strip() != ""
 
 
@@ -108,14 +109,14 @@ def next_internal_call_id() -> str:
 CODEX_PROVIDER_SCHEME = "codex://"
 
 
-def is_codex_app_server_provider(base_url: Optional[str]) -> bool:
+def is_codex_app_server_provider(base_url: str | None) -> bool:
     if not base_url:
         return False
     return base_url.strip().lower().startswith(CODEX_PROVIDER_SCHEME)
 
 
 def resolve_image_detail(
-    adapter_detail: str, intent: Optional[str], requires_original: bool
+    adapter_detail: str, intent: str | None, requires_original: bool
 ) -> str:
     if requires_original or is_locate_intent(intent):
         return "high"  # 'original' is not portable across OpenAI-compatible servers
@@ -123,8 +124,8 @@ def resolve_image_detail(
 
 
 def extract_content_and_reasoning(
-    message: Optional[Dict[str, Any]], reasoning_keys: List[str]
-) -> Dict[str, str]:
+    message: dict[str, Any] | None, reasoning_keys: list[str]
+) -> dict[str, str]:
     content = ""
     reasoning = ""
     if message:
@@ -154,7 +155,7 @@ def extract_content_and_reasoning(
     return {"content": content, "reasoning_content": reasoning}
 
 
-def map_responses_usage(usage: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+def map_responses_usage(usage: dict[str, Any] | None) -> dict[str, Any] | None:
     if not usage:
         return None
     return {
@@ -167,15 +168,15 @@ def map_responses_usage(usage: Optional[Dict[str, Any]]) -> Optional[Dict[str, A
 
 
 def build_usage_info(
-    raw_usage: Optional[Dict[str, Any]],
-    model_config: Dict[str, Any],
-    time_cost: Optional[int],
+    raw_usage: dict[str, Any] | None,
+    model_config: dict[str, Any],
+    time_cost: int | None,
     retry_count: int,
-    request_id: Optional[str],
-    response_model_name: Optional[str],
+    request_id: str | None,
+    response_model_name: str | None,
     internal_call_id: str,
     parse_retry_count: int = 0,
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     if not raw_usage:
         return None
 

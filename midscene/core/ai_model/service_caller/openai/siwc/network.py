@@ -1,8 +1,8 @@
 """SIWC HTTP/JWKS access (upstream openai/siwc/network.ts)."""
 
-from typing import Any, Dict, List, Optional, Tuple, TypedDict
 import os
 import time
+from typing import Any, TypedDict
 
 import httpx
 from loguru import logger
@@ -20,11 +20,11 @@ ISSUER = "https://auth.openai.com"
 
 
 class SiwcProxyConfig(TypedDict, total=False):
-    httpProxy: Optional[str]
-    socksProxy: Optional[str]
+    httpProxy: str | None
+    socksProxy: str | None
 
 
-def _siwc_proxy(proxy: Optional[SiwcProxyConfig] = None) -> Optional[str]:
+def _siwc_proxy(proxy: SiwcProxyConfig | None = None) -> str | None:
     """Resolve the proxy for SIWC requests (upstream fetchSiwc).
 
     Explicit ``{"httpProxy", "socksProxy"}`` config wins over
@@ -42,8 +42,8 @@ def _siwc_proxy(proxy: Optional[SiwcProxyConfig] = None) -> Optional[str]:
 
 async def fetch_siwc(
     input: Any,
-    init: Optional[Dict[str, Any]] = None,
-    proxy: Optional[SiwcProxyConfig] = None,
+    init: dict[str, Any] | None = None,
+    proxy: SiwcProxyConfig | None = None,
 ):
     """Fetch a SIWC URL through the Midscene-configured proxy only.
 
@@ -113,10 +113,10 @@ def create_siwc_jwk_set(
 
 
 _JWKS_TTL_SECONDS = 3600.0
-_jwks_cache: Optional[Dict[str, Any]] = None
+_jwks_cache: dict[str, Any] | None = None
 
 
-def _select_jwk(keys: List[Any], kid: Optional[str]) -> List[Any]:
+def _select_jwk(keys: list[Any], kid: str | None) -> list[Any]:
     if kid:
         return [key for key in keys if key.key_id == kid]
     # Without a kid only a single-key set is unambiguous.
@@ -124,11 +124,9 @@ def _select_jwk(keys: List[Any], kid: Optional[str]) -> List[Any]:
 
 
 async def _fetch_jwks(
-    proxy: Optional[SiwcProxyConfig] = None,
-) -> List[Any]:
-    async with httpx.AsyncClient(
-        timeout=30.0, proxy=_siwc_proxy(proxy)
-    ) as client:
+    proxy: SiwcProxyConfig | None = None,
+) -> list[Any]:
+    async with httpx.AsyncClient(timeout=30.0, proxy=_siwc_proxy(proxy)) as client:
         jwks_response = await client.get(
             f"{ISSUER}/.well-known/jwks.json", follow_redirects=False
         )
@@ -140,9 +138,9 @@ async def _fetch_jwks(
 
 
 async def _load_jwks(
-    proxy: Optional[SiwcProxyConfig] = None,
+    proxy: SiwcProxyConfig | None = None,
     force: bool = False,
-) -> List[Any]:
+) -> list[Any]:
     """Signing keys from the JWKS, cached like PyJWKClient did."""
     global _jwks_cache
     if not force and _jwks_cache is not None:
@@ -156,8 +154,8 @@ async def _load_jwks(
 async def _verify_id_token(
     id_token: str,
     audience: str,
-    required_claims: Tuple[str, ...],
-    proxy: Optional[SiwcProxyConfig] = None,
+    required_claims: tuple[str, ...],
+    proxy: SiwcProxyConfig | None = None,
 ):
     if not _HAS_PYJWT:
         logger.warning(

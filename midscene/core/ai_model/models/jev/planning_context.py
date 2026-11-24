@@ -1,22 +1,23 @@
 """Jev planning state/image context (upstream models/jev/planning-context.ts)."""
 
-from typing import Any, Dict, List, Optional
-from midscene.core.ai_model.models.registry import ModelRuntime
-from midscene.core.ai_model.shared.multimodal_prompt import get_screenshot_base64
+from typing import Any
 
 from midscene.core.ai_model.models.jev.image import (
     prepare_jev_image,
 )
+from midscene.core.ai_model.models.registry import ModelRuntime
+from midscene.core.ai_model.shared.multimodal_prompt import get_screenshot_base64
+
 
 async def prepare_jev_planning_context(
     instruction: str,
     context: Any,
     model_runtime: ModelRuntime,
-    action_space: List[Any],
+    action_space: list[Any],
     conversation_history: Any,
-    action_context: Optional[str] = None,
-    reference_images: Optional[List[str]] = None,
-) -> Dict[str, Any]:
+    action_context: str | None = None,
+    reference_images: list[str] | None = None,
+) -> dict[str, Any]:
     screenshot = prepare_jev_image(get_screenshot_base64(context))
     state = {
         "goal": instruction,

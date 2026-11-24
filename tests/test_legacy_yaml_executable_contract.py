@@ -38,7 +38,4 @@ tasks:
     asyncio.run(player.run())
     assert player.status == "done"
     assert agent._report_builder is not None
-    assert (
-        agent._report_builder.dump["executions"][0]["name"]
-        == "Log - checkpoint"
-    )
+    assert agent._report_builder.dump["executions"][0]["name"] == "Log - checkpoint"

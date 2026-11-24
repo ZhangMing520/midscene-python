@@ -6,7 +6,6 @@ and re-exported here so the upstream import path keeps working.
 """
 
 from enum import Enum
-from typing import Dict, Union
 
 from midscene.shared.env.constants import (
     ALL_ENV_KEYS,
@@ -126,8 +125,8 @@ from midscene.shared.env.constants import (
     MIDSCENE_USE_GEMINI,
     MIDSCENE_USE_QWEN3_VL,
     MIDSCENE_USE_QWEN_VL,
-    MIDSCENE_USE_VLM_UI_TARS,
     MIDSCENE_USE_VL_MODEL,
+    MIDSCENE_USE_VLM_UI_TARS,
     MODEL_ENV_KEYS,
     MODEL_FAMILY_VALUES,
     NUMBER_ENV_KEYS,
@@ -147,11 +146,11 @@ TModelStreamMode = str  # 'stream' | 'non-stream'
 
 TModelAuthMode = str  # 'api-key' | 'siwc'
 
-TModelReasoningEnabled = Union[bool, str]  # bool | 'default'
+TModelReasoningEnabled = bool | str  # bool | 'default'
 
 TModelResponseFormat = str  # 'none' | 'auto'
 
-TModelConfig = Dict[str, Union[str, int, float]]  # Record<string, string | number>
+TModelConfig = dict[str, str | int | float]  # Record<string, string | number>
 
 
 class UITarsModelVersion(str, Enum):

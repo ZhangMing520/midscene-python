@@ -41,18 +41,11 @@ import struct
 import time
 import urllib.request
 import uuid
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import (
     Any,
-    Awaitable,
-    Callable,
-    Dict,
-    List,
-    Mapping,
-    Optional,
-    Set,
-    Tuple,
     TypedDict,
 )
 
@@ -154,7 +147,7 @@ class ScrcpyConfig(TypedDict, total=False):
     videoResetFrameTimeoutMs: int
 
 
-DEFAULT_SCRCPY_CONFIG: Dict[str, Any] = {
+DEFAULT_SCRCPY_CONFIG: dict[str, Any] = {
     "enabled": False,
     "max_size": DEFAULT_MAX_SIZE,
     "idle_timeout_ms": DEFAULT_IDLE_TIMEOUT_MS,
@@ -165,7 +158,7 @@ DEFAULT_SCRCPY_CONFIG: Dict[str, Any] = {
 _MISSING = object()
 
 
-def _coerce_int(value: Any) -> Optional[int]:
+def _coerce_int(value: Any) -> int | None:
     """Return an int for JS-integer-like values, else None."""
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
@@ -185,16 +178,12 @@ def _format_js_number(value: Any) -> str:
     return str(value)
 
 
-def resolve_scrcpy_frame_rate(frame_rate: Optional[float] = None) -> Optional[int]:
+def resolve_scrcpy_frame_rate(frame_rate: float | None = None) -> int | None:
     """Validate ``scrcpyConfig.frameRate`` (upstream resolveScrcpyFrameRate)."""
     if frame_rate is None:
         return None
     resolved = _coerce_int(frame_rate)
-    if (
-        resolved is None
-        or resolved <= 0
-        or resolved > _JS_MAX_INT32
-    ):
+    if resolved is None or resolved <= 0 or resolved > _JS_MAX_INT32:
         raise ValueError(
             "Invalid scrcpyConfig.frameRate: expected a positive 32-bit "
             f"integer, received {_format_js_number(frame_rate)}"
@@ -221,7 +210,7 @@ def _option(options: Any, *names: str, default: Any = _MISSING) -> Any:
 class ResolvedScrcpyOptions:
     """Required options after applying defaults."""
 
-    frame_rate: Optional[int]
+    frame_rate: int | None
     max_size: int
     video_bit_rate: int
     idle_timeout_ms: int
@@ -229,7 +218,7 @@ class ResolvedScrcpyOptions:
 
     # camelCase aliases for upstream parity
     @property
-    def frameRate(self) -> Optional[int]:
+    def frameRate(self) -> int | None:
         return self.frame_rate
 
     @property
@@ -259,10 +248,10 @@ class RawKeyframe:
     header: bytes
     """SPS/PPS header active when this frame was produced (needed to decode)."""
 
-    pts_us: Optional[int] = None
+    pts_us: int | None = None
     """Device-monotonic capture timestamp forwarded by scrcpy."""
 
-    estimated_age_ms: Optional[float] = None
+    estimated_age_ms: float | None = None
     """Estimated frame age when the packet reached the host."""
 
     stream_epoch: Any = None
@@ -275,8 +264,8 @@ class RawKeyframe:
 class ScrcpyStatus:
     enabled: bool
     connected: bool
-    last_error: Optional[str]
-    retry_after: Optional[float]
+    last_error: str | None
+    retry_after: float | None
 
 
 @dataclass
@@ -304,7 +293,7 @@ class ScrcpyFreshFrameUnavailableError(RuntimeError):
         failure_kind: str,
         timeout_ms: float,
         video_bit_rate: float,
-        cause: Optional[BaseException] = None,
+        cause: BaseException | None = None,
     ) -> None:
         super().__init__(message)
         self.name = "ScrcpyFreshFrameUnavailableError"
@@ -392,8 +381,9 @@ def _now_ms() -> float:
 # scrcpy-server acquisition
 # ---------------------------------------------------------------------------
 
+
 def should_download_scrcpy_server(
-    existing_version: Optional[str],
+    existing_version: str | None,
     expected_version: str = SCRCPY_SERVER_VERSION_TAG,
 ) -> bool:
     return (existing_version or "").strip() != expected_version
@@ -413,7 +403,7 @@ def _default_http_get(url: str, timeout: float) -> bytes:
         return response.read()
 
 
-def _read_existing_server(path: Path) -> Optional[str]:
+def _read_existing_server(path: Path) -> str | None:
     try:
         if path.is_file() and path.stat().st_size > 0:
             return str(path)
@@ -423,12 +413,12 @@ def _read_existing_server(path: Path) -> Optional[str]:
 
 
 def ensure_scrcpy_server(
-    explicit_path: Optional[str] = None,
-    cache_dir: Optional[str] = None,
+    explicit_path: str | None = None,
+    cache_dir: str | None = None,
     version: str = SCRCPY_SERVER_VERSION_TAG,
     download: bool = True,
-    url: Optional[str] = None,
-    http_get: Optional[Callable[[str, float], bytes]] = None,
+    url: str | None = None,
+    http_get: Callable[[str, float], bytes] | None = None,
     timeout: float = 120.0,
 ) -> str:
     """Resolve the local scrcpy-server jar, downloading it to a cache dir.
@@ -452,9 +442,7 @@ def ensure_scrcpy_server(
             )
         return local
 
-    packaged = (
-        Path(__file__).resolve().parent / "bin" / SCRCPY_SERVER_FILE_NAME
-    )
+    packaged = Path(__file__).resolve().parent / "bin" / SCRCPY_SERVER_FILE_NAME
     packaged_path = _read_existing_server(packaged)
     if packaged_path is not None:
         return resolve_external_resource_path(packaged_path)
@@ -523,6 +511,7 @@ def ensure_scrcpy_server(
 # ADB backend
 # ---------------------------------------------------------------------------
 
+
 class AdbCommandBackend:
     """Concrete ADB backend used by :class:`ScrcpyScreenshotManager`.
 
@@ -534,7 +523,7 @@ class AdbCommandBackend:
     def __init__(
         self,
         device_id: str,
-        adb_path: Optional[str] = None,
+        adb_path: str | None = None,
         host: str = "127.0.0.1",
     ) -> None:
         self.device_id = device_id
@@ -543,7 +532,7 @@ class AdbCommandBackend:
 
     async def _run(
         self,
-        args: List[str],
+        args: list[str],
         *,
         capture_output: bool = True,
         timeout: float = 30,
@@ -556,16 +545,14 @@ class AdbCommandBackend:
         )
 
     async def push(self, local_path: str, remote_path: str) -> None:
-        result = await self._run(
-            ["push", local_path, remote_path], timeout=120
-        )
+        result = await self._run(["push", local_path, remote_path], timeout=120)
         if result.returncode != 0:
             stderr = (result.stderr or b"").decode("utf-8", errors="replace")
             raise RuntimeError(
                 f"Failed to push scrcpy-server to {remote_path}: {stderr.strip()}"
             )
 
-    async def shell_text(self, args: List[str], timeout: float = 30) -> str:
+    async def shell_text(self, args: list[str], timeout: float = 30) -> str:
         result = await self._run(["shell", *args], timeout=timeout)
         if result.returncode != 0:
             stderr = (result.stderr or b"").decode("utf-8", errors="replace")
@@ -576,9 +563,7 @@ class AdbCommandBackend:
         return (result.stdout or b"").decode("utf-8", errors="replace")
 
     async def forward_tcp(self, remote_socket: str) -> int:
-        result = await self._run(
-            ["forward", "tcp:0", f"localabstract:{remote_socket}"]
-        )
+        result = await self._run(["forward", "tcp:0", f"localabstract:{remote_socket}"])
         if result.returncode != 0:
             stderr = (result.stderr or b"").decode("utf-8", errors="replace")
             raise RuntimeError(
@@ -595,11 +580,9 @@ class AdbCommandBackend:
 
     async def remove_forward(self, local_port: int) -> None:
         with contextlib.suppress(Exception):
-            await self._run(
-                ["forward", "--remove", f"tcp:{local_port}"], timeout=10
-            )
+            await self._run(["forward", "--remove", f"tcp:{local_port}"], timeout=10)
 
-    async def start_server(self, args: List[str]) -> Any:
+    async def start_server(self, args: list[str]) -> Any:
         executable = resolve_adb_executable(self.adb_path)
         return await asyncio.create_subprocess_exec(
             executable,
@@ -618,7 +601,7 @@ class AdbCommandBackend:
             raise RuntimeError(f"ADB screencap failed: {stderr.strip()}")
         return result.stdout or b""
 
-    async def screen_size(self) -> Dict[str, int]:
+    async def screen_size(self) -> dict[str, int]:
         output = await self.shell_text(["wm", "size"])
         match = re.search(r"(\d+)x(\d+)", output)
         if not match:
@@ -633,20 +616,20 @@ class AdbCommandBackend:
 # Manager
 # ---------------------------------------------------------------------------
 
+
 class ScrcpyScreenshotManager:
     """Owns one scrcpy server connection and its latest decoded frame."""
 
     def __init__(
         self,
         adb: Any,
-        push_server: Optional[Callable[[str, str], Any]] = None,
+        push_server: Callable[[str, str], Any] | None = None,
         options: Any = None,
         *,
-        server_path: Optional[str] = None,
+        server_path: str | None = None,
         host: str = "127.0.0.1",
-        connection_factory: Optional[
-            Callable[[str, int], Awaitable[Tuple[Any, Any]]]
-        ] = None,
+        connection_factory: Callable[[str, int], Awaitable[tuple[Any, Any]]]
+        | None = None,
     ) -> None:
         self._adb = adb
         self._push_server = push_server
@@ -698,46 +681,46 @@ class ScrcpyScreenshotManager:
         self._reader: Any = None
         self._writer: Any = None
         self._server_process: Any = None
-        self._server_output_task: Optional[asyncio.Task] = None
-        self._server_output_lines: List[str] = []
-        self._consumer_task: Optional[asyncio.Task] = None
-        self._local_port: Optional[int] = None
-        self._scid: Optional[int] = None
+        self._server_output_task: asyncio.Task | None = None
+        self._server_output_lines: list[str] = []
+        self._consumer_task: asyncio.Task | None = None
+        self._local_port: int | None = None
+        self._scid: int | None = None
         self._controller: Any = None
 
-        self._sps_header: Optional[bytes] = None
+        self._sps_header: bytes | None = None
         self._idle_handle: Any = None
-        self._connection_task: Optional[asyncio.Task] = None
-        self._dispose_task: Optional[asyncio.Task] = None
+        self._connection_task: asyncio.Task | None = None
+        self._dispose_task: asyncio.Task | None = None
         self._disposed = False
         self._initialized = False
-        self._ffmpeg_available: Optional[bool] = None
+        self._ffmpeg_available: bool | None = None
 
-        self._keyframe_waiters: List[asyncio.Future] = []
-        self._keyframe_listeners: Set[Callable[[RawKeyframe], Any]] = set()
+        self._keyframe_waiters: list[asyncio.Future] = []
+        self._keyframe_listeners: set[Callable[[RawKeyframe], Any]] = set()
 
-        self._last_raw_keyframe: Optional[bytes] = None
+        self._last_raw_keyframe: bytes | None = None
         self._last_raw_keyframe_at = 0.0
-        self._last_raw_keyframe_pts_us: Optional[int] = None
-        self._last_raw_keyframe_estimated_age_ms: Optional[float] = None
+        self._last_raw_keyframe_pts_us: int | None = None
+        self._last_raw_keyframe_estimated_age_ms: float | None = None
         self._last_raw_keyframe_stream_epoch: Any = None
         self._stream_epoch: Any = object()
         self._stream_reader_epoch = 0
-        self._video_resolution: Optional[Dict[str, int]] = None
+        self._video_resolution: dict[str, int] | None = None
 
-        self._frame_freshness_barrier_pts_us: Optional[int] = None
-        self._frame_freshness_barrier_reason: Optional[str] = None
-        self._stream_startup_window: Optional[Dict[str, float]] = None
+        self._frame_freshness_barrier_pts_us: int | None = None
+        self._frame_freshness_barrier_reason: str | None = None
+        self._stream_startup_window: dict[str, float] | None = None
         self._frame_freshness_barrier_pending = False
         self._frame_freshness_barrier_generation = 0
-        self._device_clock_calibration: Optional[DeviceClockCalibration] = None
-        self._device_clock_calibration_task: Optional[asyncio.Task] = None
+        self._device_clock_calibration: DeviceClockCalibration | None = None
+        self._device_clock_calibration_task: asyncio.Task | None = None
         self._has_retried_uncertain_clock_calibration = False
-        self._last_frame_pts_us: Optional[int] = None
-        self._frame_freshness_error: Optional[BaseException] = None
+        self._last_frame_pts_us: int | None = None
+        self._frame_freshness_error: BaseException | None = None
         self._last_frame_freshness_warning_at = 0.0
         self._has_established_video_frame = False
-        self._video_reset_state: Optional[Dict[str, Any]] = None
+        self._video_reset_state: dict[str, Any] | None = None
 
     # -- environment ------------------------------------------------------
 
@@ -763,9 +746,7 @@ class ScrcpyScreenshotManager:
                 stderr=asyncio.subprocess.DEVNULL,
             )
             return_code = await asyncio.wait_for(process.wait(), timeout=10)
-            logger.debug(
-                f"ffmpeg is available at: {self.get_ffmpeg_path()}"
-            )
+            logger.debug(f"ffmpeg is available at: {self.get_ffmpeg_path()}")
             return return_code == 0
         except Exception as error:  # noqa: BLE001 - reported as unavailable
             logger.debug(f"ffmpeg is not available: {error}")
@@ -801,9 +782,7 @@ class ScrcpyScreenshotManager:
     async def _call_adb(self, method_name: str, *args: Any, **kwargs: Any) -> Any:
         method = getattr(self._adb, method_name, None)
         if method is None:
-            raise RuntimeError(
-                f"Scrcpy ADB backend does not support {method_name}"
-            )
+            raise RuntimeError(f"Scrcpy ADB backend does not support {method_name}")
         result = method(*args, **kwargs)
         if inspect.isawaitable(result):
             result = await result
@@ -828,9 +807,7 @@ class ScrcpyScreenshotManager:
             return
 
         if self._connection_task is not None:
-            logger.debug(
-                "Connection already in progress, sharing the same attempt..."
-            )
+            logger.debug("Connection already in progress, sharing the same attempt...")
             await asyncio.shield(self._connection_task)
             return
 
@@ -842,7 +819,7 @@ class ScrcpyScreenshotManager:
             if self._connection_task is task and task.done():
                 self._connection_task = None
 
-    def create_scrcpy_options(self) -> Dict[str, Any]:
+    def create_scrcpy_options(self) -> dict[str, Any]:
         """Build the scrcpy server option set (upstream createScrcpyOptions)."""
         codec_options = [
             "i-frame-interval=0",
@@ -868,7 +845,7 @@ class ScrcpyScreenshotManager:
         }
 
     @staticmethod
-    def _build_server_args(server_options: Mapping[str, Any]) -> List[str]:
+    def _build_server_args(server_options: Mapping[str, Any]) -> list[str]:
         def serialize(value: Any) -> str:
             if isinstance(value, bool):
                 return "true" if value else "false"
@@ -907,8 +884,8 @@ class ScrcpyScreenshotManager:
         return args
 
     async def _connect_scrcpy(self) -> None:
-        server_output: List[str] = []
-        server_output_task: Optional[asyncio.Task] = None
+        server_output: list[str] = []
+        server_output_task: asyncio.Task | None = None
 
         try:
             logger.debug("Starting scrcpy connection...")
@@ -927,20 +904,14 @@ class ScrcpyScreenshotManager:
             # tunnel_forward means the device server listens on the abstract
             # socket, so start it before dialing the forwarded port.
             server_args = self._build_server_args(server_options)
-            self._server_process = await self._call_adb(
-                "start_server", server_args
-            )
+            self._server_process = await self._call_adb("start_server", server_args)
             server_output_task = asyncio.ensure_future(
                 self._collect_server_output(self._server_process, server_output)
             )
             self._server_output_task = server_output_task
 
-            self._local_port = int(
-                await self._call_adb("forward_tcp", socket_name)
-            )
-            reader, writer = await self._open_video_connection(
-                self._local_port
-            )
+            self._local_port = int(await self._call_adb("forward_tcp", socket_name))
+            reader, writer = await self._open_video_connection(self._local_port)
             self._reader = reader
             self._writer = writer
 
@@ -969,9 +940,9 @@ class ScrcpyScreenshotManager:
                     )
             raise self._create_connection_error(error, server_output) from error
 
-    async def _open_video_connection(self, local_port: int) -> Tuple[Any, Any]:
+    async def _open_video_connection(self, local_port: int) -> tuple[Any, Any]:
         """Dial the forwarded scrcpy video socket, tolerating server startup."""
-        last_error: Optional[BaseException] = None
+        last_error: BaseException | None = None
         for attempt in range(20):
             try:
                 return await self._connection_factory(self._host, local_port)
@@ -983,7 +954,7 @@ class ScrcpyScreenshotManager:
         assert last_error is not None
         raise last_error
 
-    async def _read_video_header(self, reader: Any) -> Tuple[int, int]:
+    async def _read_video_header(self, reader: Any) -> tuple[int, int]:
         # scrcpy 2.x/3.x: 64-byte device name, 4-byte codec fourcc, u32 width,
         # u32 height.  Legacy 1.x: 64-byte name then u16 width/height.
         await _read_exactly(reader, 64)
@@ -995,14 +966,11 @@ class ScrcpyScreenshotManager:
             width, height = struct.unpack(">HH", first_four)
         if width <= 0 or height <= 0:
             raise RuntimeError(
-                f"Scrcpy video stream reported an invalid size: "
-                f"{width}x{height}"
+                f"Scrcpy video stream reported an invalid size: {width}x{height}"
             )
         return width, height
 
-    async def _collect_server_output(
-        self, process: Any, lines: List[str]
-    ) -> None:
+    async def _collect_server_output(self, process: Any, lines: list[str]) -> None:
         if process is None:
             return
         tasks = []
@@ -1016,7 +984,7 @@ class ScrcpyScreenshotManager:
             return
         await asyncio.gather(*tasks, return_exceptions=True)
 
-    async def _pump_server_stream(self, stream: Any, lines: List[str]) -> None:
+    async def _pump_server_stream(self, stream: Any, lines: list[str]) -> None:
         try:
             while True:
                 try:
@@ -1035,17 +1003,15 @@ class ScrcpyScreenshotManager:
             logger.debug(f"Failed to read scrcpy server output: {error}")
 
     def _create_connection_error(
-        self, error: BaseException, server_output: List[str]
+        self, error: BaseException, server_output: list[str]
     ) -> RuntimeError:
         error_output = getattr(error, "output", None)
         if isinstance(error_output, (list, tuple)):
-            error_output = [
-                line for line in error_output if isinstance(line, str)
-            ]
+            error_output = [line for line in error_output if isinstance(line, str)]
         else:
             error_output = []
 
-        output: List[str] = []
+        output: list[str] = []
         for line in [*error_output, *server_output]:
             if isinstance(line, str) and line.strip() and line not in output:
                 output.append(line)
@@ -1054,9 +1020,7 @@ class ScrcpyScreenshotManager:
         output_details = (
             "\nScrcpy server output:\n" + "\n".join(output) if output else ""
         )
-        return RuntimeError(
-            f"Failed to connect scrcpy: {message}{output_details}"
-        )
+        return RuntimeError(f"Failed to connect scrcpy: {message}{output_details}")
 
     def _start_frame_consumer(self) -> None:
         if self._reader is None:
@@ -1067,7 +1031,7 @@ class ScrcpyScreenshotManager:
         )
 
     async def _consume_frames_loop(
-        self, reader: Any, stream_reader_epoch: Optional[int] = None
+        self, reader: Any, stream_reader_epoch: int | None = None
     ) -> None:
         if stream_reader_epoch is None:
             stream_reader_epoch = self._stream_reader_epoch
@@ -1113,31 +1077,26 @@ class ScrcpyScreenshotManager:
                     window_start = _now_ms()
 
                 packet_pts = None if pts == _FRAME_CONFIG_PTS else pts
-                self._process_packet(
-                    data, packet_pts, stream_reader_epoch
-                )
+                self._process_packet(data, packet_pts, stream_reader_epoch)
         except asyncio.IncompleteReadError:
             pass
         except asyncio.CancelledError:
             raise
         except Exception as error:  # noqa: BLE001 - stream teardown
             end_reason = "stream error"
-            logger.debug(
-                f"Frame consumer error (total reads: {total_reads}): {error}"
-            )
+            logger.debug(f"Frame consumer error (total reads: {total_reads}): {error}")
 
         if self._reader is reader:
             await self.disconnect()
         logger.debug(
-            f"Frame consumer loop ended ({end_reason}, total reads: "
-            f"{total_reads})"
+            f"Frame consumer loop ended ({end_reason}, total reads: {total_reads})"
         )
 
     def _process_packet(
         self,
         data: bytes,
-        pts: Optional[int],
-        stream_reader_epoch: Optional[int] = None,
+        pts: int | None,
+        stream_reader_epoch: int | None = None,
     ) -> None:
         """Process one framed scrcpy packet (upstream ``processFrame``)."""
         if stream_reader_epoch is None:
@@ -1147,10 +1106,7 @@ class ScrcpyScreenshotManager:
 
         if pts is None:
             self._sps_header = bytes(data)
-            logger.debug(
-                "Received SPS/PPS configuration: "
-                f"{len(self._sps_header)}B"
-            )
+            logger.debug(f"Received SPS/PPS configuration: {len(self._sps_header)}B")
             return
 
         active_reset = self._video_reset_state
@@ -1227,9 +1183,7 @@ class ScrcpyScreenshotManager:
                 adb_path=getattr(self._adb, "adb_path", None),
             )
             if result.returncode != 0:
-                stderr = (result.stderr or b"").decode(
-                    "utf-8", errors="replace"
-                )
+                stderr = (result.stderr or b"").decode("utf-8", errors="replace")
                 raise RuntimeError(
                     "Unable to read Android device uptime "
                     f"(exit {result.returncode}): {stderr.strip()}"
@@ -1240,8 +1194,7 @@ class ScrcpyScreenshotManager:
         finished_at_wall_ms = time.time() * 1000
         return DeviceClockCalibration(
             device_uptime_us=parse_device_uptime_ms(output) * 1_000,
-            host_monotonic_us=started_at_us
-            + (finished_at_us - started_at_us) // 2,
+            host_monotonic_us=started_at_us + (finished_at_us - started_at_us) // 2,
             host_wall_time_ms=started_at_wall_ms
             + (finished_at_wall_ms - started_at_wall_ms) / 2,
             round_trip_us=finished_at_us - started_at_us,
@@ -1254,21 +1207,17 @@ class ScrcpyScreenshotManager:
             await asyncio.shield(self._device_clock_calibration_task)
             if self._device_clock_calibration is None:
                 raise RuntimeError(
-                    "Scrcpy stream epoch changed while calibrating the frame "
-                    "clock"
+                    "Scrcpy stream epoch changed while calibrating the frame clock"
                 )
             return
 
-        calibration_task = asyncio.ensure_future(
-            self._read_device_clock_calibration()
-        )
+        calibration_task = asyncio.ensure_future(self._read_device_clock_calibration())
         self._device_clock_calibration_task = calibration_task
         try:
             sampled = await asyncio.shield(calibration_task)
             if self._device_clock_calibration_task is not calibration_task:
                 raise RuntimeError(
-                    "Scrcpy stream epoch changed while calibrating the frame "
-                    "clock"
+                    "Scrcpy stream epoch changed while calibrating the frame clock"
                 )
 
             previous = self._device_clock_calibration
@@ -1302,7 +1251,7 @@ class ScrcpyScreenshotManager:
     async def set_freshness_barrier(
         self,
         reason: str,
-        options: Optional[Mapping[str, Any]] = None,
+        options: Mapping[str, Any] | None = None,
     ) -> int:
         """Arm a PTS barrier projected onto the device clock (upstream)."""
         cached_frame = self._get_cached_keyframe_candidate()
@@ -1315,8 +1264,7 @@ class ScrcpyScreenshotManager:
             calibration = self._device_clock_calibration
             if calibration is None:
                 raise RuntimeError(
-                    "Scrcpy frame clock is not calibrated for the current "
-                    "stream epoch"
+                    "Scrcpy frame clock is not calibrated for the current stream epoch"
                 )
 
             host_monotonic_us = _option(
@@ -1358,8 +1306,7 @@ class ScrcpyScreenshotManager:
             if (
                 cached_frame is not None
                 and cached_frame.pts_us is not None
-                and cached_frame.pts_us
-                >= self._frame_freshness_barrier_pts_us
+                and cached_frame.pts_us >= self._frame_freshness_barrier_pts_us
             ):
                 self._restore_frame_cache(cached_frame)
                 logger.debug(
@@ -1385,7 +1332,7 @@ class ScrcpyScreenshotManager:
                 raise self._frame_freshness_error from error
             raise
 
-    def _is_frame_fresh(self, packet_pts_us: Optional[int]) -> bool:
+    def _is_frame_fresh(self, packet_pts_us: int | None) -> bool:
         if self._frame_freshness_barrier_pending:
             return False
 
@@ -1429,9 +1376,7 @@ class ScrcpyScreenshotManager:
             self._frame_freshness_error = None
             return True
 
-        behind_barrier_us = (
-            self._frame_freshness_barrier_pts_us - packet_pts_us
-        )
+        behind_barrier_us = self._frame_freshness_barrier_pts_us - packet_pts_us
         self._frame_freshness_error = RuntimeError(
             "Scrcpy frame predates the "
             f"{self._frame_freshness_barrier_reason or 'active'} freshness "
@@ -1443,19 +1388,17 @@ class ScrcpyScreenshotManager:
 
     def _estimate_frame_age_us(
         self,
-        packet_pts_us: Optional[int],
-        host_monotonic_us: Optional[int] = None,
-    ) -> Optional[int]:
-        estimate = self._estimate_frame_age(
-            packet_pts_us, host_monotonic_us
-        )
+        packet_pts_us: int | None,
+        host_monotonic_us: int | None = None,
+    ) -> int | None:
+        estimate = self._estimate_frame_age(packet_pts_us, host_monotonic_us)
         return None if estimate is None else estimate.estimated_age_us
 
     def _estimate_frame_age(
         self,
-        packet_pts_us: Optional[int],
-        host_monotonic_us: Optional[int] = None,
-    ) -> Optional[FrameAgeEstimate]:
+        packet_pts_us: int | None,
+        host_monotonic_us: int | None = None,
+    ) -> FrameAgeEstimate | None:
         calibration = self._device_clock_calibration
         if packet_pts_us is None or calibration is None:
             return None
@@ -1493,15 +1436,14 @@ class ScrcpyScreenshotManager:
 
     def _is_frame_age_acceptable(
         self,
-        packet_pts_us: Optional[int],
-        host_monotonic_us: Optional[int] = None,
+        packet_pts_us: int | None,
+        host_monotonic_us: int | None = None,
     ) -> bool:
         age = self._estimate_frame_age(packet_pts_us, host_monotonic_us)
         if age is None:
             if packet_pts_us is None:
                 message = (
-                    "Scrcpy frame has no PTS metadata; cannot prove its "
-                    "absolute age"
+                    "Scrcpy frame has no PTS metadata; cannot prove its absolute age"
                 )
             else:
                 message = (
@@ -1545,8 +1487,8 @@ class ScrcpyScreenshotManager:
             self._last_frame_freshness_warning_at = now
 
     def _estimate_frame_timing(
-        self, packet_pts_us: Optional[int], received_at_us: int
-    ) -> Tuple[float, Optional[float]]:
+        self, packet_pts_us: int | None, received_at_us: int
+    ) -> tuple[float, float | None]:
         calibration = self._device_clock_calibration
         if packet_pts_us is None or calibration is None:
             return time.time() * 1000, None
@@ -1555,9 +1497,10 @@ class ScrcpyScreenshotManager:
             self._estimate_frame_age_us(packet_pts_us, received_at_us) or 0
         )
         estimated_age_ms = estimated_age_us / 1000
-        received_at_wall_time_ms = calibration.host_wall_time_ms + (
-            received_at_us - calibration.host_monotonic_us
-        ) / 1000
+        received_at_wall_time_ms = (
+            calibration.host_wall_time_ms
+            + (received_at_us - calibration.host_monotonic_us) / 1000
+        )
         return (
             received_at_wall_time_ms - estimated_age_ms,
             estimated_age_ms,
@@ -1601,8 +1544,8 @@ class ScrcpyScreenshotManager:
     # -- video reset ------------------------------------------------------
 
     async def _request_video_reset(
-        self, deadline_at: Optional[float] = None
-    ) -> Dict[str, Any]:
+        self, deadline_at: float | None = None
+    ) -> dict[str, Any]:
         if deadline_at is None:
             deadline_at = _now_ms() + FRESH_FRAME_TIMEOUT_MS
 
@@ -1610,19 +1553,15 @@ class ScrcpyScreenshotManager:
         if active_reset is not None:
             write_task = active_reset.get("write_task")
             if write_task is not None:
-                await self._wait_for_video_reset_write(
-                    write_task, deadline_at
-                )
+                await self._wait_for_video_reset_write(write_task, deadline_at)
             return active_reset
 
         controller = self._controller
         reset_video = getattr(controller, "reset_video", None)
         if reset_video is None:
-            raise RuntimeError(
-                "Scrcpy control channel is unavailable for video reset"
-            )
+            raise RuntimeError("Scrcpy control channel is unavailable for video reset")
 
-        reset_state: Dict[str, Any] = {
+        reset_state: dict[str, Any] = {
             "previous_sps_header": self._sps_header,
             "write_task": None,
             "frame_accepted": False,
@@ -1672,14 +1611,10 @@ class ScrcpyScreenshotManager:
     ) -> None:
         remaining_ms = deadline_at - _now_ms()
         if remaining_ms <= 0:
-            raise RuntimeError(
-                "Scrcpy video reset exceeded the freshness deadline"
-            )
+            raise RuntimeError("Scrcpy video reset exceeded the freshness deadline")
         try:
-            await asyncio.wait_for(
-                asyncio.shield(write_task), remaining_ms / 1000
-            )
-        except asyncio.TimeoutError as error:
+            await asyncio.wait_for(asyncio.shield(write_task), remaining_ms / 1000)
+        except TimeoutError as error:
             raise RuntimeError(
                 "Scrcpy video reset exceeded the freshness deadline"
             ) from error
@@ -1756,8 +1691,7 @@ class ScrcpyScreenshotManager:
         self._reset_idle_timer()
 
         logger.debug(
-            f"Decoding H.264 stream: {len(keyframe_buffer)} bytes "
-            "(post-barrier)"
+            f"Decoding H.264 stream: {len(keyframe_buffer)} bytes (post-barrier)"
         )
 
         decode_start = _now_ms()
@@ -1778,12 +1712,12 @@ class ScrcpyScreenshotManager:
         jpeg = await self.get_screenshot_jpeg()
         return base64.b64encode(jpeg).decode("ascii")
 
-    def get_resolution(self) -> Optional[Dict[str, int]]:
+    def get_resolution(self) -> dict[str, int] | None:
         if self._video_resolution is None:
             return None
         return dict(self._video_resolution)
 
-    async def size(self) -> Optional[Dict[str, int]]:
+    async def size(self) -> dict[str, int] | None:
         return self.get_resolution()
 
     def _notify_keyframe_waiters(self, frame: RawKeyframe) -> None:
@@ -1799,7 +1733,7 @@ class ScrcpyScreenshotManager:
         self._keyframe_waiters.append(waiter)
         try:
             return await asyncio.wait_for(waiter, timeout_ms / 1000)
-        except asyncio.TimeoutError as error:
+        except TimeoutError as error:
             if waiter in self._keyframe_waiters:
                 self._keyframe_waiters.remove(waiter)
             raise RuntimeError(
@@ -1809,10 +1743,7 @@ class ScrcpyScreenshotManager:
     async def _wait_for_keyframe(self) -> None:
         start_time = _now_ms()
 
-        while (
-            not self._sps_header
-            and _now_ms() - start_time < MAX_KEYFRAME_WAIT_MS
-        ):
+        while not self._sps_header and _now_ms() - start_time < MAX_KEYFRAME_WAIT_MS:
             elapsed = _now_ms() - start_time
             logger.debug(
                 f"Waiting for first keyframe (SPS/PPS header)... {elapsed:.0f}ms"
@@ -1826,22 +1757,16 @@ class ScrcpyScreenshotManager:
                 "issues. Please retry."
             )
 
-    async def _is_planning_candidate_fresh_enough(
-        self, candidate: RawKeyframe
-    ) -> bool:
+    async def _is_planning_candidate_fresh_enough(self, candidate: RawKeyframe) -> bool:
         if candidate.pts_us is None:
             raise RuntimeError(
-                "Scrcpy frame has no PTS metadata; cannot prove planning "
-                "freshness"
+                "Scrcpy frame has no PTS metadata; cannot prove planning freshness"
             )
 
-        age = self._estimate_frame_age(
-            candidate.pts_us, self._monotonic_time_us()
-        )
+        age = self._estimate_frame_age(candidate.pts_us, self._monotonic_time_us())
         if age is None:
             raise RuntimeError(
-                "Scrcpy frame clock is not calibrated; cannot prove planning "
-                "freshness"
+                "Scrcpy frame clock is not calibrated; cannot prove planning freshness"
             )
 
         if age.upper_bound_us <= MAX_FRAME_AGE_US:
@@ -1919,14 +1844,13 @@ class ScrcpyScreenshotManager:
     async def _wait_for_planning_frame(self) -> RawKeyframe:
         planning_barrier_armed = False
         video_reset_attempted = False
-        video_reset: Optional[Dict[str, Any]] = None
+        video_reset: dict[str, Any] | None = None
         planning_started_at = _now_ms()
 
         startup_window_remaining_ms = 0.0
         if self._stream_startup_window is not None:
             startup_window_remaining_ms = (
-                self._stream_startup_window["deadline_at"]
-                - planning_started_at
+                self._stream_startup_window["deadline_at"] - planning_started_at
             )
             if startup_window_remaining_ms <= 0:
                 self._stream_startup_window = None
@@ -1953,9 +1877,7 @@ class ScrcpyScreenshotManager:
             remaining_ms = deadline - _now_ms()
             if remaining_ms <= 0:
                 if video_reset is not None:
-                    raise self._create_video_reset_frame_timeout_error(
-                        video_reset
-                    )
+                    raise self._create_video_reset_frame_timeout_error(video_reset)
                 raise RuntimeError(
                     "No scrcpy frame crossed the active freshness target "
                     f"within {FRESH_FRAME_TIMEOUT_MS}ms"
@@ -1969,15 +1891,11 @@ class ScrcpyScreenshotManager:
                 and remaining_ms > VIDEO_RESET_DELAY_MS
             )
             next_frame_wait_ms = (
-                VIDEO_RESET_DELAY_MS
-                if should_try_video_reset
-                else remaining_ms
+                VIDEO_RESET_DELAY_MS if should_try_video_reset else remaining_ms
             )
 
             try:
-                candidate = await self._wait_for_next_keyframe(
-                    next_frame_wait_ms
-                )
+                candidate = await self._wait_for_next_keyframe(next_frame_wait_ms)
             except Exception as error:  # noqa: BLE001 - deadline handling
                 if not should_try_video_reset:
                     if video_reset is not None:
@@ -1988,21 +1906,17 @@ class ScrcpyScreenshotManager:
                 video_reset_attempted = True
                 try:
                     video_reset = await self._request_video_reset(deadline)
-                    deadline = (
-                        _now_ms() + self.options.video_reset_frame_timeout_ms
-                    )
+                    deadline = _now_ms() + self.options.video_reset_frame_timeout_ms
                     logger.debug(
                         "Scrcpy video reset control write completed; waiting "
                         f"up to {self.options.video_reset_frame_timeout_ms}ms "
                         "for a post-reset frame"
                     )
                 except Exception as reset_error:  # noqa: BLE001
-                    logger.debug(
-                        f"Unable to request scrcpy video reset: {reset_error}"
-                    )
+                    logger.debug(f"Unable to request scrcpy video reset: {reset_error}")
                 candidate = self._get_cached_keyframe_candidate()
 
-    def _get_cached_keyframe_candidate(self) -> Optional[RawKeyframe]:
+    def _get_cached_keyframe_candidate(self) -> RawKeyframe | None:
         if self._last_raw_keyframe is None or not self._sps_header:
             return None
         return RawKeyframe(
@@ -2014,7 +1928,7 @@ class ScrcpyScreenshotManager:
             captured_at=self._last_raw_keyframe_at,
         )
 
-    def get_latest_raw_keyframe(self) -> Optional[RawKeyframe]:
+    def get_latest_raw_keyframe(self) -> RawKeyframe | None:
         frame = self._get_cached_keyframe_candidate()
         if frame is None or not self._is_frame_age_acceptable(frame.pts_us):
             return None
@@ -2062,15 +1976,13 @@ class ScrcpyScreenshotManager:
                 stderr=asyncio.subprocess.PIPE,
             )
         except Exception as error:  # noqa: BLE001 - reported to caller
-            raise RuntimeError(
-                f"Failed to spawn ffmpeg process: {error}"
-            ) from error
+            raise RuntimeError(f"Failed to spawn ffmpeg process: {error}") from error
 
         try:
             stdout, stderr = await asyncio.wait_for(
                 process.communicate(h264_buffer), timeout=30
             )
-        except asyncio.TimeoutError as error:
+        except TimeoutError as error:
             with contextlib.suppress(Exception):
                 process.kill()
             await process.wait()
@@ -2079,9 +1991,7 @@ class ScrcpyScreenshotManager:
             ) from error
 
         if process.returncode == 0 and stdout:
-            logger.debug(
-                f"FFmpeg decode successful, JPEG size: {len(stdout)} bytes"
-            )
+            logger.debug(f"FFmpeg decode successful, JPEG size: {len(stdout)} bytes")
             return stdout
 
         error_message = (

@@ -91,8 +91,7 @@ def test_throws_when_no_action_output_example_is_provided():
     with pytest.raises(
         ValueError,
         match=(
-            "Cannot build planning response example without an action output "
-            "example"
+            "Cannot build planning response example without an action output example"
         ),
     ):
         build_planning_response_example(

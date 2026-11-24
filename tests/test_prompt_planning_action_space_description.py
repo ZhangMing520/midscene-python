@@ -118,14 +118,17 @@ def test_skips_action_output_examples_when_the_action_space_protocol_excludes_th
         build_action_output,
     )
 
-    assert build_planning_action_space_description(
-        action_space=[
-            {
-                "name": "Tap",
-                "sample": {"locate": {"prompt": "the Submit button"}},
-                "locate_fields": ["locate"],
-            }
-        ],
-        planning_protocol=planning_protocol,
-    ) == '{"name":"Tap"}'
+    assert (
+        build_planning_action_space_description(
+            action_space=[
+                {
+                    "name": "Tap",
+                    "sample": {"locate": {"prompt": "the Submit button"}},
+                    "locate_fields": ["locate"],
+                }
+            ],
+            planning_protocol=planning_protocol,
+        )
+        == '{"name":"Tap"}'
+    )
     assert calls["build_action_output"] == []

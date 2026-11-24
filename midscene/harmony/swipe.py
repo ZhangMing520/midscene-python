@@ -1,7 +1,6 @@
 """HarmonyOS swipe speed resolution (upstream swipe.ts)."""
 
 import math
-from typing import Dict
 
 from midscene.harmony.hdc_constraints import UI_INPUT_SPEED_RANGE
 
@@ -9,7 +8,8 @@ DEFAULT_SWIPE_DURATION_MS = 300
 
 
 def resolve_swipe_speed(
-    start: Dict[str, float], end: Dict[str, float],
+    start: dict[str, float],
+    end: dict[str, float],
     duration_ms: int = DEFAULT_SWIPE_DURATION_MS,
 ) -> int:
     """Convert a duration into the uitest px/s speed, clamped to the supported

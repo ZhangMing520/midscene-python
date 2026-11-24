@@ -13,4 +13,3 @@ class TestSiwcPublicEntry:
         error = public.SiwcError("fixture")
         assert type(error).__name__ == "SiwcError"
         assert isinstance(error, internals.SiwcError)
-

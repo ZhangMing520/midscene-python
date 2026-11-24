@@ -10,7 +10,8 @@ parts (instructions/task).
 """
 
 import re
-from typing import Any, Dict, List, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from midscene.core.ai_model.shared.multimodal_prompt import resolve_reference_image
 
@@ -34,10 +35,10 @@ def _invalid(order: str, reason: str) -> ValueError:
 
 def parse_locate_prompt_order(
     order: str = DEFAULT_LOCATE_PROMPT_ORDER,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Parse a promptOrder string into ``{"groups": [...]}``."""
     remaining = set(PARTS)
-    groups: List[Dict[str, Any]] = []
+    groups: list[dict[str, Any]] = []
 
     for group in re.split(r"(?<=\)):", order):
         match = re.match(r"^(system|userTogether|userEach)\(([^()]+)\)$", group)
@@ -64,9 +65,9 @@ def parse_locate_prompt_order(
 
 
 def build_locate_messages(
-    order: Dict[str, Any],
-    locate_input: Dict[str, Any],
-) -> List[Dict[str, Any]]:
+    order: dict[str, Any],
+    locate_input: dict[str, Any],
+) -> list[dict[str, Any]]:
     """Assemble locate messages by the parsed prompt order."""
     instructions = locate_input["instructions"]
     screenshot = locate_input["screenshot"]
@@ -79,7 +80,7 @@ def build_locate_messages(
         "references": references,
     }
 
-    messages: List[Dict[str, Any]] = []
+    messages: list[dict[str, Any]] = []
     for group in order["groups"]:
         if group["mode"] == "system":
             messages.append(
@@ -90,7 +91,7 @@ def build_locate_messages(
             )
             continue
 
-        expanded: List[Dict[str, Any]] = []
+        expanded: list[dict[str, Any]] = []
         for part in group["parts"]:
             if part == "references":
                 expanded.extend(references)
@@ -104,7 +105,7 @@ def build_locate_messages(
         if group["mode"] == "userEach":
             messages.extend(expanded)
         elif expanded:
-            content: List[Dict[str, Any]] = []
+            content: list[dict[str, Any]] = []
             for message in expanded:
                 if isinstance(message["content"], str):
                     content.append({"type": "text", "text": message["content"]})
@@ -115,12 +116,12 @@ def build_locate_messages(
 
 
 def prepared_reference_images_to_messages(
-    reference_images: Sequence[Dict[str, str]],
-) -> List[Dict[str, Any]]:
+    reference_images: Sequence[dict[str, str]],
+) -> list[dict[str, Any]]:
     """Reference-image user messages (upstream preparedReferenceImagesToMessages)."""
     if not reference_images:
         return []
-    messages: List[Dict[str, Any]] = [
+    messages: list[dict[str, Any]] = [
         {"role": "user", "content": [{"type": "text", "text": REFERENCE_IMAGES_INTRO}]}
     ]
     for image in reference_images:
@@ -144,12 +145,12 @@ def prepared_reference_images_to_messages(
     return messages
 
 
-def multimodal_prompt_to_messages(prompt: Any) -> List[Dict[str, Any]]:
+def multimodal_prompt_to_messages(prompt: Any) -> list[dict[str, Any]]:
     """Reference messages for a TUserPrompt's markdown images."""
     if not isinstance(prompt, dict) or not prompt.get("images"):
         return []
     convert_http = bool(prompt.get("convertHttpImage2Base64", False))
-    prepared: List[Dict[str, str]] = []
+    prepared: list[dict[str, str]] = []
     for item in prompt["images"]:
         url = resolve_reference_image(item, convert_http)
         if url:
