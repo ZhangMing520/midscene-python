@@ -1,13 +1,12 @@
-.PHONY: help install dev test lint format clean build docs requirements-freeze requirements-check check-docs
+.PHONY: help install dev sync lock test lint format clean build docs check-docs
 
 # Default target
 help:
 	@echo "Available commands:"
-	@echo "  install            Install package and dependencies"
+	@echo "  install            Install package with locked dependencies"
 	@echo "  dev                Install development dependencies"
-	@echo "  requirements-freeze    Generate complete requirements.txt"
-	@echo "  requirements-check     Verify dependencies integrity"
-	@echo "  requirements-quick-check Quick requirements validation"
+	@echo "  sync               Sync all extras from uv.lock"
+	@echo "  lock               Update uv.lock"
 	@echo "  test               Run tests"
 	@echo "  check-docs         Verify alignment docs match the repository"
 	@echo "  lint               Run linting"
@@ -16,26 +15,18 @@ help:
 	@echo "  build              Build package"
 	@echo "  docs               Build documentation"
 
-# Generate complete requirements.txt with all dependencies
-requirements-freeze:
-	uv pip compile --all-extras pyproject.toml -o requirements.txt
+# Update the project lockfile
+lock:
+	uv lock --default-index https://pypi.org/simple
 
-# Verify dependencies integrity
-requirements-check:
-	uv pip check
-	@python scripts/validate_requirements.py
+# Install the project and all extras from uv.lock
+sync:
+	uv sync --all-extras --locked --default-index https://pypi.org/simple
 
-# Quick requirements validation
-requirements-quick-check:
-	@scripts/quick_validate.bat
+install: sync
 
-# Install package from requirements.txt
-install:
-	pip install -r requirements.txt
-
-# Install package in development mode
-install-dev:
-	pip install -e ".[dev,docs]"
+# Install development dependencies in development mode
+install-dev: sync
 	pre-commit install
 
 # Install development dependencies (alias for backward compatibility)
