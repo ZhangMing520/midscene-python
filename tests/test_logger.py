@@ -1,10 +1,19 @@
 """Synced from upstream packages/shared/tests/unit-test/logger.test.ts."""
 
 import asyncio
+from typing import get_type_hints
 
 import pytest
+from loguru._logger import Logger
 
 from midscene.shared import logger as logger_module
+
+
+def test_get_logger_annotations_resolve_at_runtime():
+    assert get_type_hints(logger_module.get_logger) == {
+        "name": str,
+        "return": Logger,
+    }
 
 
 def test_overrides_the_file_log_directory_for_the_current_process(tmp_path):

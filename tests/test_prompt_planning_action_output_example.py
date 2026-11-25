@@ -1,13 +1,25 @@
 """Synced from upstream packages/core/tests/unit-test/prompt/planning/action-output-example.test.ts."""
 
+from typing import get_type_hints
+
 from midscene.core.ai_model.model_adapter.default_planning_protocol import (
     build_planning_action_output,
     create_default_planning_protocol,
+)
+from midscene.core.ai_model.model_adapter.planning_protocol import (
+    ActionOutputBuilder,
 )
 from midscene.core.ai_model.prompt.planning.action_output_example import (
     build_action_output_example,
     create_sample_tap_action,
 )
+
+
+def test_build_action_output_example_annotations_resolve_at_runtime():
+    assert (
+        get_type_hints(build_action_output_example)["build_action_output"]
+        == ActionOutputBuilder
+    )
 
 
 def test_serializes_an_action_type_and_structured_parameters():

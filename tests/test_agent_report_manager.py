@@ -8,11 +8,13 @@ contract is exercised without constructing a real device.
 """
 
 from types import SimpleNamespace
+from typing import get_type_hints
 
 import pytest
 
 from midscene.core.agent import agent_report_manager as report_manager
 from midscene.core.agent import report_file_name
+from midscene.core.dump import ExecutionDumpBuilder
 
 
 class FakeAgent:
@@ -77,6 +79,12 @@ def _execution(execution_id):
 def create_manager():
     agent = FakeAgent()
     return agent
+
+
+def test_get_report_builder_annotations_resolve_at_runtime():
+    hints = get_type_hints(report_manager.get_report_builder)
+    assert hints["return"] is ExecutionDumpBuilder
+    assert "agent" in hints
 
 
 def test_does_not_serialize_a_dump_when_no_listeners_are_registered():

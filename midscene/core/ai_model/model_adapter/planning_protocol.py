@@ -5,7 +5,6 @@ from typing import Any, TypedDict
 
 JsonParser = Callable[..., Any]
 ParsePlanningActionOutput = Callable[[str, list[Any] | None], dict[str, Any] | None]
-ActionOutputBuilder = Callable[["PlanningActionOutputBuildInput"], str]
 
 
 class PlanningActionOutputBuildInput(TypedDict, total=False):
@@ -13,6 +12,9 @@ class PlanningActionOutputBuildInput(TypedDict, total=False):
     param: dict[str, Any]
     locateFields: list[str]
     locateResultKey: str | None
+
+
+ActionOutputBuilder = Callable[[PlanningActionOutputBuildInput], str]
 
 
 class PlanningActionOutputProtocol(TypedDict):

@@ -6,10 +6,11 @@ import asyncio
 import time
 from typing import TYPE_CHECKING, Any, Protocol, cast
 
+from midscene.core.agent.ui_observer import UIObserver
 from midscene.core.test_runner.errors import NodeExecutionError
 
 if TYPE_CHECKING:
-    from midscene.core.agent.ui_observer import UIObservation, UIObserver
+    from midscene.core.agent.ui_observer import UIObservation
     from midscene.core.ai_model.models import ModelRuntime
     from midscene.core.types import UIContext
 
@@ -49,8 +50,6 @@ def start_observing(
     TODO: docs/quickstart.md covers the YAML flow items but not this Python
     API yet.
     """
-    from midscene.core.agent.ui_observer import UIObserver
-
     if agent._frozen:
         raise RuntimeError(
             "startObserving() cannot be used while the UI context is "

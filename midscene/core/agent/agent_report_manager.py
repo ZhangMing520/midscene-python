@@ -11,8 +11,9 @@ from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from loguru import logger
 
+from midscene.core.dump import ExecutionDumpBuilder
+
 if TYPE_CHECKING:
-    from midscene.core.dump import ExecutionDumpBuilder
     from midscene.core.dump.report_artifact_store import ReportArtifactStore
     from midscene.core.types import InterfaceType
 
@@ -62,8 +63,6 @@ class _ReportAgent(Protocol):
 
 def get_report_builder(agent: _ReportAgent) -> ExecutionDumpBuilder:
     if agent._report_builder is None:
-        from midscene.core.dump import ExecutionDumpBuilder
-
         tag = getattr(agent.interface_type, "value", agent.interface_type)
         agent._report_builder = ExecutionDumpBuilder(
             group_name=getattr(agent.options, "group_name", "Midscene Report"),

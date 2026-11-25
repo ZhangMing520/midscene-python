@@ -7,9 +7,17 @@ The web-target case is ported; cases that assert the Node-only
 counterpart and are not included.
 """
 
+from typing import get_type_hints
+
 import pytest
 
-from midscene.cli.create_yaml_player import create_agent_for_script
+from midscene.cli.create_yaml_player import ScriptAgent, create_agent_for_script
+from midscene.core.agent.agent_options import AgentOptions
+
+
+def test_script_agent_annotations_resolve_at_runtime():
+    assert get_type_hints(ScriptAgent)["options"] is AgentOptions
+    assert "return" in get_type_hints(create_agent_for_script)
 
 
 @pytest.mark.asyncio

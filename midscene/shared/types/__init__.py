@@ -10,6 +10,7 @@ from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import (
+    TYPE_CHECKING,
     Any,
     Generic,
     Optional,
@@ -364,8 +365,15 @@ class AbstractInterface(ABC):
     async def replace_input(self, text: str) -> None:
         raise NotImplementedError("replace_input is not supported on this interface")
 
-    async def swipe(self, direction: str, /, *, distance: int | None = None) -> None:
-        raise NotImplementedError("swipe is not supported on this interface")
+    if TYPE_CHECKING:
+        # Mobile subclasses retain their legacy coordinate-based swipe signatures.
+        async def swipe(
+            self, direction: str, /, *, distance: int | None = None
+        ) -> None: ...
+    else:
+
+        async def swipe(self, direction: str, distance: int | None = None) -> None:
+            raise NotImplementedError("swipe is not supported on this interface")
 
     async def swipe_points(
         self,

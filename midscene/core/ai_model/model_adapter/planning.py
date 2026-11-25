@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, TypedDict, cast
+from typing import Any, TypedDict, cast
 
 from midscene.core.ai_model.model_adapter.custom_planning_types import (
     CustomPlanningDefinition,
@@ -15,9 +15,7 @@ from midscene.core.ai_model.shared.model_locate_result import (
     create_locate_result_codec,
     resolve_locate_result_coordinates,
 )
-
-if TYPE_CHECKING:
-    from midscene.core.ai_model.workflows.planning.types import PlanFn
+from midscene.core.ai_model.workflows.planning.types import PlanFn
 
 DEFAULT_REPLANNING_CYCLE_LIMIT = 20
 

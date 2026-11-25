@@ -1,11 +1,21 @@
 """Synced from upstream packages/core/tests/unit-test/service-caller-siwc.test.ts."""
 
-from typing import Any
+from typing import Any, get_type_hints
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from midscene.core.ai_model.model_adapter.types import ModelRuntime
+from midscene.core.ai_model.service_caller.openai.siwc.prepare_call import (
+    prepare_siwc_call,
+)
 from tests.core_helpers import FakeResponse
+
+
+def test_prepare_siwc_call_annotations_resolve_at_runtime():
+    hints = get_type_hints(prepare_siwc_call)
+    assert hints["model_runtime"] is ModelRuntime
+    assert hints["return"] == tuple[ModelRuntime, dict[str, Any] | None]
 
 
 def _chat_completion_payload(content: str = "ok") -> dict[str, Any]:

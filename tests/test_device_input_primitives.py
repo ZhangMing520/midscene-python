@@ -1,5 +1,7 @@
 """Synced from upstream packages/core/tests/unit-test/device/input-primitives.test.ts."""
 
+import pytest
+
 
 def _make_agent(interface):
     from midscene.core.agent.agent import Agent
@@ -59,3 +61,30 @@ class TestDeviceInputPrimitives:
         assert {"Tap", "Input", "Scroll"} <= names
         assert "DragAndDrop" not in names
         assert "RightClick" not in names
+
+    @pytest.mark.asyncio
+    async def test_base_swipe_accepts_positional_distance(self):
+        from midscene.core.types import AbstractInterface, InterfaceType
+
+        class SwipeInterface(AbstractInterface):
+            @property
+            def interface_type(self):
+                return InterfaceType.WEB
+
+            async def get_context(self):
+                return None
+
+            async def action_space(self):
+                return []
+
+            async def tap(self, x, y):
+                pass
+
+            async def input_text(self, text):
+                pass
+
+            async def scroll(self, direction, distance=None, **kwargs):
+                pass
+
+        with pytest.raises(NotImplementedError, match="swipe is not supported"):
+            await SwipeInterface().swipe("up", 100)

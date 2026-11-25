@@ -17,6 +17,9 @@ from midscene.shared.common import get_midscene_run_sub_dir
 
 if TYPE_CHECKING:
     from loguru import Logger
+else:
+    # Loguru exposes Logger only to type checkers, not at runtime.
+    from loguru._logger import Logger
 
 # Console handler/scope context (upstream runWithConsoleLogHandler / Scope).
 _console_handler: contextvars.ContextVar[Callable[[dict[str, Any]], None] | None] = (

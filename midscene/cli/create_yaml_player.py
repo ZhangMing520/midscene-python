@@ -9,10 +9,10 @@ from rich.console import Console
 
 from midscene.cli.cli_utils import _resolve_served_url
 from midscene.cli.config_factory import _build_agent_options
+from midscene.core.agent.agent_options import AgentOptions
 from midscene.web_integration.common.viewport import parse_viewport_dimension
 
 if TYPE_CHECKING:
-    from midscene.core.agent.agent_options import AgentOptions
     from midscene.web_integration import PlaywrightWebPage
 
 

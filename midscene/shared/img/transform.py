@@ -16,11 +16,11 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, Protocol, cast
 
 import httpx
+from PIL.Image import Image as PILImage
 
 from midscene.shared.img.info import encoded_image_info_of_buffer
 
 if TYPE_CHECKING:
-    from PIL.Image import Image as PILImage
     from PIL.Image import Resampling
     from PIL.ImageFile import ImageFile
 

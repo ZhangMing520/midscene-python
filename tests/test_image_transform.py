@@ -15,6 +15,7 @@ docstring of each test.
 import base64
 import io
 import re
+from typing import get_type_hints
 
 import pytest
 from PIL import Image
@@ -67,6 +68,13 @@ def _jpeg(width: int, height: int, color=(200, 200, 200)) -> str:
 
 def _body(data_url: str) -> bytes:
     return base64.b64decode(data_url.split(";base64,", 1)[-1])
+
+
+def test_decode_base64_image_annotations_resolve_at_runtime():
+    assert get_type_hints(transform.decode_base64_image) == {
+        "image_base64": str,
+        "return": Image.Image,
+    }
 
 
 ONE_PIXEL_WHITE_IMAGE = _jpeg(1, 1, (255, 255, 255))

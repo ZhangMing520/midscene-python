@@ -3,6 +3,14 @@ family adapter tests (stepfun/tencent-hy/qwen/kimi/deepseek/doubao/glm)."""
 
 
 class TestModelAdapter:
+    def test_planning_adapter_annotations_resolve_at_runtime(self):
+        from typing import get_type_hints
+
+        from midscene.core.ai_model.model_adapter.planning import PlanningAdapter
+        from midscene.core.ai_model.workflows.planning.types import PlanFn
+
+        assert get_type_hints(PlanningAdapter)["plan_fn"] == PlanFn | None
+
     def test_deep_locate_support_flags(self):
         from midscene.core.ai_model.models.registry import get_model_adapter
 

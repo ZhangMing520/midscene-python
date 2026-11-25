@@ -7,10 +7,13 @@ the same logical events. Observation window facts mirror the upstream fixture
 (4 frames, 100ms -> 900ms).
 """
 
+from typing import get_type_hints
+
 import pytest
 
-from midscene.core.agent.observe_node import execute_observe
+from midscene.core.agent.observe_node import execute_observe, start_observing
 from midscene.core.agent.test_runner_nodes import AgentTestRunnerNodeExecutionContext
+from midscene.core.agent.ui_observer import UIObserver
 from midscene.core.test_runner.errors import NodeExecutionError
 
 
@@ -18,6 +21,10 @@ def _context() -> AgentTestRunnerNodeExecutionContext:
     from midscene.core.types import AbortSignal
 
     return AgentTestRunnerNodeExecutionContext(signal=AbortSignal())
+
+
+def test_start_observing_annotations_resolve_at_runtime():
+    assert get_type_hints(start_observing)["return"] is UIObserver
 
 
 class _FakeObservation:
